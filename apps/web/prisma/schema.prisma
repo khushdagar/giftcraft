@@ -1,0 +1,779 @@
+// GiftCraft — Prisma schema
+// Stage 1 tables are fully wired; Stage 2–5 tables are present but minimal
+// until those sprints land. Decimal(10,2) is used for every money field.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════
+//   ENUMS
+// ═══════════════════════════════════════════════════════════
+enum UserRole {
+  super_admin
+  company_admin
+  company_member
+  vendor
+  reseller
+}
+
+enum CompanyTier {
+  standard
+  silver
+  gold
+  platinum
+}
+
+enum ProductStatus {
+  active
+  draft
+  archived
+  seasonal
+}
+
+enum PrintingTechnique {
+  screen_print
+  uv_print
+  embroidery
+  laser_engraving
+  digital_print
+  emboss
+  none
+}
+
+enum OrderStatus {
+  draft
+  quote_sent
+  confirmed
+  mockup_pending
+  mockup_approved
+  production
+  quality_check
+  packed
+  shipped
+  in_transit
+  delivered
+  completed
+  cancelled
+  refunded
+}
+
+enum QuoteStatus {
+  active
+  expired
+  converted
+  cancelled
+}
+
+// ═══════════════════════════════════════════════════════════
+//   NEXTAUTH ADAPTER TABLES (required by @auth/prisma-adapter)
+// ═══════════════════════════════════════════════════════════
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   USERS & COMPANIES
+// ═══════════════════════════════════════════════════════════
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  phone         String?
+  role          UserRole  @default(company_member)
+  companyId     String?
+
+  accounts      Account[]
+  sessions      Session[]
+  company       Company?  @relation(fields: [companyId], references: [id])
+
+  ordersPlaced  Order[]   @relation("OrderPlacedBy")
+  quotesCreated Quote[]   @relation("QuoteCreatedBy")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([role])
+}
+
+model Company {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  gstin       String?
+  pan         String?
+  tier        CompanyTier  @default(standard)
+  addressLine String?
+  city        String?
+  state       String?
+  stateCode   String?
+  pincode     String?
+  phone       String?
+  website     String?
+  logoUrl     String?
+
+  users       User[]
+  orders      Order[]
+  quotes      Quote[]
+  brandAssets BrandAsset[]
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([slug])
+}
+
+model BrandAsset {
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name       String
+  url        String
+  mimeType   String
+  sizeBytes  Int
+  uploadedBy String?
+  createdAt  DateTime @default(now())
+
+  @@index([companyId])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   CATALOG — Products, Categories, Occasions, HSN
+// ═══════════════════════════════════════════════════════════
+model Product {
+  id                String   @id @default(cuid())
+  name              String
+  slug              String   @unique
+  brand             String?
+  sku               String   @unique
+  descriptionShort  String?
+  descriptionLong   String?  @db.Text
+  material          String?
+  dimensionL        Float?
+  dimensionW        Float?
+  dimensionH        Float?
+  weightG           Float?
+  leadTimeDays      Int      @default(10)
+  status            ProductStatus @default(draft)
+  printingTechnique PrintingTechnique @default(none)
+  printingPosition  String?
+  isEcoCertified    Boolean  @default(false)
+  isFeatured        Boolean  @default(false)
+  sortOrder         Int      @default(0)
+  metaTitle         String?
+  metaDescription   String?
+
+  priceTiers        PriceTier[]
+  images            ProductImage[]
+  variants          ProductVariant[]
+  categories        ProductCategory[]
+  occasions         ProductOccasion[]
+  hsn               ProductHsn?
+  vendors           ProductVendor[]
+  collectionLinks   CollectionProduct[]
+  orderItems        OrderItem[]
+  auditLogs         PriceAuditLog[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@index([isFeatured])
+}
+
+model PriceTier {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tier      Int      // 1..6
+  minQty    Int
+  maxQty    Int?
+  costPrice Decimal  @db.Decimal(10, 2)
+  sellPrice Decimal  @db.Decimal(10, 2)
+
+  @@unique([productId, tier])
+  @@index([productId])
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  isPrimary Boolean  @default(false)
+  sortOrder Int      @default(0)
+
+  @@index([productId])
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  kind      String   // "color" | "size" | ...
+  value     String
+  hexColor  String?
+  sortOrder Int      @default(0)
+
+  @@index([productId])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  parentId  String?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  products  ProductCategory[]
+  sortOrder Int      @default(0)
+
+  @@index([parentId])
+}
+
+model ProductCategory {
+  productId  String
+  categoryId String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+}
+
+model ProductOccasion {
+  productId  String
+  occasionId String
+  product    Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  occasion   OccasionConfig @relation(fields: [occasionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, occasionId])
+}
+
+model HsnCode {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  description     String
+  defaultGstRate  Decimal  @db.Decimal(5, 2)
+  products        ProductHsn[]
+}
+
+model ProductHsn {
+  productId String   @id
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  hsnId     String
+  hsn       HsnCode  @relation(fields: [hsnId], references: [id])
+  gstRate   Decimal  @db.Decimal(5, 2)
+
+  @@index([hsnId])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   PACKAGING & ADD-ONS
+// ═══════════════════════════════════════════════════════════
+model Packaging {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+}
+
+model Addon {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+}
+
+// ═══════════════════════════════════════════════════════════
+//   VENDORS
+// ═══════════════════════════════════════════════════════════
+model Vendor {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  contactName String?
+  email      String?
+  phone      String?
+  city       String?
+  state      String?
+  products   ProductVendor[]
+  createdAt  DateTime @default(now())
+}
+
+model ProductVendor {
+  id        String   @id @default(cuid())
+  productId String
+  vendorId  String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  costPrice Decimal? @db.Decimal(10, 2)
+  isPrimary Boolean  @default(false)
+
+  @@unique([productId, vendorId])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   ORDERS
+// ═══════════════════════════════════════════════════════════
+model Order {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique
+  companyId       String?
+  company         Company? @relation(fields: [companyId], references: [id])
+  placedById      String?
+  placedBy        User?    @relation("OrderPlacedBy", fields: [placedById], references: [id])
+
+  status          OrderStatus @default(draft)
+  packQuantity    Int
+  deliveryMode    String   // single | individual
+  deliveryDate    DateTime?
+
+  // Addresses (denormalised for historical record)
+  billingJson     Json?
+  shippingJson    Json?
+
+  // Money
+  subtotal        Decimal  @db.Decimal(10, 2)
+  packagingAmount Decimal  @db.Decimal(10, 2) @default(0)
+  addonsAmount    Decimal  @db.Decimal(10, 2) @default(0)
+  shippingAmount  Decimal  @db.Decimal(10, 2) @default(0)
+  discountAmount  Decimal  @db.Decimal(10, 2) @default(0)
+  cgstAmount      Decimal  @db.Decimal(10, 2) @default(0)
+  sgstAmount      Decimal  @db.Decimal(10, 2) @default(0)
+  igstAmount      Decimal  @db.Decimal(10, 2) @default(0)
+  razorpayFee     Decimal  @db.Decimal(10, 2) @default(0)
+  grandTotal      Decimal  @db.Decimal(10, 2)
+
+  // Branding
+  logoUrl         String?
+  brandingNotes   String?  @db.Text
+  cardMessage     String?  @db.Text
+
+  // Razorpay
+  razorpayOrderId String?
+  razorpayPaymentId String?
+  paidAt          DateTime?
+
+  items           OrderItem[]
+  addons          OrderAddon[]
+  recipients      OrderRecipient[]
+  timeline        OrderTimeline[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([status])
+  @@index([orderNumber])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  hsnCode     String?
+  gstRate     Decimal? @db.Decimal(5, 2)
+  printingTechnique PrintingTechnique?
+
+  @@index([orderId])
+}
+
+model OrderAddon {
+  id       String   @id @default(cuid())
+  orderId  String
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  addonId  String
+  name     String
+  unitPrice Decimal @db.Decimal(10, 2)
+  quantity Int
+  total    Decimal  @db.Decimal(10, 2)
+
+  @@index([orderId])
+}
+
+model OrderRecipient {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name      String
+  addressLine String
+  city      String
+  state     String
+  stateCode String
+  pincode   String
+  phone     String?
+
+  @@index([orderId])
+}
+
+model OrderTimeline {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   QUOTES & PRICE AUDIT
+// ═══════════════════════════════════════════════════════════
+model Quote {
+  id          String   @id @default(cuid())
+  shareToken  String   @unique
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id])
+  createdById String?
+  createdBy   User?    @relation("QuoteCreatedBy", fields: [createdById], references: [id])
+
+  status      QuoteStatus @default(active)
+  payload     Json        // snapshot of builder state + pricing
+  expiresAt   DateTime
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([shareToken])
+}
+
+model PriceAuditLog {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  tier       Int
+  oldCost    Decimal? @db.Decimal(10, 2)
+  newCost    Decimal? @db.Decimal(10, 2)
+  oldSell    Decimal? @db.Decimal(10, 2)
+  newSell    Decimal? @db.Decimal(10, 2)
+  changedBy  String?
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  @@index([productId])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   SHIPPING, CONTENT, SETTINGS
+// ═══════════════════════════════════════════════════════════
+model ShippingZone {
+  id         String   @id @default(cuid())
+  name       String
+  states     String[] // list of state codes covered
+  flatRate   Decimal  @db.Decimal(10, 2)
+  etaMinDays Int
+  etaMaxDays Int
+  isActive   Boolean  @default(true)
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  heroImage   String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  products    CollectionProduct[]
+}
+
+model CollectionProduct {
+  collectionId String
+  productId    String
+  sortOrder    Int        @default(0)
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, productId])
+}
+
+model HomepageBanner {
+  id        String   @id @default(cuid())
+  title     String
+  subtitle  String?
+  imageUrl  String?
+  ctaLabel  String?
+  ctaUrl    String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  quote     String   @db.Text
+  authorName String
+  authorRole String?
+  companyName String?
+  avatarUrl String?
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+}
+
+model OccasionConfig {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  icon       String?
+  gradient   String?
+  description String?
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  products   ProductOccasion[]
+}
+
+model Coupon {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  description String?
+  percentOff  Decimal? @db.Decimal(5, 2)
+  flatOff     Decimal? @db.Decimal(10, 2)
+  minOrder    Decimal? @db.Decimal(10, 2)
+  expiresAt   DateTime?
+  isActive    Boolean  @default(true)
+  usageLimit  Int?
+  usedCount   Int      @default(0)
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// ═══════════════════════════════════════════════════════════
+//   STAGE 2+ SCAFFOLDING — tables present, logic deferred.
+//   These are intentionally minimal. Real relations, indexes,
+//   and fields get added in the sprint that wires each feature.
+// ═══════════════════════════════════════════════════════════
+
+model InventoryStock {
+  id        String   @id @default(cuid())
+  productId String
+  onHand    Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model InventoryMovement {
+  id        String   @id @default(cuid())
+  productId String
+  delta     Int
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+model GocCampaign {
+  id        String   @id @default(cuid())
+  name      String
+  companyId String?
+  createdAt DateTime @default(now())
+}
+
+model GocOption {
+  id         String @id @default(cuid())
+  campaignId String
+  productId  String
+}
+
+model GocClaim {
+  id         String   @id @default(cuid())
+  campaignId String
+  email      String
+  claimedAt  DateTime @default(now())
+}
+
+model CompanyWallet {
+  id        String   @id @default(cuid())
+  companyId String   @unique
+  balance   Decimal  @default(0) @db.Decimal(10, 2)
+  updatedAt DateTime @updatedAt
+}
+
+model WalletTransaction {
+  id        String   @id @default(cuid())
+  walletId  String
+  delta     Decimal  @db.Decimal(10, 2)
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+model DisputeTicket {
+  id        String   @id @default(cuid())
+  orderId   String
+  subject   String
+  body      String
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+}
+
+model ArtworkApproval {
+  id        String   @id @default(cuid())
+  orderId   String
+  revision  Int      @default(1)
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+}
+
+model OrderSlaLog {
+  id        String    @id @default(cuid())
+  orderId   String
+  stage     String
+  enteredAt DateTime
+  exitedAt  DateTime?
+}
+
+model AutomationRule {
+  id          String  @id @default(cuid())
+  name        String
+  triggerJson Json
+  actionJson  Json
+  isActive    Boolean @default(true)
+}
+
+model NotificationPreference {
+  id        String @id @default(cuid())
+  userId    String @unique
+  prefsJson Json
+}
+
+model ConsentLog {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String
+  grantedAt DateTime @default(now())
+}
+
+model GstEinvoice {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  irn       String?
+  qrPayload String?
+  createdAt DateTime @default(now())
+}
+
+model OrderModification {
+  id        String   @id @default(cuid())
+  orderId   String
+  diffJson  Json
+  createdAt DateTime @default(now())
+}
+
+model SampleOrder {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String?
+  status    String   @default("requested")
+  createdAt DateTime @default(now())
+}
+
+model Reseller {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  commissionRate Decimal @default(10.00) @db.Decimal(5, 2)
+}
+
+model ResellerOrder {
+  id               String  @id @default(cuid())
+  resellerId       String
+  orderId          String
+  commissionAmount Decimal @db.Decimal(10, 2)
+}
+
+model GiftingSequence {
+  id        String  @id @default(cuid())
+  name      String
+  companyId String?
+  steps     Json
+}
+
+model SequenceEnrollment {
+  id             String @id @default(cuid())
+  sequenceId     String
+  recipientEmail String
+  status         String @default("active")
+}
+
+model RoiOutcome {
+  id          String @id @default(cuid())
+  orderId     String
+  metricKey   String
+  metricValue String
+}
+
+model MockupTemplate {
+  id     String @id @default(cuid())
+  name   String
+  config Json
+}
+
+model GeneratedMockup {
+  id        String   @id @default(cuid())
+  orderId   String
+  url       String
+  createdAt DateTime @default(now())
+}
+
+model WhiteLabelStore {
+  id        String @id @default(cuid())
+  companyId String @unique
+  subdomain String @unique
+  themeJson Json
+}

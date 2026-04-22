@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git init *)",
+      "Bash(git commit -m 'Sprint 2: Catalog + Products with Bento Card Design *)"
+    ]
+  }
+}

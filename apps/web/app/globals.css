@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* shadcn mapping onto GiftCraft palette */
+    --background: 60 20% 98%;          /* canvas #FAFAF7 */
+    --foreground: 60 4% 10%;           /* ink #1A1A18 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 60 4% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 60 4% 10%;
+
+    --primary: 159 61% 26%;            /* emerald #1A6B4F */
+    --primary-foreground: 60 20% 98%;
+
+    --secondary: 60 8% 92%;
+    --secondary-foreground: 60 4% 10%;
+
+    --muted: 60 8% 92%;
+    --muted-foreground: 60 3% 42%;
+
+    --accent: 159 50% 94%;             /* em-50 */
+    --accent-foreground: 159 65% 17%;
+
+    --destructive: 11 63% 47%;         /* #C4402A */
+    --destructive-foreground: 60 20% 98%;
+
+    --border: 48 14% 90%;              /* #E8E8E3 */
+    --input: 48 14% 86%;
+    --ring: 159 61% 26%;
+
+    --radius: 0.75rem;
+  }
+
+  * { @apply border-border; }
+  html { -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+  body {
+    @apply bg-canvas text-ink font-sans;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  h1, h2, h3, h4 { @apply font-display font-medium; }
+  a { color: inherit; text-decoration: none; }
+}
+
+@layer components {
+  /* Matches HTML .container and .container-w */
+  .container-gc   { @apply mx-auto w-full px-4 sm:px-8 lg:px-12; max-width: 1200px; }
+  .container-gc-w { @apply mx-auto w-full px-4 sm:px-8 lg:px-12; max-width: 1440px; }
+
+  /* Editorial Playfair heading helpers */
+  .t-hero    { font-size: clamp(2.8rem,8vw,5.5rem); line-height: 1.04; letter-spacing:-0.02em; @apply font-display font-normal; }
+  .t-display { font-size: clamp(2.2rem,5.5vw,3.8rem); line-height: 1.08; letter-spacing:-0.015em; @apply font-display font-medium; }
+  .t-title   { font-size: clamp(1.8rem,4vw,2.8rem); line-height: 1.15; @apply font-display font-medium; }
+  .t-heading { font-size: clamp(1.3rem,3vw,1.8rem); line-height: 1.25; @apply font-display font-medium; }
+
+  /* Overline */
+  .overline {
+    @apply font-sans text-[11px] font-semibold uppercase tracking-[0.1em];
+  }
+
+  /* Frosted glass — used on nav */
+  .glass {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid rgba(210, 210, 215, 0.30);
+  }
+
+  /* Pill button — matches .nav-btn */
+  .btn-em {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-gc-p bg-em px-6 py-2.5 font-sans text-sm font-semibold text-white transition-all duration-300 ease-gc;
+  }
+  .btn-em:hover {
+    @apply bg-em-600 shadow-glow;
+    transform: scale(1.02);
+  }
+
+  /* Hero CTA buttons */
+  .btn-hero {
+    @apply inline-flex h-[52px] items-center justify-center rounded-gc-p px-8 text-base font-semibold transition-all duration-300 ease-gc;
+  }
+  .btn-hero:active { transform: scale(0.97); }
+  .btn-hero-white { @apply btn-hero bg-white text-ink; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+  .btn-hero-white:hover { @apply bg-em text-white shadow-glow; transform: translateY(-2px); }
+  .btn-hero-outline { @apply btn-hero bg-transparent text-white/85; border: 1.5px solid rgba(250,250,247,0.3); }
+  .btn-hero-outline:hover { background: rgba(255,255,255,0.08); border-color: rgba(250,250,247,0.6); color: #fff; }
+
+  /* Tabular nums for prices */
+  .tabnum { font-variant-numeric: tabular-nums; }
+
+  /* Tiny italic accent used in headings */
+  .italic-em { @apply italic text-em; }
+
+  /* Reveal-on-scroll */
+  .rv { opacity: 0; transform: translateY(24px); transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1); }
+  .rv.is-visible { opacity: 1; transform: translateY(0); }
+}
+
+@layer utilities {
+  /* Scrollbar hide for horizontal product scrollers */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
