@@ -1,53 +1,116 @@
-"use client";
+import { redirect } from 'next/navigation';
+import { auth } from '@/auth';
+import { prisma } from '@/lib/prisma';
+import { CheckoutForm } from '@/components/checkout/checkout-form';
+import { CheckoutSummary } from '@/components/checkout/checkout-summary';
 
-import Link from "next/link";
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Check, Mail, Package, CreditCard, FileText, Truck, Eye, CheckCircle2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { formatRupees } from "@/lib/utils";
+export default async function CheckoutPage({
+  searchParams,
+}: {
+  searchParams: { quoteId?: string };
+}) {
+  // Require authentication
+  const session = await auth();
+  if (!session) {
+    redirect('/login?callbackUrl=/checkout');
+  }
 
-const STATES = ["Delhi", "Maharashtra", "Karnataka", "Tamil Nadu", "Uttar Pradesh", "Gujarat", "West Bengal", "Haryana"];
-
-const TIMELINE = [
-  { icon: Mail, t: "Order confirmed", d: "Receipt sent to your email" },
-  { icon: FileText, t: "Mockups within 48 hrs", d: "Our design team prepares visuals" },
-  { icon: Eye, t: "You review & approve", d: "2 free revisions included" },
-  { icon: CreditCard, t: "Pay balance", d: "After mockup approval" },
-  { icon: Package, t: "Production starts", d: "7–14 day lead time" },
-  { icon: CheckCircle2, t: "Quality check", d: "We inspect each unit" },
-  { icon: Truck, t: "Delivered to your door", d: "Tracking shared via WhatsApp" },
-];
-
-export default function CheckoutPage() {
-  const [path, setPath] = useState<"mockup" | "lock" | null>(null);
-  const [submitted, setSubmitted] = useState(false);
-
-  if (submitted) {
+  const quoteId = searchParams.quoteId;
+  if (!quoteId) {
     return (
-      <div className="bg-canvas py-20">
-        <div className="container-gc max-w-3xl text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-em-50 text-em">
-            <Check className="h-10 w-10" />
-          </div>
-          <p className="overline text-em-700">Order Placed · #GC-2026-0142</p>
-          <h1 className="mt-3 t-display">
-            Thank you, <span className="italic-em">Priya.</span>
-          </h1>
-          <p className="mx-auto mt-3 max-w-lg text-base text-ink-2">
-            We&apos;ve received your order. A receipt is on its way to your inbox and
-            our design team will send mockups within 48 hours.
+      <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-black text-ink mb-2">Invalid Quote</h1>
+          <p className="text-ink-3 mb-4">No quote ID provided</p>
+          <a
+            href="/builder"
+            className="text-em font-semibold hover:underline"
+          >
+            Back to Builder
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Fetch quote
+  const quote = await prisma.quote.findUnique({
+    where: { id: quoteId },
+    select: {
+      id: true,
+      payload: true,
+      expiresAt: true,
+      status: true,
+    },
+  });
+
+  if (!quote || quote.status !== 'active') {
+    return (
+      <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-black text-ink mb-2">Quote Not Found</h1>
+          <p className="text-ink-3 mb-4">This quote is no longer available</p>
+          <a
+            href="/builder"
+            className="text-em font-semibold hover:underline"
+          >
+            Build a New Pack
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // Check expiry
+  if (quote.expiresAt < new Date()) {
+    return (
+      <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-black text-ink mb-2">Quote Expired</h1>
+          <p className="text-ink-3 mb-4">
+            This quote expired on {quote.expiresAt.toLocaleDateString()}
           </p>
-          <div className="mt-10 rounded-gc bg-white p-8 text-left shadow-card">
-            <h2 className="mb-6 font-display text-xl">What happens next</h2>
-            <div className="space-y-5">
-              {TIMELINE.map((s, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-em-50 text-em">
-                    <s.icon className="h-5 w-5" />
-                  </div>
-                  <div>
+          <a
+            href="/builder"
+            className="text-em font-semibold hover:underline"
+          >
+            Build a Fresh Pack
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const payload = quote.payload as any;
+
+  return (
+    <div className="min-h-screen bg-canvas py-8 px-4">
+      <div className="container-gc-w max-w-7xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-black text-ink">Checkout</h1>
+          <p className="text-ink-3 mt-1">Review your order and complete payment</p>
+        </div>
+
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8">
+          {/* Left: Order Summary (read-only) */}
+          <div className="order-2 lg:order-1">
+            <CheckoutSummary payload={payload} />
+          </div>
+
+          {/* Right: Checkout Form */}
+          <div className="order-1 lg:order-2">
+            <CheckoutForm
+              quoteId={quoteId}
+              userEmail={session.user?.email || ''}
+              userName={session.user?.name || ''}
+              pricing={payload.pricing}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
                     <p className="font-semibold">{s.t}</p>
                     <p className="text-sm text-ink-2">{s.d}</p>
                   </div>
