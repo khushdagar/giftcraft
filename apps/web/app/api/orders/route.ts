@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       data: {
         orderNumber,
         placedById: session.user.id,
-        status: 'draft',
+        status: 'confirmed',
         packQuantity: payload.packQuantity || 50,
         deliveryMode: deliveryMode || 'single',
         billingJson,
@@ -85,6 +85,16 @@ export async function POST(request: NextRequest) {
         orderNumber: true,
         grandTotal: true,
         createdAt: true,
+      },
+    });
+
+    // Create initial OrderTimeline entry
+    await prisma.orderTimeline.create({
+      data: {
+        orderId: order.id,
+        status: 'confirmed',
+        note: `Order confirmed. Payment ID: ${razorpayPaymentId || 'N/A'}`,
+        actorId: session.user.id,
       },
     });
 
