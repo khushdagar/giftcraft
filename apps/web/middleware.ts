@@ -22,10 +22,17 @@ export default auth((req) => {
     }
   }
 
+  // /checkout/* — must be signed in (any role)
+  if (pathname.startsWith("/checkout")) {
+    if (!session) {
+      return NextResponse.redirect(new URL(`/login?callbackUrl=${pathname}`, req.url));
+    }
+  }
+
   return NextResponse.next();
 });
 
 export const config = {
   // Only run middleware on protected routes; everything else is public.
-  matcher: ["/admin/:path*", "/dashboard/:path*"],
+  matcher: ["/admin/:path*", "/dashboard/:path*", "/checkout/:path*"],
 };

@@ -49,6 +49,11 @@ export interface BuilderState {
     etaMaxDays: number;
   } | null;
 
+  // Delivery & messaging
+  deliveryMode: "single" | "individual";
+  cardMessage: string;
+  brandingNotes: string;
+
   // Actions
   setCurrentStep: (step: 1 | 2 | 3 | 4) => void;
 
@@ -72,6 +77,10 @@ export interface BuilderState {
   setPincode: (pincode: string | null) => void;
   setShippingZone: (zone: { name: string; flatRate: number; etaMinDays: number; etaMaxDays: number } | null) => void;
 
+  setDeliveryMode: (mode: "single" | "individual") => void;
+  setCardMessage: (message: string) => void;
+  setBrandingNotes: (notes: string) => void;
+
   // Computed
   getProductsSubtotal: () => number;
   getTotalQuantity: () => number;
@@ -89,6 +98,9 @@ const initialState = {
   logo: null,
   pincode: null,
   shippingZone: null,
+  deliveryMode: "single" as const,
+  cardMessage: "",
+  brandingNotes: "",
 };
 
 export const useBuilderStore = create<BuilderState>()(
@@ -153,6 +165,10 @@ export const useBuilderStore = create<BuilderState>()(
 
       setPincode: (pincode) => set({ pincode }),
       setShippingZone: (zone) => set({ shippingZone: zone }),
+
+      setDeliveryMode: (mode) => set({ deliveryMode: mode }),
+      setCardMessage: (message) => set({ cardMessage: message }),
+      setBrandingNotes: (notes) => set({ brandingNotes: notes }),
 
       getProductsSubtotal: () => {
         return get().products.reduce((sum, p) => sum + p.sellPrice * p.quantity, 0);
