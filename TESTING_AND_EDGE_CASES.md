@@ -20,12 +20,14 @@
 - T2.5: Catalog empty state shows BOTH "Clear All Filters" AND "Contact Us for Help"
 - T2.6: Product detail: tier highlights on qty change. Price animation visible. Delivery estimator works.
 
-## SPRINT 3 TESTS
-- T3.1: Pricing engine unit tests ALL pass (tier boundaries, GST routing, mixed HSN, Razorpay fee)
-- T3.2: Quantity modal enforces MOQ 25 corporate / 10 party
-- T3.3: Builder Step 1: products animate in/out. Drag reorder. Box size updates. Next disabled without products.
-- T3.4: Builder Step 2: logo upload validates format. Printing badges read-only. Packaging updates cost.
-- T3.5: Navigate back/forward between steps: all state preserved
+## SPRINT 3 TESTS ✅ ALL PASS
+- ✅ T3.1: Pricing engine unit tests ALL pass (tier boundaries, GST routing, mixed HSN, Razorpay fee)
+- ✅ T3.2: Quantity modal enforces MOQ 25 corporate / 10 party
+- ✅ T3.3: Builder Step 1: products animate in/out. Drag reorder. Box size updates. Next disabled without products.
+- ✅ T3.4: Builder Step 2: logo upload validates format. Printing badges read-only. Packaging updates cost.
+- ✅ T3.5: Navigate back/forward between steps: all state preserved
+  
+**See SPRINT3_VERIFICATION.md for detailed test evidence**
 
 ## SPRINT 4 TESTS
 - T4.1: Step 3: tier animation on qty change. CSV validates. Individual surcharge note visible.
