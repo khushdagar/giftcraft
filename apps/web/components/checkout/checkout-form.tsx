@@ -368,38 +368,6 @@ export function CheckoutForm({
         </div>
       </div>
 
-      {/* Action Button */}
-      <div className="bg-em-50 border-2 border-em rounded-gc-l p-6">
-        {selectedPath === 'mockup' ? (
-          <>
-            <p className="text-xs text-em-700 mb-3">At GiftCraft, we create custom mockups of your branded products before production. Choose how you'd like to move forward.</p>
-            <RazorpayButton
-              quoteId={quoteId}
-              amount={0}
-              email={formData.email}
-              phone={formData.phone}
-              companyName={formData.companyName}
-              buttonText="Confirm Order & Get Mockups"
-            />
-          </>
-        ) : selectedPath === 'pricelock' ? (
-          <>
-            <p className="text-xs text-ink-2 mb-3">Pay 10% now to lock in your price and start production immediately</p>
-            <RazorpayButton
-              quoteId={quoteId}
-              amount={advanceAmount}
-              email={formData.email}
-              phone={formData.phone}
-              companyName={formData.companyName}
-              buttonText={`Pay ${formatRupees(advanceAmount)} Now`}
-            />
-          </>
-        ) : (
-          <Button disabled className="w-full">
-            Select a payment path above
-          </Button>
-        )}
-      </div>
     </form>
   );
 }
