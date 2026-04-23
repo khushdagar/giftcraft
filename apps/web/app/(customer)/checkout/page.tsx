@@ -1,15 +1,18 @@
-import { redirect } from 'next/navigation';
-import { auth } from '@/auth';
-import { prisma } from '@/lib/prisma';
+'use client';
+
+import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { CheckoutForm } from '@/components/checkout/checkout-form';
 import { CheckoutSummary } from '@/components/checkout/checkout-summary';
 
-export default async function CheckoutPage({
+export default function CheckoutPage({
   searchParams,
 }: {
   searchParams: { quoteId?: string };
 }) {
-  const session = await auth();
+  const { data: session } = useSession();
+  const [selectedPath, setSelectedPath] = useState<'mockup' | 'pricelock'>('mockup');
+
   if (!session) {
     redirect('/login?callbackUrl=/checkout');
   }
@@ -29,17 +32,30 @@ export default async function CheckoutPage({
     );
   }
 
-  const quote = await prisma.quote.findUnique({
-    where: { id: quoteId },
-    select: {
-      id: true,
-      payload: true,
-      expiresAt: true,
-      status: true,
-    },
-  });
+  // Fetch quote data from API instead
+  const [quoteData, setQuoteData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!quote || quote.status !== 'active') {
+  if (loading && !quoteData) {
+    // Fetch on client side
+    fetch(`/api/quotes/${quoteId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        setQuoteData(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+
+    return (
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
+        <p className="text-ink-3">Loading checkout...</p>
+      </div>
+    );
+  }
+
+  if (!quoteData) {
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
         <div className="text-center">
@@ -53,23 +69,7 @@ export default async function CheckoutPage({
     );
   }
 
-  if (quote.expiresAt < new Date()) {
-    return (
-      <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-black text-ink mb-2">Quote Expired</h1>
-          <p className="text-ink-3 mb-4">
-            This quote expired on {quote.expiresAt.toLocaleDateString()}
-          </p>
-          <a href="/builder" className="text-em font-semibold hover:underline">
-            Build a Fresh Pack
-          </a>
-        </div>
-      </div>
-    );
-  }
-
-  const payload = quote.payload as any;
+  const payload = quoteData.payload as any;
 
   return (
     <div className="min-h-screen bg-canvas py-8 px-4">
@@ -90,12 +90,13 @@ export default async function CheckoutPage({
               userName={session.user?.name || ''}
               pricing={payload.pricing}
               payload={payload}
+              onPathChange={setSelectedPath}
             />
           </div>
 
           {/* Right: Sticky Pricing Panel */}
           <div className="lg:sticky lg:top-8 h-fit">
-            <CheckoutSummary payload={payload} />
+            <CheckoutSummary payload={payload} selectedPath={selectedPath} />
           </div>
         </div>
       </div>

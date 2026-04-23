@@ -27,6 +27,14 @@ export const INDIAN_STATES = [
   "Uttar Pradesh",
   "Uttarakhand",
   "West Bengal",
+  "Andaman and Nicobar Islands",
+  "Chandigarh",
+  "Dadra and Nagar Haveli",
+  "Daman and Diu",
+  "Delhi",
+  "Ladakh",
+  "Lakshadweep",
+  "Puducherry",
 ];
 
 export const DELIVERY_RATES = { single: 90, individual: 140 };
