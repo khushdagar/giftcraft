@@ -8,7 +8,7 @@ import { formatRupees } from '@/lib/utils';
 import { computePricing } from '@giftcraft/pricing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, Link2, MessageCircle } from 'lucide-react';
+import { Copy, Share2 } from 'lucide-react';
 
 interface ReviewItem {
   id: string;
@@ -40,12 +40,14 @@ export function Step4Review() {
     sleeve,
     deliveryMode,
     getProductsSubtotal,
+    clearAll,
   } = useBuilderStore();
 
   const [couponCode, setCouponCode] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [loadingPlaceOrder, setLoadingPlaceOrder] = useState(false);
+  const [quoteToken, setQuoteToken] = useState<string | null>(null);
   const [quoteId, setQuoteId] = useState<string | null>(null);
 
   const reviewItems: ReviewItem[] = useMemo(() => {
@@ -68,11 +70,12 @@ export function Step4Review() {
 
   // Compute pricing using per-HSN path
   const pricing = useMemo(() => {
+    // Build products array with HSN info for new pricing engine
     const productsForPricing = products.map((p) => ({
       sellPrice: p.sellPrice,
       quantity: p.quantity,
-      hsnCode: p.hsnCode || '4820',
-      gstRate: p.gstRate || 18,
+      hsnCode: p.hsnCode || '4820',  // Default to 4820 if not set
+      gstRate: p.gstRate || 18,      // Default to 18% if not set
     }));
 
     return computePricing({
@@ -90,6 +93,7 @@ export function Step4Review() {
   }, [products, packQuantity, packaging, addons, sleeve, shippingFlat, couponDiscount, shippingZone]);
 
   const handleApplyCoupon = () => {
+    // Mock coupon validation - GIFT10 = 10% discount
     if (couponCode.toUpperCase() === 'GIFT10') {
       const productsSubtotal = getProductsSubtotal();
       setCouponDiscount(Math.round(productsSubtotal * 0.1 * 100) / 100);
@@ -99,8 +103,9 @@ export function Step4Review() {
     }
   };
 
+  // Create quote once and cache the token
   const createQuote = async () => {
-    if (quoteId) return quoteId;
+    if (quoteToken) return quoteToken;  // Already created
 
     try {
       const quoteRes = await fetch('/api/quotes', {
@@ -119,10 +124,14 @@ export function Step4Review() {
         }),
       });
 
-      if (!quoteRes.ok) throw new Error('Failed to create quote');
+      if (!quoteRes.ok) {
+        throw new Error('Failed to create quote');
+      }
+
       const quote = await quoteRes.json();
+      setQuoteToken(quote.shareToken);
       setQuoteId(quote.id);
-      return quote.id;
+      return quote.shareToken;
     } catch (error) {
       console.error('Error creating quote:', error);
       throw error;
@@ -134,6 +143,7 @@ export function Step4Review() {
       const token = await createQuote();
       window.location.href = `/api/quotes/${token}/pdf`;
     } catch (error) {
+      console.error('Error downloading PDF:', error);
       alert('Failed to download PDF');
     }
   };
@@ -143,8 +153,9 @@ export function Step4Review() {
       const token = await createQuote();
       const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/quote/${token}`;
       await navigator.clipboard.writeText(shareUrl);
-      alert('Share link copied!');
+      alert('Share link copied to clipboard!');
     } catch (error) {
+      console.error('Error copying share link:', error);
       alert('Failed to copy link');
     }
   };
@@ -156,21 +167,24 @@ export function Step4Review() {
       const text = `Check out my GiftCraft quote: ${shareUrl}`;
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
     } catch (error) {
+      console.error('Error sharing on WhatsApp:', error);
       alert('Failed to share on WhatsApp');
     }
   };
 
   const handlePlaceOrder = async () => {
+    // Check if user is authenticated
     if (!session) {
-      router.push('/login?callbackUrl=/builder');
+      router.push('/login?callbackUrl=/checkout');
       return;
     }
 
     try {
       setLoadingPlaceOrder(true);
-      const id = quoteId || (await createQuote());
+      const id = quoteId || (await createQuote()).split('-')[0];  // Fallback if needed
       router.push(`/checkout?quoteId=${id}`);
     } catch (error) {
+      console.error('Error placing order:', error);
       alert('Failed to proceed to checkout');
     } finally {
       setLoadingPlaceOrder(false);
@@ -185,275 +199,246 @@ export function Step4Review() {
         <h2 className="text-3xl font-black mt-1">Review & Order</h2>
       </div>
 
-      {/* Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8">
-        {/* LEFT COLUMN: Order Summary & Actions */}
-        <div className="space-y-6">
-          {/* Order Summary Section */}
-          <div className="bg-elevated rounded-gc-l border-2 border-bdr p-5 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
-              Order Summary
-            </p>
+      {/* Order Summary */}
+      <div className="rounded-gc-l bg-elevated border-2 border-bdr p-5 space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+          Order Summary
+        </p>
 
-            {/* Products */}
-            <div className="space-y-2 pb-3 border-b border-bdr">
-              {reviewItems.map((item) => (
-                <div key={item.id} className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-ink">{item.name}</p>
-                    <p className="text-xs text-ink-3 mt-0.5">×{item.quantity}</p>
-                  </div>
-                  <p className="text-sm font-black tabnum text-ink flex-shrink-0">
-                    {formatRupees(item.subtotal)}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* Customizations */}
-            {(packaging || addons.length > 0 || sleeve) && (
-              <div className="space-y-2 pb-3 border-b border-bdr">
-                {packaging && (
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-ink-2">{packaging.name}</p>
-                    <p className="text-sm font-semibold tabnum text-ink">+{formatRupees(packagingTotal)}</p>
-                  </div>
-                )}
-                {sleeve && (
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-ink-2">Branded Sleeve</p>
-                    <p className="text-sm font-semibold tabnum text-ink">+{formatRupees(sleeveTotal)}</p>
-                  </div>
-                )}
-                {addons.length > 0 && (
-                  <div className="space-y-1">
-                    {addons.map((addon) => (
-                      <div key={addon.id} className="flex items-center justify-between">
-                        <p className="text-xs text-ink-2">{addon.name}</p>
-                        <p className="text-xs font-semibold tabnum text-ink">+{formatRupees(addon.price * packQuantity)}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Shipping */}
-            <div className="flex items-start justify-between">
+        {/* Products */}
+        <div className="space-y-2 pb-3 border-b border-bdr">
+          {reviewItems.map((item) => (
+            <div key={item.id} className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-ink-2">
-                  {deliveryMode === 'single' ? 'Single Location Shipping' : 'Individual Delivery'}
-                </p>
-                <p className="text-xs text-ink-3 mt-0.5">
-                  ₹{deliveryMode === 'single' ? 90 : 140}/pack • {packQuantity} packs
-                </p>
+                <p className="text-sm font-semibold text-ink">{item.name}</p>
+                <p className="text-xs text-ink-3 mt-0.5">×{item.quantity}</p>
               </div>
-              <p className="text-sm font-semibold tabnum text-ink flex-shrink-0">
-                +{formatRupees(shippingFlat)}
+              <p className="text-sm font-black tabnum text-ink">
+                {formatRupees(item.subtotal)}
               </p>
             </div>
-          </div>
-
-          {/* Coupon Code */}
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              placeholder="Enter coupon code"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              disabled={couponApplied}
-              className="flex-1 rounded-gc"
-            />
-            <Button
-              onClick={handleApplyCoupon}
-              disabled={couponApplied || !couponCode}
-              variant="outline"
-              className="rounded-gc px-6"
-            >
-              {couponApplied ? '✓ Applied' : 'Apply'}
-            </Button>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-4 gap-2">
-            <Button
-              onClick={handleDownloadPDF}
-              variant="outline"
-              className="rounded-gc text-xs h-10 flex items-center justify-center gap-1"
-            >
-              <Download className="w-3 h-3" />
-              <span className="hidden sm:inline">PDF</span>
-            </Button>
-            <Button
-              onClick={handleCopyShareLink}
-              variant="outline"
-              className="rounded-gc text-xs h-10 flex items-center justify-center gap-1"
-            >
-              <Link2 className="w-3 h-3" />
-              <span className="hidden sm:inline">Copy</span>
-            </Button>
-            <Button
-              onClick={handleWhatsAppShare}
-              variant="outline"
-              className="rounded-gc text-xs h-10 flex items-center justify-center gap-1"
-            >
-              <MessageCircle className="w-3 h-3" />
-              <span className="hidden sm:inline">WhatsApp</span>
-            </Button>
-            <Button
-              onClick={handlePlaceOrder}
-              disabled={loadingPlaceOrder}
-              variant="em"
-              className="rounded-gc text-xs h-10 font-bold"
-            >
-              Place Order
-            </Button>
-          </div>
-
-          {/* Next Step Info */}
-          <div className="rounded-gc bg-em-50 border-2 border-em-200 p-4">
-            <p className="text-xs text-em-700">
-              <span className="font-semibold">Next Step:</span> Click "Place Order" to proceed to secure checkout.
-            </p>
-          </div>
+          ))}
         </div>
 
-        {/* RIGHT COLUMN: Sticky Pricing Panel */}
-        <div className="lg:sticky lg:top-8 h-fit space-y-4">
-          {/* Order Summary Box */}
-          <div className="rounded-gc-l border-2 border-bdr bg-elevated p-5 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
-              Order Summary
-            </p>
-
-            <div className="space-y-2">
-              {reviewItems.map((item) => (
-                <div key={item.id} className="flex items-start justify-between gap-2 pb-2 border-b border-bdr last:border-0 last:pb-0">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-ink line-clamp-1">{item.name}</p>
-                    <p className="text-[10px] text-ink-3">×{item.quantity}</p>
-                  </div>
-                  <p className="text-xs font-black text-ink tabnum flex-shrink-0">
-                    {formatRupees(item.subtotal)}
-                  </p>
-                </div>
-              ))}
-
-              {(packaging || addons.length > 0 || sleeve) && (
-                <>
-                  {packaging && (
-                    <div className="flex items-center justify-between text-xs pt-2 border-t border-bdr">
-                      <span className="text-ink-2">{packaging.name}</span>
-                      <span className="font-semibold text-ink">+{formatRupees(packagingTotal)}</span>
-                    </div>
-                  )}
-                  {sleeve && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-ink-2">Branded Sleeve</span>
-                      <span className="font-semibold text-ink">+{formatRupees(sleeveTotal)}</span>
-                    </div>
-                  )}
-                  {addons.map((addon) => (
-                    <div key={addon.id} className="flex items-center justify-between text-xs">
-                      <span className="text-ink-2">{addon.name}</span>
-                      <span className="font-semibold text-ink">+{formatRupees(addon.price * packQuantity)}</span>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {shippingZone && (
-                <div className="flex items-center justify-between text-xs pt-2 border-t border-bdr">
-                  <span className="text-ink-2">{shippingZone.zoneName}</span>
-                  <span className="font-semibold text-ink">+{formatRupees(shippingFlat)}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Pricing Breakdown Box */}
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-5 space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
-              Pricing Breakdown
-            </p>
-
-            <div className="flex items-center justify-between pb-3 border-b border-bdr">
-              <span className="text-sm text-ink-2">Subtotal</span>
-              <span className="font-black text-ink tabnum">{formatRupees(pricing.subtotal)}</span>
-            </div>
-
-            <div className="flex items-center justify-between pb-3 border-b border-bdr">
-              <span className="text-sm text-ink-2">Shipping</span>
-              <span className="font-black text-ink tabnum">+{formatRupees(shippingFlat)}</span>
-            </div>
-
-            {/* GST Breakdown */}
-            <div className="space-y-2 pb-3 border-b border-bdr">
-              <p className="text-xs font-semibold text-ink-2 mb-2">GST Breakdown</p>
-
-              {pricing.hsnBreakdown && pricing.hsnBreakdown.length > 0 ? (
-                <div className="space-y-1.5 text-xs">
-                  {pricing.hsnBreakdown.map((line: HsnGstLine, idx: number) => (
-                    <div key={idx}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-ink-3">HSN {line.hsnCode} @ {line.gstRate}%</span>
-                        <span className="text-ink-3 font-mono">{formatRupees(line.taxableAmount)}</span>
-                      </div>
-                      {line.cgst > 0 && (
-                        <div className="flex items-center justify-between ml-2">
-                          <span className="text-ink-3">CGST ({line.gstRate / 2}%)</span>
-                          <span className="text-ink-3 font-mono">+{formatRupees(line.cgst)}</span>
-                        </div>
-                      )}
-                      {line.sgst > 0 && (
-                        <div className="flex items-center justify-between ml-2">
-                          <span className="text-ink-3">SGST ({line.gstRate / 2}%)</span>
-                          <span className="text-ink-3 font-mono">+{formatRupees(line.sgst)}</span>
-                        </div>
-                      )}
-                      {line.igst > 0 && (
-                        <div className="flex items-center justify-between ml-2">
-                          <span className="text-ink-3">IGST ({line.gstRate}%)</span>
-                          <span className="text-ink-3 font-mono">+{formatRupees(line.igst)}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            {/* Payment Fee */}
-            {pricing.razorpayFee > 0 && (
-              <div>
-                <p className="text-sm text-ink-2">Payment Gateway Fee</p>
-                <p className="text-xs text-ink-3 mt-1">(2.36% on payment amount + 18% GST)</p>
-                <p className="text-sm font-black text-ink tabnum mt-2">
-                  +{formatRupees(pricing.razorpayFee)}
+        {/* Customizations */}
+        {(packaging || addons.length > 0 || sleeve) && (
+          <div className="space-y-2 pb-3 border-b border-bdr">
+            {packaging && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-ink-2">{packaging.name}</p>
+                <p className="text-sm font-semibold tabnum text-ink">
+                  +{formatRupees(packagingTotal)}
                 </p>
               </div>
             )}
+            {sleeve && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-ink-2">Branded Sleeve</p>
+                <p className="text-sm font-semibold tabnum text-ink">
+                  +{formatRupees(sleeveTotal)}
+                </p>
+              </div>
+            )}
+            {addons.length > 0 && (
+              <div>
+                <p className="text-sm text-ink-2 mb-1">Add-ons:</p>
+                <div className="ml-2 space-y-1">
+                  {addons.map((addon) => {
+                    const addonSubtotal = addon.price * packQuantity;
+                    return (
+                      <div key={addon.id} className="flex items-center justify-between">
+                        <p className="text-xs text-ink-3">{addon.name}</p>
+                        <p className="text-xs font-semibold tabnum text-ink">
+                          +{formatRupees(addonSubtotal)}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
+        )}
 
-          {/* Grand Total */}
-          <div className="rounded-full bg-dark text-white px-6 py-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold opacity-80">Grand Total</p>
-              <p className="text-xs text-white/70 mt-1">Per pack</p>
-            </div>
-            <div className="text-right">
-              <p className="text-3xl font-black tabnum">{formatRupees(pricing.grandTotal)}</p>
-              <p className="text-xs text-white/70 mt-1">₹{Math.round(pricing.grandTotal / packQuantity)}</p>
-            </div>
-          </div>
-
-          {/* Info Note */}
-          <div className="bg-em-50 border-2 border-em-200 rounded-gc p-3">
-            <p className="text-xs text-em-700 leading-relaxed">
-              <span className="font-semibold">Note:</span> All prices include branding. Payment gateway fees are calculated at checkout.
+        {/* Shipping */}
+        <div className="flex items-center justify-between pb-3 border-b border-bdr">
+          <div>
+            <p className="text-sm text-ink-2">
+              {deliveryMode === 'single' ? 'Single Location Shipping' : 'Individual Delivery'}
+            </p>
+            <p className="text-xs text-ink-3 mt-0.5">
+              ₹{deliveryMode === 'single' ? 90 : 140}/pack × {packQuantity}
             </p>
           </div>
+          <p className="text-sm font-semibold tabnum text-ink">
+            +{formatRupees(shippingFlat)}
+          </p>
         </div>
+      </div>
+
+      {/* Pricing Breakdown */}
+      <div className="rounded-gc-l border-2 border-bdr bg-white p-5 space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">
+          Pricing Breakdown
+        </p>
+
+        {/* Rows with alternating backgrounds */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between py-2 px-2">
+            <span className="text-sm text-ink-2">Subtotal</span>
+            <span className="font-semibold tabnum text-ink">
+              {formatRupees(pricing.subtotal)}
+            </span>
+          </div>
+
+          {pricing.packaging > 0 && (
+            <div className="flex items-center justify-between py-2 px-2 bg-elevated/50 rounded">
+              <span className="text-sm text-ink-2">Packaging</span>
+              <span className="font-semibold tabnum text-ink">
+                +{formatRupees(pricing.packaging)}
+              </span>
+            </div>
+          )}
+
+          {pricing.addons > 0 && (
+            <div className="flex items-center justify-between py-2 px-2">
+              <span className="text-sm text-ink-2">Add-ons</span>
+              <span className="font-semibold tabnum text-ink">
+                +{formatRupees(pricing.addons)}
+              </span>
+            </div>
+          )}
+
+          {pricing.shipping > 0 && (
+            <div className="flex items-center justify-between py-2 px-2 bg-elevated/50 rounded">
+              <span className="text-sm text-ink-2">Shipping</span>
+              <span className="font-semibold tabnum text-ink">
+                +{formatRupees(pricing.shipping)}
+              </span>
+            </div>
+          )}
+
+          {/* GST Breakdown by HSN */}
+          {pricing.hsnBreakdown && pricing.hsnBreakdown.length > 0 && (
+            <div className="border-t border-bdr py-2">
+              <p className="text-xs font-semibold text-ink-2 px-2 mb-2">GST Breakdown</p>
+              {pricing.hsnBreakdown.map((line: HsnGstLine, idx: number) => (
+                <div key={`${line.hsnCode}-${idx}`} className="space-y-1 px-2 mb-2 pb-2 border-b border-bdr last:border-b-0">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-ink-3">HSN {line.hsnCode} @ {line.gstRate}%</span>
+                    <span className="text-ink-2">{formatRupees(line.taxableAmount)}</span>
+                  </div>
+                  {line.cgst > 0 && (
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-ink-3">  CGST (9%)</span>
+                      <span className="font-semibold tabnum text-ink">+{formatRupees(line.cgst)}</span>
+                    </div>
+                  )}
+                  {line.sgst > 0 && (
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-ink-3">  SGST (9%)</span>
+                      <span className="font-semibold tabnum text-ink">+{formatRupees(line.sgst)}</span>
+                    </div>
+                  )}
+                  {line.igst > 0 && (
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-ink-3">  IGST (18%)</span>
+                      <span className="font-semibold tabnum text-ink">+{formatRupees(line.igst)}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Razorpay Fee */}
+          {pricing.razorpayFee > 0 && (
+            <div className="border-t border-bdr py-2">
+              <div className="flex items-center justify-between py-1 px-2 text-xs">
+                <span className="text-ink-2">Payment Gateway Fee</span>
+                <span className="font-semibold tabnum text-ink">
+                  +{formatRupees(pricing.razorpayFee)}
+                </span>
+              </div>
+              <p className="text-[10px] text-ink-3 px-2 mt-0.5">
+                (2.36% on payment amount + 18% GST)
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Grand Total Block (Dark) */}
+      <div className="rounded-gc-l bg-dark text-inv p-6">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm font-semibold">Grand Total</span>
+          <p className="text-3xl font-black tabnum">
+            {formatRupees(pricing.grandTotal)}
+          </p>
+        </div>
+        {packQuantity > 0 && (
+          <div className="flex items-center justify-between">
+            <span className="text-xs">Per pack</span>
+            <span className="rounded-gc-p bg-gold-50 text-gold-700 px-3 py-1.5 text-sm font-semibold tabnum">
+              {formatRupees(pricing.perPack)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Coupon Code */}
+      <div className="rounded-gc border-2 border-bdr flex gap-2 p-3">
+        <Input
+          type="text"
+          placeholder="Enter coupon code"
+          value={couponCode}
+          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+          disabled={couponApplied}
+          className="flex-1 rounded-gc text-sm"
+        />
+        <Button
+          onClick={handleApplyCoupon}
+          disabled={couponApplied || !couponCode}
+          variant="outline"
+          className="rounded-gc-l"
+        >
+          {couponApplied ? '✓ Applied' : 'Apply'}
+        </Button>
+      </div>
+
+      {/* Actions Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <Button
+          onClick={handleDownloadPDF}
+          variant="outline"
+          className="rounded-gc-l text-xs md:text-sm"
+        >
+          Download PDF
+        </Button>
+        <Button
+          onClick={handleCopyShareLink}
+          variant="ghost"
+          className="rounded-gc-l text-xs md:text-sm gap-1"
+        >
+          <Copy className="h-4 w-4" />
+          Copy Link
+        </Button>
+        <Button
+          onClick={handleWhatsAppShare}
+          variant="ghost"
+          className="rounded-gc-l text-xs md:text-sm"
+        >
+          <Share2 className="h-4 w-4" />
+          WhatsApp
+        </Button>
+        <Button
+          onClick={handlePlaceOrder}
+          disabled={loadingPlaceOrder}
+          variant="em"
+          className="rounded-gc-l text-xs md:text-sm"
+        >
+          {loadingPlaceOrder ? 'Processing...' : 'Place Order'}
+        </Button>
       </div>
     </div>
   );
