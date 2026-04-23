@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { Package, FileText, Clock, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRupees } from "@/lib/utils";
+import { Decimal } from "@prisma/client/runtime/library";
 
 interface KpiProps {
   label: string;
@@ -37,9 +39,108 @@ function Kpi({ label, value, icon: Icon, accent }: KpiProps) {
   );
 }
 
+function getStatusVariant(status: string): "em" | "gold" | "grey" {
+  if (status === "mockup_pending") return "gold";
+  if (status === "delivered" || status === "completed") return "grey";
+  return "em";
+}
+
+function getStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    draft: "Draft",
+    quote_sent: "Quote Sent",
+    confirmed: "Confirmed",
+    mockup_pending: "Mockup Review",
+    mockup_approved: "Approved",
+    production: "In Production",
+    quality_check: "QC",
+    packed: "Packed",
+    shipped: "Shipped",
+    in_transit: "In Transit",
+    delivered: "Delivered",
+    completed: "Completed",
+    cancelled: "Cancelled",
+    refunded: "Refunded",
+  };
+  return labels[status] || status;
+}
+
 export default async function DashboardPage() {
   const session = await auth();
+  if (!session?.user?.id) {
+    return <div>Please log in</div>;
+  }
+
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";
+  const userId = session.user.id;
+
+  // Fetch KPI data
+  const [activeOrders, activeQuotes, inProductionCount, ytdSpendData] = await Promise.all([
+    prisma.order.count({
+      where: {
+        placedById: userId,
+        status: {
+          notIn: ["delivered", "completed", "cancelled", "refunded"],
+        },
+      },
+    }),
+    prisma.quote.count({
+      where: {
+        createdById: userId,
+        status: "active",
+      },
+    }),
+    prisma.order.count({
+      where: {
+        placedById: userId,
+        status: "production",
+      },
+    }),
+    prisma.order.aggregate({
+      where: {
+        placedById: userId,
+        createdAt: {
+          gte: new Date(new Date().getFullYear(), 0, 1),
+        },
+      },
+      _sum: {
+        grandTotal: true,
+      },
+    }),
+  ]);
+
+  const ytdSpend = ytdSpendData._sum.grandTotal || new Decimal(0);
+
+  // Fetch recent orders
+  const recentOrders = await prisma.order.findMany({
+    where: { placedById: userId },
+    select: {
+      id: true,
+      orderNumber: true,
+      status: true,
+      packQuantity: true,
+      grandTotal: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+  });
+
+  // Fetch mockup pending orders for the alert
+  const mockupPendingOrders = await prisma.order.findMany({
+    where: {
+      placedById: userId,
+      status: "mockup_pending",
+    },
+    select: {
+      id: true,
+      orderNumber: true,
+      packQuantity: true,
+    },
+    take: 1,
+  });
+
+  const mockupAlert = mockupPendingOrders[0];
 
   return (
     <div className="max-w-6xl space-y-8">
@@ -51,23 +152,25 @@ export default async function DashboardPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi label="Active Orders" value="3" icon={Package} accent="em" />
-        <Kpi label="Active Quotes" value="2" icon={FileText} accent="gold" />
-        <Kpi label="In Production" value="1" icon={Clock} accent="em" />
-        <Kpi label="YTD Spend" value={formatRupees(485000)} icon={TrendingUp} accent="em-400" />
+        <Kpi label="Active Orders" value={activeOrders} icon={Package} accent="em" />
+        <Kpi label="Active Quotes" value={activeQuotes} icon={FileText} accent="gold" />
+        <Kpi label="In Production" value={inProductionCount} icon={Clock} accent="em" />
+        <Kpi label="YTD Spend" value={formatRupees(Number(ytdSpend))} icon={TrendingUp} accent="em-400" />
       </div>
 
       {/* Mockup alert */}
-      <div className="rounded-gc border-2 border-gold/30 bg-gold-50 p-5">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-white font-bold">!</div>
-          <div className="flex-1">
-            <p className="font-semibold text-gold-700">Mockups awaiting your review</p>
-            <p className="mt-1 text-sm text-ink-2">Order #GC-2026-0138 (Diwali Hamper × 150) has mockups ready. Approve to start production.</p>
+      {mockupAlert ? (
+        <div className="rounded-gc border-2 border-gold/30 bg-gold-50 p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-white font-bold">!</div>
+            <div className="flex-1">
+              <p className="font-semibold text-gold-700">Mockups awaiting your review</p>
+              <p className="mt-1 text-sm text-ink-2">Order #{mockupAlert.orderNumber} (Pack × {mockupAlert.packQuantity}) has mockups ready. Approve to start production.</p>
+            </div>
+            <Button asChild variant="outline" size="sm"><Link href="/dashboard/orders">Review now</Link></Button>
           </div>
-          <Button asChild variant="outline" size="sm"><Link href="/dashboard/orders">Review now</Link></Button>
         </div>
-      </div>
+      ) : null}
 
       {/* Recent orders */}
       <div className="rounded-gc bg-white shadow-card">
@@ -76,22 +179,24 @@ export default async function DashboardPage() {
           <Link href="/dashboard/orders" className="text-xs font-semibold text-em">See all →</Link>
         </div>
         <div className="divide-y divide-bdr">
-          {[
-            { id: "GC-2026-0142", name: "New Hire Welcome Kit × 50", status: "In Production", variant: "em" as const, amt: 69465 },
-            { id: "GC-2026-0138", name: "Diwali Premium Hamper × 150", status: "Mockup Review", variant: "gold" as const, amt: 224850 },
-            { id: "GC-2026-0132", name: "Team Sports Pack × 80", status: "Delivered", variant: "grey" as const, amt: 59920 },
-          ].map((o) => (
-            <Link key={o.id} href={`/dashboard/orders/${o.id}`} className="flex items-center justify-between p-5 transition hover:bg-elevated">
-              <div>
-                <p className="font-medium text-sm">{o.name}</p>
-                <p className="mt-1 text-xs text-ink-3">{o.id}</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <Badge variant={o.variant}>{o.status}</Badge>
-                <p className="font-black tabnum text-sm">{formatRupees(o.amt)}</p>
-              </div>
-            </Link>
-          ))}
+          {recentOrders.length > 0 ? (
+            recentOrders.map((o) => (
+              <Link key={o.id} href={`/dashboard/orders/${o.id}`} className="flex items-center justify-between p-5 transition hover:bg-elevated">
+                <div>
+                  <p className="font-medium text-sm">Pack × {o.packQuantity}</p>
+                  <p className="mt-1 text-xs text-ink-3">#{o.orderNumber}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Badge variant={getStatusVariant(o.status)}>{getStatusLabel(o.status)}</Badge>
+                  <p className="font-black tabnum text-sm">{formatRupees(Number(o.grandTotal))}</p>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="p-5 text-center text-sm text-ink-3">
+              No orders yet. <Link href="/builder" className="text-em font-semibold">Start building →</Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
