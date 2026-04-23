@@ -199,6 +199,28 @@ export function Step4Review() {
         <h2 className="text-3xl font-black mt-1">Review & Order</h2>
       </div>
 
+      {/* Delivery Mode Display */}
+      <div className="rounded-gc-l bg-em-50 border-2 border-em-200 p-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">
+          Delivery Mode
+        </p>
+        <div className="flex items-start gap-3">
+          <div className="w-6 h-6 rounded-full bg-em text-white flex items-center justify-center flex-shrink-0 mt-1">
+            ✓
+          </div>
+          <div>
+            <p className="text-sm font-black text-ink">
+              {deliveryMode === 'single' ? 'Single Location Shipping' : 'Individual Delivery'}
+            </p>
+            <p className="text-xs text-ink-3 mt-1">
+              {deliveryMode === 'single'
+                ? 'All packs delivered to one address'
+                : 'Each pack to a different recipient'}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Order Summary */}
       <div className="rounded-gc-l bg-elevated border-2 border-bdr p-5 space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
