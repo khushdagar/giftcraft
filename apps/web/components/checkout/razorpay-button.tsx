@@ -17,6 +17,7 @@ interface RazorpayButtonProps {
   email: string;
   phone: string;
   companyName: string;
+  buttonText?: string;
 }
 
 export function RazorpayButton({
@@ -25,6 +26,7 @@ export function RazorpayButton({
   email,
   phone,
   companyName,
+  buttonText,
 }: RazorpayButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -115,12 +117,12 @@ export function RazorpayButton({
   return (
     <Button
       onClick={handlePayment}
-      disabled={loading || !razorpayLoaded || !email || !phone || amount <= 0}
+      disabled={loading || !razorpayLoaded || !email || !phone || amount < 0}
       variant="em"
       size="xl"
       className="w-full rounded-gc-l"
     >
-      {loading ? 'Processing...' : `Pay ${formatRupees(amount)}`}
+      {loading ? 'Processing...' : (buttonText || `Pay ${formatRupees(amount)}`)}
     </Button>
   );
 }
