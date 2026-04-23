@@ -8,9 +8,11 @@ import { ImageGallery } from "@/components/product/image-gallery";
 import { PricingBlock } from "@/components/product/pricing-block";
 import { PackagingSelector } from "@/components/product/packaging-selector";
 import { AddonsSelector } from "@/components/product/addons-selector";
-import { DeliveryEstimator } from "@/components/product/delivery-estimator";
-import { LogoUpload } from "@/components/product/logo-upload";
 import { RelatedProducts } from "@/components/product/related-products";
+import { ExpertHelp } from "@/components/product/expert-help";
+import { ProductTabs } from "@/components/product/product-tabs";
+import { ColorSelector } from "@/components/product/color-selector";
+import { ProductInfoSection } from "@/components/product/product-info-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -69,6 +71,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const serialized = serializeProduct(product);
   const serializedRelated = related.map(serializeProduct);
   const gstRate = product.hsn?.hsn ? Number(product.hsn.hsn.defaultGstRate) : 18;
+  const moq = product.priceTiers?.[0]?.minQty || 25;
 
   return (
     <div className="bg-canvas">
@@ -92,55 +95,26 @@ export default async function ProductPage({ params }: { params: { slug: string }
       </div>
 
       <div className="container-gc-w grid grid-cols-1 gap-12 py-8 lg:grid-cols-[1.2fr_1fr] lg:py-12">
-        {/* Gallery */}
-        <ImageGallery images={serialized.images || []} productName={product.name} />
+        {/* Gallery - Sticky on desktop */}
+        <div className="lg:sticky lg:top-6 lg:h-fit">
+          <ImageGallery images={serialized.images || []} productName={product.name} />
+        </div>
 
         {/* Info */}
-        <div>
-          <p className="overline mb-2 text-ink-3">{product.brand ? `${product.brand} · ` : ""}{categoryName}</p>
-          <h1 className="t-heading">{product.name}</h1>
-          <p className="mt-3 text-base leading-relaxed text-ink-2">
-            {product.descriptionShort || product.descriptionLong}
-          </p>
+        <ProductInfoSection
+          product={product}
+          serialized={serialized}
+          gstRate={gstRate}
+          moq={moq}
+          categoryName={categoryName}
+        />
+      </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-2">
-            {product.isEcoCertified && <Badge variant="em">ECO CERTIFIED</Badge>}
-            {product.isFeatured && <Badge variant="gold">BESTSELLER</Badge>}
-          </div>
-
-          {/* Pricing */}
-          <PricingBlock priceTiers={serialized.priceTiers || []} gstRate={gstRate} hsnCode={product.hsn?.hsn?.code} />
-
-          <p className="mt-2 text-xs text-ink-3">
-            GST {gstRate}% {product.hsn?.hsn?.code ? `· HSN ${product.hsn.hsn.code}` : ""}
-          </p>
-
-          {/* CTA */}
-          <div className="mt-6 flex gap-3">
-            <Button asChild variant="em" size="xl" className="flex-1">
-              <Link href={`/builder?product=${product.id}`}>Add to Gift Builder</Link>
-            </Button>
-            <Button asChild variant="outline" size="xl">
-              <Link href="/catalog">Continue Shopping</Link>
-            </Button>
-          </div>
-
-          {/* Packaging & Addons */}
-          <div className="mt-8 space-y-6">
-            <PackagingSelector productId={product.id} />
-            <AddonsSelector productId={product.id} />
-          </div>
-
-          {/* Delivery */}
-          <div className="mt-8">
-            <DeliveryEstimator />
-          </div>
-
-          {/* Logo Upload */}
-          <div className="mt-8">
-            <LogoUpload />
-          </div>
-        </div>
+      {/* Product tabs and details */}
+      <div className="container-gc-w">
+        <ProductTabs
+          description={product.descriptionLong || undefined}
+        />
       </div>
 
       {/* Related Products */}

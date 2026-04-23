@@ -10,6 +10,8 @@ const RECIPIENT_TYPES = [
   { id: 'party', label: 'Party Favor', moq: 10, color: 'bg-orange-50', textColor: 'text-orange-700' },
 ];
 
+const QUICK_SELECT_PILLS = [25, 50, 100, 250, 500];
+
 export function QuantityModal() {
   const {
     quantityModalOpen,
@@ -83,10 +85,40 @@ export function QuantityModal() {
           ))}
         </div>
 
+        {/* Quick Select Pills */}
+        {recipientType && (
+          <div className="mb-8">
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">Quick Select</p>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_SELECT_PILLS.map((qty) => {
+                const isDisabled = qty < moq;
+                const isActive = localQty === qty;
+                return (
+                  <button
+                    key={qty}
+                    onClick={() => !isDisabled && setLocalQty(qty)}
+                    disabled={isDisabled}
+                    title={isDisabled ? `Minimum ${moq} required` : ''}
+                    className={`px-3 py-2 rounded-full text-sm font-semibold transition border-2 ${
+                      isActive
+                        ? 'bg-navy-800 text-white border-navy-800'
+                        : isDisabled
+                        ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
+                        : 'border-gray-200 text-ink hover:border-navy-800'
+                    }`}
+                  >
+                    {qty}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Quantity Input */}
         {recipientType && (
           <div className="space-y-3 mb-8">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Quantity</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Or Enter Custom</p>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setLocalQty(Math.max(moq, localQty - 10))}

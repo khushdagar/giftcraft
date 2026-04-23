@@ -7,7 +7,13 @@ export interface BuilderProduct {
   slug: string;
   quantity: number;
   sellPrice: number;
+  brand?: string;
+  printingTechnique?: string;
+  hsnCode?: string;
+  gstRate?: number;
+  leadTimeDays?: number;
   priceTiers?: Array<{ tier: number; minQty: number; maxQty: number | null; sellPrice: number }>;
+  images?: Array<{ url: string }>;
 }
 
 export interface BuilderState {
@@ -40,19 +46,47 @@ export interface BuilderState {
     preview: string | null;
   } | null;
 
+  sleeve: boolean;
+
   // Buyer info
   pincode: string | null;
   shippingZone: {
-    name: string;
+    zoneName: string;
     flatRate: number;
     etaMinDays: number;
     etaMaxDays: number;
   } | null;
 
+  address: {
+    name: string;
+    company: string;
+    address1: string;
+    address2: string;
+    city: string;
+    state: string;
+    pincode: string;
+    phone: string;
+  } | null;
+
+  csvRecipients: Array<{
+    name: string;
+    email?: string;
+    phone?: string;
+    address: string;
+  }> | null;
+
+  csvRecipientCount: number;
+
   // Delivery & messaging
   deliveryMode: "single" | "individual";
   cardMessage: string;
   brandingNotes: string;
+  delivDate: string | null;
+
+  coupon: {
+    code: string;
+    discountAmount: number;
+  } | null;
 
   // Actions
   setCurrentStep: (step: 1 | 2 | 3 | 4) => void;
@@ -73,13 +107,19 @@ export interface BuilderState {
   removeAddon: (addonId: string) => void;
 
   setLogo: (file: File | null, preview: string | null) => void;
+  setSleeve: (enabled: boolean) => void;
 
   setPincode: (pincode: string | null) => void;
-  setShippingZone: (zone: { name: string; flatRate: number; etaMinDays: number; etaMaxDays: number } | null) => void;
+  setShippingZone: (zone: { zoneName: string; flatRate: number; etaMinDays: number; etaMaxDays: number } | null) => void;
+  setAddress: (address: BuilderState["address"]) => void;
+  setCsvRecipients: (recipients: BuilderState["csvRecipients"]) => void;
+  setCsvRecipientCount: (count: number) => void;
 
   setDeliveryMode: (mode: "single" | "individual") => void;
   setCardMessage: (message: string) => void;
   setBrandingNotes: (notes: string) => void;
+  setDelivDate: (date: string | null) => void;
+  setCoupon: (coupon: BuilderState["coupon"]) => void;
 
   // Computed
   getProductsSubtotal: () => number;
@@ -96,11 +136,17 @@ const initialState = {
   packaging: null,
   addons: [],
   logo: null,
+  sleeve: false,
   pincode: null,
   shippingZone: null,
+  address: null,
+  csvRecipients: null,
+  csvRecipientCount: 0,
   deliveryMode: "single" as const,
   cardMessage: "",
   brandingNotes: "",
+  delivDate: null,
+  coupon: null,
 };
 
 export const useBuilderStore = create<BuilderState>()(
@@ -119,8 +165,13 @@ export const useBuilderStore = create<BuilderState>()(
         const products = get().products;
         const existing = products.find((p) => p.id === product.id);
         if (existing) {
-          existing.quantity += product.quantity;
-          set({ products: [...products] });
+          set({
+            products: products.map((p) =>
+              p.id === product.id
+                ? { ...p, quantity: p.quantity + product.quantity }
+                : p
+            ),
+          });
         } else {
           set({ products: [...products, product] });
         }
@@ -162,13 +213,19 @@ export const useBuilderStore = create<BuilderState>()(
       },
 
       setLogo: (file, preview) => set({ logo: file ? { file, preview } : null }),
+      setSleeve: (enabled) => set({ sleeve: enabled }),
 
       setPincode: (pincode) => set({ pincode }),
       setShippingZone: (zone) => set({ shippingZone: zone }),
+      setAddress: (address) => set({ address }),
+      setCsvRecipients: (recipients) => set({ csvRecipients: recipients }),
+      setCsvRecipientCount: (count) => set({ csvRecipientCount: count }),
 
       setDeliveryMode: (mode) => set({ deliveryMode: mode }),
       setCardMessage: (message) => set({ cardMessage: message }),
       setBrandingNotes: (notes) => set({ brandingNotes: notes }),
+      setDelivDate: (date) => set({ delivDate: date }),
+      setCoupon: (coupon) => set({ coupon }),
 
       getProductsSubtotal: () => {
         return get().products.reduce((sum, p) => sum + p.sellPrice * p.quantity, 0);
@@ -182,7 +239,12 @@ export const useBuilderStore = create<BuilderState>()(
     }),
     {
       name: "giftcraft-builder",
-      version: 1,
+      version: 2,
+      partialize: (state) => ({
+        ...state,
+        logo: state.logo ? { file: null, preview: state.logo.preview } : null,
+        csvRecipients: null,
+      }),
     }
   )
 );

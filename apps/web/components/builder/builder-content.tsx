@@ -12,8 +12,13 @@ interface BuilderContentProps {
     name: string;
     slug: string;
     brand?: string;
+    printingTechnique?: string;
+    hsnCode?: string;
+    gstRate?: number;
+    leadTimeDays?: number;
     priceTiers?: Array<{ tier: number; minQty: number; maxQty: number | null; sellPrice: number }>;
     images?: Array<{ url: string }>;
+    categories?: Array<{ categoryId: string }>;
   }>;
   categories: Array<{ id: string; name: string }>;
   packagingOptions: Array<{ id: string; name: string; price: number }>;

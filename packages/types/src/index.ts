@@ -44,6 +44,15 @@ export const BuilderStateSchema = z.object({
 export type BuilderState = z.infer<typeof BuilderStateSchema>;
 
 // ── Quote / pricing breakdown ─────────────────────────────
+export interface HsnGstLine {
+  hsnCode: string;
+  gstRate: number;
+  taxableAmount: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+}
+
 export interface PricingBreakdown {
   subtotal: number;
   packaging: number;
@@ -56,4 +65,5 @@ export interface PricingBreakdown {
   razorpayFee: number;
   grandTotal: number;
   perPack: number;
+  hsnBreakdown: HsnGstLine[];
 }

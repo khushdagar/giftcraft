@@ -11,8 +11,11 @@ export default async function LoginPage({
   searchParams: { from?: string };
 }) {
   const session = await auth();
-  if (session) {
-    redirect(session.user.role === "super_admin" ? "/admin" : "/dashboard");
+  // Only redirect if user is authenticated AND we have a stable session
+  // (This prevents redirect loops during auth flow)
+  if (session && session.user && session.user.id) {
+    const redirectUrl = searchParams.from ?? (session.user.role === "super_admin" ? "/admin" : "/dashboard");
+    redirect(redirectUrl);
   }
 
   const callbackUrl = searchParams.from ?? "/dashboard";

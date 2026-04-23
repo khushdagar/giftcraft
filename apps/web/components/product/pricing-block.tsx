@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, ChangeEvent, FocusEvent } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { formatRupees } from '@/lib/utils';
 
@@ -55,8 +55,22 @@ function AnimatedNumber({ value, formatter = (n: number) => n.toString() }: { va
   return <>{formatter(displayValue)}</>;
 }
 
-export function PricingBlock({ priceTiers, gstRate, hsnCode }: { priceTiers: PriceTier[]; gstRate: number; hsnCode?: string }) {
-  const [qty, setQty] = useState(priceTiers[0]?.minQty || 25);
+interface PricingBlockProps {
+  priceTiers: PriceTier[];
+  gstRate: number;
+  hsnCode?: string;
+  onQtyChange?: (qty: number) => void;
+}
+
+export function PricingBlock({ priceTiers, gstRate, hsnCode, onQtyChange }: PricingBlockProps) {
+  const minAllowedQty = priceTiers[0]?.minQty || 25;
+  const [qty, setQty] = useState(minAllowedQty);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Notify parent when quantity changes
+  useEffect(() => {
+    onQtyChange?.(qty);
+  }, [qty, onQtyChange]);
 
   const sortedTiers = [...priceTiers].sort((a, b) => a.tier - b.tier);
   const activeTier = sortedTiers.find((t) => qty >= t.minQty && (t.maxQty === null || qty <= t.maxQty)) || sortedTiers[0];
@@ -64,76 +78,138 @@ export function PricingBlock({ priceTiers, gstRate, hsnCode }: { priceTiers: Pri
   const firstTier = sortedTiers[0];
   const savings = activeTier && firstTier && activeTier.tier > 1 ? (firstTier.sellPrice - activeTier.sellPrice) * qty : 0;
 
+  const isUnderMinimum = qty < minAllowedQty;
+
   return (
-    <div className="mt-8 space-y-6">
+    <div className="mt-8 space-y-6 rounded-gc-l border border-bdr bg-white p-6 shadow-card">
       {/* Quantity input */}
       <div>
-        <p className="overline mb-3 text-ink-3">QUANTITY</p>
+        <p className="mb-2 text-sm font-medium text-ink">How many packs?</p>
+        <p className="mb-3 text-xs text-ink-3">Price adjusts based on quantity tier</p>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setQty(Math.max(priceTiers[0]?.minQty || 25, qty - (priceTiers[0]?.minQty || 25)))}
-            className="h-10 w-10 rounded-full border border-bdr hover:border-em flex items-center justify-center text-lg"
+            onClick={() => setQty(Math.max(minAllowedQty, qty - 1))}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-bdr text-lg hover:border-em"
           >
             −
           </button>
           <input
-            type="number"
-            min={priceTiers[0]?.minQty || 25}
-            value={qty}
-            onChange={(e) => setQty(Math.max(priceTiers[0]?.minQty || 25, parseInt(e.target.value) || qty))}
-            className="w-24 text-center font-semibold border border-bdr rounded-gc px-3 py-2"
+            ref={inputRef}
+            type="text"
+            inputMode="numeric"
+            value={String(qty)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              const value = e.currentTarget.value.replace(/[^0-9]/g, '');
+              if (value === '') {
+                // Allow empty temporarily
+                return;
+              }
+              const num = parseInt(value, 10);
+              if (!isNaN(num)) {
+                // Don't enforce minimum during typing - let user enter any valid number
+                setQty(num);
+              }
+            }}
+            onBlur={(e: FocusEvent<HTMLInputElement>) => {
+              const value = e.currentTarget.value.replace(/[^0-9]/g, '');
+              if (value === '' || parseInt(value, 10) < minAllowedQty) {
+                setQty(minAllowedQty);
+              } else {
+                const num = parseInt(value, 10);
+                setQty(num);
+              }
+            }}
+            onFocus={(e: FocusEvent<HTMLInputElement>) => {
+              // Select all text so typing replaces it
+              e.currentTarget.select();
+            }}
+            className="w-20 text-center text-lg font-semibold text-ink"
+            style={{ border: '2px solid #e4e4e7' }}
           />
           <button
-            onClick={() => setQty(qty + (priceTiers[0]?.minQty || 25))}
-            className="h-10 w-10 rounded-full border border-bdr hover:border-em flex items-center justify-center text-lg"
+            onClick={() => setQty(qty + 1)}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-bdr text-lg hover:border-em"
           >
             +
           </button>
         </div>
-      </div>
 
-      {/* Pricing table */}
-      <div className="overflow-hidden rounded-gc-l bg-white shadow-card">
-        <div className="border-b border-bdr bg-elevated px-4 py-3">
-          <p className="overline text-ink-3">TIERED PRICING</p>
-        </div>
-        <div className="divide-y divide-bdr">
-          {sortedTiers.map((tier) => {
-            const isActive = activeTier?.tier === tier.tier;
-            return (
-              <div
-                key={tier.tier}
-                className={`flex items-center justify-between px-4 py-3 transition ${
-                  isActive ? 'bg-gold-50 border-l-4 border-l-gold font-semibold text-gold-700' : ''
-                }`}
-              >
-                <span className="text-sm">
-                  {tier.minQty}–{tier.maxQty ? tier.maxQty : '∞'} units
-                </span>
-                <span className="tabnum text-base">{formatRupees(tier.sellPrice)} per unit</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Subtotal with savings */}
-      <div className="rounded-gc-l border border-bdr bg-white shadow-card p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-ink-2">Subtotal (excl. GST)</span>
-          <span className="font-black tabnum text-lg">
-            <AnimatedNumber value={subtotal} formatter={formatRupees} />
-          </span>
-        </div>
-
-        {savings > 0 && (
-          <div className="mt-3 flex items-center gap-2 rounded-gc-p bg-gold-50 px-3 py-2">
-            <span className="text-xs font-semibold text-gold-700">
-              You save {formatRupees(savings)}
-            </span>
+        {/* MOQ Warning Message */}
+        {isUnderMinimum && (
+          <div className="mt-3 rounded-gc bg-em/10 px-3 py-2">
+            <p className="text-xs font-semibold text-em">
+              ⓘ Minimum order quantity of this product is {minAllowedQty} units
+            </p>
           </div>
         )}
       </div>
+
+      {/* Pricing table */}
+      <div>
+        <div className="overflow-hidden rounded-gc border border-bdr">
+          {/* Table header */}
+          <div className="grid grid-cols-3 gap-4 bg-elevated px-4 py-3">
+            <span className="text-xs font-semibold uppercase text-ink-3">Quantity</span>
+            <span className="text-xs font-semibold uppercase text-ink-3">Per Unit (Incl. Laser Engraved)</span>
+            <span className="text-right text-xs font-semibold uppercase text-ink-3">Total at Min Qty</span>
+          </div>
+
+          {/* Table rows */}
+          <div className="divide-y divide-bdr">
+            {sortedTiers.map((tier) => {
+              const isActive = activeTier?.tier === tier.tier;
+              const totalAtMin = tier.sellPrice * tier.minQty;
+              return (
+                <button
+                  key={tier.tier}
+                  onClick={() => {
+                    setQty(tier.minQty);
+                    if (inputRef.current) {
+                      inputRef.current.value = String(tier.minQty);
+                    }
+                  }}
+                  className={`w-full grid grid-cols-3 gap-4 px-4 py-3 transition text-left hover:bg-elevated ${
+                    isActive ? 'border-l-4 border-l-em bg-em/5 font-semibold text-em' : ''
+                  }`}
+                >
+                  <span className="text-sm">{tier.minQty}–{tier.maxQty ? tier.maxQty : '∞'} units</span>
+                  <span className="tabnum text-sm">{formatRupees(tier.sellPrice)}</span>
+                  <span className="tabnum text-right text-sm">{formatRupees(totalAtMin)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-ink-3">
+          All prices include standard Laser Engraved branding. Prices exclusive of GST (18%) packaging, and shipping.
+        </p>
+        <p className="mt-1 text-xs text-ink-3">
+          GST: 18% (HSN 7323) — CGST+SGST or IGST applied at checkout based on delivery location.
+        </p>
+      </div>
+
+      {/* Final pricing */}
+      <div className="border-t border-bdr pt-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm font-medium text-ink-2">
+            {qty} units × {formatRupees(activeTier?.sellPrice || 0)}
+          </span>
+          <div className="text-right">
+            <span className="font-black tabnum text-3xl text-ink">
+              <AnimatedNumber value={subtotal} formatter={formatRupees} />
+            </span>
+            <p className="mt-1 text-xs text-ink-3">⚪ GST packaging & shipping</p>
+          </div>
+        </div>
+      </div>
+
+      {savings > 0 && (
+        <div className="rounded-gc-p bg-gold-50 px-3 py-2">
+          <p className="text-xs font-semibold text-gold-700">
+            ✓ You save {formatRupees(savings)}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

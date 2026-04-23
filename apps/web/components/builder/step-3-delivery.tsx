@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useReducedMotion, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
+import { INDIAN_STATES, DELIVERY_RATES } from '@/lib/constants';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface PriceTier {
   tier: number;
@@ -73,6 +75,14 @@ export function Step3Delivery() {
     setPincode,
     shippingZone,
     setShippingZone,
+    address,
+    setAddress,
+    csvRecipients,
+    setCsvRecipients,
+    csvRecipientCount,
+    setCsvRecipientCount,
+    delivDate,
+    setDelivDate,
   } = useBuilderStore();
 
   const [pincodeInput, setPincodeInput] = useState(pincode || '');
@@ -80,6 +90,12 @@ export function Step3Delivery() {
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [csvError, setCsvError] = useState<string | null>(null);
+
+  // Address form state (single delivery)
+  const [formAddress, setFormAddress] = useState(
+    address || { name: '', company: '', address1: '', address2: '', city: '', state: '', pincode: '', phone: '' }
+  );
+  const [addressError, setAddressError] = useState<string | null>(null);
 
   // Calculate tier pricing from products
   const allTiers: PriceTier[] = [];
@@ -98,10 +114,57 @@ export function Step3Delivery() {
     (t) => packQuantity >= t.minQty && (t.maxQty === null || packQuantity <= t.maxQty)
   );
 
+  // Calculate next tier and nudge
+  const nextTier = useMemo(() => {
+    const activeIdx = tiers.findIndex((t) => t === activeTier);
+    return activeIdx >= 0 && activeIdx < tiers.length - 1 ? tiers[activeIdx + 1] : null;
+  }, [activeTier, tiers]);
+
+  const nextTierGap = useMemo(() => {
+    if (!nextTier) return null;
+    return nextTier.minQty - packQuantity;
+  }, [nextTier, packQuantity]);
+
+  const shouldShowNudge = nextTierGap && nextTierGap > 0 && nextTierGap <= 5;
+
   const handleQuantityChange = (newQty: number) => {
     const min = Math.max(1, tiers[0]?.minQty || 1);
     setPackQuantity(Math.max(min, newQty));
   };
+
+  // Delivery date helper
+  const today = new Date().toISOString().split('T')[0];
+  const maxLeadTimeDays = Math.max(...products.map((p) => p.leadTimeDays || 14));
+  // Allow selection up to 90 days in the future (production window + buffer)
+  const allowedDeliveryDays = Math.max(maxLeadTimeDays, 90);
+  const maxDeliveryDate = new Date();
+  maxDeliveryDate.setDate(maxDeliveryDate.getDate() + allowedDeliveryDays);
+  const maxDeliveryDateStr = maxDeliveryDate.toISOString().split('T')[0];
+
+  // Confidence indicator for delivery date
+  const deliveryConfidence = useMemo(() => {
+    if (!delivDate) return null;
+    const selectedDate = new Date(delivDate);
+    const daysUntil = Math.ceil((selectedDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    // Minimum 3 weeks (21 days) needed for: 1-2 days mockup creation + 1-2 days approval + production time
+    if (daysUntil < 21) return 'impossible'; // too soon (less than 3 weeks)
+    if (daysUntil <= maxLeadTimeDays + 7) return 'high'; // plenty of time
+    if (daysUntil <= maxLeadTimeDays + 14) return 'medium'; // within range
+    return 'low'; // risky but possible
+  }, [delivDate, maxLeadTimeDays]);
+
+  // Validate address form
+  const isAddressValid = useMemo(() => {
+    if (deliveryMode !== 'single') return true;
+    return (
+      formAddress.name.trim() &&
+      formAddress.address1.trim() &&
+      formAddress.city.trim() &&
+      formAddress.state &&
+      formAddress.pincode.trim() &&
+      /^\d{6}$/.test(formAddress.pincode)
+    );
+  }, [formAddress, deliveryMode]);
 
   const handleEstimateShipping = async () => {
     if (!pincodeInput || !/^\d{6}$/.test(pincodeInput)) {
@@ -141,12 +204,38 @@ export function Step3Delivery() {
       return;
     }
 
-    setCsvFile(file);
-    setCsvError(null);
-    // TODO: Parse and validate CSV
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const csv = event.target?.result as string;
+        const lines = csv.trim().split('\n');
+
+        if (lines.length < 2) {
+          setCsvError('CSV must have at least a header and one recipient row');
+          return;
+        }
+
+        // Skip header, parse data rows
+        const recipients = lines.slice(1).map((line) => {
+          const [name, email, phone, address] = line.split(',').map((v) => v.trim());
+          return { name, email, phone, address };
+        });
+
+        setCsvRecipients(recipients);
+        setCsvRecipientCount(recipients.length);
+        setCsvFile(file);
+        setCsvError(null);
+      } catch (err) {
+        setCsvError('Failed to parse CSV. Please check the format.');
+      }
+    };
+
+    reader.readAsText(file);
   };
 
-  const individualSurcharge = packQuantity * 50;
+  // Delivery rate per pack based on mode
+  const deliveryRatePerPack = deliveryMode === 'single' ? DELIVERY_RATES.single : DELIVERY_RATES.individual;
+  const totalDeliveryCharge = deliveryRatePerPack * packQuantity;
 
   return (
     <div className="space-y-8">
@@ -155,110 +244,6 @@ export function Step3Delivery() {
         <p className="overline text-ink-3">STEP 03</p>
         <h2 className="text-3xl font-black mt-1">Delivery Details</h2>
       </div>
-
-      {/* Section A: Quantity + Tier Cards */}
-      {tiers.length > 0 && (
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">
-              Quantity & Pricing Tiers
-            </p>
-
-            {/* Quantity input */}
-            <div className="rounded-gc-l border-2 border-bdr bg-white p-5 mb-4">
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={() => handleQuantityChange(packQuantity - 10)}
-                  disabled={packQuantity <= (tiers[0]?.minQty || 1)}
-                  variant="outline"
-                  size="sm"
-                  className="rounded-gc-p"
-                >
-                  −10
-                </Button>
-                <Input
-                  type="number"
-                  value={packQuantity}
-                  onChange={(e) => handleQuantityChange(parseInt(e.target.value) || packQuantity)}
-                  className="flex-1 text-center font-black text-2xl rounded-gc"
-                  min="1"
-                />
-                <Button
-                  onClick={() => handleQuantityChange(packQuantity + 10)}
-                  variant="outline"
-                  size="sm"
-                  className="rounded-gc-p"
-                >
-                  +10
-                </Button>
-                <Button
-                  onClick={() => handleQuantityChange(packQuantity + 50)}
-                  variant="outline"
-                  size="sm"
-                  className="rounded-gc-p"
-                >
-                  +50
-                </Button>
-              </div>
-              <p className="text-xs text-ink-2 mt-2">packs total</p>
-            </div>
-
-            {/* Tier cards grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {tiers.map((tier) => {
-                const isActive =
-                  packQuantity >= tier.minQty &&
-                  (tier.maxQty === null || packQuantity <= tier.maxQty);
-
-                return (
-                  <div
-                    key={tier.tier}
-                    className={`rounded-gc border-2 p-4 transition ${
-                      isActive
-                        ? 'bg-gold-50 border-gold border-l-4 border-l-gold'
-                        : 'bg-elevated border-bdr'
-                    }`}
-                  >
-                    {isActive && (
-                      <Badge variant="gold" className="mb-2">
-                        YOUR TIER
-                      </Badge>
-                    )}
-                    <p className={`text-sm font-semibold ${isActive ? 'text-gold-700' : 'text-ink'}`}>
-                      Tier {tier.tier}
-                    </p>
-                    <p className={`text-xs ${isActive ? 'text-gold-600' : 'text-ink-3'} mt-1`}>
-                      {tier.minQty.toLocaleString()}
-                      {tier.maxQty ? ` – ${tier.maxQty.toLocaleString()}` : '+ packs'}
-                    </p>
-                    <p
-                      className={`text-lg font-black tabnum mt-3 ${
-                        isActive ? 'text-gold-700' : 'text-ink'
-                      }`}
-                    >
-                      <AnimatedNumber
-                        value={tier.sellPrice}
-                        formatter={(n) => formatRupees(n)}
-                      />
-                      <span className="text-xs">/pack</span>
-                    </p>
-
-                    {/* Savings vs tier 1 */}
-                    {tier.tier > 1 && tiers[0] && tier.sellPrice < tiers[0].sellPrice && (
-                      <Badge
-                        variant="gold"
-                        className="mt-2 text-[10px]"
-                      >
-                        Save {formatRupees(tiers[0].sellPrice - tier.sellPrice)}
-                      </Badge>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Section B: Delivery Mode Selection */}
       <div className="space-y-3">
@@ -279,7 +264,7 @@ export function Step3Delivery() {
               Single Location
             </p>
             <p className={`text-xs mt-1 ${deliveryMode === 'single' ? 'text-em-600' : 'text-ink-3'}`}>
-              Deliver all {packQuantity} packs to one address
+              Deliver all {packQuantity} packs to one address · ₹{DELIVERY_RATES.single}/pack
             </p>
           </button>
 
@@ -296,7 +281,7 @@ export function Step3Delivery() {
               Individual Delivery
             </p>
             <p className={`text-xs mt-1 ${deliveryMode === 'individual' ? 'text-em-600' : 'text-ink-3'}`}>
-              +₹50/pack · Deliver to multiple recipients
+              Deliver to multiple recipients · ₹{DELIVERY_RATES.individual}/pack
             </p>
           </button>
         </div>
@@ -308,23 +293,26 @@ export function Step3Delivery() {
           Delivery Location
         </p>
         <div className="rounded-gc-l border-2 border-bdr bg-white p-4 space-y-3">
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              placeholder="Enter pincode"
-              value={pincodeInput}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                setPincodeInput(val);
-              }}
-              maxLength={6}
-              className="flex-1 rounded-gc text-center font-semibold text-lg"
-            />
+          <div className="flex gap-2 items-center">
+            <div className="max-w-xs flex-1">
+              <Input
+                type="text"
+                placeholder="Enter pincode"
+                value={pincodeInput}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setPincodeInput(val);
+                }}
+                maxLength={6}
+                className="rounded-gc text-center font-semibold"
+              />
+            </div>
             <Button
               onClick={handleEstimateShipping}
               disabled={!pincodeInput || pincodeInput.length !== 6 || loadingShipping}
               variant="em"
-              className="rounded-gc-l"
+              className="rounded-gc-l flex-shrink-0"
+              size="sm"
             >
               {loadingShipping ? 'Checking...' : 'Check'}
             </Button>
@@ -357,18 +345,114 @@ export function Step3Delivery() {
         </div>
       </div>
 
-      {/* Individual Delivery Surcharge Note */}
-      {deliveryMode === 'individual' && (
-        <div className="rounded-gc bg-amber-50 border border-amber-200 p-4">
-          <p className="text-xs font-semibold text-amber-700 mb-1">Individual Delivery Surcharge</p>
-          <p className="text-sm font-black text-amber-900 tabnum">
-            +{formatRupees(individualSurcharge)}
+      {/* Address Form - Single Delivery */}
+      {deliveryMode === 'single' && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+            Delivery Address
           </p>
-          <p className="text-xs text-amber-600 mt-1">
-            ₹50 per pack for individual recipient deliveries
-          </p>
+          <div className="rounded-gc-l border-2 border-bdr bg-white p-4 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                placeholder="Name *"
+                value={formAddress.name}
+                onChange={(e) => setFormAddress({ ...formAddress, name: e.target.value })}
+                className="rounded-gc border-2"
+              />
+              <Input
+                placeholder="Company (optional)"
+                value={formAddress.company}
+                onChange={(e) => setFormAddress({ ...formAddress, company: e.target.value })}
+                className="rounded-gc border-2"
+              />
+            </div>
+
+            <Input
+              placeholder="Address Line 1 *"
+              value={formAddress.address1}
+              onChange={(e) => setFormAddress({ ...formAddress, address1: e.target.value })}
+              className="rounded-gc border-2"
+            />
+
+            <Input
+              placeholder="Address Line 2 (optional)"
+              value={formAddress.address2}
+              onChange={(e) => setFormAddress({ ...formAddress, address2: e.target.value })}
+              className="rounded-gc border-2"
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                placeholder="City *"
+                value={formAddress.city}
+                onChange={(e) => setFormAddress({ ...formAddress, city: e.target.value })}
+                className="rounded-gc border-2"
+              />
+              <select
+                value={formAddress.state}
+                onChange={(e) => setFormAddress({ ...formAddress, state: e.target.value })}
+                className="rounded-gc border-2 border-bdr px-3 py-2 bg-white"
+              >
+                <option value="">Select State *</option>
+                {INDIAN_STATES.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                placeholder="Pincode (6 digits) *"
+                value={formAddress.pincode}
+                maxLength={6}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setFormAddress({ ...formAddress, pincode: val });
+                }}
+                className="rounded-gc border-2"
+              />
+              <Input
+                placeholder="Phone *"
+                value={formAddress.phone}
+                onChange={(e) => setFormAddress({ ...formAddress, phone: e.target.value })}
+                className="rounded-gc border-2"
+              />
+            </div>
+
+            {addressError && <p className="text-xs text-red-600">{addressError}</p>}
+
+            <Button
+              onClick={() => {
+                if (isAddressValid) {
+                  setAddress(formAddress);
+                  setAddressError(null);
+                } else {
+                  setAddressError('Please fill all required fields correctly');
+                }
+              }}
+              variant="em"
+              className="w-full rounded-gc-l"
+            >
+              Save Address
+            </Button>
+          </div>
         </div>
       )}
+
+      {/* Delivery Charge Note */}
+      <div className="rounded-gc bg-amber-50 border border-amber-200 p-4">
+        <p className="text-xs font-semibold text-amber-700 mb-1">Delivery Charge</p>
+        <p className="text-sm font-black text-amber-900 tabnum">
+          {formatRupees(totalDeliveryCharge)} ({deliveryMode === 'single' ? DELIVERY_RATES.single : DELIVERY_RATES.individual}/pack × {packQuantity})
+        </p>
+        <p className="text-xs text-amber-600 mt-1">
+          {deliveryMode === 'single'
+            ? 'All packs delivered to single location'
+            : 'Individual delivery to multiple recipients'}
+        </p>
+      </div>
 
       {/* Section D: Individual Recipients CSV Upload */}
       {deliveryMode === 'individual' && (
@@ -377,18 +461,12 @@ export function Step3Delivery() {
             Recipients List
           </p>
           <div className="rounded-gc-l border-2 border-bdr bg-white p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <a
-                href="#"
-                className="text-sm font-semibold text-em hover:underline"
-                onClick={(e) => {
-                  e.preventDefault();
-                  // TODO: Generate and download CSV template
-                  alert('CSV template download coming soon');
-                }}
-              >
-                Download CSV Template
-              </a>
+            <div className="text-xs text-ink-3 mb-3">
+              <p className="font-semibold mb-2">CSV Format: Name,Email,Phone,Address</p>
+              <p className="text-[10px]">Example:</p>
+              <code className="text-[10px] bg-gray-100 p-2 rounded block">
+                Raj Kumar,raj@company.com,9876543210,123 Main St
+              </code>
             </div>
 
             <label className="flex flex-col items-center justify-center rounded-gc border-2 border-dashed border-bdr bg-elevated p-8 cursor-pointer hover:border-em transition">
@@ -396,7 +474,7 @@ export function Step3Delivery() {
               <p className="text-sm font-semibold text-ink-2">
                 {csvFile ? csvFile.name : 'Upload recipients CSV'}
               </p>
-              <p className="text-xs text-ink-3 mt-1">Name • Email • Phone • Address required</p>
+              <p className="text-xs text-ink-3 mt-1">One recipient per row</p>
               <input
                 type="file"
                 accept=".csv"
@@ -406,9 +484,23 @@ export function Step3Delivery() {
             </label>
 
             {csvError && <p className="text-xs text-red-600">{csvError}</p>}
+            {csvFile && csvRecipientCount > 0 && (
+              <div className="rounded-gc bg-green-50 border border-green-200 p-3 flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-green-700">{csvRecipientCount} recipients detected</p>
+                  <p className="text-xs text-green-600 mt-1">Ready to proceed with individual deliveries</p>
+                </div>
+              </div>
+            )}
             {csvFile && (
               <button
-                onClick={() => setCsvFile(null)}
+                onClick={() => {
+                  setCsvFile(null);
+                  setCsvRecipients(null);
+                  setCsvRecipientCount(0);
+                  setCsvError(null);
+                }}
                 className="text-xs text-ink-3 hover:text-red-600 flex items-center gap-1"
               >
                 <X className="h-3 w-3" /> Clear file
@@ -417,6 +509,78 @@ export function Step3Delivery() {
           </div>
         </div>
       )}
+
+      {/* Delivery Date & Confidence Indicator */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+          Preferred Delivery Date
+        </p>
+        <div className="rounded-gc-l border-2 border-bdr bg-white p-4 space-y-3">
+          <Input
+            type="date"
+            value={delivDate || ''}
+            onChange={(e) => setDelivDate(e.target.value)}
+            min={today}
+            max={maxDeliveryDateStr}
+            className="rounded-gc border-2"
+          />
+
+          {delivDate && (
+            <div
+              className={`rounded-gc p-3 flex items-start gap-3 border-2 ${
+                deliveryConfidence === 'high'
+                  ? 'bg-green-50 border-green-200'
+                  : deliveryConfidence === 'medium'
+                  ? 'bg-yellow-50 border-yellow-200'
+                  : deliveryConfidence === 'impossible'
+                  ? 'bg-red-100 border-red-400'
+                  : 'bg-red-50 border-red-200'
+              }`}
+            >
+              {deliveryConfidence === 'impossible' && (
+                <>
+                  <AlertCircle className="h-4 w-4 text-red-700 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-red-700">❌ Not possible</p>
+                    <p className="text-xs text-red-600 mt-1">Too tight! Choose a date at least 2-3 weeks away</p>
+                  </div>
+                </>
+              )}
+              {deliveryConfidence === 'high' && (
+                <>
+                  <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-green-700">✓ High confidence</p>
+                    <p className="text-xs text-green-600 mt-1">Plenty of time for production & delivery</p>
+                  </div>
+                </>
+              )}
+              {deliveryConfidence === 'medium' && (
+                <>
+                  <AlertCircle className="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-yellow-700">⚠️ Doable but tight</p>
+                    <p className="text-xs text-yellow-600 mt-1">Within production timeline, limited buffer</p>
+                  </div>
+                </>
+              )}
+              {deliveryConfidence === 'low' && (
+                <>
+                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-red-700">🔴 Risky deadline</p>
+                    <p className="text-xs text-red-600 mt-1">May require expedited production (additional cost)</p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-ink-3">
+            Production window: {maxLeadTimeDays} days max
+          </p>
+        </div>
+      </div>
 
       {/* Info */}
       <div className="rounded-gc bg-blue-50 border border-blue-200 p-4">

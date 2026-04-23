@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useBuilderStore } from '@/store/builder';
@@ -18,6 +18,15 @@ interface ReviewItem {
   subtotal: number;
 }
 
+interface HsnGstLine {
+  hsnCode: string;
+  gstRate: number;
+  taxableAmount: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+}
+
 export function Step4Review() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -28,6 +37,8 @@ export function Step4Review() {
     packaging,
     addons,
     shippingZone,
+    sleeve,
+    deliveryMode,
     getProductsSubtotal,
     clearAll,
   } = useBuilderStore();
@@ -36,6 +47,8 @@ export function Step4Review() {
   const [couponApplied, setCouponApplied] = useState(false);
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [loadingPlaceOrder, setLoadingPlaceOrder] = useState(false);
+  const [quoteToken, setQuoteToken] = useState<string | null>(null);
+  const [quoteId, setQuoteId] = useState<string | null>(null);
 
   const reviewItems: ReviewItem[] = useMemo(() => {
     return products.map((p) => ({
@@ -47,42 +60,54 @@ export function Step4Review() {
     }));
   }, [products]);
 
-  const productsSubtotal = getProductsSubtotal();
   const packagingTotal = packaging ? packaging.price * packQuantity : 0;
   const addonsTotal = addons.reduce((sum, a) => sum + a.price * packQuantity, 0);
-  const shippingFlat = shippingZone?.flatRate || 0;
+  const sleeveTotal = sleeve ? 60 * packQuantity : 0;
 
-  // Compute pricing
+  // Shipping rate based on delivery mode
+  const shippingRatePerPack = deliveryMode === 'single' ? 90 : 140;
+  const shippingFlat = shippingRatePerPack * packQuantity;
+
+  // Compute pricing using per-HSN path
   const pricing = useMemo(() => {
+    // Build products array with HSN info for new pricing engine
+    const productsForPricing = products.map((p) => ({
+      sellPrice: p.sellPrice,
+      quantity: p.quantity,
+      hsnCode: p.hsnCode || '4820',  // Default to 4820 if not set
+      gstRate: p.gstRate || 18,      // Default to 18% if not set
+    }));
+
     return computePricing({
-      productsSubtotal,
+      products: productsForPricing,
       packagingPerUnit: packaging?.price || 0,
-      addonsPerUnit: addons.reduce((sum, a) => sum + a.price, 0),
-      quantity: packQuantity,
+      addonsPerUnit: addons.reduce((sum, a) => sum + a.price, 0) + (sleeve ? 60 : 0),
+      packQuantity,
       shippingFlat,
       discount: couponDiscount,
       sellerStateCode: 'DL',
       buyerStateCode: shippingZone?.stateCode || 'DL',
-      effectiveGstRate: 18,
-      razorpayFeePct: 2,
+      razorpayFeePct: 2.36,
       razorpayFeeGstPct: 18,
     });
-  }, [productsSubtotal, packQuantity, packaging, addons, shippingFlat, couponDiscount, shippingZone]);
+  }, [products, packQuantity, packaging, addons, sleeve, shippingFlat, couponDiscount, shippingZone]);
 
   const handleApplyCoupon = () => {
-    // TODO: Call API to validate coupon
-    // For now, mock a 10% discount
-    if (couponCode.toUpperCase() === 'DEMO10') {
+    // Mock coupon validation - GIFT10 = 10% discount
+    if (couponCode.toUpperCase() === 'GIFT10') {
+      const productsSubtotal = getProductsSubtotal();
       setCouponDiscount(Math.round(productsSubtotal * 0.1 * 100) / 100);
       setCouponApplied(true);
     } else {
-      alert('Coupon code not found');
+      alert('Invalid coupon code. Try GIFT10.');
     }
   };
 
-  const handleDownloadPDF = async () => {
+  // Create quote once and cache the token
+  const createQuote = async () => {
+    if (quoteToken) return quoteToken;  // Already created
+
     try {
-      // POST to /api/quotes to create quote
       const quoteRes = await fetch('/api/quotes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,15 +116,32 @@ export function Step4Review() {
           packQuantity,
           packaging,
           addons,
+          sleeve,
           shippingZone,
           pricing,
-          deliveryMode: useBuilderStore.getState().deliveryMode,
+          deliveryMode,
+          discount: couponDiscount,
         }),
       });
 
+      if (!quoteRes.ok) {
+        throw new Error('Failed to create quote');
+      }
+
       const quote = await quoteRes.json();
-      // Redirect to PDF route
-      window.location.href = `/api/quotes/${quote.shareToken}/pdf`;
+      setQuoteToken(quote.shareToken);
+      setQuoteId(quote.id);
+      return quote.shareToken;
+    } catch (error) {
+      console.error('Error creating quote:', error);
+      throw error;
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      const token = await createQuote();
+      window.location.href = `/api/quotes/${token}/pdf`;
     } catch (error) {
       console.error('Error downloading PDF:', error);
       alert('Failed to download PDF');
@@ -108,25 +150,8 @@ export function Step4Review() {
 
   const handleCopyShareLink = async () => {
     try {
-      // POST to /api/quotes to create quote
-      const quoteRes = await fetch('/api/quotes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          products,
-          packQuantity,
-          packaging,
-          addons,
-          shippingZone,
-          pricing,
-          deliveryMode: useBuilderStore.getState().deliveryMode,
-        }),
-      });
-
-      const quote = await quoteRes.json();
-      const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/quote/${quote.shareToken}`;
-
-      // Copy to clipboard
+      const token = await createQuote();
+      const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/quote/${token}`;
       await navigator.clipboard.writeText(shareUrl);
       alert('Share link copied to clipboard!');
     } catch (error) {
@@ -137,65 +162,29 @@ export function Step4Review() {
 
   const handleWhatsAppShare = async () => {
     try {
-      // POST to /api/quotes to create quote
-      const quoteRes = await fetch('/api/quotes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          products,
-          packQuantity,
-          packaging,
-          addons,
-          shippingZone,
-          pricing,
-          deliveryMode: useBuilderStore.getState().deliveryMode,
-        }),
-      });
-
-      const quote = await quoteRes.json();
-      const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/quote/${quote.shareToken}`;
+      const token = await createQuote();
+      const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/quote/${token}`;
       const text = `Check out my GiftCraft quote: ${shareUrl}`;
-
-      // Open WhatsApp
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
     } catch (error) {
       console.error('Error sharing on WhatsApp:', error);
+      alert('Failed to share on WhatsApp');
     }
   };
 
   const handlePlaceOrder = async () => {
     // Check if user is authenticated
     if (!session) {
-      // Redirect to login with callback to checkout
       router.push('/login?callbackUrl=/checkout');
       return;
     }
 
-    // User is authenticated, proceed to checkout
     try {
       setLoadingPlaceOrder(true);
-
-      // Create quote first
-      const quoteRes = await fetch('/api/quotes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          products,
-          packQuantity,
-          packaging,
-          addons,
-          shippingZone,
-          pricing,
-          deliveryMode: useBuilderStore.getState().deliveryMode,
-        }),
-      });
-
-      const quote = await quoteRes.json();
-
-      // Redirect to checkout with quote ID
-      router.push(`/checkout?quoteId=${quote.id}`);
+      const id = quoteId || (await createQuote()).split('-')[0];  // Fallback if needed
+      router.push(`/checkout?quoteId=${id}`);
     } catch (error) {
-      console.error('Error creating quote:', error);
+      console.error('Error placing order:', error);
       alert('Failed to proceed to checkout');
     } finally {
       setLoadingPlaceOrder(false);
@@ -263,20 +252,40 @@ export function Step4Review() {
           </div>
         )}
 
-        {/* Shipping */}
-        {shippingZone && (
+        {/* Packaging */}
+        {packaging && (
           <div className="flex items-center justify-between pb-3 border-b border-bdr">
-            <div>
-              <p className="text-sm text-ink-2">{shippingZone.zoneName} Shipping</p>
-              <p className="text-xs text-ink-3 mt-0.5">
-                {shippingZone.etaMinDays}–{shippingZone.etaMaxDays} days
-              </p>
-            </div>
+            <p className="text-sm text-ink-2">Packaging ({packaging.name})</p>
             <p className="text-sm font-semibold tabnum text-ink">
-              +{formatRupees(shippingFlat)}
+              +{formatRupees(packagingTotal)}
             </p>
           </div>
         )}
+
+        {/* Branded Sleeve */}
+        {sleeve && (
+          <div className="flex items-center justify-between pb-3 border-b border-bdr">
+            <p className="text-sm text-ink-2">Branded Sleeve</p>
+            <p className="text-sm font-semibold tabnum text-ink">
+              +{formatRupees(sleeveTotal)}
+            </p>
+          </div>
+        )}
+
+        {/* Shipping */}
+        <div className="flex items-center justify-between pb-3 border-b border-bdr">
+          <div>
+            <p className="text-sm text-ink-2">
+              {deliveryMode === 'single' ? 'Single Location Shipping' : 'Individual Delivery'}
+            </p>
+            <p className="text-xs text-ink-3 mt-0.5">
+              ₹{deliveryMode === 'single' ? 90 : 140}/pack × {packQuantity}
+            </p>
+          </div>
+          <p className="text-sm font-semibold tabnum text-ink">
+            +{formatRupees(shippingFlat)}
+          </p>
+        </div>
       </div>
 
       {/* Pricing Breakdown */}
@@ -321,45 +330,50 @@ export function Step4Review() {
             </div>
           )}
 
-          {/* GST Section */}
-          <div className="border-t border-bdr py-2">
-            {pricing.cgst > 0 && (
-              <div className="flex items-center justify-between py-1 px-2 text-xs">
-                <span className="text-ink-2">CGST (9%)</span>
-                <span className="font-semibold tabnum text-ink">
-                  +{formatRupees(pricing.cgst)}
-                </span>
-              </div>
-            )}
-            {pricing.sgst > 0 && (
-              <div className="flex items-center justify-between py-1 px-2 text-xs bg-elevated/50 rounded">
-                <span className="text-ink-2">SGST (9%)</span>
-                <span className="font-semibold tabnum text-ink">
-                  +{formatRupees(pricing.sgst)}
-                </span>
-              </div>
-            )}
-            {pricing.igst > 0 && (
-              <div className="flex items-center justify-between py-1 px-2 text-xs">
-                <span className="text-ink-2">IGST (18%)</span>
-                <span className="font-semibold tabnum text-ink">
-                  +{formatRupees(pricing.igst)}
-                </span>
-              </div>
-            )}
-          </div>
+          {/* GST Breakdown by HSN */}
+          {pricing.hsnBreakdown && pricing.hsnBreakdown.length > 0 && (
+            <div className="border-t border-bdr py-2">
+              <p className="text-xs font-semibold text-ink-2 px-2 mb-2">GST Breakdown</p>
+              {pricing.hsnBreakdown.map((line: HsnGstLine, idx: number) => (
+                <div key={`${line.hsnCode}-${idx}`} className="space-y-1 px-2 mb-2 pb-2 border-b border-bdr last:border-b-0">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-ink-3">HSN {line.hsnCode} @ {line.gstRate}%</span>
+                    <span className="text-ink-2">₹{formatRupees(line.taxableAmount)}</span>
+                  </div>
+                  {line.cgst > 0 && (
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-ink-3">  CGST (9%)</span>
+                      <span className="font-semibold tabnum text-ink">+₹{formatRupees(line.cgst)}</span>
+                    </div>
+                  )}
+                  {line.sgst > 0 && (
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-ink-3">  SGST (9%)</span>
+                      <span className="font-semibold tabnum text-ink">+₹{formatRupees(line.sgst)}</span>
+                    </div>
+                  )}
+                  {line.igst > 0 && (
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-ink-3">  IGST (18%)</span>
+                      <span className="font-semibold tabnum text-ink">+₹{formatRupees(line.igst)}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Razorpay Fee */}
           {pricing.razorpayFee > 0 && (
             <div className="border-t border-bdr py-2">
               <div className="flex items-center justify-between py-1 px-2 text-xs">
-                <span className="text-ink-2">Payment Processing Fee</span>
+                <span className="text-ink-2">Payment Gateway Fee</span>
                 <span className="font-semibold tabnum text-ink">
                   +{formatRupees(pricing.razorpayFee)}
                 </span>
               </div>
               <p className="text-[10px] text-ink-3 px-2 mt-0.5">
-                (2% + 18% GST on fee)
+                (2.36% on payment amount + 18% GST)
               </p>
             </div>
           )}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computePricing } from "./index";
+import { computePricing, ProductForPricing } from "./index";
 
 describe("Pricing Engine", () => {
   describe("Basic Calculation", () => {
@@ -270,10 +270,151 @@ describe("Pricing Engine", () => {
 
       // All values should have at most 2 decimal places
       Object.values(result).forEach((value) => {
-        const str = value.toString();
-        const decimals = str.includes(".") ? str.split(".")[1].length : 0;
-        expect(decimals).toBeLessThanOrEqual(2);
+        if (typeof value === "number") {
+          const str = value.toString();
+          const decimals = str.includes(".") ? str.split(".")[1].length : 0;
+          expect(decimals).toBeLessThanOrEqual(2);
+        }
       });
+    });
+  });
+
+  describe("Per-HSN GST Breakdown", () => {
+    it("should compute per-HSN GST with multiple HSN codes (same state)", () => {
+      const products: ProductForPricing[] = [
+        {
+          sellPrice: 1000,
+          quantity: 1,
+          hsnCode: "4820",
+          gstRate: 12, // Paper goods
+        },
+        {
+          sellPrice: 500,
+          quantity: 1,
+          hsnCode: "6505",
+          gstRate: 18, // Textiles
+        },
+      ];
+
+      const result = computePricing({
+        products,
+        packagingPerUnit: 50,
+        addonsPerUnit: 25,
+        packQuantity: 50,
+        shippingFlat: 1000,
+        sellerStateCode: "DL",
+        buyerStateCode: "DL",
+      });
+
+      // Products subtotal: (1000 + 500) * 50 = 75000
+      // Packaging: 50 * 50 = 2500
+      // Addons: 25 * 50 = 1250
+      // Shipping: 1000
+      // preTax = 75000 + 2500 + 1250 + 1000 = 79750
+
+      // HSN 4820: 1000 * 50 = 50000, GST 12% = 6000, CGST=3000, SGST=3000
+      // HSN 6505: 500 * 50 = 25000, GST 18% = 4500, CGST=2250, SGST=2250
+      // HSN 4819 (packaging+addons): 3750, GST 18% = 675, CGST=337.5, SGST=337.5
+      // HSN 9965 (shipping): 1000, GST 18% = 180, CGST=90, SGST=90
+      // Total CGST = 3000 + 2250 + 337.5 + 90 = 5677.5
+      // Total SGST = 5677.5
+      // Total GST = 11355
+
+      expect(result.hsnBreakdown.length).toBe(4);
+      expect(result.hsnBreakdown[0].hsnCode).toBe("4820");
+      expect(result.hsnBreakdown[0].gstRate).toBe(12);
+      expect(result.hsnBreakdown[1].hsnCode).toBe("6505");
+      expect(result.hsnBreakdown[1].gstRate).toBe(18);
+      expect(result.cgst).toBe(result.sgst);
+      expect(result.igst).toBe(0);
+    });
+
+    it("should compute per-HSN GST for cross-state (IGST)", () => {
+      const products: ProductForPricing[] = [
+        {
+          sellPrice: 1000,
+          quantity: 1,
+          hsnCode: "4820",
+          gstRate: 12,
+        },
+        {
+          sellPrice: 500,
+          quantity: 1,
+          hsnCode: "6505",
+          gstRate: 18,
+        },
+      ];
+
+      const result = computePricing({
+        products,
+        packagingPerUnit: 50,
+        addonsPerUnit: 25,
+        packQuantity: 50,
+        shippingFlat: 1000,
+        sellerStateCode: "DL",
+        buyerStateCode: "MH", // Different state
+      });
+
+      // CGST and SGST should be 0, IGST should be calculated
+      expect(result.cgst).toBe(0);
+      expect(result.sgst).toBe(0);
+      expect(result.igst).toBeGreaterThan(0);
+
+      // Sum of per-HSN IGST should equal total IGST
+      const perHsnIgst = result.hsnBreakdown.reduce((sum, line) => sum + line.igst, 0);
+      expect(perHsnIgst).toBe(result.igst);
+    });
+
+    it("should include hsnBreakdown with legacy fallback", () => {
+      const result = computePricing({
+        productsSubtotal: 5000,
+        packagingPerUnit: 50,
+        addonsPerUnit: 25,
+        packQuantity: 50,
+        shippingFlat: 500,
+        sellerStateCode: "DL",
+        buyerStateCode: "DL",
+        effectiveGstRate: 18,
+      });
+
+      // Legacy path should return empty hsnBreakdown
+      expect(result.hsnBreakdown).toEqual([]);
+    });
+
+    it("should sum per-HSN breakdown to total GST", () => {
+      const products: ProductForPricing[] = [
+        {
+          sellPrice: 1000,
+          quantity: 1,
+          hsnCode: "4820",
+          gstRate: 12,
+        },
+        {
+          sellPrice: 500,
+          quantity: 1,
+          hsnCode: "6505",
+          gstRate: 18,
+        },
+      ];
+
+      const result = computePricing({
+        products,
+        packagingPerUnit: 100,
+        addonsPerUnit: 50,
+        packQuantity: 100,
+        shippingFlat: 2000,
+        sellerStateCode: "DL",
+        buyerStateCode: "DL",
+      });
+
+      // Sum of all per-HSN lines should match totals
+      const sumCgst = result.hsnBreakdown.reduce((sum, line) => sum + line.cgst, 0);
+      const sumSgst = result.hsnBreakdown.reduce((sum, line) => sum + line.sgst, 0);
+      const sumIgst = result.hsnBreakdown.reduce((sum, line) => sum + line.igst, 0);
+
+      expect(Math.abs(sumCgst - result.cgst)).toBeLessThan(0.01);
+      expect(Math.abs(sumSgst - result.sgst)).toBeLessThan(0.01);
+      expect(Math.abs(sumIgst - result.igst)).toBeLessThan(0.01);
     });
   });
 });

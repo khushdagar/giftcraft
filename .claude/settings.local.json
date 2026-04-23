@@ -6,7 +6,11 @@
       "Bash(git init *)",
       "Bash(git commit -m 'Sprint 2: Catalog + Products with Bento Card Design *)",
       "Bash(cat)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:3003__TRACKED_VAR__)",
+      "Bash(pkill -f \"node.*next\")",
+      "Bash(pkill -f \"turbo\")",
+      "Bash(curl -s http://localhost:3001)"
     ]
   }
 }

@@ -23,37 +23,52 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
       {/* Step Indicator */}
       <div className="border-b border-bdr bg-white sticky top-0 z-40">
         <div className="container-gc-w py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="overline text-ink-3">Building Your Pack</p>
-              <h1 className="text-2xl font-black mt-1">STEP {String(currentStep).padStart(2, '0')}</h1>
-            </div>
-            <div className="hidden md:flex gap-2">
-              {STEPS.map((step) => (
+          {/* Step Progress - Horizontal with lines */}
+          <div className="flex items-center justify-center gap-4 mb-8">
+            {STEPS.map((step, idx) => (
+              <div key={step.id} className="flex items-center gap-4">
+                {/* Step Circle */}
                 <button
-                  key={step.id}
                   onClick={() => setCurrentStep(step.id as 1 | 2 | 3 | 4)}
-                  className={`rounded-gc-p px-3 py-1.5 text-xs font-semibold transition ${
+                  className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-sm transition cursor-pointer ${
                     currentStep === step.id
-                      ? 'bg-dark text-inv'
+                      ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
                       : currentStep > step.id
-                      ? 'bg-em text-inv'
-                      : 'border border-bdr text-ink'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-gray-200 text-gray-600'
                   }`}
                 >
-                  {step.label}
+                  {currentStep > step.id ? (
+                    <span className="text-lg">✓</span>
+                  ) : (
+                    step.id
+                  )}
                 </button>
-              ))}
-            </div>
+
+                {/* Step Label */}
+                <div className="min-w-max">
+                  <p className={`text-xs font-semibold transition ${
+                    currentStep >= step.id ? 'text-emerald-700' : 'text-gray-500'
+                  }`}>
+                    {step.label}
+                  </p>
+                </div>
+
+                {/* Connecting Line - only if not last step */}
+                {idx < STEPS.length - 1 && (
+                  <div className={`w-12 h-1 transition ${
+                    currentStep > step.id ? 'bg-emerald-600' : 'bg-gray-200'
+                  }`} />
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <main className="container-gc-w py-8">
-        <div className="max-w-4xl">
-          {children}
-        </div>
+      <main className="container-gc-w py-8 pb-32">
+        {children}
       </main>
 
       {/* Navigation Footer */}

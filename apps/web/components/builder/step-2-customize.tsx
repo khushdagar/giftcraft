@@ -3,8 +3,10 @@
 import { useState, useRef } from 'react';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, FileIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Packaging {
   id: string;
@@ -39,7 +41,23 @@ const PRINTING_TECHNIQUES: Record<string, string> = {
 };
 
 export function Step2Customize({ packagingOptions, addonOptions, products }: StepProps) {
-  const { logo, setLogo, packaging, setPackaging, addons, addAddon, removeAddon, products: selectedProducts } = useBuilderStore();
+  const {
+    logo,
+    setLogo,
+    packaging,
+    setPackaging,
+    sleeve,
+    setSleeve,
+    addons,
+    addAddon,
+    removeAddon,
+    cardMessage,
+    setCardMessage,
+    brandingNotes,
+    setBrandingNotes,
+    products: selectedProducts,
+    packQuantity,
+  } = useBuilderStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
 
@@ -47,16 +65,19 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/svg+xml'];
-    if (!allowedTypes.includes(file.type)) {
-      setLogoError('Only JPG, PNG, and SVG files are allowed');
+    // Validate file type (JPG, PNG, SVG, AI, EPS, PDF)
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.svg', '.ai', '.eps', '.pdf'];
+    const fileName = file.name.toLowerCase();
+    const hasValidExtension = allowedExtensions.some((ext) => fileName.endsWith(ext));
+
+    if (!hasValidExtension) {
+      setLogoError('Only JPG, PNG, SVG, AI, EPS, and PDF files are allowed');
       return;
     }
 
-    // Validate file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setLogoError('File size must be less than 5MB');
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setLogoError('File size must be less than 10MB');
       return;
     }
 
@@ -91,43 +112,60 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
       {/* Logo Upload */}
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Your Logo</p>
-        {!logo ? (
-          <label className="flex flex-col items-center justify-center rounded-gc-l border-2 border-dashed border-bdr bg-elevated p-8 cursor-pointer hover:border-em transition">
-            <Upload className="h-8 w-8 text-ink-3 mb-2" />
-            <p className="text-sm font-semibold text-ink-2">Upload your logo</p>
-            <p className="text-xs text-ink-3 mt-1">JPG, PNG, or SVG • Max 5MB</p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".jpg,.jpeg,.png,.svg"
-              onChange={handleLogoUpload}
-              className="hidden"
-            />
-          </label>
-        ) : (
-          <div className="relative rounded-gc-l border-2 border-bdr bg-white overflow-hidden">
-            <div className="relative aspect-square bg-elevated flex items-center justify-center p-4">
-              <img
-                src={logo.preview || ''}
-                alt="Logo preview"
-                className="max-w-full max-h-full object-contain"
+        <div className="max-w-xs">
+          {!logo ? (
+            <label className="flex flex-col items-center justify-center rounded-gc-l border-2 border-dashed border-bdr bg-elevated p-4 cursor-pointer hover:border-em transition">
+              <Upload className="h-6 w-6 text-ink-3 mb-2" />
+              <p className="text-xs font-semibold text-ink-2">Upload your logo</p>
+              <p className="text-[10px] text-ink-3 mt-1 text-center">JPG, PNG, SVG, AI, EPS, PDF • Max 10MB</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png,.svg,.ai,.eps,.pdf"
+                onChange={handleLogoUpload}
+                className="hidden"
               />
-            </div>
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-ink">Logo uploaded</p>
-                <p className="text-xs text-ink-2 mt-1">Ready to be printed on your pack</p>
+            </label>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-gc bg-green-50 border-2 border-green-200 p-3 flex items-center gap-2">
+                <div className="text-green-600 text-lg">✓</div>
+                <div>
+                  <p className="text-xs font-semibold text-green-700">Logo uploaded successfully!</p>
+                  <p className="text-[10px] text-green-600 mt-0.5">{logo.file?.name || 'Ready to print'}</p>
+                </div>
               </div>
-              <button
-                onClick={clearLogo}
-                className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition"
-              >
-                <X className="h-4 w-4 text-ink-2" />
-              </button>
+
+              <div className="relative rounded-gc-l border-2 border-bdr bg-white overflow-hidden">
+                {logo.preview && logo.preview.includes('data:image') ? (
+                  <div className="relative aspect-square bg-gray-50 flex items-center justify-center p-4">
+                    <img
+                      src={logo.preview}
+                      alt="Logo preview"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-square bg-gray-50 flex items-center justify-center p-4">
+                    <div className="text-center">
+                      <FileIcon className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                      <p className="text-xs text-gray-600 font-semibold">{logo.file?.name || 'File uploaded'}</p>
+                      <p className="text-[10px] text-gray-500 mt-1">{logo.file?.size ? `${(logo.file.size / 1024).toFixed(1)} KB` : ''}</p>
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={clearLogo}
+                  className="absolute top-2 right-2 h-7 w-7 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition shadow-md"
+                  title="Remove logo"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-        {logoError && <p className="text-xs text-red-600">{logoError}</p>}
+          )}
+          {logoError && <p className="text-xs text-red-600 mt-2">{logoError}</p>}
+        </div>
       </div>
 
       {/* Printing Info */}
@@ -153,6 +191,20 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
         </div>
       )}
 
+      {/* Branding Notes */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Branding Notes</p>
+          <p className="text-xs text-ink-3">{brandingNotes.length}/500</p>
+        </div>
+        <Textarea
+          placeholder="Any special instructions for our design team (e.g. color preferences, placement details)..."
+          value={brandingNotes}
+          onChange={(e) => setBrandingNotes(e.target.value.slice(0, 500))}
+          className="rounded-gc-l border-2 min-h-24"
+        />
+      </div>
+
       {/* Packaging Selection */}
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Packaging</p>
@@ -174,6 +226,15 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Branded Sleeve Toggle */}
+      <div className="flex items-center justify-between rounded-gc-l border-2 border-gray-200 p-4 bg-white">
+        <div>
+          <p className="font-semibold text-sm text-ink">Branded Sleeve</p>
+          <p className="text-xs text-ink-3 mt-1">Add a custom printed sleeve (+₹60/pack)</p>
+        </div>
+        <Switch checked={sleeve} onCheckedChange={setSleeve} />
       </div>
 
       {/* Add-ons Selection */}
@@ -205,20 +266,42 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
         </div>
       </div>
 
+      {/* Thank-You Card Message */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+            Thank-You Card Message
+          </p>
+          <p className="text-xs text-ink-3">{cardMessage.length}/160</p>
+        </div>
+        <Textarea
+          placeholder="Optional: Add a personalized message for your recipients..."
+          value={cardMessage}
+          onChange={(e) => setCardMessage(e.target.value.slice(0, 160))}
+          className="rounded-gc-l border-2 min-h-20"
+        />
+      </div>
+
       {/* Customization Summary */}
       <div className="rounded-gc-l bg-em-50 border border-em-300 p-4">
-        <div className="space-y-2">
+        <div className="space-y-3">
           {packaging && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-ink-2">Packaging:</span>
               <span className="font-semibold text-ink">{packaging.name}</span>
             </div>
           )}
+          {sleeve && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-ink-2">Branded Sleeve:</span>
+              <span className="font-semibold text-ink">+{formatRupees(60 * packQuantity)}</span>
+            </div>
+          )}
           {addons.length > 0 && (
             <>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-ink-2">Add-ons ({addons.length}):</span>
-                <span className="font-semibold text-ink">{formatRupees(addonsTotal)}</span>
+                <span className="font-semibold text-ink">{formatRupees(addonsTotal * packQuantity)}</span>
               </div>
               <ul className="ml-2 space-y-1">
                 {addons.map((a) => (
