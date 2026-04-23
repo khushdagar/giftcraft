@@ -409,6 +409,9 @@ model Order {
   addons          OrderAddon[]
   recipients      OrderRecipient[]
   timeline        OrderTimeline[]
+  mockups         GeneratedMockup[]
+
+  revisionCount   Int @default(0)
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -767,8 +770,11 @@ model MockupTemplate {
 model GeneratedMockup {
   id        String   @id @default(cuid())
   orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   url       String
   createdAt DateTime @default(now())
+
+  @@index([orderId])
 }
 
 model WhiteLabelStore {
