@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
-export default function Error({
+export default function CustomerError({
   error,
   reset,
 }: {
@@ -15,28 +15,26 @@ export default function Error({
   const router = useRouter();
 
   useEffect(() => {
-    // Log error to monitoring service
-    console.error('App error:', error);
+    console.error('Customer page error:', error);
   }, [error]);
 
   const handleGoBack = () => {
-    // Clear any pending errors and go back
     reset();
     router.back();
   };
 
   return (
-    <div className="min-h-screen bg-canvas py-12 px-4 flex items-center justify-center">
-      <div className="container-gc-w max-w-lg text-center">
+    <div className="min-h-[calc(100vh-200px)] bg-canvas py-12 px-4 flex items-center justify-center">
+      <div className="max-w-lg text-center">
         {/* Error Icon */}
-        <div className="rounded-gc-l border-2 border-err/20 bg-err/5 p-12 mb-8">
+        <div className="rounded-3xl border-2 border-red-200 bg-red-50 p-12 mb-8">
           <p className="text-5xl">⚠️</p>
         </div>
 
         {/* Heading */}
-        <h1 className="text-3xl font-black text-ink mb-2">Something went wrong</h1>
-        <p className="text-ink-2 mb-8">
-          We encountered an unexpected error. Try again or go back to continue.
+        <h1 className="text-3xl font-black text-gray-900 mb-2">Oops! Something went wrong</h1>
+        <p className="text-gray-600 mb-8">
+          We encountered an error while loading this page. Don't worry, you can try again or go back.
         </p>
 
         {/* Error Details (Dev Only) */}
