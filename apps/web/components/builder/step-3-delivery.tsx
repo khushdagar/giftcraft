@@ -148,9 +148,9 @@ export function Step3Delivery() {
     const daysUntil = Math.ceil((selectedDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
     // Minimum 3 weeks (21 days) needed for: 1-2 days mockup creation + 1-2 days approval + production time
     if (daysUntil < 21) return 'impossible'; // too soon (less than 3 weeks)
-    if (daysUntil <= maxLeadTimeDays + 7) return 'high'; // plenty of time
-    if (daysUntil <= maxLeadTimeDays + 14) return 'medium'; // within range
-    return 'low'; // risky but possible
+    if (daysUntil >= maxLeadTimeDays + 14) return 'high'; // plenty of time (2+ weeks buffer after production)
+    if (daysUntil >= maxLeadTimeDays + 7) return 'medium'; // within range (1+ week buffer)
+    return 'low'; // risky but possible (21+ days but tight on production window)
   }, [delivDate, maxLeadTimeDays]);
 
   // Validate address form
