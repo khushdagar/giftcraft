@@ -4,16 +4,15 @@ import { prisma } from '@/lib/prisma';
 import { CheckoutForm } from '@/components/checkout/checkout-form';
 import { CheckoutSummary } from '@/components/checkout/checkout-summary';
 import { formatRupees } from '@/lib/utils';
-import { Check } from 'lucide-react';
 
 const TIMELINE_STEPS = [
-  { label: 'Quote', icon: '📋' },
-  { label: 'Mockup', icon: '🎨' },
-  { label: 'Approval', icon: '✓' },
-  { label: 'Production', icon: '🏭' },
-  { label: 'QC', icon: '🔍' },
-  { label: 'Dispatch', icon: '📦' },
-  { label: 'Delivered', icon: '🚚' },
+  { label: 'Quote', number: 1 },
+  { label: 'Mockup', number: 2 },
+  { label: 'Approval', number: 3 },
+  { label: 'Production', number: 4 },
+  { label: 'QC', number: 5 },
+  { label: 'Dispatch', number: 6 },
+  { label: 'Delivered', number: 7 },
 ];
 
 export default async function CheckoutPage({
@@ -21,7 +20,6 @@ export default async function CheckoutPage({
 }: {
   searchParams: { quoteId?: string };
 }) {
-  // Require authentication
   const session = await auth();
   if (!session) {
     redirect('/login?callbackUrl=/checkout');
@@ -34,10 +32,7 @@ export default async function CheckoutPage({
         <div className="text-center">
           <h1 className="text-2xl font-black text-ink mb-2">Invalid Quote</h1>
           <p className="text-ink-3 mb-4">No quote ID provided</p>
-          <a
-            href="/builder"
-            className="text-em font-semibold hover:underline"
-          >
+          <a href="/builder" className="text-em font-semibold hover:underline">
             Back to Builder
           </a>
         </div>
@@ -45,7 +40,6 @@ export default async function CheckoutPage({
     );
   }
 
-  // Fetch quote
   const quote = await prisma.quote.findUnique({
     where: { id: quoteId },
     select: {
@@ -62,10 +56,7 @@ export default async function CheckoutPage({
         <div className="text-center">
           <h1 className="text-2xl font-black text-ink mb-2">Quote Not Found</h1>
           <p className="text-ink-3 mb-4">This quote is no longer available</p>
-          <a
-            href="/builder"
-            className="text-em font-semibold hover:underline"
-          >
+          <a href="/builder" className="text-em font-semibold hover:underline">
             Build a New Pack
           </a>
         </div>
@@ -73,7 +64,6 @@ export default async function CheckoutPage({
     );
   }
 
-  // Check expiry
   if (quote.expiresAt < new Date()) {
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
@@ -82,10 +72,7 @@ export default async function CheckoutPage({
           <p className="text-ink-3 mb-4">
             This quote expired on {quote.expiresAt.toLocaleDateString()}
           </p>
-          <a
-            href="/builder"
-            className="text-em font-semibold hover:underline"
-          >
+          <a href="/builder" className="text-em font-semibold hover:underline">
             Build a Fresh Pack
           </a>
         </div>
@@ -100,123 +87,97 @@ export default async function CheckoutPage({
 
   return (
     <div className="min-h-screen bg-canvas py-8 px-4">
-      <div className="container-gc-w max-w-7xl">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-black text-ink">Checkout</h1>
-          <p className="text-ink-3 mt-1">Review your order and complete payment</p>
+          <h1 className="text-4xl font-black text-ink">Checkout</h1>
+          <p className="text-ink-3 mt-2">Review your order and complete payment</p>
         </div>
 
-        {/* Timeline */}
-        <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
-            Order Timeline
+        {/* Process Timeline */}
+        <div className="mb-10 bg-white rounded-gc-l border-2 border-bdr p-6">
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-6">
+            Order Process Flow
           </p>
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+          <div className="flex items-center justify-between gap-1 overflow-x-auto pb-2">
             {TIMELINE_STEPS.map((step, idx) => (
-              <div key={step.label} className="flex items-center gap-2 flex-shrink-0">
+              <div key={step.label} className="flex items-center flex-shrink-0 gap-0">
                 <div className="flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center text-base">
-                    {step.icon}
+                  <div className="w-12 h-12 rounded-full bg-dark text-white flex items-center justify-center font-black text-lg">
+                    {step.number}
                   </div>
-                  <p className="text-[10px] text-ink-3 mt-1 whitespace-nowrap">{step.label}</p>
+                  <p className="text-xs font-semibold text-ink-3 mt-3 text-center whitespace-nowrap px-1">
+                    {step.label}
+                  </p>
                 </div>
                 {idx < TIMELINE_STEPS.length - 1 && (
-                  <div className="w-6 h-1 bg-gray-200 flex-shrink-0" />
+                  <div className="w-8 h-1 bg-gradient-to-r from-dark to-dark/70 flex-shrink-0 mx-2" />
                 )}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Path Selection */}
-        <div className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
-            Choose Your Payment Path
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {/* Path A: Mockup First */}
-            <div className="rounded-gc-l border-2 border-emerald-300 bg-emerald-50 p-6 cursor-pointer hover:shadow-lg transition">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-black text-emerald-900">Path A</h3>
-                  <p className="text-xs text-emerald-700 mt-1">Approve Mockup First</p>
-                </div>
-                <div className="text-2xl">✨</div>
-              </div>
-              <div className="space-y-3 mb-4 pb-4 border-b border-emerald-200">
-                <div className="flex items-center gap-2 text-sm text-emerald-800">
-                  <Check className="h-4 w-4" />
-                  <span>₹0 now</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-emerald-800">
-                  <Check className="h-4 w-4" />
-                  <span>Review mockup design</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-emerald-800">
-                  <Check className="h-4 w-4" />
-                  <span>Request revisions free</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-emerald-800">
-                  <Check className="h-4 w-4" />
-                  <span>Pay full amount at approval</span>
-                </div>
-              </div>
-              <p className="text-xs text-emerald-600">
-                Full amount: <span className="font-black text-emerald-900">{formatRupees(grandTotal)}</span>
+        {/* Main Content: Form + Pricing Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8">
+          {/* Left: Form */}
+          <div>
+            {/* Path Selection */}
+            <div className="mb-8">
+              <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
+                Payment Method
               </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                {/* Path A */}
+                <div className="rounded-gc-l border-2 border-em-400 bg-em-50 p-5 cursor-pointer hover:shadow-card transition">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-5 h-5 rounded-full border-2 border-em-600 mt-1 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-base font-black text-em-700">Path A: Mockup First</h3>
+                      <p className="text-xs text-em-600 mt-1">No payment now, pay after approval</p>
+                    </div>
+                  </div>
+                  <ul className="space-y-2 text-xs text-em-700 mb-4">
+                    <li>• ₹0 due now</li>
+                    <li>• Review mockup (48 hours)</li>
+                    <li>• Free revisions (2 times)</li>
+                    <li>• Pay full amount at approval</li>
+                  </ul>
+                  <p className="text-xs font-black text-em-700">Full: {formatRupees(grandTotal)}</p>
+                </div>
+
+                {/* Path B */}
+                <div className="rounded-gc-l border-2 border-gold-200 bg-gold-50 p-5 cursor-pointer hover:shadow-card transition">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-5 h-5 rounded-full border-2 border-gold-700 mt-1 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-base font-black text-gold-700">Path B: Price Lock</h3>
+                      <p className="text-xs text-gold-700/80 mt-1">Pay 10% now, lock in price</p>
+                    </div>
+                  </div>
+                  <ul className="space-y-2 text-xs text-gold-700 mb-4">
+                    <li>• {formatRupees(advanceAmount)} due now (10%)</li>
+                    <li>• Price locked</li>
+                    <li>• Production starts immediately</li>
+                    <li>• Pay balance before delivery</li>
+                  </ul>
+                  <p className="text-xs"><span className="font-black text-gold-700">Balance: {formatRupees(balanceAmount)}</span></p>
+                </div>
+              </div>
             </div>
 
-            {/* Path B: Price Lock */}
-            <div className="rounded-gc-l border-2 border-amber-300 bg-amber-50 p-6 cursor-pointer hover:shadow-lg transition">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-black text-amber-900">Path B</h3>
-                  <p className="text-xs text-amber-700 mt-1">Lock Price Now</p>
-                </div>
-                <div className="text-2xl">🔒</div>
-              </div>
-              <div className="space-y-3 mb-4 pb-4 border-b border-amber-200">
-                <div className="flex items-center gap-2 text-sm text-amber-800">
-                  <Check className="h-4 w-4" />
-                  <span>Pay 10% advance now</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-amber-800">
-                  <Check className="h-4 w-4" />
-                  <span>Price locked in</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-amber-800">
-                  <Check className="h-4 w-4" />
-                  <span>Production starts immediately</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-amber-800">
-                  <Check className="h-4 w-4" />
-                  <span>Pay balance before delivery</span>
-                </div>
-              </div>
-              <div className="space-y-2 text-xs text-amber-700">
-                <p>Advance: <span className="font-black text-amber-900">{formatRupees(advanceAmount)}</span></p>
-                <p>Balance: <span className="font-black text-amber-900">{formatRupees(balanceAmount)}</span></p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8">
-          {/* Left: Order Summary (read-only) */}
-          <div className="order-2 lg:order-1">
-            <CheckoutSummary payload={payload} />
-          </div>
-
-          {/* Right: Checkout Form */}
-          <div className="order-1 lg:order-2">
+            {/* Checkout Form */}
             <CheckoutForm
               quoteId={quoteId}
               userEmail={session.user?.email || ''}
               userName={session.user?.name || ''}
               pricing={payload.pricing}
             />
+          </div>
+
+          {/* Right: Sticky Pricing Panel */}
+          <div className="lg:sticky lg:top-8 h-fit">
+            <CheckoutSummary payload={payload} />
           </div>
         </div>
       </div>
