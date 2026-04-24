@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { CheckoutForm } from '@/components/checkout/checkout-form';
 import { CheckoutSummary } from '@/components/checkout/checkout-summary';
 
@@ -10,13 +11,16 @@ export default function CheckoutPage({
 }: {
   searchParams: { quoteId?: string };
 }) {
+  const router = useRouter();
   const { data: session } = useSession();
   const [selectedPath, setSelectedPath] = useState<'mockup' | 'pricelock'>('mockup');
   const [userPhone, setUserPhone] = useState('');
 
-  if (!session) {
-    redirect('/login?callbackUrl=/checkout');
-  }
+  useEffect(() => {
+    if (session === false) {
+      router.push('/login?callbackUrl=/checkout');
+    }
+  }, [session, router]);
 
   const quoteId = searchParams.quoteId;
   if (!quoteId) {

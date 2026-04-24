@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useReducedMotion } from 'react';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
+import { useRef } from 'react';
+import { motion, useMotionValue, useTransform, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import { formatRupees } from '@/lib/utils';
 
