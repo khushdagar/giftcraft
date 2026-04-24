@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
     const settings = await prisma.platformSetting.findMany();
 
     const grouped = settings.reduce((acc, setting) => {
-      const category = setting.key.split('.')[0];
+      const parts = setting.key.split('.');
+      const category = parts[0] || 'default';
       if (!acc[category]) acc[category] = {};
       acc[category][setting.key] = setting.value;
       return acc;

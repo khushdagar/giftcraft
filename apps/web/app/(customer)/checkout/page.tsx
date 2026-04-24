@@ -17,7 +17,7 @@ export default function CheckoutPage({
   const [userPhone, setUserPhone] = useState('');
 
   useEffect(() => {
-    if (session === false) {
+    if (!session) {
       router.push('/login?callbackUrl=/checkout');
     }
   }, [session, router]);
