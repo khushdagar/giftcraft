@@ -154,7 +154,7 @@ export default async function OrderDetailPage({
                 Timeline
               </p>
               <div className="space-y-4">
-                {order.timeline.map((event) => (
+                {order.timeline.map((event : any) => (
                   <div key={event.id} className="flex gap-4">
                     <div className="flex flex-col items-center pt-1">
                       <div className="h-3 w-3 rounded-full bg-em"></div>
