@@ -95,16 +95,24 @@ export default async function CollectionDetailPage({
       <div className="py-12 px-4 sm:px-6">
         <div className="container-gc-w mx-auto">
           {/* Breadcrumb */}
-          <nav className="flex items-center gap-2 text-xs text-ink-3 mb-8">
-            <Link href="/" className="hover:text-ink">
-              Home
-            </Link>
-            <span>/</span>
-            <Link href="/collections" className="hover:text-ink">
-              Collections
-            </Link>
-            <span>/</span>
-            <span className="text-ink font-medium truncate">{collection.name}</span>
+          <nav aria-label="Breadcrumb" className="mb-8">
+            <ol className="flex items-center gap-2 text-xs text-ink-3">
+              <li>
+                <Link href="/" className="hover:text-ink">
+                  Home
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li>
+                <Link href="/collections" className="hover:text-ink">
+                  Collections
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li aria-current="page" className="text-ink font-medium truncate">
+                {collection.name}
+              </li>
+            </ol>
           </nav>
 
           {/* Product Count */}

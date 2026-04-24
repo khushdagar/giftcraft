@@ -28,11 +28,11 @@ export default async function AdminCategoriesPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="border-b border-gray-200">
+    <div className="min-h-screen bg-canvas">
+      <div className="border-b border-bdr">
         <div className="max-w-4xl mx-auto px-8 py-8">
-          <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage product categories</p>
+          <h1 className="text-2xl font-bold text-ink">Categories</h1>
+          <p className="text-sm text-ink-2 mt-1">Manage product categories</p>
         </div>
       </div>
 

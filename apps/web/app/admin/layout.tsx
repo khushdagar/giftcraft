@@ -71,7 +71,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <p className="truncate text-xs text-inv/60">{session.user.name}</p>
               <p className="truncate text-[10px] text-inv/25">{session.user.role}</p>
             </div>
-            <button type="submit" className="text-inv/40 hover:text-inv" title="Sign out"><LogOut className="h-3.5 w-3.5" /></button>
+            <button type="submit" className="text-inv/40 hover:text-inv" aria-label="Sign out"><LogOut className="h-3.5 w-3.5" /></button>
           </div>
         </form>
       </aside>
@@ -83,7 +83,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-3" />
             <Input placeholder="Search orders, products, clients..." className="h-8 border-bdr bg-canvas pl-9 text-[13px]" />
           </div>
-          <button className="relative flex h-8 w-8 items-center justify-center rounded-md text-ink-2 hover:bg-elevated">
+          <button className="relative flex h-8 w-8 items-center justify-center rounded-md text-ink-2 hover:bg-elevated" aria-label="Notifications, 3 unread">
             <Bell className="h-4 w-4" />
             <span className="absolute right-1 top-1 h-3.5 w-3.5 rounded-full bg-err text-[8px] font-bold leading-[14px] text-white">3</span>
           </button>

@@ -83,7 +83,7 @@ export function Navbar() {
           {session?.user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-elevated">
+                <button className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-elevated" aria-label={`Account menu for ${session.user?.name}`}>
                   <Avatar className="h-8 w-8">
                     {session.user?.image && <AvatarImage src={session.user.image} alt={session.user?.name ?? ""} />}
                     <AvatarFallback>{userInitial}</AvatarFallback>

@@ -56,12 +56,18 @@ export default async function CollectionsPage() {
       <div className="container-gc-w mx-auto">
         {/* Breadcrumb */}
         <div className="mb-8">
-          <nav className="flex items-center gap-2 text-xs text-ink-3 mb-6">
-            <Link href="/" className="hover:text-ink">
-              Home
-            </Link>
-            <span>/</span>
-            <span className="text-ink font-medium">Collections</span>
+          <nav aria-label="Breadcrumb" className="mb-6">
+            <ol className="flex items-center gap-2 text-xs text-ink-3">
+              <li>
+                <Link href="/" className="hover:text-ink">
+                  Home
+                </Link>
+              </li>
+              <li aria-hidden="true">/</li>
+              <li aria-current="page" className="text-ink font-medium">
+                Collections
+              </li>
+            </ol>
           </nav>
 
           {/* Header */}

@@ -51,13 +51,13 @@ export default async function AdminProductsPage({
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="border-b border-gray-200">
+    <div className="min-h-screen bg-canvas">
+      <div className="border-b border-bdr">
         <div className="max-w-6xl mx-auto px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-              <p className="text-sm text-gray-500 mt-1">{total} products total</p>
+              <h1 className="text-2xl font-bold text-ink">Products</h1>
+              <p className="text-sm text-ink-2 mt-1">{total} products total</p>
             </div>
             <div className="flex gap-3">
               <Button asChild>
