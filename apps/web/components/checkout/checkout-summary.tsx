@@ -120,98 +120,54 @@ export function CheckoutSummary({
 
   return (
     <div className="space-y-4">
-      {/* Order Summary Box */}
-      {/* <div className="rounded-md border-2 border-gray-300 bg-gray-100 p-5 space-y-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-600">
-          Order Summary
-        </p>
-
-        <div className="space-y-2">
-          {products.map((product: any) => (
-            <div key={product.id} className="flex items-start justify-between gap-2 pb-2 border-b border-gray-300 last:border-0 last:pb-0">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-900 line-clamp-1">{product.name}</p>
-                <p className="text-xs text-gray-600">×{product.quantity}</p>
-              </div>
-              <p className="text-sm font-black text-gray-900 tabular-nums flex-shrink-0">
-                {formatRupees(product.sellPrice * product.quantity)}
-              </p>
-            </div>
-          ))}
-
-          {(packaging || addons.length > 0) && (
-            <>
-              {packaging && (
-                <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-300">
-                  <span className="text-gray-600">{packaging.name}</span>
-                  <span className="font-bold text-gray-900">+{formatRupees(packaging.price * payload.packQuantity)}</span>
-                </div>
-              )}
-              {addons.map((addon: any) => (
-                <div key={addon.id} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">{addon.name}</span>
-                  <span className="font-bold text-gray-900">+{formatRupees(addon.price * payload.packQuantity)}</span>
-                </div>
-              ))}
-            </>
-          )}
-
-          {shippingZone && (
-            <div className="flex items-center justify-between text-sm pt-2 border-t border-gray-300">
-              <span className="text-gray-600">{shippingZone.zoneName}</span>
-              <span className="font-bold text-gray-900">+{formatRupees(shippingZone.flatRate)}</span>
-            </div>
-          )}
-        </div>
-      </div> */}
 
       {/* Pricing Breakdown Box */}
-      <div className="rounded-md border-2 border-gray-300 bg-white p-5 space-y-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-gray-600">
+      <div className="rounded-md border-2 border-bdr bg-white p-5 space-y-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-ink-2">
           Price Breakdown
         </p>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between py-2 px-2 text-sm">
-            <span className="text-gray-600">Subtotal</span>
-            <span className="font-bold text-gray-900 tabular-nums">{formatRupees(pricing.subtotal)}</span>
+            <span className="text-ink-2">Subtotal</span>
+            <span className="font-bold text-ink tabular-nums">{formatRupees(pricing.subtotal)}</span>
           </div>
 
           {pricing.shipping > 0 && (
-            <div className="flex items-center justify-between py-2 px-2 bg-gray-100 rounded text-sm">
-              <span className="text-gray-600">Shipping</span>
-              <span className="font-bold text-gray-900 tabular-nums">+{formatRupees(pricing.shipping)}</span>
+            <div className="flex items-center justify-between py-2 px-2 bg-elevated rounded text-sm">
+              <span className="text-ink-2">Shipping</span>
+              <span className="font-bold text-ink tabular-nums">+{formatRupees(pricing.shipping)}</span>
             </div>
           )}
 
           {/* GST Breakdown */}
-          <div className="space-y-2 py-2 border-t border-gray-300">
-            <p className="text-xs font-bold text-gray-600 mb-2">GST Breakdown</p>
+          <div className="space-y-2 py-2 border-t border-bdr">
+            <p className="text-xs font-bold text-ink-2 mb-2">GST Breakdown</p>
 
             {pricing.hsnBreakdown && pricing.hsnBreakdown.length > 0 ? (
               <div className="space-y-1.5 text-xs">
                 {pricing.hsnBreakdown.map((line: any, idx: number) => (
                   <div key={idx} className="space-y-0.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-600">HSN {line.hsnCode} @ {line.gstRate}%</span>
-                      <span className="text-gray-600 font-mono">{formatRupees(line.taxableAmount)}</span>
+                      <span className="text-ink-2">HSN {line.hsnCode} @ {line.gstRate}%</span>
+                      <span className="text-ink-2 font-mono">{formatRupees(line.taxableAmount)}</span>
                     </div>
                     {line.cgst > 0 && (
                       <div className="flex items-center justify-between ml-3">
-                        <span className="text-gray-600">CGST ({line.gstRate / 2}%)</span>
-                        <span className="text-gray-600 font-mono">+{formatRupees(line.cgst)}</span>
+                        <span className="text-ink-2">CGST ({line.gstRate / 2}%)</span>
+                        <span className="text-ink-2 font-mono">+{formatRupees(line.cgst)}</span>
                       </div>
                     )}
                     {line.sgst > 0 && (
                       <div className="flex items-center justify-between ml-3">
-                        <span className="text-gray-600">SGST ({line.gstRate / 2}%)</span>
-                        <span className="text-gray-600 font-mono">+{formatRupees(line.sgst)}</span>
+                        <span className="text-ink-2">SGST ({line.gstRate / 2}%)</span>
+                        <span className="text-ink-2 font-mono">+{formatRupees(line.sgst)}</span>
                       </div>
                     )}
                     {line.igst > 0 && (
                       <div className="flex items-center justify-between ml-3">
-                        <span className="text-gray-600">IGST ({line.gstRate}%)</span>
-                        <span className="text-gray-600 font-mono">+{formatRupees(line.igst)}</span>
+                        <span className="text-ink-2">IGST ({line.gstRate}%)</span>
+                        <span className="text-ink-2 font-mono">+{formatRupees(line.igst)}</span>
                       </div>
                     )}
                   </div>
@@ -221,20 +177,20 @@ export function CheckoutSummary({
               <div className="space-y-1 text-xs">
                 {pricing.cgst > 0 && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">CGST (9%)</span>
-                    <span className="text-gray-600 font-mono">+{formatRupees(pricing.cgst)}</span>
+                    <span className="text-ink-2">CGST (9%)</span>
+                    <span className="text-ink-2 font-mono">+{formatRupees(pricing.cgst)}</span>
                   </div>
                 )}
                 {pricing.sgst > 0 && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">SGST (9%)</span>
-                    <span className="text-gray-600 font-mono">+{formatRupees(pricing.sgst)}</span>
+                    <span className="text-ink-2">SGST (9%)</span>
+                    <span className="text-ink-2 font-mono">+{formatRupees(pricing.sgst)}</span>
                   </div>
                 )}
                 {pricing.igst > 0 && (
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">IGST (18%)</span>
-                    <span className="text-gray-600 font-mono">+{formatRupees(pricing.igst)}</span>
+                    <span className="text-ink-2">IGST (18%)</span>
+                    <span className="text-ink-2 font-mono">+{formatRupees(pricing.igst)}</span>
                   </div>
                 )}
               </div>
@@ -243,26 +199,26 @@ export function CheckoutSummary({
 
           {/* Payment Gateway Fee */}
           {pricing.razorpayFee > 0 && (
-            <div className="flex items-start justify-between py-2 px-2 border-t border-gray-300">
+            <div className="flex items-start justify-between py-2 px-2 border-t border-bdr">
               <div>
-                <p className="text-sm text-gray-600 font-semibold">Payment Gateway Fee</p>
-                <p className="text-xs text-gray-500 mt-1">(2.36% on payment amount + 18% GST)</p>
+                <p className="text-sm text-ink-2 font-semibold">Payment Gateway Fee</p>
+                <p className="text-xs text-ink-3 mt-1">(2.36% on payment amount + 18% GST)</p>
               </div>
-              <span className="font-bold text-gray-900 tabular-nums flex-shrink-0">+{formatRupees(pricing.razorpayFee)}</span>
+              <span className="font-bold text-ink tabular-nums flex-shrink-0">+{formatRupees(pricing.razorpayFee)}</span>
             </div>
           )}
         </div>
       </div>
 
       {/* Grand Total */}
-      <div className="rounded-full bg-gray-900 text-white px-6 py-5 flex items-center justify-between">
+      <div className="rounded-full bg-ink text-white px-6 py-5 flex items-center justify-between">
         <div>
           <p className="text-xs font-semibold opacity-80">Grand Total</p>
-          <p className="text-xs text-gray-300 mt-1">Per pack</p>
+          <p className="text-xs text-white/60 mt-1">Per pack</p>
         </div>
         <div className="text-right">
           <p className="text-3xl font-black tabular-nums">{formatRupees(pricing.grandTotal)}</p>
-          <p className="text-xs text-gray-300 mt-1">₹{Math.round(pricing.grandTotal / payload.packQuantity)}</p>
+          <p className="text-xs text-white/60 mt-1">₹{Math.round(pricing.grandTotal / payload.packQuantity)}</p>
         </div>
       </div>
 
@@ -273,12 +229,12 @@ export function CheckoutSummary({
           placeholder="Enter coupon code"
           value={couponCode}
           onChange={(e) => setCouponCode(e.target.value)}
-          className="rounded-2xl flex-1 h-10 px-3 border-2 border-gray-300 text-sm"
+          className="rounded-2xl flex-1 h-10 px-3 border-2 border-bdr text-sm"
         />
         <Button
           onClick={handleCouponApply}
           variant="outline"
-          className="rounded-2xl h-10 px-4 text-sm font-semibold border-2 border-gray-300"
+          className="rounded-2xl h-10 px-4 text-sm font-semibold border-2 border-bdr"
         >
           Apply
         </Button>
@@ -295,12 +251,12 @@ export function CheckoutSummary({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-gray-900">10% Advance Payment</span>
+              <span className="text-sm font-bold text-ink">10% Advance Payment</span>
               <span className="text-sm font-black text-yellow-700 tabular-nums">{formatRupees(advanceAmount)}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-600 italic">Balance due after mockup approval</span>
-              <span className="font-bold text-gray-900 tabular-nums">{formatRupees(balanceAmount)}</span>
+              <span className="text-ink-2 italic">Balance due after mockup approval</span>
+              <span className="font-bold text-ink tabular-nums">{formatRupees(balanceAmount)}</span>
             </div>
             <div className="rounded-2xl bg-yellow-100 border border-yellow-400 p-2 mt-2">
               <p className="text-xs text-yellow-800 font-semibold">💰 Prices locked for 30 days from advance payment date.</p>
@@ -324,7 +280,7 @@ export function CheckoutSummary({
             <Button
               onClick={handleDownloadPDF}
               variant="outline"
-              className="rounded-2xl text-xs h-10 flex items-center justify-center gap-1 border-2 border-gray-300"
+              className="rounded-2xl text-xs h-10 flex items-center justify-center gap-1 border-2 border-bdr"
             >
               <Download className="w-3 h-3" />
               <span className="hidden sm:inline">PDF</span>
@@ -332,7 +288,7 @@ export function CheckoutSummary({
             <Button
               onClick={handleCopyLink}
               variant="outline"
-              className="rounded-2xl text-xs h-10 flex items-center justify-center gap-1 border-2 border-gray-300"
+              className="rounded-2xl text-xs h-10 flex items-center justify-center gap-1 border-2 border-bdr"
             >
               <Link2 className="w-3 h-3" />
               <span className="hidden sm:inline">Copy</span>
@@ -340,7 +296,7 @@ export function CheckoutSummary({
             <Button
               onClick={handleWhatsApp}
               variant="outline"
-              className="rounded-2xl text-xs h-10 flex items-center justify-center gap-1 border-2 border-gray-300"
+              className="rounded-2xl text-xs h-10 flex items-center justify-center gap-1 border-2 border-bdr"
             >
               <MessageCircle className="w-3 h-3" />
               <span className="hidden sm:inline">WhatsApp</span>
@@ -366,7 +322,7 @@ export function CheckoutSummary({
       </div>
 
       {/* Legal Text */}
-      <p className="text-xs text-gray-600 text-center">
+      <p className="text-xs text-ink-2 text-center">
         By confirming, you agree to our <a href="#" className="text-green-700 hover:underline">Terms of Service</a>, <a href="#" className="text-green-700 hover:underline">Privacy Policy</a>, and <a href="#" className="text-green-700 hover:underline">Refund Policy</a>. GST-compliant invoice will be generated upon payment.
       </p>
     </div>
