@@ -62,7 +62,7 @@ export function OrderStatusUpdater({
   };
 
   return (
-    <div className="rounded-gc-l border-2 border-bdr bg-white p-5">
+    <div className="rounded-md border-2 border-bdr bg-white p-5">
       <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
         Update Status
       </p>
@@ -73,7 +73,7 @@ export function OrderStatusUpdater({
             value={newStatus}
             onChange={(e) => setNewStatus(e.target.value)}
             disabled={loading}
-            className="w-full px-3 py-2 rounded-gc border border-bdr text-sm disabled:opacity-50"
+            className="w-full px-3 py-2 rounded-md border border-bdr text-sm disabled:opacity-50"
           >
             {STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -92,7 +92,7 @@ export function OrderStatusUpdater({
             onChange={(e) => setNote(e.target.value)}
             disabled={loading}
             placeholder="Add a note about this status change"
-            className="w-full px-3 py-2 rounded-gc border border-bdr text-sm disabled:opacity-50"
+            className="w-full px-3 py-2 rounded-md border border-bdr text-sm disabled:opacity-50"
             rows={3}
           />
         </div>
@@ -100,7 +100,7 @@ export function OrderStatusUpdater({
           onClick={handleUpdateStatus}
           disabled={loading || newStatus === currentStatus}
           variant="em"
-          className="w-full rounded-gc-l"
+          className="w-full rounded-md"
         >
           {loading ? 'Updating...' : 'Update Status'}
         </Button>

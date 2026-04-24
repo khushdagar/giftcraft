@@ -12,6 +12,7 @@ export default function CheckoutPage({
 }) {
   const { data: session } = useSession();
   const [selectedPath, setSelectedPath] = useState<'mockup' | 'pricelock'>('mockup');
+  const [userPhone, setUserPhone] = useState('');
 
   if (!session) {
     redirect('/login?callbackUrl=/checkout');
@@ -35,22 +36,43 @@ export default function CheckoutPage({
   // Fetch quote data from API instead
   const [quoteData, setQuoteData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (loading && !quoteData) {
+  if (loading && !quoteData && !error) {
     // Fetch on client side
     fetch(`/api/quotes/${quoteId}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Failed to load quote');
+        }
+        return res.json();
+      })
       .then((data) => {
         setQuoteData(data);
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        setError(err.message || 'Failed to load quote');
         setLoading(false);
       });
 
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center">
         <p className="text-ink-3">Loading checkout...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-black text-ink mb-2">Error Loading Quote</h1>
+          <p className="text-ink-3 mb-4">{error}</p>
+          <a href="/builder" className="text-em font-semibold hover:underline">
+            Build a New Pack
+          </a>
+        </div>
       </div>
     );
   }
@@ -69,7 +91,21 @@ export default function CheckoutPage({
     );
   }
 
-  const payload = quoteData.payload as any;
+  const payload = quoteData?.payload as any;
+
+  if (!payload) {
+    return (
+      <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-black text-ink mb-2">Invalid Quote Data</h1>
+          <p className="text-ink-3 mb-4">Quote data is missing or corrupted</p>
+          <a href="/builder" className="text-em font-semibold hover:underline">
+            Build a New Pack
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-canvas py-8 px-4">
@@ -91,12 +127,20 @@ export default function CheckoutPage({
               pricing={payload.pricing}
               payload={payload}
               onPathChange={setSelectedPath}
+              onPhoneChange={setUserPhone}
             />
           </div>
 
           {/* Right: Sticky Pricing Panel */}
           <div className="lg:sticky lg:top-8 h-fit">
-            <CheckoutSummary payload={payload} selectedPath={selectedPath} />
+            <CheckoutSummary
+              payload={payload}
+              selectedPath={selectedPath}
+              quoteId={quoteId}
+              userEmail={session.user?.email || ''}
+              userName={session.user?.name || ''}
+              userPhone={userPhone}
+            />
           </div>
         </div>
       </div>

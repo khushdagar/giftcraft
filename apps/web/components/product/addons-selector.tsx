@@ -50,7 +50,7 @@ export function AddonsSelector({ productId }: { productId: string }) {
             <button
               key={addon.id}
               onClick={() => toggleAddon(addon.id)}
-              className={`rounded-gc-p px-4 py-2 text-xs font-semibold transition ${
+              className={`rounded-md-p px-4 py-2 text-xs font-semibold transition ${
                 isSelected
                   ? 'bg-em text-inv'
                   : 'border border-bdr text-ink hover:border-em'

@@ -840,7 +840,7 @@ export default function CatalogPage() {
                 <button
                   key={collection.name}
                   onClick={() => setViewMode('products')}
-                  className={`relative overflow-hidden rounded-3xl min-h-64 group cursor-pointer transition transform hover:-translate-y-1`}
+                  className={`relative overflow-hidden rounded-md min-h-64 group cursor-pointer transition transform hover:-translate-y-1`}
                 >
                   <div
                     className={`absolute inset-0 ${collection.bgClass} transition transform group-hover:scale-105`}

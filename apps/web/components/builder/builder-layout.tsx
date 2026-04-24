@@ -78,7 +78,7 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
             onClick={() => setCurrentStep((currentStep - 1) as 1 | 2 | 3 | 4)}
             disabled={!canGoBack}
             variant="outline"
-            className="gap-2 rounded-gc-l"
+            className="gap-2 rounded-md"
           >
             <ChevronLeft className="h-4 w-4" />
             Back
@@ -99,7 +99,7 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
             onClick={() => setCurrentStep((currentStep + 1) as 1 | 2 | 3 | 4)}
             disabled={!canGoForward}
             variant="em"
-            className="gap-2 rounded-gc-l"
+            className="gap-2 rounded-md"
           >
             {currentStep === 4 ? 'Place Order' : 'Continue'}
             {currentStep !== 4 && <ChevronRight className="h-4 w-4" />}

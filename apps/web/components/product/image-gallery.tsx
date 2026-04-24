@@ -35,7 +35,7 @@ export function ImageGallery({ images, productName }: { images: ProductImage[]; 
         dragElastic={0.2}
         onDragStart={() => setDragStart(0)}
         onDragEnd={handleDragEnd}
-        className="relative flex aspect-square items-center justify-center rounded-gc-l bg-elevated overflow-hidden cursor-grab active:cursor-grabbing"
+        className="relative flex aspect-square items-center justify-center rounded-md bg-elevated overflow-hidden cursor-grab active:cursor-grabbing"
       >
         {activeImage.url ? (
           <Image
@@ -57,12 +57,12 @@ export function ImageGallery({ images, productName }: { images: ProductImage[]; 
             <button
               key={img.id}
               onClick={() => setActiveIndex(i)}
-              className={`flex aspect-square items-center justify-center rounded-gc bg-elevated transition ${
+              className={`flex aspect-square items-center justify-center rounded-md bg-elevated transition ${
                 i === activeIndex ? 'ring-2 ring-em' : 'opacity-60 hover:opacity-100'
               }`}
             >
               {img.url ? (
-                <Image src={img.url} alt={`${productName} thumbnail`} fill className="object-cover rounded-gc" />
+                <Image src={img.url} alt={`${productName} thumbnail`} fill className="object-cover rounded-md" />
               ) : (
                 <span className="text-2xl">📦</span>
               )}

@@ -27,7 +27,7 @@ export function FeaturedProductsSlider({ products }: { products: Product[] }) {
 
   if (!products || products.length === 0) {
     return (
-      <div className="rounded-gc-l border-2 border-bdr bg-elevated p-8 text-center">
+      <div className="rounded-md border-2 border-bdr bg-elevated p-8 text-center">
         <p className="text-ink-3">No featured products available</p>
       </div>
     );
@@ -62,11 +62,11 @@ export function FeaturedProductsSlider({ products }: { products: Product[] }) {
               className="flex-shrink-0"
             >
               <motion.div
-                className="w-56 rounded-gc-l border-2 border-bdr bg-white overflow-hidden hover:shadow-hover transition group"
+                className="w-56 rounded-md border-2 border-bdr bg-white overflow-hidden hover:shadow-hover transition group"
                 whileHover={reduce ? {} : { y: -8 }}
               >
                 {/* Image placeholder */}
-                <div className="w-full h-40 bg-elevated rounded-gc overflow-hidden group-hover:scale-105 transition duration-300" />
+                <div className="w-full h-40 bg-elevated rounded-md overflow-hidden group-hover:scale-105 transition duration-300" />
 
                 {/* Content */}
                 <div className="p-4">
@@ -76,7 +76,7 @@ export function FeaturedProductsSlider({ products }: { products: Product[] }) {
                   <p className="text-lg font-black text-em tabnum mt-2">
                     From {formatRupees(lowestPrice)}
                   </p>
-                  <button className="mt-3 w-full bg-em text-white text-xs font-semibold py-2 rounded-gc hover:bg-em-600 transition">
+                  <button className="mt-3 w-full bg-em text-white text-xs font-semibold py-2 rounded-md hover:bg-em-600 transition">
                     Add to Pack
                   </button>
                 </div>

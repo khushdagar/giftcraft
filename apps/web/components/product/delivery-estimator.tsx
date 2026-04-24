@@ -39,7 +39,7 @@ export function DeliveryEstimator() {
   };
 
   return (
-    <div className="rounded-gc-l bg-elevated p-5 border border-bdr">
+    <div className="rounded-md bg-elevated p-5 border border-bdr">
       <div className="flex items-start gap-3">
         <Truck className="h-5 w-5 text-em-700 shrink-0 mt-0.5" />
         <div className="flex-1">
@@ -65,7 +65,7 @@ export function DeliveryEstimator() {
           )}
 
           {estimate && (
-            <div className="mt-3 rounded-gc bg-white p-3 space-y-2">
+            <div className="mt-3 rounded-md bg-white p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-ink-2">Zone:</span>
                 <span className="text-sm font-semibold text-ink">{estimate.zoneName}</span>
@@ -84,7 +84,7 @@ export function DeliveryEstimator() {
           )}
 
           {error && submitted && (
-            <div className="mt-2 flex items-center gap-2 rounded-gc bg-red-50 p-2">
+            <div className="mt-2 flex items-center gap-2 rounded-md bg-red-50 p-2">
               <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
               <p className="text-xs text-red-600">Shipping not available for this pincode</p>
             </div>

@@ -25,6 +25,7 @@ interface CheckoutFormProps {
   pricing: any;
   payload: any;
   onPathChange?: (path: 'mockup' | 'pricelock') => void;
+  onPhoneChange?: (phone: string) => void;
 }
 
 export function CheckoutForm({
@@ -34,6 +35,7 @@ export function CheckoutForm({
   pricing,
   payload,
   onPathChange,
+  onPhoneChange,
 }: CheckoutFormProps) {
   const [formData, setFormData] = useState({
     companyName: '',
@@ -81,7 +83,7 @@ export function CheckoutForm({
   return (
     <form className="space-y-6">
       {/* 1. ORDER SUMMARY */}
-      <div className="bg-white rounded-3xl border-2 border-gray-300 shadow-sm p-7 space-y-4">
+      <div className="bg-white rounded-md border-2 border-gray-300 shadow-sm p-7 space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-wider text-gray-600">🎁 Order Summary</p>
           <a href="/builder" className="text-xs font-bold text-green-700 hover:underline">Edit Order →</a>
@@ -138,7 +140,7 @@ export function CheckoutForm({
       </div>
 
       {/* 2. BILLING INFORMATION */}
-      <div className="bg-white rounded-3xl border-2 border-gray-300 shadow-sm p-7 space-y-4">
+      <div className="bg-white rounded-md border-2 border-gray-300 shadow-sm p-7 space-y-4">
         <p className="text-xs font-bold uppercase tracking-wider text-gray-600 mb-4">💼 Billing Information</p>
 
         <Input
@@ -238,7 +240,7 @@ export function CheckoutForm({
       </div>
 
       {/* 3. CONTACT PERSON */}
-      <div className="bg-white rounded-3xl border-2 border-gray-300 shadow-sm p-7 space-y-4">
+      <div className="bg-white rounded-md border-2 border-gray-300 shadow-sm p-7 space-y-4">
         <p className="text-xs font-bold uppercase tracking-wider text-gray-600 mb-4">🤝 Contact Person</p>
 
         <div className="grid grid-cols-2 gap-3">
@@ -271,7 +273,11 @@ export function CheckoutForm({
             type="tel"
             placeholder="Phone *"
             value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            onChange={(e) => {
+              const newPhone = e.target.value;
+              setFormData({ ...formData, phone: newPhone });
+              onPhoneChange?.(newPhone);
+            }}
             className="rounded-2xl h-11 px-3 border-2 border-gray-300 text-sm"
             required
           />
@@ -279,7 +285,7 @@ export function CheckoutForm({
       </div>
 
       {/* 4. HOW WOULD YOU LIKE TO PROCEED */}
-      <div className="bg-white rounded-3xl border-2 border-gray-300 shadow-sm p-7 space-y-4">
+      <div className="bg-white rounded-md border-2 border-gray-300 shadow-sm p-7 space-y-4">
         <p className="text-xs font-bold uppercase tracking-wider text-gray-600 mb-4">🎯 How would you like to proceed?</p>
 
         <div className="space-y-3">
@@ -287,7 +293,7 @@ export function CheckoutForm({
           <button
             type="button"
             onClick={() => handlePathChange('mockup')}
-            className={`w-full text-left rounded-3xl border-2 p-5 transition ${
+            className={`w-full text-left rounded-md border-2 p-5 transition ${
               selectedPath === 'mockup'
                 ? 'border-green-700 bg-green-50'
                 : 'border-gray-300 bg-white hover:border-gray-400'
@@ -330,7 +336,7 @@ export function CheckoutForm({
           <button
             type="button"
             onClick={() => handlePathChange('pricelock')}
-            className={`w-full text-left rounded-3xl border-2 p-5 transition ${
+            className={`w-full text-left rounded-md border-2 p-5 transition ${
               selectedPath === 'pricelock'
                 ? 'border-yellow-700 bg-yellow-50'
                 : 'border-gray-300 bg-white hover:border-gray-400'
@@ -410,7 +416,7 @@ export function CheckoutForm({
       </div>
 
       {/* 5. WHAT HAPPENS NEXT */}
-      <div className="bg-white rounded-3xl border-2 border-gray-300 shadow-sm p-7">
+      <div className="bg-white rounded-md border-2 border-gray-300 shadow-sm p-7">
         <p className="text-xs font-bold uppercase tracking-wider text-gray-600 mb-6">📋 What Happens Next</p>
 
         <div className="space-y-6">

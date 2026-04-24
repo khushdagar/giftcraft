@@ -341,7 +341,7 @@ export function CatalogClient() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {filtered.map(p => (
-                  <Link key={p.id} href={`/products/${p.slug}`} className="bg-white rounded-3xl shadow hover:shadow-lg hover:translate-y-[-4px] transition overflow-hidden cursor-pointer block">
+                  <Link key={p.id} href={`/products/${p.slug}`} className="bg-white rounded-md shadow hover:shadow-lg hover:translate-y-[-4px] transition overflow-hidden cursor-pointer block">
                     <div className="relative aspect-square m-2.5 rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: '#F5F5F0' }}>
                       <span className="text-5xl opacity-70 transition hover:scale-110">{p.icon || '📦'}</span>
                       {p.moq && <span className="absolute top-2 left-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#FBF5E9', color: '#886528' }}>Min {p.moq}</span>}

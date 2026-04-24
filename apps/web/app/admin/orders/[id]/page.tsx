@@ -75,7 +75,7 @@ export default async function AdminOrderDetailPage({
         {/* Left Column */}
         <div className="space-y-6">
           {/* Order Summary Card */}
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-5">
+          <div className="rounded-md border-2 border-bdr bg-white p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Order</p>
@@ -100,7 +100,7 @@ export default async function AdminOrderDetailPage({
           </div>
 
           {/* Billing Details */}
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-5">
+          <div className="rounded-md border-2 border-bdr bg-white p-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">
               Billing Details
             </p>
@@ -121,7 +121,7 @@ export default async function AdminOrderDetailPage({
           </div>
 
           {/* Order Items */}
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-5">
+          <div className="rounded-md border-2 border-bdr bg-white p-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
               Items ({order.items.length})
             </p>
@@ -152,7 +152,7 @@ export default async function AdminOrderDetailPage({
           </div>
 
           {/* Timeline */}
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-5">
+          <div className="rounded-md border-2 border-bdr bg-white p-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
               Order Timeline
             </p>
@@ -195,7 +195,7 @@ export default async function AdminOrderDetailPage({
           <OrderStatusUpdater orderId={order.id} currentStatus={order.status} />
 
           {/* Grand Total Card */}
-          <div className="rounded-gc-l bg-dark text-inv p-5">
+          <div className="rounded-md bg-dark text-inv p-5">
             <p className="text-xs font-semibold uppercase tracking-wider mb-4">Breakdown</p>
             <div className="space-y-1 text-sm mb-4">
               <div className="flex justify-between">

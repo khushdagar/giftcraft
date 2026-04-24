@@ -81,7 +81,7 @@ export function PricingBlock({ priceTiers, gstRate, hsnCode, onQtyChange }: Pric
   const isUnderMinimum = qty < minAllowedQty;
 
   return (
-    <div className="mt-8 space-y-6 rounded-gc-l border border-bdr bg-white p-6 shadow-card">
+    <div className="mt-8 space-y-6 rounded-md border border-bdr bg-white p-6 shadow-card">
       {/* Quantity input */}
       <div>
         <p className="mb-2 text-sm font-medium text-ink">How many packs?</p>
@@ -136,7 +136,7 @@ export function PricingBlock({ priceTiers, gstRate, hsnCode, onQtyChange }: Pric
 
         {/* MOQ Warning Message */}
         {isUnderMinimum && (
-          <div className="mt-3 rounded-gc bg-em/10 px-3 py-2">
+          <div className="mt-3 rounded-md bg-em/10 px-3 py-2">
             <p className="text-xs font-semibold text-em">
               ⓘ Minimum order quantity of this product is {minAllowedQty} units
             </p>
@@ -146,7 +146,7 @@ export function PricingBlock({ priceTiers, gstRate, hsnCode, onQtyChange }: Pric
 
       {/* Pricing table */}
       <div>
-        <div className="overflow-hidden rounded-gc border border-bdr">
+        <div className="overflow-hidden rounded-md border border-bdr">
           {/* Table header */}
           <div className="grid grid-cols-3 gap-4 bg-elevated px-4 py-3">
             <span className="text-xs font-semibold uppercase text-ink-3">Quantity</span>
@@ -204,7 +204,7 @@ export function PricingBlock({ priceTiers, gstRate, hsnCode, onQtyChange }: Pric
       </div>
 
       {savings > 0 && (
-        <div className="rounded-gc-p bg-gold-50 px-3 py-2">
+        <div className="rounded-md-p bg-gold-50 px-3 py-2">
           <p className="text-xs font-semibold text-gold-700">
             ✓ You save {formatRupees(savings)}
           </p>

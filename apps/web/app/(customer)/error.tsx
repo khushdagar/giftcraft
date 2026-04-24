@@ -27,7 +27,7 @@ export default function CustomerError({
     <div className="min-h-[calc(100vh-200px)] bg-canvas py-12 px-4 flex items-center justify-center">
       <div className="max-w-lg text-center">
         {/* Error Icon */}
-        <div className="rounded-3xl border-2 border-red-200 bg-red-50 p-12 mb-8">
+        <div className="rounded-md border-2 border-red-200 bg-red-50 p-12 mb-8">
           <p className="text-5xl">⚠️</p>
         </div>
 

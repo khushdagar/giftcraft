@@ -52,7 +52,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               >
                 <item.icon className="h-3.5 w-3.5 shrink-0" />
                 <span className="flex-1">{item.label}</span>
-                {item.badge && <span className="rounded-gc-p bg-err px-1.5 py-0.5 text-[9px] font-bold">{item.badge}</span>}
+                {item.badge && <span className="rounded-md-p bg-err px-1.5 py-0.5 text-[9px] font-bold">{item.badge}</span>}
               </Link>
             ))}
           </div>

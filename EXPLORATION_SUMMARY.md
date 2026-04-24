@@ -94,7 +94,7 @@ Status: success (emerald), error (red), warning (amber)
 
 | Element | Rule | Example |
 |---------|------|---------|
-| Cards | `rounded-3xl border-2 border-gray-200` | NO rounded-lg |
+| Cards | `rounded-md border-2 border-gray-200` | NO rounded-lg |
 | Buttons | `rounded-2xl px-8 py-4 font-bold text-lg hover:-translate-y-1` | Chunky with lift |
 | Pills | `rounded-full border-2` | Active = navy-800 filled |
 | Images | ALWAYS on `bg-gray-50` background | Never bare white |
@@ -135,23 +135,23 @@ You selected Sprint 2 from PROMPTS.md, which includes:
 - Collections: name, banner, products, active toggle
 
 **B) Customer Catalog (/catalog) — Bento vibrant**
-- Left sidebar: rounded-3xl cards with filters
+- Left sidebar: rounded-md cards with filters
 - 9 filters: Category, Price Range, Brand, Occasion, Recipient, Eco Toggle, Delivery Time, Branding Toggle, NO MOQ filter
 - Product grid: 4/3/2 responsive cols
-- Cards: rounded-3xl border-2, image on gray-50, hover lift, badges (MOQ amber, eco emerald, branding indigo)
+- Cards: rounded-md border-2, image on gray-50, hover lift, badges (MOQ amber, eco emerald, branding indigo)
 - Search: autocomplete, fuzzy, 300ms debounce
 - URL-synced filters
 - Mobile: bottom sheet filters
 - Empty state: "Clear All Filters" + "Get Help on WhatsApp" buttons with illustration
 
 **C) Product Detail (/products/[slug]) — Product-first Bento**
-- Left 60%: massive image on rounded-3xl bg-gray-50, thumbnails below, mobile carousel
+- Left 60%: massive image on rounded-md bg-gray-50, thumbnails below, mobile carousel
 - Right 40%: step label "PRODUCT", name text-3xl font-black, brand, printing pill (indigo-100 read-only), eco badge
-- Pricing block (rounded-3xl border-2): 6-tier table, active tier bg-amber-50 border-l-4 border-amber-500, AnimatedNumber on qty change
+- Pricing block (rounded-md border-2): 6-tier table, active tier bg-amber-50 border-l-4 border-amber-500, AnimatedNumber on qty change
 - Packaging: radio cards (rounded-2xl, selected border-navy-800)
 - Add-ons: toggle pills (rounded-full, selected emerald-500)
-- Delivery: pincode input, zone result, rounded-3xl bg-sky-50
-- Logo upload: rounded-3xl border-dashed
+- Delivery: pincode input, zone result, rounded-md bg-sky-50
+- Logo upload: rounded-md border-dashed
 - CTAs: "Add to Gift Builder" + "Get Quick Quote"
 - Related: drag-to-scroll Framer Motion slider
 
@@ -253,7 +253,7 @@ You selected Sprint 2 from PROMPTS.md, which includes:
 ### Phase 3: Customer Catalog
 
 1. Implement /catalog page component
-2. Left sidebar: rounded-3xl filter cards
+2. Left sidebar: rounded-md filter cards
    - Category tree (collapsible L1→L2→L3)
    - Price range slider
    - Brand pills (rounded-full)
@@ -280,7 +280,7 @@ You selected Sprint 2 from PROMPTS.md, which includes:
    - Product name text-3xl font-black
    - Brand + printing tech pill (indigo-100 read-only)
    - Eco badge
-   - Pricing block (rounded-3xl border-2 bg-white):
+   - Pricing block (rounded-md border-2 bg-white):
      - Step label "PRICING"
      - 6-tier table (active tier bg-amber-50 border-l-4 amber-500)
      - Qty input → AnimatedNumber updates prices
@@ -288,8 +288,8 @@ You selected Sprint 2 from PROMPTS.md, which includes:
      - GST note
    - Packaging: radio cards rounded-2xl
    - Add-ons: toggle pills emerald-500
-   - Delivery: pincode input → zone result, rounded-3xl bg-sky-50
-   - Logo upload: rounded-3xl border-dashed
+   - Delivery: pincode input → zone result, rounded-md bg-sky-50
+   - Logo upload: rounded-md border-dashed
    - Branding notes: textarea
    - CTAs: "Add to Gift Builder" + "Get Quick Quote"
 4. Related products: drag-to-scroll slider (Framer Motion, NOT arrow buttons)
@@ -315,7 +315,7 @@ You selected Sprint 2 from PROMPTS.md, which includes:
 ✅ Check prefers-reduced-motion on all animations
 ✅ Use shadcn/ui components
 ✅ Put product images on gray-50 background
-✅ Use rounded-3xl for cards, rounded-2xl for buttons
+✅ Use rounded-md for cards, rounded-2xl for buttons
 ✅ Use font-black for headings and prices
 ✅ Use drag-to-scroll sliders (Framer Motion)
 ✅ Use NextAuth.js + Google OAuth for auth
@@ -325,7 +325,7 @@ You selected Sprint 2 from PROMPTS.md, which includes:
 ❌ Use AWS services
 ❌ Use Clerk (we use NextAuth.js)
 ❌ Build Stage 3+ features in Stage 1
-❌ Use rounded-lg for cards (use rounded-3xl)
+❌ Use rounded-lg for cards (use rounded-md)
 ❌ Use font-normal for headings
 ❌ Put product images on bare white
 ❌ Use arrow-button carousels (use drag sliders)

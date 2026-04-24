@@ -23,7 +23,7 @@ function Kpi({ label, value, icon: Icon, accent }: KpiProps) {
   };
 
   return (
-    <div className={`rounded-gc border-2 p-4 transition ${accentMap[accent]}`}>
+    <div className={`rounded-md border-2 p-4 transition ${accentMap[accent]}`}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
 
   const ytdSpend = ytdSpendData._sum.grandTotal || new Decimal(0);
 
-  // Fetch recent orders
+  // Fetch recent orders with product details
   const recentOrders = await prisma.order.findMany({
     where: { placedById: userId },
     select: {
@@ -121,6 +121,27 @@ export default async function DashboardPage() {
       packQuantity: true,
       grandTotal: true,
       createdAt: true,
+      items: {
+        select: {
+          id: true,
+          productId: true,
+          quantity: true,
+          product: {
+            select: {
+              name: true,
+              images: {
+                select: {
+                  url: true,
+                  isPrimary: true,
+                },
+                orderBy: { sortOrder: "asc" },
+                take: 1,
+              },
+            },
+          },
+        },
+        take: 1,
+      },
     },
     orderBy: { createdAt: "desc" },
     take: 3,
@@ -160,7 +181,7 @@ export default async function DashboardPage() {
 
       {/* Mockup alert */}
       {mockupAlert ? (
-        <div className="rounded-gc border-2 border-gold/30 bg-gold-50 p-5">
+        <div className="rounded-md border-2 border-gold/30 bg-gold-50 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-white font-bold">!</div>
             <div className="flex-1">
@@ -173,25 +194,46 @@ export default async function DashboardPage() {
       ) : null}
 
       {/* Recent orders */}
-      <div className="rounded-gc bg-white shadow-card">
+      <div className="rounded-md bg-white shadow-card">
         <div className="flex items-center justify-between border-b border-bdr p-5">
           <h2 className="font-display text-lg font-bold">Recent orders</h2>
           <Link href="/dashboard/orders" className="text-xs font-semibold text-em">See all →</Link>
         </div>
         <div className="divide-y divide-bdr">
           {recentOrders.length > 0 ? (
-            recentOrders.map((o) => (
-              <Link key={o.id} href={`/dashboard/orders/${o.id}`} className="flex items-center justify-between p-5 transition hover:bg-elevated">
-                <div>
-                  <p className="font-medium text-sm">Pack × {o.packQuantity}</p>
-                  <p className="mt-1 text-xs text-ink-3">#{o.orderNumber}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Badge variant={getStatusVariant(o.status)}>{getStatusLabel(o.status)}</Badge>
-                  <p className="font-black tabnum text-sm">{formatRupees(Number(o.grandTotal))}</p>
-                </div>
-              </Link>
-            ))
+            recentOrders.map((o: any) => {
+              const firstItem = o.items[0];
+              const productImage = firstItem?.product?.images?.[0]?.url;
+              const productName = firstItem?.product?.name;
+
+              return (
+                <Link key={o.id} href={`/dashboard/orders/${o.id}`} className="flex items-center gap-4 p-5 transition hover:bg-elevated">
+                  {/* Product Image */}
+                  {productImage ? (
+                    <div className="h-16 w-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                      <img src={productImage} alt={productName} className="h-full w-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="h-16 w-16 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs text-gray-400">No image</span>
+                    </div>
+                  )}
+
+                  {/* Order Details */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{productName || 'Product'}</p>
+                    <p className="mt-0.5 text-xs text-ink-3">Pack × {o.packQuantity}</p>
+                    <p className="mt-0.5 text-xs text-ink-3">#{o.orderNumber}</p>
+                  </div>
+
+                  {/* Status and Price */}
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <Badge variant={getStatusVariant(o.status)}>{getStatusLabel(o.status)}</Badge>
+                    <p className="font-black tabnum text-sm whitespace-nowrap">{formatRupees(Number(o.grandTotal))}</p>
+                  </div>
+                </Link>
+              );
+            })
           ) : (
             <div className="p-5 text-center text-sm text-ink-3">
               No orders yet. <Link href="/builder" className="text-em font-semibold">Start building →</Link>

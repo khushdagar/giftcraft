@@ -245,7 +245,7 @@ export default function HomePage() {
               >
                 <Link
                   href={`/catalog?occasion=${o.slug}`}
-                  className="group relative block min-h-[clamp(160px,20vw,220px)] overflow-hidden rounded-gc-l transition-transform duration-300 hover:-translate-y-1"
+                  className="group relative block min-h-[clamp(160px,20vw,220px)] overflow-hidden rounded-md transition-transform duration-300 hover:-translate-y-1"
                 >
                   <div className={`absolute inset-0 bg-gradient-to-br ${o.bg} transition-transform duration-700 group-hover:scale-105`} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" />
@@ -277,13 +277,13 @@ export default function HomePage() {
               <Link
                 key={p.id}
                 href={`/products/${p.id}`}
-                className="group w-[clamp(200px,20vw,260px)] shrink-0 overflow-hidden rounded-gc bg-white shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-hover"
+                className="group w-[clamp(200px,20vw,260px)] shrink-0 overflow-hidden rounded-md bg-white shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-hover"
               >
-                <div className="relative m-2.5 flex aspect-square items-center justify-center overflow-hidden rounded-gc-s bg-elevated">
+                <div className="relative m-2.5 flex aspect-square items-center justify-center overflow-hidden rounded-md-s bg-elevated">
                   <span className="text-5xl opacity-70 transition-transform duration-500 group-hover:scale-[1.08]">{p.icon}</span>
-                  <span className="absolute left-2 top-2 rounded-gc-p bg-gold-50 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-gold-700">MOQ 25</span>
+                  <span className="absolute left-2 top-2 rounded-md-p bg-gold-50 px-2 py-1 text-[9px] font-semibold uppercase tracking-wide text-gold-700">MOQ 25</span>
                   {p.eco && (
-                    <span className="absolute right-2 top-2 rounded-gc-p bg-em-50 px-2 py-1 text-[9px] font-semibold text-em-700">ECO</span>
+                    <span className="absolute right-2 top-2 rounded-md-p bg-em-50 px-2 py-1 text-[9px] font-semibold text-em-700">ECO</span>
                   )}
                 </div>
                 <div className="px-4 pb-4 pt-1">
@@ -294,7 +294,7 @@ export default function HomePage() {
                   </p>
                   <p className="mt-0.5 text-[10px] uppercase tracking-wide text-ink-3">{p.tech}</p>
                 </div>
-                <div className="mx-4 mb-3.5 h-9 translate-y-2 overflow-hidden rounded-gc-p bg-em text-[13px] font-semibold leading-9 text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                <div className="mx-4 mb-3.5 h-9 translate-y-2 overflow-hidden rounded-md-p bg-em text-[13px] font-semibold leading-9 text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
                   <span className="block text-center">Add to Pack</span>
                 </div>
               </Link>
@@ -316,7 +316,7 @@ export default function HomePage() {
           </div>
           <div className="flex flex-col items-center justify-center gap-3 md:flex-row">
             {STEPS.map((s, i) => (
-              <div key={s.num} className="relative max-w-full flex-1 rounded-gc bg-white px-4 py-6 text-center shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-hover sm:py-8 md:max-w-[200px]">
+              <div key={s.num} className="relative max-w-full flex-1 rounded-md bg-white px-4 py-6 text-center shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-hover sm:py-8 md:max-w-[200px]">
                 <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.12em] text-gold">Step {s.num}</p>
                 <div className="mx-auto mb-3 flex h-[52px] w-[52px] items-center justify-center rounded-full bg-em-50 text-em">
                   <s.icon className="h-6 w-6" />
@@ -409,7 +409,7 @@ function CollectionCard({
   return (
     <Link
       href={href}
-      className={`group relative block overflow-hidden rounded-gc-l transition-transform duration-300 hover:-translate-y-1 ${full ? "md:col-span-2 aspect-[21/9]" : "aspect-[16/10]"}`}
+      className={`group relative block overflow-hidden rounded-md transition-transform duration-300 hover:-translate-y-1 ${full ? "md:col-span-2 aspect-[21/9]" : "aspect-[16/10]"}`}
     >
       <div className={`absolute inset-0 bg-gradient-to-br ${gradient} transition-transform duration-700 group-hover:scale-[1.03]`} />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent" />

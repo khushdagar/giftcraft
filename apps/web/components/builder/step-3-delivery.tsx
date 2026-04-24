@@ -215,11 +215,22 @@ export function Step3Delivery() {
           return;
         }
 
-        // Skip header, parse data rows
-        const recipients = lines.slice(1).map((line) => {
+        // Skip header, parse data rows and filter invalid rows
+        const allRecipients = lines.slice(1).map((line) => {
           const [name, email, phone, address] = line.split(',').map((v) => v.trim());
           return { name, email, phone, address };
         });
+
+        // Filter and cast to ensure name and address are non-empty strings
+        const recipients = allRecipients.filter(
+          (r): r is { name: string; email: string | undefined; phone: string | undefined; address: string } =>
+            r.name !== '' && r.address !== ''
+        );
+
+        if (recipients.length === 0) {
+          setCsvError('No valid recipients found. Ensure each row has Name and Address columns.');
+          return;
+        }
 
         setCsvRecipients(recipients);
         setCsvRecipientCount(recipients.length);
@@ -254,7 +265,7 @@ export function Step3Delivery() {
           {/* Single Location */}
           <button
             onClick={() => setDeliveryMode('single')}
-            className={`rounded-gc border-2 p-4 text-left transition ${
+            className={`rounded-md border-2 p-4 text-left transition ${
               deliveryMode === 'single'
                 ? 'border-em bg-em-50'
                 : 'border-bdr hover:border-em-300 bg-white'
@@ -271,7 +282,7 @@ export function Step3Delivery() {
           {/* Individual Delivery */}
           <button
             onClick={() => setDeliveryMode('individual')}
-            className={`rounded-gc border-2 p-4 text-left transition ${
+            className={`rounded-md border-2 p-4 text-left transition ${
               deliveryMode === 'individual'
                 ? 'border-em bg-em-50'
                 : 'border-bdr hover:border-em-300 bg-white'
@@ -292,7 +303,7 @@ export function Step3Delivery() {
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
           Delivery Location
         </p>
-        <div className="rounded-gc-l border-2 border-bdr bg-white p-4 space-y-3">
+        <div className="rounded-md border-2 border-bdr bg-white p-4 space-y-3">
           <div className="flex gap-2 items-center">
             <div className="max-w-xs flex-1">
               <Input
@@ -304,14 +315,14 @@ export function Step3Delivery() {
                   setPincodeInput(val);
                 }}
                 maxLength={6}
-                className="rounded-gc text-center font-semibold"
+                className="rounded-md text-center font-semibold"
               />
             </div>
             <Button
               onClick={handleEstimateShipping}
               disabled={!pincodeInput || pincodeInput.length !== 6 || loadingShipping}
               variant="em"
-              className="rounded-gc-l flex-shrink-0"
+              className="rounded-md flex-shrink-0"
               size="sm"
             >
               {loadingShipping ? 'Checking...' : 'Check'}
@@ -321,7 +332,7 @@ export function Step3Delivery() {
           {shippingError && <p className="text-xs text-red-600">{shippingError}</p>}
 
           {shippingZone && (
-            <div className="rounded-gc bg-sky-50 border border-sky-200 p-3 space-y-2">
+            <div className="rounded-md bg-sky-50 border border-sky-200 p-3 space-y-2">
               <div>
                 <p className="text-xs text-sky-700 font-semibold">Delivery Zone</p>
                 <p className="text-sm font-semibold text-sky-900 mt-1">{shippingZone.zoneName}</p>
@@ -351,19 +362,19 @@ export function Step3Delivery() {
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
             Delivery Address
           </p>
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-4 space-y-4">
+          <div className="rounded-md border-2 border-bdr bg-white p-4 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 placeholder="Name *"
                 value={formAddress.name}
                 onChange={(e) => setFormAddress({ ...formAddress, name: e.target.value })}
-                className="rounded-gc border-2"
+                className="rounded-md border-2"
               />
               <Input
                 placeholder="Company (optional)"
                 value={formAddress.company}
                 onChange={(e) => setFormAddress({ ...formAddress, company: e.target.value })}
-                className="rounded-gc border-2"
+                className="rounded-md border-2"
               />
             </div>
 
@@ -371,14 +382,14 @@ export function Step3Delivery() {
               placeholder="Address Line 1 *"
               value={formAddress.address1}
               onChange={(e) => setFormAddress({ ...formAddress, address1: e.target.value })}
-              className="rounded-gc border-2"
+              className="rounded-md border-2"
             />
 
             <Input
               placeholder="Address Line 2 (optional)"
               value={formAddress.address2}
               onChange={(e) => setFormAddress({ ...formAddress, address2: e.target.value })}
-              className="rounded-gc border-2"
+              className="rounded-md border-2"
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -386,12 +397,12 @@ export function Step3Delivery() {
                 placeholder="City *"
                 value={formAddress.city}
                 onChange={(e) => setFormAddress({ ...formAddress, city: e.target.value })}
-                className="rounded-gc border-2"
+                className="rounded-md border-2"
               />
               <select
                 value={formAddress.state}
                 onChange={(e) => setFormAddress({ ...formAddress, state: e.target.value })}
-                className="rounded-gc border-2 border-bdr px-3 py-2 bg-white"
+                className="rounded-md border-2 border-bdr px-3 py-2 bg-white"
               >
                 <option value="">Select State *</option>
                 {INDIAN_STATES.map((state) => (
@@ -411,13 +422,13 @@ export function Step3Delivery() {
                   const val = e.target.value.replace(/\D/g, '').slice(0, 6);
                   setFormAddress({ ...formAddress, pincode: val });
                 }}
-                className="rounded-gc border-2"
+                className="rounded-md border-2"
               />
               <Input
                 placeholder="Phone *"
                 value={formAddress.phone}
                 onChange={(e) => setFormAddress({ ...formAddress, phone: e.target.value })}
-                className="rounded-gc border-2"
+                className="rounded-md border-2"
               />
             </div>
 
@@ -433,7 +444,7 @@ export function Step3Delivery() {
                 }
               }}
               variant="em"
-              className="w-full rounded-gc-l"
+              className="w-full rounded-md"
             >
               Save Address
             </Button>
@@ -442,7 +453,7 @@ export function Step3Delivery() {
       )}
 
       {/* Delivery Charge Note */}
-      <div className="rounded-gc bg-amber-50 border border-amber-200 p-4">
+      <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
         <p className="text-xs font-semibold text-amber-700 mb-1">Delivery Charge</p>
         <p className="text-sm font-black text-amber-900 tabnum">
           {formatRupees(totalDeliveryCharge)} ({deliveryMode === 'single' ? DELIVERY_RATES.single : DELIVERY_RATES.individual}/pack × {packQuantity})
@@ -460,7 +471,7 @@ export function Step3Delivery() {
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
             Recipients List
           </p>
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-4 space-y-3">
+          <div className="rounded-md border-2 border-bdr bg-white p-4 space-y-3">
             <div className="text-xs text-ink-3 mb-3">
               <p className="font-semibold mb-2">CSV Format: Name,Email,Phone,Address</p>
               <p className="text-[10px]">Example:</p>
@@ -469,7 +480,7 @@ export function Step3Delivery() {
               </code>
             </div>
 
-            <label className="flex flex-col items-center justify-center rounded-gc border-2 border-dashed border-bdr bg-elevated p-8 cursor-pointer hover:border-em transition">
+            <label className="flex flex-col items-center justify-center rounded-md border-2 border-dashed border-bdr bg-elevated p-8 cursor-pointer hover:border-em transition">
               <Upload className="h-6 w-6 text-ink-3 mb-2" />
               <p className="text-sm font-semibold text-ink-2">
                 {csvFile ? csvFile.name : 'Upload recipients CSV'}
@@ -485,7 +496,7 @@ export function Step3Delivery() {
 
             {csvError && <p className="text-xs text-red-600">{csvError}</p>}
             {csvFile && csvRecipientCount > 0 && (
-              <div className="rounded-gc bg-green-50 border border-green-200 p-3 flex items-start gap-2">
+              <div className="rounded-md bg-green-50 border border-green-200 p-3 flex items-start gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-xs font-semibold text-green-700">{csvRecipientCount} recipients detected</p>
@@ -515,19 +526,19 @@ export function Step3Delivery() {
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
           Preferred Delivery Date
         </p>
-        <div className="rounded-gc-l border-2 border-bdr bg-white p-4 space-y-3">
+        <div className="rounded-md border-2 border-bdr bg-white p-4 space-y-3">
           <Input
             type="date"
             value={delivDate || ''}
             onChange={(e) => setDelivDate(e.target.value)}
             min={today}
             max={maxDeliveryDateStr}
-            className="rounded-gc border-2"
+            className="rounded-md border-2"
           />
 
           {delivDate && (
             <div
-              className={`rounded-gc p-3 flex items-start gap-3 border-2 ${
+              className={`rounded-md p-3 flex items-start gap-3 border-2 ${
                 deliveryConfidence === 'high'
                   ? 'bg-green-50 border-green-200'
                   : deliveryConfidence === 'medium'
@@ -583,7 +594,7 @@ export function Step3Delivery() {
       </div>
 
       {/* Info */}
-      <div className="rounded-gc bg-blue-50 border border-blue-200 p-4">
+      <div className="rounded-md bg-blue-50 border border-blue-200 p-4">
         <p className="text-xs font-semibold text-blue-900 mb-1">ℹ️ What's Next?</p>
         <p className="text-xs text-blue-800 leading-relaxed">
           In the final step, you'll review your complete order with itemized pricing and place your order.

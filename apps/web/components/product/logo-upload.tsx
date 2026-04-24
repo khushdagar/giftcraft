@@ -47,7 +47,7 @@ export function LogoUpload() {
       <p className="overline mb-3 text-ink-3">YOUR LOGO</p>
 
       {!preview ? (
-        <label className="flex flex-col items-center justify-center rounded-gc-l border-2 border-dashed border-bdr bg-elevated p-8 cursor-pointer hover:border-em transition">
+        <label className="flex flex-col items-center justify-center rounded-md border-2 border-dashed border-bdr bg-elevated p-8 cursor-pointer hover:border-em transition">
           <Upload className="h-8 w-8 text-ink-3 mb-2" />
           <p className="text-sm font-semibold text-ink-2">Upload your logo</p>
           <p className="text-xs text-ink-3 mt-1">JPG, PNG, or SVG • Max 5MB</p>
@@ -60,7 +60,7 @@ export function LogoUpload() {
           />
         </label>
       ) : (
-        <div className="relative rounded-gc-l border-2 border-bdr bg-white overflow-hidden">
+        <div className="relative rounded-md border-2 border-bdr bg-white overflow-hidden">
           <div className="relative aspect-square bg-elevated flex items-center justify-center p-4">
             <img
               src={preview}

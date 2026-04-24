@@ -91,7 +91,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
           {/* Left: Products & Customizations */}
           <div className="space-y-6">
             {/* Products */}
-            <div className="rounded-gc-l border-2 border-bdr bg-white p-5 space-y-3">
+            <div className="rounded-md border-2 border-bdr bg-white p-5 space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Items</p>
               {products.map((product: any) => (
                 <div
@@ -111,7 +111,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
 
             {/* Customizations */}
             {(packaging || addons.length > 0) && (
-              <div className="rounded-gc-l border-2 border-bdr bg-white p-5 space-y-3">
+              <div className="rounded-md border-2 border-bdr bg-white p-5 space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
                   Customizations
                 </p>
@@ -140,7 +140,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
 
             {/* Shipping */}
             {shippingZone && (
-              <div className="rounded-gc-l border-2 border-sky-200 bg-sky-50 p-5">
+              <div className="rounded-md border-2 border-sky-200 bg-sky-50 p-5">
                 <p className="text-xs text-sky-700 font-semibold mb-2">{shippingZone.zoneName}</p>
                 <p className="text-lg font-black text-sky-900 tabnum">
                   {formatRupees(shippingZone.flatRate)}
@@ -151,7 +151,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
 
           {/* Right: Pricing Summary */}
           <div className="space-y-4">
-            <div className="rounded-gc-l bg-dark text-inv p-5 space-y-2">
+            <div className="rounded-md bg-dark text-inv p-5 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span>Subtotal</span>
                 <span className="font-semibold tabnum">{formatRupees(pricing.subtotal || 0)}</span>
@@ -192,7 +192,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
                 asChild
                 variant="em"
                 size="lg"
-                className="w-full rounded-gc-l"
+                className="w-full rounded-md"
               >
                 <a href={`/api/quotes/${quote.id.split('_')[0]}/pdf`} download>
                   Download PDF
@@ -202,14 +202,14 @@ export default async function QuotePage({ params }: { params: { token: string } 
                 asChild
                 variant="outline"
                 size="lg"
-                className="w-full rounded-gc-l"
+                className="w-full rounded-md"
               >
                 <Link href="/builder">Create Similar Pack</Link>
               </Button>
             </div>
 
             {/* Info */}
-            <div className="rounded-gc bg-blue-50 border border-blue-200 p-3">
+            <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
               <p className="text-[10px] font-semibold text-blue-900 mb-1">ℹ️ Quote Info</p>
               <p className="text-[10px] text-blue-800 leading-relaxed">
                 Valid until {quote.expiresAt.toLocaleDateString('en-IN')}

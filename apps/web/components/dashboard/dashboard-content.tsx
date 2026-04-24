@@ -84,17 +84,17 @@ export function DashboardContent({ userId, initialOrders }: DashboardContentProp
       {/* Orders Tab */}
       <Tabs.Content value="orders" className="animate-in fade-in">
         {orders.length === 0 ? (
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-8 text-center">
+          <div className="rounded-md border-2 border-bdr bg-white p-8 text-center">
             <p className="text-ink-3 mb-4">No orders yet</p>
             <a
               href="/builder"
-              className="inline-block rounded-gc-l bg-em text-white px-6 py-2 text-sm font-semibold hover:bg-em-800 transition"
+              className="inline-block rounded-md bg-em text-white px-6 py-2 text-sm font-semibold hover:bg-em-800 transition"
             >
               Create Your First Pack
             </a>
           </div>
         ) : (
-          <div className="rounded-gc-l border-2 border-bdr bg-white overflow-hidden">
+          <div className="rounded-md border-2 border-bdr bg-white overflow-hidden">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-bdr bg-elevated/50">
@@ -164,11 +164,11 @@ export function DashboardContent({ userId, initialOrders }: DashboardContentProp
 
       {/* Quotes Tab */}
       <Tabs.Content value="quotes" className="animate-in fade-in">
-        <div className="rounded-gc-l border-2 border-bdr bg-white p-8 text-center">
+        <div className="rounded-md border-2 border-bdr bg-white p-8 text-center">
           <p className="text-ink-3 mb-4">No active quotes yet</p>
           <a
             href="/builder"
-            className="inline-block rounded-gc-l bg-em text-white px-6 py-2 text-sm font-semibold hover:bg-em-800 transition"
+            className="inline-block rounded-md bg-em text-white px-6 py-2 text-sm font-semibold hover:bg-em-800 transition"
           >
             Create a Quote
           </a>
@@ -177,7 +177,7 @@ export function DashboardContent({ userId, initialOrders }: DashboardContentProp
 
       {/* Brand Assets Tab */}
       <Tabs.Content value="assets" className="animate-in fade-in">
-        <div className="rounded-gc-l border-2 border-bdr bg-white p-8 text-center">
+        <div className="rounded-md border-2 border-bdr bg-white p-8 text-center">
           <p className="text-ink-3 mb-4">Brand assets feature coming soon</p>
           <p className="text-xs text-ink-3">Save your logos, colors, and design guidelines here</p>
         </div>
@@ -185,7 +185,7 @@ export function DashboardContent({ userId, initialOrders }: DashboardContentProp
 
       {/* Profile Tab */}
       <Tabs.Content value="profile" className="animate-in fade-in">
-        <div className="rounded-gc-l border-2 border-bdr bg-white p-8">
+        <div className="rounded-md border-2 border-bdr bg-white p-8">
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
             Account Information
           </p>

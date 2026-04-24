@@ -1,25 +1,31 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
+import { NextRequest, NextResponse } from 'next/server';
 import { Decimal } from '@prisma/client/runtime/library';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const body = await request.json();
-    const { quoteId, billingJson, deliveryMode, cardMessage, razorpayOrderId, razorpayPaymentId } = body;
+    const body = await req.json();
+    const { quoteId, deliveryMode, cardMessage, billingJson } = body;
 
-    // Fetch quote to get payload
+    if (!quoteId) {
+      return NextResponse.json(
+        { error: 'Quote ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Fetch the quote by shareToken (not id)
     const quote = await prisma.quote.findUnique({
-      where: { id: quoteId },
-      select: { payload: true },
+      where: { shareToken: quoteId },
     });
 
     if (!quote) {
@@ -30,79 +36,78 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = quote.payload as any;
+    const pricing = payload.pricing || {};
+    const products = payload.products || [];
 
-    // Generate orderNumber: GC-{YYYY}-{4-digit padded sequence}
-    const year = new Date().getFullYear();
-    const orderCount = await prisma.order.count({
-      where: {
-        createdAt: {
-          gte: new Date(`${year}-01-01`),
-        },
-      },
-    });
-    const orderNumber = `GC-${year}-${String(orderCount + 1).padStart(4, '0')}`;
+    // Generate order number
+    const orderCount = await prisma.order.count();
+    const orderNumber = `GC${new Date().getFullYear()}${String(orderCount + 1).padStart(6, '0')}`;
 
-    // Create order with items
+    // Create the order
     const order = await prisma.order.create({
       data: {
         orderNumber,
         placedById: session.user.id,
         status: 'confirmed',
-        packQuantity: payload.packQuantity || 50,
+        packQuantity: payload.packQuantity || 1,
         deliveryMode: deliveryMode || 'single',
-        billingJson,
-        subtotal: new Decimal(payload.pricing?.subtotal || 0),
-        packagingAmount: new Decimal(payload.pricing?.packaging || 0),
-        addonsAmount: new Decimal(payload.pricing?.addons || 0),
-        shippingAmount: new Decimal(payload.pricing?.shipping || 0),
-        discountAmount: new Decimal(payload.pricing?.discount || 0),
-        cgstAmount: new Decimal(payload.pricing?.cgst || 0),
-        sgstAmount: new Decimal(payload.pricing?.sgst || 0),
-        igstAmount: new Decimal(payload.pricing?.igst || 0),
-        razorpayFee: new Decimal(payload.pricing?.razorpayFee || 0),
-        grandTotal: new Decimal(payload.pricing?.grandTotal || 0),
-        razorpayOrderId: razorpayOrderId || null,
-        razorpayPaymentId: razorpayPaymentId || null,
-        brandingNotes: cardMessage || '',
+        cardMessage: cardMessage || '',
+        billingJson: billingJson || {},
 
-        // Create order items from quote products
+        // Money fields from pricing
+        subtotal: new Decimal(pricing.subtotal || 0),
+        packagingAmount: new Decimal(pricing.packagingAmount || 0),
+        addonsAmount: new Decimal(pricing.addonsAmount || 0),
+        shippingAmount: new Decimal(pricing.shipping || 0),
+        cgstAmount: new Decimal(pricing.cgst || 0),
+        sgstAmount: new Decimal(pricing.sgst || 0),
+        igstAmount: new Decimal(pricing.igst || 0),
+        razorpayFee: new Decimal(pricing.razorpayFee || 0),
+        grandTotal: new Decimal(pricing.grandTotal || 0),
+
+        // Create order items
         items: {
-          createMany: {
-            data: (payload.products || []).map((product: any) => ({
-              productId: product.id,
-              quantity: product.quantity,
-              unitPrice: new Decimal(product.sellPrice),
-              totalPrice: new Decimal(product.sellPrice * product.quantity),
-              hsnCode: product.hsnCode || null,
-              gstRate: product.gstRate ? new Decimal(product.gstRate) : null,
-              printingTechnique: product.printingTechnique || null,
-            })),
+          create: products.map((product: any) => ({
+            productId: product.id,
+            quantity: product.quantity,
+            unitPrice: new Decimal(product.sellPrice),
+            totalPrice: new Decimal(product.sellPrice * product.quantity),
+            hsnCode: product.hsnCode,
+            gstRate: product.gstRate ? new Decimal(product.gstRate) : null,
+          })),
+        },
+
+        // Add timeline entry
+        timeline: {
+          create: {
+            status: 'confirmed',
+            note: 'Order placed via mockup path',
+            actorId: session.user.id,
           },
         },
       },
-      select: {
-        id: true,
-        orderNumber: true,
-        grandTotal: true,
-        createdAt: true,
-      },
     });
 
-    // Create initial OrderTimeline entry
-    await prisma.orderTimeline.create({
-      data: {
-        orderId: order.id,
-        status: 'confirmed',
-        note: `Order confirmed. Payment ID: ${razorpayPaymentId || 'N/A'}`,
-        actorId: session.user.id,
-      },
+    // Update quote status to converted
+    await prisma.quote.update({
+      where: { id: quote.id },
+      data: { status: 'converted' },
     });
 
-    return NextResponse.json(order, { status: 201 });
-  } catch (error) {
-    console.error('Error creating order:', error);
+    console.log('✅ Order created:', order.id, order.orderNumber);
+
     return NextResponse.json(
-      { error: 'Failed to create order' },
+      {
+        success: true,
+        id: order.id,
+        orderNumber: order.orderNumber,
+      },
+      { status: 201 }
+    );
+  } catch (error: any) {
+    console.error('❌ Error creating order:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to create order' },
       { status: 500 }
     );
   }

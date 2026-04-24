@@ -79,7 +79,7 @@ export function CatalogContent({
         {/* Sidebar filters (desktop) */}
         <aside className="hidden lg:block space-y-6">
           {/* Search */}
-          <div className="rounded-gc-l border border-bdr shadow-card p-4">
+          <div className="rounded-md border border-bdr shadow-card p-4">
             <p className="overline mb-3">SEARCH</p>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-3" />
@@ -87,13 +87,13 @@ export function CatalogContent({
                 placeholder="Search products..."
                 value={localSearch}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-9 rounded-gc h-9 text-sm"
+                className="pl-9 rounded-md h-9 text-sm"
               />
             </div>
           </div>
 
           {/* Category filter */}
-          <div className="rounded-gc-l border border-bdr shadow-card p-4">
+          <div className="rounded-md border border-bdr shadow-card p-4">
             <p className="overline mb-3">CATEGORY</p>
             <div className="space-y-2 text-sm max-h-64 overflow-y-auto">
               <button
@@ -121,7 +121,7 @@ export function CatalogContent({
           </div>
 
           {/* Price filter */}
-          <div className="rounded-gc-l border border-bdr shadow-card p-4">
+          <div className="rounded-md border border-bdr shadow-card p-4">
             <p className="overline mb-3">PRICE RANGE</p>
             <div className="space-y-2 text-sm">
               <label className="block">
@@ -150,14 +150,14 @@ export function CatalogContent({
           </div>
 
           {/* Brand filter */}
-          <div className="rounded-gc-l border border-bdr shadow-card p-4">
+          <div className="rounded-md border border-bdr shadow-card p-4">
             <p className="overline mb-3">BRAND</p>
             <div className="flex flex-wrap gap-2">
               {brands.slice(0, 8).map((b) => (
                 <button
                   key={b}
                   onClick={() => setFilter('brand', filters.brand === b ? null : b)}
-                  className={`rounded-gc-p px-3 py-1 text-xs font-semibold transition ${
+                  className={`rounded-md-p px-3 py-1 text-xs font-semibold transition ${
                     filters.brand === b
                       ? 'bg-dark text-inv'
                       : 'border border-bdr text-ink hover:bg-gray-50'
@@ -170,14 +170,14 @@ export function CatalogContent({
           </div>
 
           {/* Occasion filter */}
-          <div className="rounded-gc-l border border-bdr shadow-card p-4">
+          <div className="rounded-md border border-bdr shadow-card p-4">
             <p className="overline mb-3">OCCASION</p>
             <div className="flex flex-wrap gap-2">
               {occasions.slice(0, 6).map((occ) => (
                 <button
                   key={occ.id}
                   onClick={() => setFilter('occasionId', filters.occasionId === occ.id ? null : occ.id)}
-                  className={`rounded-gc-p px-3 py-1 text-xs font-semibold transition ${
+                  className={`rounded-md-p px-3 py-1 text-xs font-semibold transition ${
                     filters.occasionId === occ.id
                       ? 'bg-dark text-inv'
                       : 'border border-bdr text-ink hover:bg-gray-50'
@@ -190,7 +190,7 @@ export function CatalogContent({
           </div>
 
           {/* Eco toggle */}
-          <div className="rounded-gc-l border border-bdr shadow-card p-4">
+          <div className="rounded-md border border-bdr shadow-card p-4">
             <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
               <input
                 type="checkbox"
@@ -207,7 +207,7 @@ export function CatalogContent({
             <Button
               onClick={clearAll}
               variant="outline"
-              className="w-full rounded-gc-l border-bdr"
+              className="w-full rounded-md border-bdr"
             >
               Clear All Filters
             </Button>
@@ -221,7 +221,7 @@ export function CatalogContent({
             <Button
               onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
               variant="outline"
-              className="gap-2 rounded-gc-l border-bdr"
+              className="gap-2 rounded-md border-bdr"
             >
               <SlidersHorizontal className="w-4 h-4" />
               Filters
@@ -232,7 +232,7 @@ export function CatalogContent({
                 placeholder="Search..."
                 value={localSearch}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="pl-9 rounded-gc h-9 text-sm"
+                className="pl-9 rounded-md h-9 text-sm"
               />
             </div>
           </div>
@@ -243,7 +243,7 @@ export function CatalogContent({
               {Object.entries(activeFilters).map(([key, value]) => (
                 <Badge
                   key={key}
-                  className="rounded-gc-p gap-1 bg-em-50 text-em-700 hover:bg-em-100 cursor-pointer"
+                  className="rounded-md-p gap-1 bg-em-50 text-em-700 hover:bg-em-100 cursor-pointer"
                   onClick={() => setFilter(key, null)}
                 >
                   {typeof value === 'boolean' ? key : `${key}: ${value}`}
@@ -272,7 +272,7 @@ export function CatalogContent({
                 setSort(e.target.value);
                 setFilter('sort', e.target.value);
               }}
-              className="rounded-gc px-3 py-1.5 text-sm border border-bdr"
+              className="rounded-md px-3 py-1.5 text-sm border border-bdr"
             >
               <option value="featured">Featured</option>
               <option value="newest">Newest</option>
@@ -283,15 +283,15 @@ export function CatalogContent({
 
           {/* Product grid or empty state */}
           {showEmpty ? (
-            <div className="rounded-gc-l border border-bdr shadow-card bg-white p-12 text-center">
+            <div className="rounded-md border border-bdr shadow-card bg-white p-12 text-center">
               <p className="text-5xl mb-4">🫗</p>
               <p className="text-lg font-semibold mb-2">No products found</p>
               <p className="text-sm text-ink-3 mb-6">Try adjusting your filters</p>
               <div className="flex gap-3 justify-center">
-                <Button onClick={clearAll} variant="em" className="rounded-gc-l">
+                <Button onClick={clearAll} variant="em" className="rounded-md">
                   Clear All Filters
                 </Button>
-                <Button asChild variant="dark" className="rounded-gc-l">
+                <Button asChild variant="dark" className="rounded-md">
                   <a href="https://wa.me/919999999999">Get Help on WhatsApp</a>
                 </Button>
               </div>
@@ -332,7 +332,7 @@ export function CatalogContent({
                 disabled={page === 1}
                 onClick={() => setFilter('page', page - 1)}
                 variant="outline"
-                className="rounded-gc"
+                className="rounded-md"
               >
                 ← Previous
               </Button>
@@ -343,7 +343,7 @@ export function CatalogContent({
                 disabled={page === totalPages}
                 onClick={() => setFilter('page', page + 1)}
                 variant="outline"
-                className="rounded-gc"
+                className="rounded-md"
               >
                 Next →
               </Button>
@@ -366,9 +366,9 @@ function ProductCard({ product }: { product: Product }) {
       className="group"
     >
       <Link href={`/products/${product.slug}`} className="block">
-        <div className="rounded-gc-l overflow-hidden shadow-card hover:shadow-hover transition-shadow">
+        <div className="rounded-md overflow-hidden shadow-card hover:shadow-hover transition-shadow">
           {/* Image */}
-          <div className="relative m-2.5 overflow-hidden rounded-gc bg-elevated aspect-[4/3]">
+          <div className="relative m-2.5 overflow-hidden rounded-md bg-elevated aspect-[4/3]">
             {product.images?.[0]?.url ? (
               <img
                 src={product.images[0].url}
@@ -390,7 +390,7 @@ function ProductCard({ product }: { product: Product }) {
                 </Badge>
               )}
               {product.printingTechnique && product.printingTechnique !== 'none' && (
-                <span className="rounded-gc-p bg-dark/10 px-2 py-0.5 text-[10px] font-semibold text-ink">
+                <span className="rounded-md-p bg-dark/10 px-2 py-0.5 text-[10px] font-semibold text-ink">
                   BRANDING
                 </span>
               )}

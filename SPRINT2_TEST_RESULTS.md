@@ -33,7 +33,7 @@ All 6 Sprint 2 test cases verified. No breaking changes detected. Ready for stag
 - SQL injection: Prisma parameterized queries
 
 ### Design
-- Bento styling: rounded-gc-l, shadow-card, gold accents
+- Bento styling: rounded-md, shadow-card, gold accents
 - Framer Motion: All animations check prefers-reduced-motion
 - Responsive: Mobile, tablet, desktop optimized
 - Accessibility: Semantic HTML, ARIA labels

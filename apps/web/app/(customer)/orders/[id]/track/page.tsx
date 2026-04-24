@@ -1,16 +1,24 @@
-import { prisma } from '@/lib/prisma';
-import { formatRupees } from '@/lib/utils';
+import { prisma } from "@/lib/prisma";
+import { formatRupees } from "@/lib/utils";
 
 const STATUS_STEPS = [
-  { key: 'confirmed', label: 'Confirmed', description: 'Order received' },
-  { key: 'in_production', label: 'In Production', description: 'Creating your packs' },
-  { key: 'qc', label: 'Quality Check', description: 'Checking quality' },
-  { key: 'packed', label: 'Packed', description: 'Ready to ship' },
-  { key: 'dispatched', label: 'Dispatched', description: 'On the way' },
-  { key: 'delivered', label: 'Delivered', description: 'Order complete' },
+  { key: "confirmed", label: "Confirmed", description: "Order received" },
+  {
+    key: "in_production",
+    label: "In Production",
+    description: "Creating your packs",
+  },
+  { key: "qc", label: "Quality Check", description: "Checking quality" },
+  { key: "packed", label: "Packed", description: "Ready to ship" },
+  { key: "dispatched", label: "Dispatched", description: "On the way" },
+  { key: "delivered", label: "Delivered", description: "Order complete" },
 ];
 
-export default async function OrderTrackPage({ params }: { params: { id: string } }) {
+export default async function OrderTrackPage({
+  params,
+}: {
+  params: { id: string };
+}) {
   const order = await prisma.order.findUnique({
     where: { id: params.id },
     include: { items: true },
@@ -21,13 +29,17 @@ export default async function OrderTrackPage({ params }: { params: { id: string 
       <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <h1 className="text-3xl font-black text-ink mb-2">Order Not Found</h1>
-          <p className="text-ink-3">We couldn't find this order in our system.</p>
+          <p className="text-ink-3">
+            We couldn't find this order in our system.
+          </p>
         </div>
       </div>
     );
   }
 
-  const currentStepIndex = STATUS_STEPS.findIndex((s) => s.key === order.status);
+  const currentStepIndex = STATUS_STEPS.findIndex(
+    (s) => s.key === order.status,
+  );
   const estimatedDelivery = new Date(order.createdAt);
   estimatedDelivery.setDate(estimatedDelivery.getDate() + 7);
 
@@ -41,7 +53,7 @@ export default async function OrderTrackPage({ params }: { params: { id: string 
         </div>
 
         {/* Status Timeline */}
-        <div className="rounded-gc-l border-2 border-bdr bg-white p-8 mb-8">
+        <div className="rounded-md border-2 border-bdr bg-white p-8 mb-8">
           <div className="space-y-6">
             {STATUS_STEPS.map((step, idx) => {
               const isCompleted = idx <= currentStepIndex;
@@ -54,18 +66,18 @@ export default async function OrderTrackPage({ params }: { params: { id: string 
                     <div
                       className={`h-10 w-10 rounded-full flex items-center justify-center font-black text-sm border-2 ${
                         isCurrent
-                          ? 'bg-em text-white border-em ring-4 ring-em/20 animate-pulse'
+                          ? "bg-em text-white border-em ring-4 ring-em/20 animate-pulse"
                           : isCompleted
-                            ? 'bg-em text-white border-em'
-                            : 'bg-elevated border-bdr text-ink-3'
+                            ? "bg-em text-white border-em"
+                            : "bg-elevated border-bdr text-ink-3"
                       }`}
                     >
-                      {isCompleted ? '✓' : idx + 1}
+                      {isCompleted ? "✓" : idx + 1}
                     </div>
                     {idx < STATUS_STEPS.length - 1 && (
                       <div
                         className={`w-1 h-12 mt-1 ${
-                          idx < currentStepIndex ? 'bg-em' : 'bg-bdr'
+                          idx < currentStepIndex ? "bg-em" : "bg-bdr"
                         }`}
                       />
                     )}
@@ -85,13 +97,16 @@ export default async function OrderTrackPage({ params }: { params: { id: string 
         {/* Order Summary */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Items */}
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-5">
+          <div className="rounded-md border-2 border-bdr bg-white p-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
               Items
             </p>
             <div className="space-y-2">
               {order.items.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between text-sm">
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between text-sm"
+                >
                   <span className="text-ink">{item.productName}</span>
                   <span className="text-ink-2">×{item.quantity}</span>
                 </div>
@@ -100,7 +115,7 @@ export default async function OrderTrackPage({ params }: { params: { id: string 
           </div>
 
           {/* Delivery Details */}
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-5">
+          <div className="rounded-md border-2 border-bdr bg-white p-5">
             <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
               Delivery
             </p>
@@ -115,41 +130,12 @@ export default async function OrderTrackPage({ params }: { params: { id: string 
                 <div>
                   <p className="text-ink-3 text-xs">Estimated Delivery</p>
                   <p className="text-ink font-semibold">
-                    {estimatedDelivery.toLocaleDateString('en-IN')}
+                    {estimatedDelivery.toLocaleDateString("en-IN")}
                   </p>
                 </div>
               </div>
             )}
           </div>
-        </div>
-
-        {/* Estimated Delivery Pill */}
-        <div className="rounded-gc-l border-2 border-gold bg-gold-50 p-4 mb-8">
-          <p className="text-xs font-semibold text-gold-700 mb-1">Estimated Delivery</p>
-          <p className="text-2xl font-black text-gold-900">
-            {estimatedDelivery.toLocaleDateString('en-IN', {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-            })}
-          </p>
-          <p className="text-xs text-gold-700 mt-1">7-10 business days from order</p>
-        </div>
-
-        {/* Help Section */}
-        <div className="rounded-gc-l border-2 border-sky-200 bg-sky-50 p-5">
-          <p className="text-sm font-semibold text-sky-900 mb-2">Need Help?</p>
-          <p className="text-sm text-sky-800 mb-3">
-            Contact us on WhatsApp for real-time order updates
-          </p>
-          <a
-            href="https://wa.me/919876543210?text=Hi%20GiftCraft%20team%2C%20I%20have%20a%20question%20about%20my%20order"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block rounded-gc-l bg-sky-900 text-white px-4 py-2 text-sm font-semibold hover:bg-sky-800 transition"
-          >
-            WhatsApp Support
-          </a>
         </div>
       </div>
     </div>

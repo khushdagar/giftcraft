@@ -169,7 +169,7 @@ colors: {
 
 ### 3.4 Component Design — Bento Blocks
 
-**Cards:** `rounded-3xl border-2 border-gray-200` — never rounded-lg. Always border-2 (2px).
+**Cards:** `rounded-md border-2 border-gray-200` — never rounded-lg. Always border-2 (2px).
 
 **Buttons:** `rounded-2xl px-8 py-4 font-bold text-lg hover:-translate-y-1 hover:shadow-xl` — chunky with lift.
 
@@ -357,7 +357,7 @@ export const config = {
 ```
 /login page: 
 - Split layout: left half = pastel gradient (amber-50 to indigo-50) with GiftCraft tagline
-- Right half = white card (rounded-3xl) with:
+- Right half = white card (rounded-md) with:
   - GiftCraft logo
   - "Welcome to GiftCraft" text-3xl font-black
   - "Sign in to manage your gifting" text-gray-500
@@ -473,7 +473,7 @@ NEXT_PUBLIC_POSTHOG_KEY="phc_xxx"
 4. Check prefers-reduced-motion
 5. Use shadcn/ui components
 6. Put product images on gray-50 background
-7. Use rounded-3xl for cards, rounded-2xl for buttons
+7. Use rounded-md for cards, rounded-2xl for buttons
 8. Use font-black for headings and prices
 9. Use drag-to-scroll sliders (not arrow buttons)
 10. Use NextAuth.js + Google OAuth for auth (not Clerk)
@@ -483,7 +483,7 @@ NEXT_PUBLIC_POSTHOG_KEY="phc_xxx"
 2. Use AWS services
 3. Use Clerk (we use NextAuth.js)
 4. Build Stage 3+ features in Stage 1
-5. Use rounded-lg for cards (always rounded-3xl)
+5. Use rounded-lg for cards (always rounded-md)
 6. Use font-normal for headings
 7. Put product images on bare white
 8. Use arrow-button carousels (use drag sliders)

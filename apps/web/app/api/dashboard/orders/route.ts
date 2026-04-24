@@ -1,61 +1,88 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/auth';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const searchParams = new URL(request.url).searchParams;
-    const page = Math.max(1, Number(searchParams.get('page') || '1'));
-    const limit = Math.min(50, Number(searchParams.get('limit') || '10'));
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const skip = (page - 1) * limit;
 
+    // Fetch orders for the logged-in user with product details
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
-        where: {
-          placedById: session.user.id,
-        },
+        where: { placedById: session.user.id },
         select: {
           id: true,
           orderNumber: true,
           status: true,
           grandTotal: true,
           createdAt: true,
-          _count: {
-            select: { items: true },
+          packQuantity: true,
+          items: {
+            select: {
+              id: true,
+              quantity: true,
+              product: {
+                select: {
+                  name: true,
+                  images: {
+                    select: {
+                      url: true,
+                    },
+                    orderBy: { sortOrder: 'asc' },
+                    take: 1,
+                  },
+                },
+              },
+            },
+            take: 1,
           },
         },
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
+        skip,
         take: limit,
       }),
       prisma.order.count({
-        where: {
-          placedById: session.user.id,
-        },
+        where: { placedById: session.user.id },
       }),
     ]);
 
-    return NextResponse.json({
-      orders: orders.map((order) => ({
-        ...order,
-        itemCount: order._count.items,
-        _count: undefined,
-      })),
-      total,
-      page,
-      limit,
-    });
-  } catch (error) {
-    console.error('Error fetching dashboard orders:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch orders' },
+      {
+        success: true,
+        orders: orders.map((o: any) => {
+          const firstItem = o.items[0];
+          return {
+            id: o.id,
+            orderNumber: o.orderNumber,
+            status: o.status,
+            grandTotal: Number(o.grandTotal),
+            createdAt: o.createdAt.toISOString(),
+            itemCount: o.packQuantity,
+            productName: firstItem?.product?.name || 'Product',
+            productImage: firstItem?.product?.images?.[0]?.url || null,
+          };
+        }),
+        total,
+        page,
+        limit,
+      },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error('❌ Error fetching orders:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch orders' },
       { status: 500 }
     );
   }

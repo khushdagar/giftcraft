@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { formatRupees } from '@/lib/utils';
+import { TestPaymentButton } from './test-payment-button';
 
 declare global {
   interface Window {
@@ -31,6 +32,7 @@ export function RazorpayButton({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const isTestMode = process.env.NEXT_PUBLIC_TEST_PAYMENT_MODE === 'true';
 
   // Load Razorpay script
   useEffect(() => {
@@ -114,13 +116,27 @@ export function RazorpayButton({
     }
   };
 
+  // Show test payment button in development mode
+  if (isTestMode) {
+    return (
+      <TestPaymentButton
+        quoteId={quoteId}
+        amount={amount * 0.9} // Apply 10% discount for testing
+        email={email}
+        phone={phone}
+        companyName={companyName}
+        buttonText={buttonText}
+      />
+    );
+  }
+
   return (
     <Button
       onClick={handlePayment}
       disabled={loading || !razorpayLoaded || !email || !phone || amount < 0}
       variant="em"
       size="xl"
-      className="w-full rounded-gc-l"
+      className="w-full rounded-md"
     >
       {loading ? 'Processing...' : (buttonText || `Pay ${formatRupees(amount)}`)}
     </Button>

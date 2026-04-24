@@ -83,7 +83,7 @@ export default function CheckoutSuccessPage() {
 
         {/* Order number badge */}
         <div className="mb-8 inline-block">
-          <div className="rounded-gc-l bg-gold-50 border-2 border-gold p-6">
+          <div className="rounded-md bg-gold-50 border-2 border-gold p-6">
             <p className="text-xs font-semibold uppercase tracking-wider text-gold-700 mb-2">
               Order Number
             </p>
@@ -99,7 +99,7 @@ export default function CheckoutSuccessPage() {
             asChild
             variant="em"
             size="xl"
-            className="w-full rounded-gc-l"
+            className="w-full rounded-md"
           >
             <Link href={`/orders/${orderId}/track`}>Track Order</Link>
           </Button>
@@ -107,14 +107,14 @@ export default function CheckoutSuccessPage() {
             asChild
             variant="outline"
             size="lg"
-            className="w-full rounded-gc-l"
+            className="w-full rounded-md"
           >
             <Link href="/">Back to Home</Link>
           </Button>
         </div>
 
         {/* Info box */}
-        <div className="rounded-gc-l bg-blue-50 border-2 border-blue-200 p-4">
+        <div className="rounded-md bg-blue-50 border-2 border-blue-200 p-4">
           <p className="text-xs font-semibold text-blue-900 mb-1">What's Next?</p>
           <p className="text-xs text-blue-800 leading-relaxed">
             We'll send you email updates as your order moves through each stage. You can also track progress anytime using your order number.

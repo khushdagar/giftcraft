@@ -7,6 +7,7 @@ import { Upload, X, FileIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Select } from '@/components/ui/select';
 
 interface Packaging {
   id: string;
@@ -114,7 +115,7 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Your Logo</p>
         <div className="max-w-xs">
           {!logo ? (
-            <label className="flex flex-col items-center justify-center rounded-gc-l border-2 border-dashed border-bdr bg-elevated p-4 cursor-pointer hover:border-em transition">
+            <label className="flex flex-col items-center justify-center rounded-md border-2 border-dashed border-bdr bg-elevated p-4 cursor-pointer hover:border-em transition">
               <Upload className="h-6 w-6 text-ink-3 mb-2" />
               <p className="text-xs font-semibold text-ink-2">Upload your logo</p>
               <p className="text-[10px] text-ink-3 mt-1 text-center">JPG, PNG, SVG, AI, EPS, PDF • Max 10MB</p>
@@ -128,7 +129,7 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
             </label>
           ) : (
             <div className="space-y-3">
-              <div className="rounded-gc bg-green-50 border-2 border-green-200 p-3 flex items-center gap-2">
+              <div className="rounded-md bg-green-50 border-2 border-green-200 p-3 flex items-center gap-2">
                 <div className="text-green-600 text-lg">✓</div>
                 <div>
                   <p className="text-xs font-semibold text-green-700">Logo uploaded successfully!</p>
@@ -136,7 +137,7 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
                 </div>
               </div>
 
-              <div className="relative rounded-gc-l border-2 border-bdr bg-white overflow-hidden">
+              <div className="relative rounded-md border-2 border-bdr bg-white overflow-hidden">
                 {logo.preview && logo.preview.includes('data:image') ? (
                   <div className="relative aspect-square bg-gray-50 flex items-center justify-center p-4">
                     <img
@@ -176,13 +177,13 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
             {printingTechniques.map((technique) => (
               <div
                 key={technique}
-                className="rounded-gc-p bg-indigo-100 text-indigo-700 px-3 py-1.5 text-xs font-semibold"
+                className="rounded-md-p bg-indigo-100 text-indigo-700 px-3 py-1.5 text-xs font-semibold"
               >
                 {PRINTING_TECHNIQUES[technique] || technique}
               </div>
             ))}
           </div>
-          <div className="rounded-gc bg-amber-50/50 border border-amber-200 p-4">
+          <div className="rounded-md bg-amber-50/50 border border-amber-200 p-4">
             <p className="text-xs font-semibold text-amber-700 mb-1">Note</p>
             <p className="text-xs text-amber-600 leading-relaxed">
               Printing cost is included in your pack price. Our team will reach out to confirm your design and placement preferences.
@@ -201,35 +202,59 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
           placeholder="Any special instructions for our design team (e.g. color preferences, placement details)..."
           value={brandingNotes}
           onChange={(e) => setBrandingNotes(e.target.value.slice(0, 500))}
-          className="rounded-gc-l border-2 min-h-24"
+          className="rounded-md border-2 min-h-24"
         />
       </div>
 
       {/* Packaging Selection */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Packaging</p>
-        <div className="grid grid-cols-2 gap-3">
-          {packagingOptions.map((pkg) => (
-            <button
-              key={pkg.id}
-              onClick={() => setPackaging(packaging?.id === pkg.id ? null : pkg)}
-              className={`rounded-gc border-2 p-4 text-left transition ${
-                packaging?.id === pkg.id
-                  ? 'border-em bg-em-50'
-                  : 'border-bdr hover:border-em-300 bg-white'
-              }`}
-            >
-              <p className="font-semibold text-sm text-ink">{pkg.name}</p>
-              {pkg.price > 0 && (
-                <p className="text-xs text-ink-2 mt-2">+{formatRupees(pkg.price)}</p>
-              )}
-            </button>
-          ))}
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">Packaging</p>
+          <Select
+            value={packaging?.id || ''}
+            onChange={(e) => {
+              const selected = packagingOptions.find((p) => p.id === e.target.value);
+              setPackaging(selected || null);
+            }}
+          >
+            <option value="">Select a packaging option</option>
+            {packagingOptions.map((pkg) => (
+              <option key={pkg.id} value={pkg.id}>
+                {pkg.name} {pkg.price > 0 ? `(+${formatRupees(pkg.price)})` : '(Included)'}
+              </option>
+            ))}
+          </Select>
         </div>
+
+        {/* Optional: Show cards view as alternative */}
+        {packagingOptions.length > 0 && (
+          <div className="rounded-md bg-gray-50 border border-gray-200 p-3">
+            <p className="text-xs font-semibold text-ink-3 mb-2">Or choose from cards:</p>
+            <div className="grid grid-cols-2 gap-2">
+              {packagingOptions.map((pkg) => (
+                <button
+                  key={pkg.id}
+                  onClick={() => setPackaging(packaging?.id === pkg.id ? null : pkg)}
+                  className={`rounded-md border-2 p-3 text-left transition text-sm ${
+                    packaging?.id === pkg.id
+                      ? 'border-em bg-em-50'
+                      : 'border-gray-300 hover:border-em-300 bg-white'
+                  }`}
+                  title={`${pkg.name} - ${pkg.price > 0 ? '+' + formatRupees(pkg.price) : 'Included'}`}
+                >
+                  <p className="font-semibold text-xs text-ink">{pkg.name}</p>
+                  {pkg.price > 0 && (
+                    <p className="text-[10px] text-ink-2 mt-1">+{formatRupees(pkg.price)}</p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Branded Sleeve Toggle */}
-      <div className="flex items-center justify-between rounded-gc-l border-2 border-gray-200 p-4 bg-white">
+      <div className="flex items-center justify-between rounded-md border-2 border-gray-200 p-4 bg-white">
         <div>
           <p className="font-semibold text-sm text-ink">Branded Sleeve</p>
           <p className="text-xs text-ink-3 mt-1">Add a custom printed sleeve (+₹60/pack)</p>
@@ -253,7 +278,7 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
                     addAddon(addon);
                   }
                 }}
-                className={`rounded-gc-p px-4 py-2 text-xs font-semibold transition ${
+                className={`rounded-md-p px-4 py-2 text-xs font-semibold transition ${
                   isSelected
                     ? 'bg-em text-inv'
                     : 'border border-bdr text-ink hover:border-em'
@@ -278,12 +303,12 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
           placeholder="Optional: Add a personalized message for your recipients..."
           value={cardMessage}
           onChange={(e) => setCardMessage(e.target.value.slice(0, 160))}
-          className="rounded-gc-l border-2 min-h-20"
+          className="rounded-md border-2 min-h-20"
         />
       </div>
 
       {/* Customization Summary */}
-      <div className="rounded-gc-l bg-em-50 border border-em-300 p-4">
+      <div className="rounded-md bg-em-50 border border-em-300 p-4">
         <div className="space-y-3">
           {packaging && (
             <div className="flex items-center justify-between text-sm">
@@ -316,7 +341,7 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
       </div>
 
       {/* Note */}
-      <div className="rounded-gc bg-blue-50 border border-blue-200 p-4">
+      <div className="rounded-md bg-blue-50 border border-blue-200 p-4">
         <p className="text-xs font-semibold text-blue-900 mb-1">💡 What's Next?</p>
         <p className="text-xs text-blue-800 leading-relaxed">
           In the next steps, you'll confirm your delivery location, review the final pricing, and place your order.

@@ -109,12 +109,12 @@ export default async function AdminOrdersPage(props: {
               name="search"
               placeholder="GC-2026-0001"
               defaultValue={search || ''}
-              className="flex-1 px-3 py-2 rounded-gc border border-bdr text-sm"
+              className="flex-1 px-3 py-2 rounded-md border border-bdr text-sm"
             />
             <select
               name="status"
               defaultValue={status || ''}
-              className="px-3 py-2 rounded-gc border border-bdr text-sm"
+              className="px-3 py-2 rounded-md border border-bdr text-sm"
             >
               <option value="">All Statuses</option>
               <option value="confirmed">Confirmed</option>
@@ -125,7 +125,7 @@ export default async function AdminOrdersPage(props: {
               <option value="delivered">Delivered</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            <Button type="submit" variant="em" className="rounded-gc">
+            <Button type="submit" variant="em" className="rounded-md">
               Search
             </Button>
           </form>
@@ -134,11 +134,11 @@ export default async function AdminOrdersPage(props: {
 
       {/* Table */}
       {orders.length === 0 ? (
-        <div className="rounded-gc-l border-2 border-bdr bg-white p-8 text-center">
+        <div className="rounded-md border-2 border-bdr bg-white p-8 text-center">
           <p className="text-ink-3">No orders found</p>
         </div>
       ) : (
-        <div className="rounded-gc-l border-2 border-bdr bg-white overflow-hidden">
+        <div className="rounded-md border-2 border-bdr bg-white overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-bdr bg-elevated/50">
@@ -206,7 +206,7 @@ export default async function AdminOrdersPage(props: {
         <div className="flex gap-3 justify-center items-center">
           {page > 1 && (
             <Link href={`/admin/orders?page=${page - 1}${status ? `&status=${status}` : ''}`}>
-              <Button variant="outline" className="rounded-gc">
+              <Button variant="outline" className="rounded-md">
                 Previous
               </Button>
             </Link>
@@ -216,7 +216,7 @@ export default async function AdminOrdersPage(props: {
           </span>
           {page < pages && (
             <Link href={`/admin/orders?page=${page + 1}${status ? `&status=${status}` : ''}`}>
-              <Button variant="em" className="rounded-gc">
+              <Button variant="em" className="rounded-md">
                 Next
               </Button>
             </Link>

@@ -89,7 +89,7 @@ Initialize the GiftCraft project — Sprint 1.
    
    g) /login page — BENTO STYLED:
       - Split layout: left half = pastel gradient (amber-50 to indigo-50 diagonal) with massive heading "Bulk Gifting, Made Beautiful." and subtitle
-      - Right half = white card (rounded-3xl border-2 p-12) with:
+      - Right half = white card (rounded-md border-2 p-12) with:
         - GiftCraft logo at top
         - "Welcome to GiftCraft" text-3xl font-black
         - "Sign in to start gifting" text-gray-500
@@ -173,7 +173,7 @@ Read CLAUDE.md. Sprint 2: Product system.
 
 BUSINESS RULES: Branding in base price. No MOQ filter. Empty state shows Contact Us. Audit trail required.
 
-UI RULES: rounded-3xl cards, images on gray-50, font-black prices, colorful filter pills (rounded-full), drag-to-scroll product sliders, product-first detail page with massive image.
+UI RULES: rounded-md cards, images on gray-50, font-black prices, colorful filter pills (rounded-full), drag-to-scroll product sliders, product-first detail page with massive image.
 
 AUTH: Use NextAuth.js session checks. Admin pages check session.user.role === "super_admin". Product API routes verify session before allowing mutations.
 
@@ -187,23 +187,23 @@ A) ADMIN PRODUCT MANAGEMENT (Shopify clean, NOT Bento):
    Collections: name, banner, products, active toggle.
 
 B) CUSTOMER CATALOG (/catalog) — BENTO:
-   Left sidebar filters in rounded-3xl cards with step labels ("CATEGORY", "PRICE RANGE").
+   Left sidebar filters in rounded-md cards with step labels ("CATEGORY", "PRICE RANGE").
    Category tree, price slider, brand pills (rounded-full, active = navy-800 filled), occasion pills, recipient pills, eco toggle, delivery time, branding toggle. NO MOQ FILTER.
    Active filter badges as colored pills with × close.
    Mobile: bottom sheet filters.
-   Product grid: 4/3/2 cols. Cards: rounded-3xl border-2, image on gray-50 with group-hover:scale-105, "From ₹XXX" font-bold, badges (MOQ amber, eco emerald, branding indigo). "Add to Pack" slides up on hover (Framer Motion).
+   Product grid: 4/3/2 cols. Cards: rounded-md border-2, image on gray-50 with group-hover:scale-105, "From ₹XXX" font-bold, badges (MOQ amber, eco emerald, branding indigo). "Add to Pack" slides up on hover (Framer Motion).
    Card hover: whileHover={{ y:-8, boxShadow }}. Staggered load 50ms.
    Search: autocomplete 300ms, fuzzy. Sort dropdown. URL-synced filters. Skeleton loading.
    Empty state: illustration + "Clear All Filters" + "Get Help on WhatsApp" (two chunky buttons).
 
 C) PRODUCT DETAIL (/products/[slug]) — BENTO PRODUCT-FIRST:
-   Left 60%: massive image on rounded-3xl bg-gray-50. Thumbnails below. Mobile carousel.
+   Left 60%: massive image on rounded-md bg-gray-50. Thumbnails below. Mobile carousel.
    Right 40%: step label "PRODUCT", name text-3xl font-black, brand, printing pill (indigo-100, read-only), eco badge.
-   Pricing block (rounded-3xl border-2 bg-white): step label "PRICING", 6-tier table (active tier bg-amber-50 border-l-4 border-amber-500), font-black tabular-nums prices, qty input with AnimatedNumber on tier change, savings callout (amber-50 pill), GST note.
+   Pricing block (rounded-md border-2 bg-white): step label "PRICING", 6-tier table (active tier bg-amber-50 border-l-4 border-amber-500), font-black tabular-nums prices, qty input with AnimatedNumber on tier change, savings callout (amber-50 pill), GST note.
    Packaging block: radio cards (rounded-2xl, selected border-navy-800). Sleeve toggle.
    Add-ons block: toggle pills (rounded-full, selected emerald-500).
-   Delivery block (rounded-3xl bg-sky-50): pincode input, zone result.
-   Logo upload (rounded-3xl border-dashed). Branding notes textarea.
+   Delivery block (rounded-md bg-sky-50): pincode input, zone result.
+   Logo upload (rounded-md border-dashed). Branding notes textarea.
    CTAs: "Add to Gift Builder" chunky primary + "Get Quick Quote" secondary outlined.
    Related: drag-to-scroll Framer Motion slider. Label "YOU MAY ALSO LIKE".
 
@@ -213,7 +213,7 @@ D) API ROUTES with Zod validation and NextAuth session checks for mutations.
 ### After This Sprint
 - T2.1: Product CRUD works. HSN auto-fills. Margin calc. Audit trail logs changes.
 - T2.2: CSV upload creates/updates products.
-- T2.3: Catalog: Bento cards (rounded-3xl, images on gray-50, hover lift). Drag-to-scroll on related products.
+- T2.3: Catalog: Bento cards (rounded-md, images on gray-50, hover lift). Drag-to-scroll on related products.
 - T2.4: All 9 filters work as colorful pills. URL synced.
 - T2.5: Empty state shows Clear + Contact Us buttons.
 - T2.6: Product detail: massive image, pricing block with tier highlight on amber-50, AnimatedNumber works.
@@ -240,11 +240,11 @@ A) PRICING ENGINE (packages/pricing/): PricingInput → PricingResult (NO brandi
 
 B) ZUSTAND STORE: full builder state.
 
-C) QUANTITY MODAL: Bento-style rounded-3xl. "How many gift packs?" font-black. Corporate/Party radio cards on different block colors (indigo-50 vs orange-50). MOQ enforced.
+C) QUANTITY MODAL: Bento-style rounded-md. "How many gift packs?" font-black. Corporate/Party radio cards on different block colors (indigo-50 vs orange-50). MOQ enforced.
 
-D) STEP 1 (Choose Products): Split view. Left mini-catalog with draggable category pills. Right: merged product view on emerald-50/30 bg (rounded-3xl border-2). Products animate in with spring+rotation. Drag-to-reorder. Box size badge (rounded-full navy-800). Running subtotal on amber-50 block.
+D) STEP 1 (Choose Products): Split view. Left mini-catalog with draggable category pills. Right: merged product view on emerald-50/30 bg (rounded-md border-2). Products animate in with spring+rotation. Drag-to-reorder. Box size badge (rounded-full navy-800). Running subtotal on amber-50 block.
 
-E) STEP 2 (Upload Logo): Logo upload (rounded-3xl border-dashed). Printing badges as indigo-100 pills (read-only). Branding notes on amber-50/50. Packaging radio cards. Add-ons as toggle pills (emerald-500 filled when active).
+E) STEP 2 (Upload Logo): Logo upload (rounded-md border-dashed). Printing badges as indigo-100 pills (read-only). Branding notes on amber-50/50. Packaging radio cards. Add-ons as toggle pills (emerald-500 filled when active).
 ```
 
 ### After This Sprint
@@ -273,7 +273,7 @@ BUILD:
 
 A) STEP 3: Tier cards as colored blocks (active amber-50 + "YOUR TIER" badge). AnimatedNumber on qty change. Individual delivery surcharge amber note. CSV upload with validation.
 
-B) STEP 4: Pricing breakdown (rounded-3xl, alternating rows). NO branding line. GST per HSN. Razorpay fee SEPARATE. Grand total: navy-800 bg, white text, font-black text-3xl. Per-unit: amber-50 pill. Coupon input. Quote PDF download. Share link. WhatsApp share. "Place Order" button → checks NextAuth session → if not signed in, redirect to /login with callback.
+B) STEP 4: Pricing breakdown (rounded-md, alternating rows). NO branding line. GST per HSN. Razorpay fee SEPARATE. Grand total: navy-800 bg, white text, font-black text-3xl. Per-unit: amber-50 pill. Coupon input. Quote PDF download. Share link. WhatsApp share. "Place Order" button → checks NextAuth session → if not signed in, redirect to /login with callback.
 
 C) QUOTE PDF: @react-pdf/renderer A4. All details, NO branding line, Razorpay fee visible.
 
@@ -314,7 +314,7 @@ A) ADMIN ORDERS (Shopify): List table, detail page with status update + OrderTim
 B) HOMEPAGE — FULL BENTO:
    Hero: pastel gradient, "INDIA'S FIRST" step label, text-6xl font-black heading, two chunky CTAs, floating product images.
    Trust strip: logos (grayscale, hover color), stats (font-black numbers).
-   Occasions Bento grid: each tile DIFFERENT block color (Diwali=amber, Christmas=rose, Onboarding=indigo, Birthday=violet). rounded-3xl border-2, hover lift.
+   Occasions Bento grid: each tile DIFFERENT block color (Diwali=amber, Christmas=rose, Onboarding=indigo, Birthday=violet). rounded-md border-2, hover lift.
    Featured products: drag-to-scroll Framer Motion slider (NOT arrow buttons).
    How It Works: 5 colored blocks (sky→indigo→violet→amber→emerald).
    Collections: each row with pastel bg.

@@ -75,7 +75,7 @@ export default async function LoginPage({
               GiftCraft
             </Link>
 
-            <div className="rounded-gc border border-bdr bg-white p-8 shadow-card sm:p-10">
+            <div className="rounded-md border border-bdr bg-white p-8 shadow-card sm:p-10">
               <p className="overline text-ink-3">Welcome back</p>
               <h2 className="mt-2 font-display text-[2rem] leading-tight text-ink">
                 Sign in to GiftCraft

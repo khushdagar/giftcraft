@@ -40,9 +40,9 @@ export function RelatedProducts({ products }: { products: SerializedProduct[] })
                 href={`/products/${product.slug}`}
                 className="flex-shrink-0 w-64 block group"
               >
-                <div className="rounded-gc-l overflow-hidden shadow-card hover:shadow-hover transition-shadow">
+                <div className="rounded-md overflow-hidden shadow-card hover:shadow-hover transition-shadow">
                   {/* Image */}
-                  <div className="relative m-2.5 overflow-hidden rounded-gc bg-elevated aspect-[4/3]">
+                  <div className="relative m-2.5 overflow-hidden rounded-md bg-elevated aspect-[4/3]">
                     {product.images?.[0]?.url ? (
                       <Image
                         src={product.images[0].url}

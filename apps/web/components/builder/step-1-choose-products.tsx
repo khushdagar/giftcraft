@@ -137,13 +137,13 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
               placeholder="Search products by name, brand, or category..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="rounded-gc-l border-2 px-4 py-3 pl-10"
+              className="rounded-md border-2 px-4 py-3 pl-10"
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
           </div>
 
           {/* Product Grid */}
-          <div className="rounded-gc-l border-2 border-amber-300 bg-amber-50 p-6">
+          <div className="rounded-md border-2 border-amber-300 bg-amber-50 p-6">
             <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 mb-4">
               Available Products
             </p>
@@ -178,7 +178,7 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
                         });
                       }
                     }}
-                    className={`rounded-gc-l border-2 overflow-hidden cursor-pointer transition ${
+                    className={`rounded-md border-2 overflow-hidden cursor-pointer transition ${
                       isSelected
                         ? 'border-amber-500 bg-white shadow-lg'
                         : 'border-gray-200 bg-white hover:shadow-md'
@@ -239,7 +239,7 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
                             });
                           }
                         }}
-                        className={`w-full mt-3 rounded-gc-p py-2 text-xs font-semibold transition ${
+                        className={`w-full mt-3 rounded-md-p py-2 text-xs font-semibold transition ${
                           isSelected
                             ? 'bg-amber-500 text-white hover:bg-amber-600'
                             : 'border-2 border-amber-500 text-amber-700 hover:bg-amber-100'
@@ -262,7 +262,7 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
 
         {/* Right: Your Pack (sticky) */}
         <div className="lg:sticky lg:top-[140px] h-fit">
-          <div className="rounded-gc-l border-2 border-emerald-300 bg-emerald-50 p-6 shadow-md space-y-4">
+          <div className="rounded-md border-2 border-emerald-300 bg-emerald-50 p-6 shadow-md space-y-4">
             {/* Title with Step Badge */}
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-black text-ink">Your Gift Pack</h3>
@@ -272,7 +272,7 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
             {/* Icon Grid Box */}
             {selected.length > 0 ? (
               <>
-                <div className="rounded-gc border-2 border-gray-200 bg-white p-6">
+                <div className="rounded-md border-2 border-gray-200 bg-white p-6">
                   <div className="grid grid-cols-3 gap-4">
                     {selected.map((product) => (
                       <div
@@ -307,7 +307,7 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
                   {selected.map((product) => (
                     <div
                       key={product.id}
-                      className="rounded-gc bg-white p-3 flex items-center gap-3 shadow-sm hover:shadow-md transition"
+                      className="rounded-md bg-white p-3 flex items-center gap-3 shadow-sm hover:shadow-md transition"
                     >
                       {/* Product Icon */}
                       <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">

@@ -46,9 +46,9 @@ export default function ContactPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8">
           {/* Left: Contact Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="rounded-gc-l border-2 border-bdr bg-white p-6 space-y-4">
+            <div className="rounded-md border-2 border-bdr bg-white p-6 space-y-4">
               {success && (
-                <div className="rounded-gc bg-em-50 text-em-700 p-4 text-sm">
+                <div className="rounded-md bg-em-50 text-em-700 p-4 text-sm">
                   ✓ Message sent! We'll get back to you within 24 hours.
                 </div>
               )}
@@ -65,7 +65,7 @@ export default function ContactPage() {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   placeholder="Your name"
-                  className="w-full px-3 py-2 rounded-gc border border-bdr text-sm disabled:opacity-50"
+                  className="w-full px-3 py-2 rounded-md border border-bdr text-sm disabled:opacity-50"
                   disabled={loading}
                 />
               </div>
@@ -82,7 +82,7 @@ export default function ContactPage() {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   placeholder="you@company.com"
-                  className="w-full px-3 py-2 rounded-gc border border-bdr text-sm disabled:opacity-50"
+                  className="w-full px-3 py-2 rounded-md border border-bdr text-sm disabled:opacity-50"
                   disabled={loading}
                 />
               </div>
@@ -98,7 +98,7 @@ export default function ContactPage() {
                     setFormData({ ...formData, company: e.target.value })
                   }
                   placeholder="Your company"
-                  className="w-full px-3 py-2 rounded-gc border border-bdr text-sm disabled:opacity-50"
+                  className="w-full px-3 py-2 rounded-md border border-bdr text-sm disabled:opacity-50"
                   disabled={loading}
                 />
               </div>
@@ -115,7 +115,7 @@ export default function ContactPage() {
                   }
                   placeholder="Tell us about your gifting needs..."
                   rows={5}
-                  className="w-full px-3 py-2 rounded-gc border border-bdr text-sm disabled:opacity-50"
+                  className="w-full px-3 py-2 rounded-md border border-bdr text-sm disabled:opacity-50"
                   disabled={loading}
                 />
               </div>
@@ -124,7 +124,7 @@ export default function ContactPage() {
                 type="submit"
                 disabled={loading}
                 variant="em"
-                className="w-full rounded-gc-l"
+                className="w-full rounded-md"
               >
                 {loading ? 'Sending...' : 'Send Message'}
               </Button>
@@ -134,7 +134,7 @@ export default function ContactPage() {
           {/* Right: Contact Info */}
           <div className="space-y-4">
             {/* Address */}
-            <div className="rounded-gc-l border-2 border-bdr bg-white p-5">
+            <div className="rounded-md border-2 border-bdr bg-white p-5">
               <div className="flex gap-3">
                 <MapPin className="w-5 h-5 text-em flex-shrink-0" />
                 <div>
@@ -148,7 +148,7 @@ export default function ContactPage() {
             </div>
 
             {/* Email */}
-            <div className="rounded-gc-l border-2 border-bdr bg-white p-5">
+            <div className="rounded-md border-2 border-bdr bg-white p-5">
               <div className="flex gap-3">
                 <Mail className="w-5 h-5 text-em flex-shrink-0" />
                 <div>
@@ -164,7 +164,7 @@ export default function ContactPage() {
             </div>
 
             {/* Phone */}
-            <div className="rounded-gc-l border-2 border-bdr bg-white p-5">
+            <div className="rounded-md border-2 border-bdr bg-white p-5">
               <div className="flex gap-3">
                 <Phone className="w-5 h-5 text-em flex-shrink-0" />
                 <div>
@@ -177,7 +177,7 @@ export default function ContactPage() {
             </div>
 
             {/* WhatsApp */}
-            <div className="rounded-gc-l border-2 border-em/30 bg-em-50 p-5">
+            <div className="rounded-md border-2 border-em/30 bg-em-50 p-5">
               <div className="flex gap-3">
                 <MessageCircle className="w-5 h-5 text-em flex-shrink-0" />
                 <div>

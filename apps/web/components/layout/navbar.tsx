@@ -56,7 +56,7 @@ export function Navbar() {
           {/* Occasions dropdown — hover-triggered */}
           <li className="group relative py-4">
             <button className="text-sm font-medium text-ink-2 hover:text-ink">Occasions ▾</button>
-            <div className="glass invisible absolute left-1/2 top-full grid min-w-[480px] -translate-x-1/2 grid-cols-3 gap-1 rounded-gc-s p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+            <div className="glass invisible absolute left-1/2 top-full grid min-w-[480px] -translate-x-1/2 grid-cols-3 gap-1 rounded-md-s p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
               {OCCASIONS.map((o) => (
                 <Link
                   key={o.slug}
@@ -76,7 +76,7 @@ export function Navbar() {
         </ul>
 
         <div className="flex items-center gap-3">
-          <Link href="/builder" className="hidden h-[38px] items-center justify-center rounded-gc-p bg-em px-5 text-[13px] font-semibold text-white transition-all hover:scale-[1.02] hover:bg-em-600 hover:shadow-glow lg:inline-flex">
+          <Link href="/builder" className="hidden h-[38px] items-center justify-center rounded-md-p bg-em px-5 text-[13px] font-semibold text-white transition-all hover:scale-[1.02] hover:bg-em-600 hover:shadow-glow lg:inline-flex">
             Build a Gift
           </Link>
 
@@ -165,7 +165,7 @@ export function Navbar() {
             ))}
             <Link
               href="/builder"
-              className="mt-auto block w-full rounded-gc-p bg-em py-4 text-center text-base font-semibold text-white"
+              className="mt-auto block w-full rounded-md-p bg-em py-4 text-center text-base font-semibold text-white"
               onClick={() => setMobileOpen(false)}
             >
               Get a Quote

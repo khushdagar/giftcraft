@@ -73,7 +73,7 @@
 
   /* Pill button — matches .nav-btn */
   .btn-em {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-gc-p bg-em px-6 py-2.5 font-sans text-sm font-semibold text-white transition-all duration-300 ease-gc;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md bg-em px-6 py-2.5 font-sans text-sm font-semibold text-white transition-all duration-300 ease-gc;
   }
   .btn-em:hover {
     @apply bg-em-600 shadow-glow;
@@ -82,7 +82,7 @@
 
   /* Hero CTA buttons */
   .btn-hero {
-    @apply inline-flex h-[52px] items-center justify-center rounded-gc-p px-8 text-base font-semibold transition-all duration-300 ease-gc;
+    @apply inline-flex h-[52px] items-center justify-center rounded-md px-8 text-base font-semibold transition-all duration-300 ease-gc;
   }
   .btn-hero:active { transform: scale(0.97); }
   .btn-hero-white { @apply btn-hero bg-white text-ink; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }

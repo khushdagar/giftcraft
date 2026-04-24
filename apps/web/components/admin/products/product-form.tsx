@@ -145,7 +145,7 @@ export function ProductForm({
             <Tabs.Trigger
               key={t.id}
               value={t.id}
-              className={`shrink-0 rounded-gc-p px-4 py-2 text-xs font-semibold transition ${
+              className={`shrink-0 rounded-md-p px-4 py-2 text-xs font-semibold transition ${
                 tab === t.id
                   ? 'bg-dark text-inv'
                   : 'text-ink-3 hover:text-ink border-b-2 border-transparent'

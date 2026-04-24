@@ -54,7 +54,7 @@ export default function BlogPage() {
         </div>
 
         {/* Newsletter Signup */}
-        <div className="rounded-gc-l border-2 border-em/30 bg-em-50 p-8 mb-12">
+        <div className="rounded-md border-2 border-em/30 bg-em-50 p-8 mb-12">
           <div className="flex gap-4 items-center">
             <Mail className="w-6 h-6 text-em flex-shrink-0" />
             <div className="flex-1">
@@ -69,9 +69,9 @@ export default function BlogPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
-                  className="flex-1 px-3 py-2 rounded-gc border border-em bg-white text-sm"
+                  className="flex-1 px-3 py-2 rounded-md border border-em bg-white text-sm"
                 />
-                <Button type="submit" variant="em" className="rounded-gc-l text-sm">
+                <Button type="submit" variant="em" className="rounded-md text-sm">
                   Subscribe
                 </Button>
               </form>
@@ -97,7 +97,7 @@ export default function BlogPage() {
           {ARTICLE_TEASERS.map((article) => (
             <div
               key={article.id}
-              className={`rounded-gc-l border-2 border-bdr overflow-hidden group cursor-pointer bg-gradient-to-br ${article.gradient}`}
+              className={`rounded-md border-2 border-bdr overflow-hidden group cursor-pointer bg-gradient-to-br ${article.gradient}`}
             >
               {/* Placeholder image */}
               <div className="w-full h-40 bg-gradient-to-br opacity-60 group-hover:opacity-70 transition" />
@@ -121,7 +121,7 @@ export default function BlogPage() {
           <p className="text-ink-2 mb-6">
             Want to share your gifting story? We'd love to feature your company's journey.
           </p>
-          <Button asChild variant="outline" size="lg" className="rounded-gc-l">
+          <Button asChild variant="outline" size="lg" className="rounded-md">
             <a href="mailto:hello@giftcraft.in">Get in Touch</a>
           </Button>
         </div>

@@ -53,7 +53,7 @@ export function QuantityModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="rounded-gc-l bg-white p-8 shadow-2xl max-w-md w-full mx-4">
+      <div className="rounded-md bg-white p-8 shadow-2xl max-w-md w-full mx-4">
         {/* Header */}
         <p className="text-center font-black text-3xl text-ink mb-8">
           How many gift packs?
@@ -69,7 +69,7 @@ export function QuantityModal() {
                 setRecipientType(type.id as 'corporate' | 'party');
                 setLocalQty(type.moq);
               }}
-              className={`w-full rounded-gc border-2 p-4 text-left transition ${
+              className={`w-full rounded-md border-2 p-4 text-left transition ${
                 recipientType === type.id
                   ? `${type.color} border-${type.id === 'corporate' ? 'indigo' : 'orange'}-500`
                   : 'border-bdr hover:border-gray-400 bg-white'
@@ -148,7 +148,7 @@ export function QuantityModal() {
 
         {/* Cost Estimate */}
         {recipientType && (
-          <div className="rounded-gc-l bg-amber-50 border border-amber-200 p-3 mb-8">
+          <div className="rounded-md bg-amber-50 border border-amber-200 p-3 mb-8">
             <p className="text-xs text-amber-700 mb-1">Estimated total</p>
             <p className="text-lg font-black text-amber-700">₹{(localQty * 200).toLocaleString()}</p>
             <p className="text-xs text-amber-600 mt-1">Before customization</p>
@@ -160,7 +160,7 @@ export function QuantityModal() {
           <Button
             onClick={closeQuantityModal}
             variant="outline"
-            className="flex-1 rounded-gc-l"
+            className="flex-1 rounded-md"
           >
             Cancel
           </Button>
@@ -168,7 +168,7 @@ export function QuantityModal() {
             onClick={handleContinue}
             disabled={!isValid}
             variant="em"
-            className="flex-1 rounded-gc-l"
+            className="flex-1 rounded-md"
           >
             Continue
           </Button>

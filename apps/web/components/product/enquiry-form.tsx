@@ -54,7 +54,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-2xl rounded-gc-l bg-white shadow-lg">
+      <div className="w-full max-w-2xl rounded-md bg-white shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-bdr px-6 py-4">
           <h2 className="text-xl font-semibold text-ink">Get a Quick Quote</h2>
@@ -76,7 +76,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {productName && (
-                <div className="rounded-gc bg-elevated p-3">
+                <div className="rounded-md bg-elevated p-3">
                   <p className="text-xs text-ink-3">Product</p>
                   <p className="font-semibold text-ink">{productName}</p>
                 </div>
@@ -93,7 +93,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     value={formData.companyName}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-gc border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
+                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
                     placeholder="TechCorp India"
                   />
                 </div>
@@ -108,7 +108,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     value={formData.contactName}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-gc border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
+                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
                     placeholder="Priya Sharma"
                   />
                 </div>
@@ -123,7 +123,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-gc border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
+                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
                     placeholder="priya@techcorp.com"
                   />
                 </div>
@@ -138,7 +138,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     value={formData.phone}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-gc border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
+                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
                     placeholder="+91 98765 43210"
                   />
                 </div>
@@ -152,7 +152,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     name="quantity"
                     value={formData.quantity}
                     onChange={handleChange}
-                    className="w-full rounded-gc border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
+                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
                     placeholder="250"
                   />
                 </div>
@@ -166,7 +166,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     value={formData.message}
                     onChange={handleChange}
                     rows={4}
-                    className="w-full rounded-gc border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none resize-none"
+                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none resize-none"
                     placeholder="Any specific requirements or questions?"
                   />
                 </div>

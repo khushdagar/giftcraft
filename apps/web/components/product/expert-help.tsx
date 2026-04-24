@@ -14,7 +14,7 @@ export function ExpertHelp({ productName, productId }: ExpertHelpProps) {
 
   return (
     <>
-      <div className="mt-8 rounded-gc-l border border-bdr bg-white p-6">
+      <div className="mt-8 rounded-md border border-bdr bg-white p-6">
         <h3 className="mb-2 text-sm font-semibold text-ink">Need help deciding?</h3>
         <p className="mb-4 text-xs text-ink-2">Our gifting experts are happy to assist.</p>
 

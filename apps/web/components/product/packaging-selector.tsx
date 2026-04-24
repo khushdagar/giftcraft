@@ -33,7 +33,7 @@ export function PackagingSelector({ productId }: { productId: string }) {
           <button
             key={pkg.id}
             onClick={() => setSelected(pkg.id)}
-            className={`rounded-gc border-2 p-4 text-left transition ${
+            className={`rounded-md border-2 p-4 text-left transition ${
               selected === pkg.id
                 ? 'border-em bg-em-50'
                 : 'border-bdr hover:border-em-300 bg-white'

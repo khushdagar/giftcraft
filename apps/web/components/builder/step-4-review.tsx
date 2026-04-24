@@ -130,7 +130,7 @@ export function Step4Review() {
       }
 
       const quote = await quoteRes.json();
-      router.push(`/checkout?quoteId=${quote.id}`);
+      router.push(`/checkout?quoteId=${quote.shareToken}`);
     } catch (error) {
       console.error('Error creating quote:', error);
       alert('Failed to proceed. Please try again.');
@@ -150,7 +150,7 @@ export function Step4Review() {
       </div>
 
       {/* Delivery Mode Display */}
-      <div className="rounded-gc-l bg-em-50 border-2 border-em-200 p-5">
+      <div className="rounded-md bg-em-50 border-2 border-em-200 p-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">
           Delivery Mode
         </p>
@@ -172,7 +172,7 @@ export function Step4Review() {
       </div>
 
       {/* Delivery Address Form */}
-      <div className="bg-white rounded-gc-l border-2 border-bdr p-6 space-y-4">
+      <div className="bg-white rounded-md border-2 border-bdr p-6 space-y-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
           Delivery Address
         </p>
@@ -183,7 +183,7 @@ export function Step4Review() {
             placeholder="Recipient Name *"
             value={formData.recipientName}
             onChange={(e) => handleAddressChange('recipientName', e.target.value)}
-            className="rounded-gc"
+            className="rounded-md"
             required
           />
           <Input
@@ -191,7 +191,7 @@ export function Step4Review() {
             placeholder="Company Name"
             value={formData.companyName}
             onChange={(e) => handleAddressChange('companyName', e.target.value)}
-            className="rounded-gc"
+            className="rounded-md"
           />
         </div>
 
@@ -200,7 +200,7 @@ export function Step4Review() {
           placeholder="Address Line 1 *"
           value={formData.address1}
           onChange={(e) => handleAddressChange('address1', e.target.value)}
-          className="rounded-gc"
+          className="rounded-md"
           required
         />
 
@@ -209,7 +209,7 @@ export function Step4Review() {
           placeholder="Address Line 2 (Optional)"
           value={formData.address2}
           onChange={(e) => handleAddressChange('address2', e.target.value)}
-          className="rounded-gc"
+          className="rounded-md"
         />
 
         <div className="grid grid-cols-3 gap-2">
@@ -218,13 +218,13 @@ export function Step4Review() {
             placeholder="City *"
             value={formData.city}
             onChange={(e) => handleAddressChange('city', e.target.value)}
-            className="rounded-gc"
+            className="rounded-md"
             required
           />
           <select
             value={formData.state}
             onChange={(e) => handleAddressChange('state', e.target.value)}
-            className="rounded-gc border-2 border-bdr px-3 py-2 bg-white text-sm text-ink"
+            className="rounded-md border-2 border-bdr px-3 py-2 bg-white text-sm text-ink"
             required
           >
             <option value="">State *</option>
@@ -243,14 +243,14 @@ export function Step4Review() {
               const val = e.target.value.replace(/\D/g, '').slice(0, 6);
               handleAddressChange('pincode', val);
             }}
-            className="rounded-gc"
+            className="rounded-md"
             required
           />
         </div>
       </div>
 
       {/* Preferred Delivery Date */}
-      <div className="bg-white rounded-gc-l border-2 border-bdr p-6 space-y-4">
+      <div className="bg-white rounded-md border-2 border-bdr p-6 space-y-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
           Preferred Delivery Date
         </p>
@@ -262,7 +262,7 @@ export function Step4Review() {
               value={delivDate || ''}
               onChange={(e) => handleDateChange(e.target.value)}
               min={today}
-              className="rounded-gc"
+              className="rounded-md"
             />
             <p className="text-xs text-ink-3 mt-2">Select your preferred delivery date</p>
           </div>
@@ -287,7 +287,7 @@ export function Step4Review() {
         <Button
           onClick={() => setCurrentStep(3)}
           variant="outline"
-          className="gap-2 rounded-gc-l"
+          className="gap-2 rounded-md"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to Delivery
@@ -296,7 +296,7 @@ export function Step4Review() {
           onClick={handleProceedToCheckout}
           disabled={loading || !formData.recipientName || !formData.address1 || !formData.city || !formData.state || !formData.pincode}
           variant="em"
-          className="gap-2 rounded-gc-l"
+          className="gap-2 rounded-md"
         >
           {loading ? 'Processing...' : 'Next: Review & Quote'}
           {!loading && <ChevronRight className="h-4 w-4" />}

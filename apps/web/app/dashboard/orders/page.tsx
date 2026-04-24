@@ -40,6 +40,8 @@ interface Order {
   grandTotal: number;
   createdAt: string;
   itemCount: number;
+  productName?: string;
+  productImage?: string | null;
 }
 
 export default function OrdersPage() {
@@ -79,12 +81,12 @@ export default function OrdersPage() {
         <Button asChild variant="em"><Link href="/builder">New Order</Link></Button>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto rounded-gc-p bg-elevated p-1">
+      <div className="flex gap-1 overflow-x-auto rounded-md-p bg-elevated p-1">
         {["All", "Active", "Mockup Review", "Production", "Delivered"].map((t) => (
           <button
             key={t}
             onClick={() => setFilter(t === "All" ? null : t)}
-            className={`rounded-gc-p px-4 py-1.5 text-xs font-semibold transition whitespace-nowrap ${
+            className={`rounded-md-p px-4 py-1.5 text-xs font-semibold transition whitespace-nowrap ${
               (t === "All" ? filter === null : filter === t)
                 ? "bg-white text-ink shadow-card"
                 : "text-ink-2 hover:text-ink"
@@ -95,7 +97,7 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      <div className="rounded-gc bg-white shadow-card">
+      <div className="rounded-md bg-white shadow-card">
         <div className="grid grid-cols-12 gap-3 border-b border-bdr px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-ink-3">
           <div className="col-span-4">Order</div>
           <div className="col-span-3 hidden sm:block">Status</div>
@@ -120,19 +122,33 @@ export default function OrdersPage() {
             <Link
               key={o.id}
               href={`/dashboard/orders/${o.id}`}
-              className="grid grid-cols-12 items-center gap-3 border-b border-bdr px-5 py-4 text-sm transition last:border-0 hover:bg-elevated"
+              className="flex items-center gap-4 border-b border-bdr px-5 py-4 text-sm transition last:border-0 hover:bg-elevated"
             >
-              <div className="col-span-11 sm:col-span-4">
-                <p className="font-medium">Pack × {o.itemCount || '?'}</p>
+              {/* Product Image */}
+              {o.productImage ? (
+                <div className="h-14 w-14 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                  <img src={o.productImage} alt={o.productName} className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className="h-14 w-14 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs text-gray-400">No image</span>
+                </div>
+              )}
+
+              {/* Order Info */}
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{o.productName || 'Product'}</p>
+                <p className="mt-0.5 text-xs text-ink-3">Pack × {o.itemCount || '?'}</p>
                 <p className="mt-0.5 text-xs text-ink-3 tabnum">#{o.orderNumber}</p>
               </div>
-              <div className="col-span-3 hidden sm:block">
+
+              {/* Status and Price */}
+              <div className="hidden sm:flex items-center gap-4 flex-shrink-0">
                 <Badge variant={getStatusVariant(o.status)}>{getStatusLabel(o.status)}</Badge>
+                <p className="font-semibold tabnum">{formatRupees(Number(o.grandTotal))}</p>
               </div>
-              <div className="col-span-2 hidden font-semibold sm:block tabnum">
-                {formatRupees(Number(o.grandTotal))}
-              </div>
-              <div className="col-span-1 text-right text-ink-3">→</div>
+
+              <div className="text-right text-ink-3 flex-shrink-0">→</div>
             </Link>
           ))
         )}

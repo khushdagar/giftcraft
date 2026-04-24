@@ -74,7 +74,7 @@ export default function PacksPage() {
             return (
               <div
                 key={pack.id}
-                className={`rounded-gc-l border-2 ${pack.borderColor} ${pack.bg} p-6 flex flex-col`}
+                className={`rounded-md border-2 ${pack.borderColor} ${pack.bg} p-6 flex flex-col`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -100,7 +100,7 @@ export default function PacksPage() {
                   <Button
                     asChild
                     variant="em"
-                    className="w-full rounded-gc-l text-sm"
+                    className="w-full rounded-md text-sm"
                   >
                     <Link href={`/builder?template=${pack.id}`}>Start with This Pack</Link>
                   </Button>
@@ -111,31 +111,31 @@ export default function PacksPage() {
         </div>
 
         {/* DIY Section */}
-        <div className="rounded-gc-l border-2 border-indigo-200 bg-[#EEF2FF] p-8 text-center mb-12">
+        <div className="rounded-md border-2 border-indigo-200 bg-[#EEF2FF] p-8 text-center mb-12">
           <h2 className="text-2xl font-black text-indigo-900 mb-2">Design Your Own</h2>
           <p className="text-indigo-800 mb-6">
             Not seeing what you need? Mix and match from our entire catalog of 500+ products.
           </p>
-          <Button asChild variant="em" size="lg" className="rounded-gc-l">
+          <Button asChild variant="em" size="lg" className="rounded-md">
             <Link href="/builder">Build from Scratch</Link>
           </Button>
         </div>
 
         {/* Features */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-6">
+          <div className="rounded-md border-2 border-bdr bg-white p-6">
             <div className="text-2xl font-black text-em mb-2">500+</div>
             <p className="text-ink-2 text-sm">
               Products to choose from. All with instant pricing and availability.
             </p>
           </div>
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-6">
+          <div className="rounded-md border-2 border-bdr bg-white p-6">
             <div className="text-2xl font-black text-gold-700 mb-2">7–10 days</div>
             <p className="text-ink-2 text-sm">
               Quick turnaround. Most orders ship within a week of approval.
             </p>
           </div>
-          <div className="rounded-gc-l border-2 border-bdr bg-white p-6">
+          <div className="rounded-md border-2 border-bdr bg-white p-6">
             <div className="text-2xl font-black text-em mb-2">Branded</div>
             <p className="text-ink-2 text-sm">
               All products include standard branding. Premium packaging optional.

@@ -1,19 +1,47 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatRupees } from '@/lib/utils';
 import { Download, Link2, MessageCircle } from 'lucide-react';
+import { RazorpayButton } from './razorpay-button';
 
 interface CheckoutSummaryProps {
   payload: any;
   selectedPath?: 'mockup' | 'pricelock';
+  quoteId?: string;
+  userEmail?: string;
+  userName?: string;
+  userPhone?: string;
 }
 
-export function CheckoutSummary({ payload, selectedPath = 'mockup' }: CheckoutSummaryProps) {
+export function CheckoutSummary({
+  payload,
+  selectedPath = 'mockup',
+  quoteId = '',
+  userEmail = '',
+  userName = '',
+  userPhone = '',
+}: CheckoutSummaryProps) {
+  const router = useRouter();
   const [couponCode, setCouponCode] = useState('');
   const [showCouponError, setShowCouponError] = useState(false);
+  const [orderLoading, setOrderLoading] = useState(false);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 CheckoutSummary DEBUG:', {
+      quoteId,
+      userEmail,
+      userName,
+      userPhone,
+      selectedPath,
+      advanceAmount: Math.round(parseFloat(String(payload.pricing?.grandTotal || 0)) * 0.1 * 100) / 100,
+      testModeEnabled: process.env.NEXT_PUBLIC_TEST_PAYMENT_MODE,
+    });
+  }, [quoteId, userEmail, userName, userPhone, selectedPath, payload]);
 
   const products = payload.products || [];
   const pricing = payload.pricing || {};
@@ -46,10 +74,54 @@ export function CheckoutSummary({ payload, selectedPath = 'mockup' }: CheckoutSu
     alert('WhatsApp share will be implemented');
   };
 
+  const handleConfirmOrder = async () => {
+    if (selectedPath === 'mockup' && quoteId) {
+      setOrderLoading(true);
+      try {
+        console.log('📝 Confirming order with:', {
+          quoteId,
+          deliveryMode: payload.deliveryMode,
+          userName,
+          userEmail,
+          userPhone,
+        });
+
+        const orderRes = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            quoteId,
+            deliveryMode: payload.deliveryMode || 'single',
+            cardMessage: payload.cardMessage || '',
+            billingJson: {
+              companyName: userName,
+              email: userEmail,
+              phone: userPhone,
+            },
+          }),
+        });
+
+        const responseData = await orderRes.json();
+
+        if (!orderRes.ok) {
+          console.error('❌ Order creation failed:', orderRes.status, responseData);
+          throw new Error(responseData.error || `Failed (${orderRes.status})`);
+        }
+
+        console.log('✅ Order created:', responseData);
+        router.push(`/checkout/success?orderId=${responseData.id}`);
+      } catch (error: any) {
+        console.error('❌ Error:', error);
+        alert(`Failed: ${error.message}`);
+        setOrderLoading(false);
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Order Summary Box */}
-      <div className="rounded-3xl border-2 border-gray-300 bg-gray-100 p-5 space-y-3">
+      {/* <div className="rounded-md border-2 border-gray-300 bg-gray-100 p-5 space-y-3">
         <p className="text-xs font-bold uppercase tracking-wider text-gray-600">
           Order Summary
         </p>
@@ -91,10 +163,10 @@ export function CheckoutSummary({ payload, selectedPath = 'mockup' }: CheckoutSu
             </div>
           )}
         </div>
-      </div>
+      </div> */}
 
       {/* Pricing Breakdown Box */}
-      <div className="rounded-3xl border-2 border-gray-300 bg-white p-5 space-y-4">
+      <div className="rounded-md border-2 border-gray-300 bg-white p-5 space-y-4">
         <p className="text-xs font-bold uppercase tracking-wider text-gray-600">
           Price Breakdown
         </p>
@@ -274,17 +346,22 @@ export function CheckoutSummary({ payload, selectedPath = 'mockup' }: CheckoutSu
               <span className="hidden sm:inline">WhatsApp</span>
             </Button>
             <Button
-              className="rounded-2xl text-xs h-10 font-bold bg-green-700 text-white hover:bg-green-800"
+              onClick={handleConfirmOrder}
+              disabled={orderLoading}
+              className="rounded-2xl text-xs h-10 font-bold bg-green-700 text-white hover:bg-green-800 disabled:opacity-50"
             >
-              ✓ Confirm Order & Get Mockups
+              {orderLoading ? 'Processing...' : '✓ Confirm Order & Get Mockups'}
             </Button>
           </>
         ) : (
-          <Button
-            className="rounded-full text-sm h-12 font-bold bg-yellow-700 text-white hover:bg-yellow-800"
-          >
-            🔒 Pay {formatRupees(advanceAmount)} & Lock Prices
-          </Button>
+          <RazorpayButton
+            quoteId={quoteId}
+            amount={advanceAmount}
+            email={userEmail}
+            phone={userPhone}
+            companyName={userName}
+            buttonText={`🔒 Pay ${formatRupees(advanceAmount)} & Lock Prices`}
+          />
         )}
       </div>
 

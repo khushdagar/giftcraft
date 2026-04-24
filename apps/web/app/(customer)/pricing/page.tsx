@@ -23,7 +23,7 @@ export default function PricingPage() {
         {/* Pricing Layers */}
         <div className="space-y-4 mb-12">
           {/* Layer 1: Products */}
-          <div className="rounded-gc-l border-2 border-em/20 bg-em-50 p-6">
+          <div className="rounded-md border-2 border-em/20 bg-em-50 p-6">
             <div className="flex gap-4 items-start">
               <Gift className="w-6 h-6 text-em flex-shrink-0 mt-1" />
               <div className="flex-1">
@@ -36,7 +36,7 @@ export default function PricingPage() {
           </div>
 
           {/* Layer 2: Packaging */}
-          <div className="rounded-gc-l border-2 border-gold/20 bg-gold-50 p-6">
+          <div className="rounded-md border-2 border-gold/20 bg-gold-50 p-6">
             <div className="flex gap-4 items-start">
               <Package className="w-6 h-6 text-gold-700 flex-shrink-0 mt-1" />
               <div className="flex-1">
@@ -49,7 +49,7 @@ export default function PricingPage() {
           </div>
 
           {/* Layer 3: Add-ons */}
-          <div className="rounded-gc-l border-2 border-indigo-200 bg-[#EEF2FF] p-6">
+          <div className="rounded-md border-2 border-indigo-200 bg-[#EEF2FF] p-6">
             <div className="flex gap-4 items-start">
               <Zap className="w-6 h-6 text-indigo-600 flex-shrink-0 mt-1" />
               <div className="flex-1">
@@ -62,7 +62,7 @@ export default function PricingPage() {
           </div>
 
           {/* Layer 4: Shipping */}
-          <div className="rounded-gc-l border-2 border-sky-200 bg-sky-50 p-6">
+          <div className="rounded-md border-2 border-sky-200 bg-sky-50 p-6">
             <div className="flex gap-4 items-start">
               <Truck className="w-6 h-6 text-sky-700 flex-shrink-0 mt-1" />
               <div className="flex-1">
@@ -75,7 +75,7 @@ export default function PricingPage() {
           </div>
 
           {/* Layer 5: GST */}
-          <div className="rounded-gc-l border-2 border-orange-200 bg-[#FFF7ED] p-6">
+          <div className="rounded-md border-2 border-orange-200 bg-[#FFF7ED] p-6">
             <div className="flex gap-4 items-start">
               <Calculator className="w-6 h-6 text-orange-700 flex-shrink-0 mt-1" />
               <div className="flex-1">
@@ -96,7 +96,7 @@ export default function PricingPage() {
           </div>
 
           {/* Layer 6: Razorpay Fee */}
-          <div className="rounded-gc-l border-2 border-bdr bg-elevated p-6">
+          <div className="rounded-md border-2 border-bdr bg-elevated p-6">
             <div className="flex gap-4 items-start">
               <CreditCard className="w-6 h-6 text-ink flex-shrink-0 mt-1" />
               <div className="flex-1">
@@ -113,7 +113,7 @@ export default function PricingPage() {
         </div>
 
         {/* Example Calculation */}
-        <div className="rounded-gc-l border-2 border-dark bg-dark text-inv p-8 mb-12">
+        <div className="rounded-md border-2 border-dark bg-dark text-inv p-8 mb-12">
           <h3 className="font-black text-xl mb-6">Example: 50 Corporate Welcome Kits</h3>
           <div className="space-y-2 text-sm mb-6">
             <div className="flex justify-between">
@@ -161,7 +161,7 @@ export default function PricingPage() {
         <div className="space-y-6 mb-12">
           <h2 className="t-heading font-black text-ink">Frequently Asked Questions</h2>
 
-          <details className="rounded-gc-l border-2 border-bdr bg-white p-5 group cursor-pointer">
+          <details className="rounded-md border-2 border-bdr bg-white p-5 group cursor-pointer">
             <summary className="font-semibold text-ink flex items-center justify-between">
               Why does the Razorpay fee exist?
               <span className="text-ink-3 group-open:rotate-180 transition">▼</span>
@@ -171,7 +171,7 @@ export default function PricingPage() {
             </p>
           </details>
 
-          <details className="rounded-gc-l border-2 border-bdr bg-white p-5 group cursor-pointer">
+          <details className="rounded-md border-2 border-bdr bg-white p-5 group cursor-pointer">
             <summary className="font-semibold text-ink flex items-center justify-between">
               Is branding (logo printing) included in the product price?
               <span className="text-ink-3 group-open:rotate-180 transition">▼</span>
@@ -181,7 +181,7 @@ export default function PricingPage() {
             </p>
           </details>
 
-          <details className="rounded-gc-l border-2 border-bdr bg-white p-5 group cursor-pointer">
+          <details className="rounded-md border-2 border-bdr bg-white p-5 group cursor-pointer">
             <summary className="font-semibold text-ink flex items-center justify-between">
               How is GST calculated?
               <span className="text-ink-3 group-open:rotate-180 transition">▼</span>
@@ -191,7 +191,7 @@ export default function PricingPage() {
             </p>
           </details>
 
-          <details className="rounded-gc-l border-2 border-bdr bg-white p-5 group cursor-pointer">
+          <details className="rounded-md border-2 border-bdr bg-white p-5 group cursor-pointer">
             <summary className="font-semibold text-ink flex items-center justify-between">
               Can I negotiate on bulk orders?
               <span className="text-ink-3 group-open:rotate-180 transition">▼</span>
@@ -205,7 +205,7 @@ export default function PricingPage() {
         {/* CTA */}
         <div className="text-center">
           <p className="text-ink-3 mb-4">Ready to build your gift pack?</p>
-          <Button asChild variant="em" size="xl" className="rounded-gc-l">
+          <Button asChild variant="em" size="xl" className="rounded-md">
             <Link href="/builder">Start Building</Link>
           </Button>
         </div>

@@ -29,7 +29,7 @@ export default function Error({
     <div className="min-h-screen bg-canvas py-12 px-4 flex items-center justify-center">
       <div className="container-gc-w max-w-lg text-center">
         {/* Error Icon */}
-        <div className="rounded-gc-l border-2 border-err/20 bg-err/5 p-12 mb-8">
+        <div className="rounded-md border-2 border-err/20 bg-err/5 p-12 mb-8">
           <p className="text-5xl">⚠️</p>
         </div>
 
