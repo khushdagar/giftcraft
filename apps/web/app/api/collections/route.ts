@@ -3,11 +3,16 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * GET /api/collections
- * Returns all active collections with linked products.
- * Used by: homepage collections section
+ * Returns active collections with linked products.
+ * Query params:
+ *   - browse=true: Returns all collections and all products (for /collections browse page)
+ *   - (default): Returns 3 collections, 4 products each (for homepage)
  */
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const isBrowse = searchParams.get('browse') === 'true';
+
     const collections = await prisma.collection.findMany({
       where: { isActive: true },
       include: {
@@ -21,11 +26,11 @@ export async function GET(request: NextRequest) {
             },
           },
           orderBy: { sortOrder: "asc" },
-          take: 4,
+          take: isBrowse ? undefined : 4,
         },
       },
       orderBy: { sortOrder: "asc" },
-      take: 3,
+      take: isBrowse ? undefined : 3,
     });
 
     const formattedCollections = collections.map((collection) => ({

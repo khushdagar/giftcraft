@@ -66,3 +66,29 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await auth();
+
+    if (!session || session.user.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const existing = await prisma.collection.findUnique({ where: { id: params.id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+    }
+
+    // Delete collection and associated products in a transaction
+    await prisma.$transaction(async (tx) => {
+      await tx.collectionProduct.deleteMany({ where: { collectionId: params.id } });
+      await tx.collection.delete({ where: { id: params.id } });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting collection:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
