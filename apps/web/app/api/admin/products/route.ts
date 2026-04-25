@@ -122,17 +122,78 @@ const CreateProductSchema = z.object({
   occasionIds: z.array(z.string()).optional(),
 });
 
+// Helper function to upload file to Digital Ocean Spaces
+async function uploadToDigitalOcean(file: File, folder: string = "products"): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`;
+
+  const accessKey = process.env.DO_SPACES_KEY;
+  const secretKey = process.env.DO_SPACES_SECRET;
+  const region = process.env.DO_SPACES_REGION || "sfo3";
+  const bucket = process.env.DO_SPACES_BUCKET || "giftcraft-dev";
+  const endpoint = `https://${region}.digitaloceanspaces.com`;
+
+  if (!accessKey || !secretKey) {
+    throw new Error("Digital Ocean Spaces credentials not configured");
+  }
+
+  // Create S3-compatible request
+  const url = new URL(`${endpoint}/${bucket}/${fileName}`);
+
+  // For simplicity, use public upload (you can add auth headers if needed)
+  const response = await fetch(url.toString(), {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type || "image/jpeg",
+    },
+    body: buffer,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.statusText}`);
+  }
+
+  // Return the CDN URL
+  const cdnEndpoint = process.env.DO_SPACES_CDN_ENDPOINT || `https://${bucket}.${region}.cdn.digitaloceanspaces.com`;
+  return `${cdnEndpoint}/${fileName}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    
+
     // Auth check
     if (!session || session.user.role !== "super_admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const body = await request.json();
+    const formData = await request.formData();
+    const dataStr = formData.get("data") as string;
+    const imageFiles = formData.getAll("images").filter(
+      (f): f is File => f instanceof File
+    );
+
+    if (!dataStr) {
+      return NextResponse.json({ error: "Product data required" }, { status: 400 });
+    }
+
+    const body = JSON.parse(dataStr);
     const data = CreateProductSchema.parse(body);
+
+    // Upload images to Digital Ocean Spaces
+    const imageUrls: string[] = [];
+    for (let i = 0; i < imageFiles.length; i++) {
+      const file = imageFiles[i];
+      if (!file) continue;
+
+      try {
+        const url = await uploadToDigitalOcean(file);
+        imageUrls.push(url);
+      } catch (err) {
+        console.error(`Failed to upload image ${i}:`, err);
+        // Continue with other images instead of failing
+      }
+    }
 
     // Check if SKU already exists
     const existing = await prisma.product.findUnique({ where: { sku: data.sku } });
@@ -200,6 +261,18 @@ export async function POST(request: NextRequest) {
             },
           },
         }),
+
+        // Create images
+        ...(imageUrls.length && {
+          images: {
+            createMany: {
+              data: imageUrls.map((url, idx) => ({
+                url,
+                isPrimary: idx === 0, // First image is primary
+              })),
+            },
+          },
+        }),
       },
       include: {
         priceTiers: true,
@@ -224,7 +297,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error creating product:", error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      const messages = error.errors.map(e => {
+        const path = e.path.join(".");
+        return `${path}: ${e.message}`;
+      }).join("; ");
+      return NextResponse.json({ error: messages }, { status: 400 });
     }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
