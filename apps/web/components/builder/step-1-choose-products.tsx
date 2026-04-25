@@ -7,7 +7,7 @@ import { formatRupees } from '@/lib/utils';
 import { BOX_SIZE_THRESHOLDS } from '@/lib/constants';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
-import { X } from 'lucide-react';
+import { X, Plus, Minus } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -36,6 +36,7 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
     reorderProducts,
     getProductsSubtotal,
     packQuantity,
+    updateProductQuantity,
   } = useBuilderStore();
 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -307,7 +308,7 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
                   {selected.map((product) => (
                     <div
                       key={product.id}
-                      className="rounded-md bg-white p-3 flex items-center gap-3 shadow-sm hover:shadow-md transition"
+                      className="rounded-md bg-white p-3 flex items-center gap-2 shadow-sm hover:shadow-md transition"
                     >
                       {/* Product Icon */}
                       <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
@@ -326,12 +327,40 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
 
                       {/* Product Info */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-ink line-clamp-2">
+                        <p className="text-xs font-semibold text-ink line-clamp-1">
                           {product.name}
                         </p>
-                        <p className="text-sm font-black text-emerald-700 mt-0.5 tabnum">
-                          {formatRupees(product.sellPrice)}
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {formatRupees(product.sellPrice)} each
                         </p>
+                      </div>
+
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-1 bg-gray-50 rounded-md px-2 py-1">
+                        <button
+                          onClick={() => updateProductQuantity(product.id, Math.max(1, (product.quantity || 1) - 1))}
+                          className="text-gray-500 hover:text-gray-700 p-0.5"
+                          title="Decrease quantity"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          value={product.quantity || 1}
+                          onChange={(e) => {
+                            const qty = Math.max(1, parseInt(e.target.value) || 1);
+                            updateProductQuantity(product.id, qty);
+                          }}
+                          className="w-8 text-center text-xs font-semibold text-ink bg-transparent border-none p-0"
+                        />
+                        <button
+                          onClick={() => updateProductQuantity(product.id, (product.quantity || 1) + 1)}
+                          className="text-gray-500 hover:text-gray-700 p-0.5"
+                          title="Increase quantity"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
                       </div>
 
                       {/* Remove Button */}
