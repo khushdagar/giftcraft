@@ -1,20 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import * as Tabs from '@radix-ui/react-tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 
 const ProductSchema = z.object({
   name: z.string().min(1, 'Name required'),
-  slug: z.string().optional(),
+  slug: z.string().min(3, 'Slug required').regex(/^[a-z0-9-]+$/, 'Invalid slug format'),
   brand: z.string().optional(),
   sku: z.string().min(1, 'SKU required'),
   descriptionShort: z.string().optional(),
@@ -23,7 +23,7 @@ const ProductSchema = z.object({
   dimensions: z.string().optional(),
   weightG: z.number().optional(),
   leadTimeDays: z.number().min(1).optional(),
-  hsnCode: z.string().optional(),
+  hsnId: z.string().min(1, 'HSN code required'),
   printingTechnique: z.string().optional(),
   printingPosition: z.string().optional(),
   status: z.enum(['draft', 'active', 'archived', 'seasonal']).default('draft'),
@@ -39,7 +39,7 @@ const ProductSchema = z.object({
       costPrice: z.number(),
       sellPrice: z.number(),
     })
-  ).optional(),
+  ).min(1, 'At least one price tier required'),
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
 });
@@ -65,6 +65,8 @@ export function ProductForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [priceReason, setPriceReason] = useState('');
+  const [images, setImages] = useState<Array<{ id?: string; url: string; isPrimary: boolean; file?: File }>>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(ProductSchema),
@@ -83,23 +85,49 @@ export function ProductForm({
     },
   });
 
+  // Auto-generate slug from product name
+  const nameValue = useWatch({ control: form.control, name: 'name' });
+  useEffect(() => {
+    if (nameValue && mode === 'create') {
+      const slug = nameValue
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9-]/g, '');
+      form.setValue('slug', slug);
+    }
+  }, [nameValue, form, mode]);
+
   const onSubmit = async (data: ProductFormData) => {
     setLoading(true);
     setError(null);
 
     try {
+      // Use FormData to handle both JSON and files
+      const formData = new FormData();
+
+      // Add product data
+      formData.append('data', JSON.stringify(data));
+      if (mode === 'edit' && priceReason) {
+        formData.append('priceReason', priceReason);
+      }
+
+      // Add image files
+      images.forEach((img, idx) => {
+        if (img.file) {
+          formData.append(`images`, img.file);
+          if (img.isPrimary) {
+            formData.append('primaryImageIndex', idx.toString());
+          }
+        }
+      });
+
       const url = mode === 'create' ? '/api/admin/products' : `/api/admin/products/${initialData?.id}`;
       const method = mode === 'create' ? 'POST' : 'PUT';
 
-      const payload: any = { ...data };
-      if (mode === 'edit' && priceReason) {
-        payload.priceReason = priceReason;
-      }
-
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: formData,
+        // Don't set Content-Type header - browser will set it with boundary for FormData
       });
 
       if (!res.ok) {
@@ -230,9 +258,12 @@ export function ProductForm({
               </p>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">HSN Code</label>
-              <Input {...form.register('hsnCode')} placeholder="e.g. 9617" />
-              <p className="text-xs text-gray-500 mt-1">4-digit HSN code for tax classification</p>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">HSN Code *</label>
+              <Input {...form.register('hsnId')} placeholder="e.g. 9617" required />
+              <p className="text-xs text-gray-500 mt-1">HSN code ID for tax classification</p>
+              {form.formState.errors.hsnId && (
+                <p className="text-xs text-red-600 mt-1">{form.formState.errors.hsnId.message}</p>
+              )}
             </div>
           </Tabs.Content>
 
@@ -240,10 +271,96 @@ export function ProductForm({
           <Tabs.Content value="images" className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">
-                Upload product images. First image will be set as primary. Drag to reorder.
+                Upload product images. First image will be set as primary.
               </p>
             </div>
-            <p className="text-sm text-gray-600">Image upload coming soon</p>
+
+            {/* Upload Area */}
+            <label className="border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-blue-500 transition block text-center">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  files.forEach((file) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      setImages((prev) => [
+                        ...prev,
+                        {
+                          url: event.target?.result as string,
+                          isPrimary: prev.length === 0,
+                          file,
+                        },
+                      ]);
+                    };
+                    reader.readAsDataURL(file);
+                  });
+                }}
+                className="hidden"
+              />
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Click to upload images</p>
+                <p className="text-xs text-gray-500 mt-1">PNG, JPG, WebP up to 5MB each</p>
+              </div>
+            </label>
+
+            {/* Image List */}
+            {images.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-gray-900">Uploaded Images ({images.length})</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {images.map((img, idx) => (
+                    <div key={idx} className="relative group">
+                      <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 border-2 border-gray-200">
+                        <img
+                          src={img.url}
+                          alt={`Product ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      {/* Primary Badge */}
+                      {img.isPrimary && (
+                        <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded font-semibold">
+                          Primary
+                        </div>
+                      )}
+
+                      {/* Hover Actions */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center gap-2">
+                        {!img.isPrimary && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImages((prev) =>
+                                prev.map((p, i) => ({
+                                  ...p,
+                                  isPrimary: i === idx,
+                                }))
+                              );
+                            }}
+                            className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-blue-700"
+                          >
+                            Set Primary
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImages((prev) => prev.filter((_, i) => i !== idx));
+                          }}
+                          className="bg-red-600 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-red-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </Tabs.Content>
 
           {/* Printing */}
@@ -260,12 +377,13 @@ export function ProductForm({
                 {...form.register('printingTechnique')}
                 className="w-full border border-gray-300 rounded-lg p-2 text-sm"
               >
-                <option value="">None</option>
+                <option value="none">None</option>
                 <option value="screen_print">Screen Print</option>
                 <option value="digital_print">Digital Print</option>
                 <option value="embroidery">Embroidery</option>
                 <option value="uv_print">UV Print</option>
-                <option value="laser_engrave">Laser Engraving</option>
+                <option value="laser_engraving">Laser Engraving</option>
+                <option value="emboss">Emboss</option>
               </select>
             </div>
 
@@ -277,6 +395,27 @@ export function ProductForm({
 
           {/* Pricing */}
           <Tabs.Content value="pricing" className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-900">Price Tiers</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  const tiers = form.getValues('priceTiers') || [];
+                  const newTier = {
+                    tier: Math.max(...tiers.map(t => t.tier)) + 1,
+                    minQty: (tiers[tiers.length - 1]?.maxQty || 0) + 1,
+                    maxQty: null,
+                    costPrice: 0,
+                    sellPrice: 0,
+                  };
+                  form.setValue('priceTiers', [...tiers, newTier]);
+                }}
+                className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition"
+              >
+                <Plus className="w-4 h-4" /> Add Tier
+              </button>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
@@ -287,6 +426,7 @@ export function ProductForm({
                     <th className="px-2 py-2 text-left text-xs font-semibold">Cost Price</th>
                     <th className="px-2 py-2 text-left text-xs font-semibold">Sell Price</th>
                     <th className="px-2 py-2 text-left text-xs font-semibold">Margin %</th>
+                    <th className="px-2 py-2 text-center text-xs font-semibold">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -295,9 +435,11 @@ export function ProductForm({
                     const sell = form.watch(`priceTiers.${idx}.sellPrice`);
                     const margin = sell && cost ? ((sell - cost) / sell * 100).toFixed(1) : '0';
                     const marginColor = parseFloat(margin) >= 30 ? 'text-green-600' : parseFloat(margin) >= 20 ? 'text-yellow-600' : 'text-red-600';
+                    const tiers = form.getValues('priceTiers') || [];
+                    const canDelete = tiers.length > 1;
 
                     return (
-                      <tr key={tier.tier} className="hover:bg-gray-50">
+                      <tr key={`tier-${idx}`} className="hover:bg-gray-50">
                         <td className="px-2 py-2 font-semibold">{tier.tier}</td>
                         <td className="px-2 py-2">
                           <input
@@ -331,6 +473,21 @@ export function ProductForm({
                           />
                         </td>
                         <td className={`px-2 py-2 font-semibold text-xs ${marginColor}`}>{margin}%</td>
+                        <td className="px-2 py-2 text-center">
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newTiers = form.getValues('priceTiers')?.filter((_, i) => i !== idx) || [];
+                                form.setValue('priceTiers', newTiers);
+                              }}
+                              className="text-red-600 hover:text-red-800 transition inline-flex items-center justify-center"
+                              title="Delete tier"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
