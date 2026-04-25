@@ -17,6 +17,7 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import { initSlaChecker } from "./workers/sla-checker";
 
 const app = express();
 const PORT = Number(process.env.API_PORT ?? 4000);
@@ -45,6 +46,14 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🟢 GiftCraft API listening on :${PORT}`);
+
+  // Initialize workers
+  try {
+    await initSlaChecker();
+    console.log(`🔧 SLA Checker worker initialized`);
+  } catch (err) {
+    console.error(`❌ Failed to initialize workers:`, err);
+  }
 });
