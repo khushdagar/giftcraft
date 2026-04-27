@@ -4,7 +4,16 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     const packaging = await prisma.packaging.findMany({
-      select: { id: true, name: true, price: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        description: true,
+        imageUrl: true,
+        isActive: true,
+      },
+      where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
     });
 

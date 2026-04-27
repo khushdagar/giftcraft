@@ -70,6 +70,55 @@ enum QuoteStatus {
   cancelled
 }
 
+enum DisputeStatus {
+  open
+  under_review
+  resolved
+  closed
+}
+
+enum VendorPaymentStatus {
+  pending
+  paid
+  overdue
+  cancelled
+}
+
+enum CommunicationType {
+  call
+  email
+  whatsapp
+  meeting
+  note
+}
+
+enum AutomationTrigger {
+  order_placed
+  order_confirmed
+  order_shipped
+  order_delivered
+  order_cancelled
+  dispute_opened
+  quote_created
+  quote_expired
+  payment_received
+  mockup_uploaded
+}
+
+enum AutomationAction {
+  send_email
+  send_whatsapp
+  notify_admin
+  update_order_status
+}
+
+enum ConsentKind {
+  marketing_email
+  marketing_whatsapp
+  analytics
+  dpdp_consent
+}
+
 // ═══════════════════════════════════════════════════════════
 //   NEXTAUTH ADAPTER TABLES (required by @auth/prisma-adapter)
 // ═══════════════════════════════════════════════════════════
@@ -127,8 +176,12 @@ model User {
   sessions      Session[]
   company       Company?  @relation(fields: [companyId], references: [id])
 
-  ordersPlaced  Order[]   @relation("OrderPlacedBy")
-  quotesCreated Quote[]   @relation("QuoteCreatedBy")
+  ordersPlaced      Order[]                @relation("OrderPlacedBy")
+  quotesCreated     Quote[]                @relation("QuoteCreatedBy")
+  disputesSubmitted DisputeTicket[]        @relation("DisputesSubmitted")
+  vendorCommLogs    VendorCommunication[]  @relation("VendorCommLogs")
+  notificationPref  NotificationPreference?
+  consentLogs       ConsentLog[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -339,16 +392,27 @@ model Addon {
 //   VENDORS
 // ═══════════════════════════════════════════════════════════
 model Vendor {
-  id         String   @id @default(cuid())
-  name       String
-  slug       String   @unique
-  contactName String?
-  email      String?
-  phone      String?
-  city       String?
-  state      String?
-  products   ProductVendor[]
-  createdAt  DateTime @default(now())
+  id               String    @id @default(cuid())
+  name             String
+  slug             String    @unique
+  contactName      String?
+  email            String?
+  phone            String?
+  city             String?
+  state            String?
+  address          String?   @db.Text
+  gst              String?
+  paymentTerms     String?
+  notes            String?   @db.Text
+  score            Decimal?  @db.Decimal(5, 2)
+  priceConfirmedAt DateTime?
+  products         ProductVendor[]
+  payments         VendorPayment[]
+  communications   VendorCommunication[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([slug])
 }
 
 model ProductVendor {
@@ -405,11 +469,25 @@ model Order {
   razorpayPaymentId String?
   paidAt          DateTime?
 
+  // Shiprocket
+  shiprocketOrderId String?
+  awbCode          String?
+  courierName      String?
+  trackingUrl      String?
+
+  // GST & Modifications
+  gstBillType     String?  @default("B2C")
+
   items           OrderItem[]
   addons          OrderAddon[]
   recipients      OrderRecipient[]
   timeline        OrderTimeline[]
   mockups         GeneratedMockup[]
+  slaLogs         OrderSlaLog[]
+  artworkApprovals ArtworkApproval[]
+  disputes        DisputeTicket[]
+  einvoice        GstEinvoice?
+  modifications   OrderModification[]
 
   revisionCount   Int @default(0)
 
@@ -659,64 +737,115 @@ model WalletTransaction {
 }
 
 model DisputeTicket {
-  id        String   @id @default(cuid())
-  orderId   String
-  subject   String
-  body      String
-  status    String   @default("open")
-  createdAt DateTime @default(now())
+  id               String        @id @default(cuid())
+  orderId          String
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  submittedById    String?
+  submittedBy      User?         @relation("DisputesSubmitted", fields: [submittedById], references: [id])
+  subject          String
+  body             String        @db.Text
+  photoUrls        String[]
+  status           DisputeStatus @default(open)
+  resolutionNote   String?       @db.Text
+  resolvedAt       DateTime?
+  windowExpiresAt  DateTime
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([status])
 }
 
 model ArtworkApproval {
-  id        String   @id @default(cuid())
-  orderId   String
-  revision  Int      @default(1)
-  status    String   @default("pending")
-  createdAt DateTime @default(now())
+  id             String    @id @default(cuid())
+  orderId        String
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  revision       Int       @default(1)
+  fileUrl        String?   // CDN URL from Digital Ocean Spaces
+  token          String    @unique  // nanoid(16) for public approval URL
+  status         String    @default("pending")  // pending | approved | revision_requested
+  revisionNotes  String?   @db.Text
+  expiresAt      DateTime  // 72 hours from creation
+  approvedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([token])
 }
 
 model OrderSlaLog {
   id        String    @id @default(cuid())
   orderId   String
-  stage     String
-  enteredAt DateTime
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stage     String    // matches OrderStatus string value
+  enteredAt DateTime  @default(now())
   exitedAt  DateTime?
+  slaMinutes Int      // expected SLA for this stage in minutes
+  isBreached Boolean  @default(false)
+
+  @@index([orderId])
+  @@index([isBreached])
 }
 
 model AutomationRule {
-  id          String  @id @default(cuid())
+  id          String              @id @default(cuid())
   name        String
-  triggerJson Json
+  trigger     AutomationTrigger
+  triggerJson Json?
+  action      AutomationAction
   actionJson  Json
-  isActive    Boolean @default(true)
+  isActive    Boolean             @default(true)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([trigger])
+  @@index([isActive])
 }
 
 model NotificationPreference {
-  id        String @id @default(cuid())
-  userId    String @unique
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   prefsJson Json
+  updatedAt DateTime @updatedAt
 }
 
 model ConsentLog {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   userId    String
-  kind      String
-  grantedAt DateTime @default(now())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      ConsentKind
+  granted   Boolean     @default(true)
+  ipAddress String?
+  grantedAt DateTime    @default(now())
+
+  @@index([userId])
+  @@index([kind])
 }
 
 model GstEinvoice {
-  id        String   @id @default(cuid())
-  orderId   String   @unique
+  id        String    @id @default(cuid())
+  orderId   String    @unique
+  order     Order     @relation(fields: [orderId], references: [id])
   irn       String?
-  qrPayload String?
-  createdAt DateTime @default(now())
+  qrPayload String?   @db.Text
+  ackNumber String?
+  ackDate   DateTime?
+  status    String    @default("pending")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model OrderModification {
-  id        String   @id @default(cuid())
-  orderId   String
-  diffJson  Json
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id])
+  modifiedBy String?
+  diffJson   Json
+  reason     String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([orderId])
 }
 
 model SampleOrder {
@@ -775,6 +904,37 @@ model GeneratedMockup {
   createdAt DateTime @default(now())
 
   @@index([orderId])
+}
+
+model VendorPayment {
+  id            String              @id @default(cuid())
+  vendorId      String
+  vendor        Vendor              @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  invoiceNumber String?
+  amount        Decimal             @db.Decimal(10, 2)
+  dueDate       DateTime
+  paidAt        DateTime?
+  status        VendorPaymentStatus @default(pending)
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([vendorId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model VendorCommunication {
+  id          String            @id @default(cuid())
+  vendorId    String
+  vendor      Vendor            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  type        CommunicationType
+  note        String            @db.Text
+  createdById String?
+  createdBy   User?             @relation("VendorCommLogs", fields: [createdById], references: [id])
+  createdAt   DateTime          @default(now())
+
+  @@index([vendorId])
 }
 
 model WhiteLabelStore {

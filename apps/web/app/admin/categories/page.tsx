@@ -28,17 +28,13 @@ export default async function AdminCategoriesPage() {
   });
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <div className="border-b border-bdr">
-        <div className="max-w-4xl mx-auto px-8 py-8">
-          <h1 className="text-2xl font-bold text-ink">Categories</h1>
-          <p className="text-sm text-ink-2 mt-1">Manage product categories</p>
-        </div>
+    <>
+      <div className="mb-8 border-b border-bdr pb-8">
+        <h1 className="text-3xl font-black tracking-tight text-ink">Categories</h1>
+        <p className="mt-1 text-sm text-ink-2">Manage product categories</p>
       </div>
 
-      <div className="max-w-4xl mx-auto px-8 py-8">
-        <CategoryTree initialCategories={categories} />
-      </div>
-    </div>
+      <CategoryTree initialCategories={categories} />
+    </>
   );
 }

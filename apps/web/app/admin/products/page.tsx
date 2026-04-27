@@ -51,32 +51,26 @@ export default async function AdminProductsPage({
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <div className="border-b border-bdr">
-        <div className="max-w-6xl mx-auto px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-ink">Products</h1>
-              <p className="text-sm text-ink-2 mt-1">{total} products total</p>
-            </div>
-            <div className="flex gap-3">
-              <Button asChild>
-                <Link href="/admin/products/new">+ New Product</Link>
-              </Button>
-            </div>
+    <>
+      <div className="mb-8 border-b border-bdr pb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-ink">Products</h1>
+            <p className="mt-1 text-sm text-ink-2">{total} products total</p>
           </div>
+          <Button asChild className="rounded-2xl bg-emerald-600 px-6 py-2 font-bold hover:bg-emerald-700">
+            <Link href="/admin/products/new">+ New Product</Link>
+          </Button>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-8 py-8">
-        <ProductDataTable
-          initialData={serialized}
-          total={total}
-          page={page}
-          limit={limit}
-          totalPages={totalPages}
-        />
-      </div>
-    </div>
+      <ProductDataTable
+        initialData={serialized}
+        total={total}
+        page={page}
+        limit={limit}
+        totalPages={totalPages}
+      />
+    </>
   );
 }

@@ -28,48 +28,59 @@ export function ImageGallery({ images, productName }: { images: ProductImage[]; 
   };
 
   return (
-    <div>
-      {/* Main image */}
-      <motion.div
-        drag="x"
-        dragElastic={0.2}
-        onDragStart={() => setDragStart(0)}
-        onDragEnd={handleDragEnd}
-        className="relative flex aspect-square items-center justify-center rounded-md bg-elevated overflow-hidden cursor-grab active:cursor-grabbing"
-      >
-        {activeImage.url ? (
-          <Image
-            src={activeImage.url}
-            alt={productName}
-            fill
-            className="object-cover"
-            priority
-          />
-        ) : (
-          <span className="text-[140px] opacity-70">📦</span>
-        )}
-      </motion.div>
-
-      {/* Thumbnails */}
+    <div className="flex gap-3">
+      {/* Thumbnails - Left side */}
       {sortedImages.length > 1 && (
-        <div className="mt-3 grid grid-cols-5 gap-2">
+        <div className="flex flex-col gap-2">
           {sortedImages.map((img, i) => (
             <button
               key={img.id}
               onClick={() => setActiveIndex(i)}
-              className={`flex aspect-square items-center justify-center rounded-md bg-elevated transition ${
+              className={`relative flex-shrink-0 w-16 h-16 rounded-md bg-elevated transition ${
                 i === activeIndex ? 'ring-2 ring-em' : 'opacity-60 hover:opacity-100'
               }`}
             >
               {img.url ? (
-                <Image src={img.url} alt={`${productName} thumbnail`} fill className="object-cover rounded-md" />
+                <Image
+                  src={img.url}
+                  alt={`${productName} view ${i + 1}`}
+                  fill
+                  className="object-cover rounded-md"
+                  sizes="64px"
+                />
               ) : (
-                <span className="text-2xl">📦</span>
+                <span className="text-2xl flex items-center justify-center w-full h-full">📦</span>
               )}
             </button>
           ))}
         </div>
       )}
+
+      {/* Main image - Right side */}
+      <div className="flex-1">
+        <motion.div
+          drag="x"
+          dragElastic={0.2}
+          onDragStart={() => setDragStart(0)}
+          onDragEnd={handleDragEnd}
+          className="relative flex aspect-square items-center justify-center rounded-md bg-elevated overflow-hidden cursor-grab active:cursor-grabbing"
+        >
+          {activeImage?.url ? (
+            <Image
+              src={activeImage.url}
+              alt={productName}
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
+          ) : (
+            <div className="flex items-center justify-center w-full h-full">
+              <span className="text-[140px] opacity-70">📦</span>
+            </div>
+          )}
+        </motion.div>
+      </div>
     </div>
   );
 }

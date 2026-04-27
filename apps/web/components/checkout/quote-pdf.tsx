@@ -114,6 +114,7 @@ interface QuotePDFProps {
     addons: any[];
     shippingZone?: any;
     pricing: any;
+    packQuantity?: number;
   };
   shareToken: string;
 }
@@ -168,7 +169,7 @@ export function QuotePDF({ quoteId, expiresAt, payload, shareToken }: QuotePDFPr
             {packaging && (
               <View style={styles.row}>
                 <Text>{packaging.name}</Text>
-                <Text>₹{(packaging.price * payload.packQuantity).toFixed(2)}</Text>
+                <Text>₹{(packaging.price * (payload.packQuantity || 1)).toFixed(2)}</Text>
               </View>
             )}
             {addons.length > 0 && (
@@ -176,7 +177,7 @@ export function QuotePDF({ quoteId, expiresAt, payload, shareToken }: QuotePDFPr
                 {addons.map((addon: any) => (
                   <View key={addon.id} style={styles.row}>
                     <Text>{addon.name}</Text>
-                    <Text>₹{(addon.price * payload.packQuantity).toFixed(2)}</Text>
+                    <Text>₹{(addon.price * (payload.packQuantity || 1)).toFixed(2)}</Text>
                   </View>
                 ))}
               </View>

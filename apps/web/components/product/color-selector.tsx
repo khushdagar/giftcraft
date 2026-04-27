@@ -21,7 +21,7 @@ const DEFAULT_COLORS: ColorOption[] = [
 ];
 
 export function ColorSelector({ options = DEFAULT_COLORS, onSelect, isDynamic = true }: ColorSelectorProps) {
-  const [selected, setSelected] = useState(options[0]);
+  const [selected, setSelected] = useState<ColorOption>((options && options.length > 0 ? options[0] : DEFAULT_COLORS[0])!);
 
   const handleSelect = (color: ColorOption) => {
     setSelected(color);

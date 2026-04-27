@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LayoutDashboard, Package, FileText, FolderOpen, Building2, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, FileText, FolderOpen, Building2, Settings, LogOut, AlertCircle, Bell } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const NAV = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
   { href: "/dashboard/orders", icon: Package, label: "Orders" },
+  { href: "/dashboard/disputes", icon: AlertCircle, label: "Disputes" },
   { href: "/dashboard/quotes", icon: FileText, label: "Quotes" },
   { href: "/dashboard/assets", icon: FolderOpen, label: "Brand Assets" },
   { href: "/dashboard/company", icon: Building2, label: "Company" },
   { href: "/dashboard/settings", icon: Settings, label: "Settings" },
+  { href: "/dashboard/settings/notifications", icon: Bell, label: "Notifications" },
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -22,14 +24,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <aside className="sticky top-0 hidden h-screen flex-col bg-dark text-inv lg:flex">
         <div className="px-5 pt-5 pb-4">
           <Link href="/" className="font-display text-xl italic text-em-400">GiftCraft</Link>
-          <p className="mt-1 text-[10px] uppercase tracking-wider text-inv/30">Customer Portal</p>
+          <p className="mt-1 text-[10px] uppercase tracking-wider text-white">Customer Portal</p>
         </div>
         <nav className="flex-1 space-y-0.5 px-3 py-2 text-[13px]">
           {NAV.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-inv/45 transition hover:bg-white/5 hover:text-inv/80"
+              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-white transition hover:bg-white/5 hover:text-inv/80"
             >
               <item.icon className="h-4 w-4" />
               {item.label}

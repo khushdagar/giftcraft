@@ -97,7 +97,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
       <div className="container-gc-w grid grid-cols-1 gap-12 py-8 lg:grid-cols-[1.2fr_1fr] lg:py-12">
         {/* Gallery - Sticky on desktop */}
         <div className="lg:sticky lg:top-6 lg:h-fit">
-          <ImageGallery images={serialized.images || []} productName={product.name} />
+          <ImageGallery
+            images={product.images && product.images.length > 0 ? product.images : serialized.images || []}
+            productName={product.name}
+          />
         </div>
 
         {/* Info */}

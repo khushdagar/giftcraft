@@ -289,7 +289,7 @@ export function CatalogClient() {
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Brand</h4>
                   <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {brands.map(brand => (
+                    {brands.filter((b): b is string => !!b).map(brand => (
                       <label key={brand} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
                         <input type="checkbox" checked={selectedBrands.has(brand)} onChange={() => handleBrandChange(brand)} style={{ accentColor: '#1A6B4F' }} />
                         {brand}

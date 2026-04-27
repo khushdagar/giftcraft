@@ -7,12 +7,13 @@ import { Upload, X, FileIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Select } from '@/components/ui/select';
 
 interface Packaging {
   id: string;
   name: string;
   price: number;
+  description?: string | null;
+  imageUrl?: string | null;
 }
 
 interface Addon {
@@ -206,48 +207,112 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
         />
       </div>
 
-      {/* Packaging Selection */}
+      {/* Packaging Selection - Product Card Style Grid */}
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">Packaging</p>
-          <Select
-            value={packaging?.id || ''}
-            onChange={(e) => {
-              const selected = packagingOptions.find((p) => p.id === e.target.value);
-              setPackaging(selected || null);
-            }}
-          >
-            <option value="">Select a packaging option</option>
-            {packagingOptions.map((pkg) => (
-              <option key={pkg.id} value={pkg.id}>
-                {pkg.name} {pkg.price > 0 ? `(+${formatRupees(pkg.price)})` : '(Included)'}
-              </option>
-            ))}
-          </Select>
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">Select Your Packaging</p>
+          <p className="text-xs text-ink-2">Choose the perfect box for your {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''}</p>
         </div>
 
-        {/* Optional: Show cards view as alternative */}
         {packagingOptions.length > 0 && (
-          <div className="rounded-md bg-gray-50 border border-gray-200 p-3">
-            <p className="text-xs font-semibold text-ink-3 mb-2">Or choose from cards:</p>
-            <div className="grid grid-cols-2 gap-2">
-              {packagingOptions.map((pkg) => (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {packagingOptions.map((pkg) => {
+              const isSelected = packaging?.id === pkg.id;
+              const isIncluded = pkg.price === 0;
+
+              return (
                 <button
                   key={pkg.id}
-                  onClick={() => setPackaging(packaging?.id === pkg.id ? null : pkg)}
-                  className={`rounded-md border-2 p-3 text-left transition text-sm ${
-                    packaging?.id === pkg.id
-                      ? 'border-em bg-em-50'
-                      : 'border-gray-300 hover:border-em-300 bg-white'
+                  onClick={() => setPackaging(isSelected ? null : pkg)}
+                  className={`group rounded-gc-l border-2 overflow-hidden transition-all hover:shadow-lg ${
+                    isSelected
+                      ? 'border-em bg-em-50 shadow-md'
+                      : 'border-bdr bg-white hover:border-em-300'
                   }`}
-                  title={`${pkg.name} - ${pkg.price > 0 ? '+' + formatRupees(pkg.price) : 'Included'}`}
                 >
-                  <p className="font-semibold text-xs text-ink">{pkg.name}</p>
-                  {pkg.price > 0 && (
-                    <p className="text-[10px] text-ink-2 mt-1">+{formatRupees(pkg.price)}</p>
-                  )}
+                  {/* Image Section */}
+                  <div className="relative aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+                    {pkg.imageUrl ? (
+                      <img
+                        src={pkg.imageUrl}
+                        alt={pkg.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                    ) : (
+                      <div className="text-center">
+                        <div className="text-5xl mb-2">📦</div>
+                        <p className="text-xs text-gray-500 font-semibold">{pkg.name}</p>
+                      </div>
+                    )}
+
+                    {/* Selection Indicator */}
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-em/10 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-em text-white flex items-center justify-center text-lg font-bold">
+                          ✓
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Included Badge */}
+                    {isIncluded && (
+                      <div className="absolute top-2 right-2 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold px-2 py-1">
+                        Included
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Content Section */}
+                  <div className="p-3 space-y-2">
+                    <div>
+                      <p className="font-bold text-sm text-ink line-clamp-2">{pkg.name}</p>
+                      {pkg.description && (
+                        <p className="text-xs text-ink-3 mt-1 line-clamp-2">{pkg.description}</p>
+                      )}
+                    </div>
+
+                    {/* Price */}
+                    {pkg.price > 0 ? (
+                      <div>
+                        <p className="text-xs text-ink-3">Add cost</p>
+                        <p className="text-sm font-black text-em">+{formatRupees(pkg.price)}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-semibold text-emerald-600">No additional cost</p>
+                    )}
+
+                    {/* Fits Info */}
+                    {isSelected && selectedProducts.length > 0 && (
+                      <div className="pt-2 border-t border-bdr">
+                        <p className="text-[10px] font-semibold text-ink-2 mb-1">Perfect for:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedProducts.slice(0, 2).map((p) => (
+                            <span key={p.id} className="bg-gray-100 text-ink-2 text-[9px] rounded px-1.5 py-0.5">
+                              {p.name?.split(' ')[0]}
+                            </span>
+                          ))}
+                          {selectedProducts.length > 2 && (
+                            <span className="bg-gray-100 text-ink-2 text-[9px] rounded px-1.5 py-0.5">
+                              +{selectedProducts.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </button>
-              ))}
+              );
+            })}
+          </div>
+        )}
+
+        {/* Packaging Tips */}
+        {packaging && (
+          <div className="rounded-md bg-amber-50 border border-amber-200 p-3 flex gap-2">
+            <span className="text-lg">📦</span>
+            <div className="text-xs">
+              <p className="font-semibold text-amber-900">Perfect choice!</p>
+              <p className="text-amber-800 mt-0.5">{packaging.name} will beautifully hold your {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''}.</p>
             </div>
           </div>
         )}

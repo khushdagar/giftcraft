@@ -25,11 +25,6 @@ const ARTICLE_TEASERS = [
   },
 ];
 
-export const metadata = {
-  title: 'Blog | GiftCraft',
-  description: 'Insights on corporate gifting, trends, and best practices.',
-};
-
 export default function BlogPage() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);

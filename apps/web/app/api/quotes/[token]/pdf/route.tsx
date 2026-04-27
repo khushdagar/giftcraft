@@ -36,7 +36,7 @@ export async function GET(
       />
     );
 
-    return new Response(buffer, {
+    return new Response(buffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

@@ -57,3 +57,20 @@ export const NEFT_DETAILS = {
   ifsc: "SBIN0001234",
   bankName: "State Bank of India",
 };
+
+export const SLA_MINUTES: Record<string, number> = {
+  draft: 60,           // 1 hour
+  quote_sent: 1440,    // 24 hours
+  confirmed: 240,      // 4 hours
+  mockup_pending: 2880, // 48 hours
+  mockup_approved: 240, // 4 hours
+  production: 7200,    // 5 days (120h)
+  quality_check: 1440, // 24 hours
+  packed: 1440,        // 24 hours
+  shipped: 240,        // 4 hours
+  in_transit: 4320,    // 3 days (72h)
+  delivered: 2880,     // 48 hours
+  completed: 0,        // terminal
+  cancelled: 0,        // terminal
+  refunded: 0,         // terminal
+};

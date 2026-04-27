@@ -94,9 +94,16 @@ export default async function AdminOrdersPage(props: {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-ink">Orders</h1>
-        <p className="text-sm text-ink-3 mt-1">Manage all customer orders</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-ink">Orders</h1>
+          <p className="text-sm text-ink-3 mt-1">Manage all customer orders</p>
+        </div>
+        <Link href="/admin/orders/kanban">
+          <Button variant="em" className="rounded-md">
+            Kanban View
+          </Button>
+        </Link>
       </div>
 
       {/* Filters */}

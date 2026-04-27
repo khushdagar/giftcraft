@@ -21,7 +21,15 @@ interface BuilderContentProps {
     categories?: Array<{ categoryId: string }>;
   }>;
   categories: Array<{ id: string; name: string }>;
-  packagingOptions: Array<{ id: string; name: string; price: number }>;
+  packagingOptions: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    price: number;
+    description?: string | null;
+    imageUrl?: string | null;
+    isActive: boolean;
+  }>;
   addonOptions: Array<{ id: string; name: string; price: number }>;
 }
 

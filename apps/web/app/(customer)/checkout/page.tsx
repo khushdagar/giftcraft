@@ -14,7 +14,6 @@ export default function CheckoutPage({
   const router = useRouter();
   const { data: session } = useSession();
   const [selectedPath, setSelectedPath] = useState<'mockup' | 'pricelock'>('mockup');
-  const [userPhone, setUserPhone] = useState('');
 
   useEffect(() => {
     if (!session) {
@@ -124,15 +123,16 @@ export default function CheckoutPage({
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8">
           {/* Left: All Form Sections */}
           <div>
-            <CheckoutForm
-              quoteId={quoteId}
-              userEmail={session.user?.email || ''}
-              userName={session.user?.name || ''}
-              pricing={payload.pricing}
-              payload={payload}
-              onPathChange={setSelectedPath}
-              onPhoneChange={setUserPhone}
-            />
+            {session && (
+              <CheckoutForm
+                quoteId={quoteId}
+                userEmail={session.user?.email || ''}
+                userName={session.user?.name || ''}
+                pricing={payload.pricing}
+                payload={payload}
+                onPathChange={setSelectedPath}
+              />
+            )}
           </div>
 
           {/* Right: Sticky Pricing Panel */}
@@ -141,9 +141,9 @@ export default function CheckoutPage({
               payload={payload}
               selectedPath={selectedPath}
               quoteId={quoteId}
-              userEmail={session.user?.email || ''}
-              userName={session.user?.name || ''}
-              userPhone={userPhone}
+              userEmail={session?.user?.email || ''}
+              userName={session?.user?.name || ''}
+              userPhone=""
             />
           </div>
         </div>

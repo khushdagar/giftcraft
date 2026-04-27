@@ -105,10 +105,10 @@ const CreateProductSchema = z.object({
   isFeatured: z.boolean().default(false),
   hsnId: z.string().min(1, "HSN code required"),
   
-  // 6 price tiers
+  // Price tiers (up to 12)
   priceTiers: z.array(
     z.object({
-      tier: z.number().int().min(1).max(6),
+      tier: z.number().int().min(1).max(12),
       minQty: z.number().int().min(1),
       maxQty: z.number().int().nullable(),
       costPrice: z.number().positive(),

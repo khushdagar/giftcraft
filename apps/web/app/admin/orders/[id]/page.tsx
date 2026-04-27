@@ -2,7 +2,10 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { formatRupees } from '@/lib/utils';
+import Link from 'next/link';
 import { OrderStatusUpdater } from './components/order-status-updater';
+import { ShiprocketShipButton } from './components/shiprocket-ship-button';
+import { FileDown } from 'lucide-react';
 
 export default async function AdminOrderDetailPage({
   params,
@@ -194,6 +197,44 @@ export default async function AdminOrderDetailPage({
           {/* Status Updater */}
           <OrderStatusUpdater orderId={order.id} currentStatus={order.status} />
 
+          {/* Shiprocket Shipment */}
+          {order.status === 'packed' && (
+            <ShiprocketShipButton
+              orderId={order.id}
+              awbCode={order.awbCode || undefined}
+              courierName={order.courierName || undefined}
+              trackingUrl={order.trackingUrl || undefined}
+            />
+          )}
+
+          {order.status === 'shipped' && order.awbCode && (
+            <ShiprocketShipButton
+              orderId={order.id}
+              awbCode={order.awbCode}
+              courierName={order.courierName || undefined}
+              trackingUrl={order.trackingUrl || undefined}
+            />
+          )}
+
+          {/* PDF Downloads */}
+          <div className="rounded-md border-2 border-bdr bg-white p-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">Download Documents</p>
+            <Link
+              href={`/api/admin/orders/${order.id}/vendor-po`}
+              className="flex items-center gap-2 px-4 py-2 rounded-md border border-bdr text-em hover:bg-em-50 transition text-sm font-semibold"
+            >
+              <FileDown className="w-4 h-4" />
+              Vendor PO
+            </Link>
+            <Link
+              href={`/api/admin/orders/${order.id}/spec-sheet`}
+              className="flex items-center gap-2 px-4 py-2 rounded-md border border-bdr text-em hover:bg-em-50 transition text-sm font-semibold"
+            >
+              <FileDown className="w-4 h-4" />
+              Spec Sheet
+            </Link>
+          </div>
+
           {/* Grand Total Card */}
           <div className="rounded-md bg-dark text-inv p-5">
             <p className="text-xs font-semibold uppercase tracking-wider mb-4">Breakdown</p>
@@ -202,7 +243,7 @@ export default async function AdminOrderDetailPage({
                 <span>Subtotal</span>
                 <span className="tabnum">{formatRupees(Number(order.subtotal))}</span>
               </div>
-              {order.cgstAmount > 0 && (
+              {Number(order.cgstAmount) > 0 && (
                 <div className="flex justify-between">
                   <span>CGST (9%)</span>
                   <span className="tabnum">
@@ -210,7 +251,7 @@ export default async function AdminOrderDetailPage({
                   </span>
                 </div>
               )}
-              {order.sgstAmount > 0 && (
+              {Number(order.sgstAmount) > 0 && (
                 <div className="flex justify-between">
                   <span>SGST (9%)</span>
                   <span className="tabnum">
@@ -218,7 +259,7 @@ export default async function AdminOrderDetailPage({
                   </span>
                 </div>
               )}
-              {order.igstAmount > 0 && (
+              {Number(order.igstAmount) > 0 && (
                 <div className="flex justify-between">
                   <span>IGST (18%)</span>
                   <span className="tabnum">
@@ -226,7 +267,7 @@ export default async function AdminOrderDetailPage({
                   </span>
                 </div>
               )}
-              {order.razorpayFee > 0 && (
+              {Number(order.razorpayFee) > 0 && (
                 <div className="flex justify-between">
                   <span>Payment Fee</span>
                   <span className="tabnum">
@@ -243,6 +284,36 @@ export default async function AdminOrderDetailPage({
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-6">
+          {/* E-Invoice Card */}
+          {order.gstBillType === 'B2B' && (
+            <div className="rounded-md border-2 border-bdr bg-white p-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">GST E-Invoice</p>
+              <div className="rounded-md border border-bdr p-3 bg-elevated/50 text-sm text-ink-2 mb-3">
+                <p>B2B invoice available for e-invoicing</p>
+              </div>
+              <Link
+                href={`/admin/orders/${order.id}/einvoice`}
+                className="block w-full px-4 py-2 rounded-md border border-em bg-em-50 text-em hover:bg-em-100 transition text-sm font-semibold text-center"
+              >
+                Generate E-Invoice
+              </Link>
+            </div>
+          )}
+
+          {/* Modifications Section */}
+          <div className="rounded-md border-2 border-bdr bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">Modifications</p>
+            <Link
+              href={`/admin/orders/${order.id}/modifications`}
+              className="block w-full px-4 py-2 rounded-md border border-bdr hover:bg-canvas transition text-sm font-semibold text-center text-ink"
+            >
+              View Changes
+            </Link>
           </div>
         </div>
       </div>

@@ -59,7 +59,7 @@ export default async function OrderDetailPage({
       },
       timeline: true,
     },
-  });
+  }) as any;
 
   if (!order || order.placedById !== session.user.id) {
     return (
@@ -253,6 +253,37 @@ export default async function OrderDetailPage({
               </div>
             </div>
           </div>
+
+          {/* Tracking */}
+          {order.awbCode && (
+            <div className="rounded-md border-2 border-em-200 bg-em-50 p-5 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-em-700">
+                Shipment Tracking
+              </p>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <p className="text-xs text-em-600">AWB Code</p>
+                  <p className="font-medium text-em-700">{order.awbCode}</p>
+                </div>
+                {order.courierName && (
+                  <div>
+                    <p className="text-xs text-em-600">Courier</p>
+                    <p className="font-medium text-em-700">{order.courierName}</p>
+                  </div>
+                )}
+              </div>
+              {order.trackingUrl && (
+                <a
+                  href={order.trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full text-center px-4 py-2 rounded-md border border-em-200 text-em-700 hover:bg-em-100 transition text-sm font-semibold mt-3"
+                >
+                  Track Shipment
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

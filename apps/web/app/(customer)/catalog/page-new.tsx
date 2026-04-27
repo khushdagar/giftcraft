@@ -200,13 +200,13 @@ const COLLECTIONS: Collection[] = [
     name: 'Budget-Friendly Under ₹500',
     desc: 'Thoughtful gifts that won\'t break the bank.',
     bgClass: 'bg-gradient-to-br from-yellow-100 via-amber-200 to-yellow-700',
-    productIds: PRODUCTS.filter((p) => p.tiers[0] <= 500).map((p) => p.id),
+    productIds: PRODUCTS.filter((p) => p.tiers?.[0] && p.tiers[0] <= 500).map((p) => p.id),
   },
   {
     name: 'Premium Executive Collection',
     desc: 'Luxury gifts for your most valued relationships.',
     bgClass: 'bg-gradient-to-br from-gray-800 via-gray-700 to-gray-900',
-    productIds: PRODUCTS.filter((p) => p.tiers[0] >= 800).map((p) => p.id),
+    productIds: PRODUCTS.filter((p) => p.tiers?.[0] && p.tiers[0] >= 800).map((p) => p.id),
   },
   {
     name: 'Eco-Friendly Gifts',
@@ -288,7 +288,7 @@ export default function CatalogPage() {
         );
 
       const matchesPrice =
-        p.tiers[0] >= priceMin && p.tiers[0] <= priceMax;
+        p.tiers?.[0] && p.tiers[0] >= priceMin && p.tiers[0] <= priceMax;
 
       const matchesEco = !ecoOnly || p.eco;
       const matchesBranding =
@@ -309,9 +309,9 @@ export default function CatalogPage() {
 
     // Sort
     if (sortBy === 'price_asc') {
-      result.sort((a, b) => a.tiers[0] - b.tiers[0]);
+      result.sort((a, b) => (a.tiers?.[0] ?? 0) - (b.tiers?.[0] ?? 0));
     } else if (sortBy === 'price_desc') {
-      result.sort((a, b) => b.tiers[0] - a.tiers[0]);
+      result.sort((a, b) => (b.tiers?.[0] ?? 0) - (a.tiers?.[0] ?? 0));
     } else if (sortBy === 'name') {
       result.sort((a, b) => a.name.localeCompare(b.name));
     } else {
@@ -927,7 +927,7 @@ function ProductCard({ product }: { product: Product }) {
             {product.name}
           </h3>
           <p className="text-base font-bold text-em tabular-nums mb-1">
-            From {formatPrice(product.tiers[0])}
+            From {formatPrice(product.tiers?.[0] ?? 0)}
           </p>
           <p className="text-xs text-ink-3 uppercase tracking-wider">
             {product.technique !== 'None'

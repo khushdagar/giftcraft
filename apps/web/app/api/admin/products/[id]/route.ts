@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { serializeProduct } from '@/lib/serialize';
+import { uploadToDigitalOcean } from '@/lib/upload-to-digital-ocean';
 
 const UpdateProductSchema = z.object({
   name: z.string().min(3).optional(),
@@ -30,7 +31,7 @@ const UpdateProductSchema = z.object({
   priceTiers: z
     .array(
       z.object({
-        tier: z.number().int().min(1).max(6),
+        tier: z.number().int().min(1).max(12),
         minQty: z.number().int().min(1),
         maxQty: z.number().int().nullable(),
         costPrice: z.number().positive(),
@@ -43,6 +44,37 @@ const UpdateProductSchema = z.object({
   occasionIds: z.array(z.string()).optional(),
 });
 
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await auth();
+
+    if (!session || session.user.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: params.id },
+      include: {
+        priceTiers: true,
+        images: { orderBy: { sortOrder: 'asc' } },
+        hsn: true,
+        categories: { include: { category: true } },
+        occasions: { include: { occasion: true } },
+      },
+    });
+
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    }
+
+    const serialized = serializeProduct(product);
+    return NextResponse.json(serialized);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
@@ -51,7 +83,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const body = await request.json();
+    const formData = await request.formData();
+    const dataStr = formData.get('data') as string;
+    const imageFiles = formData.getAll('images').filter(
+      (f): f is File => f instanceof File
+    );
+    const priceReason = formData.get('priceReason') as string | null;
+
+    if (!dataStr) {
+      return NextResponse.json({ error: 'Product data required' }, { status: 400 });
+    }
+
+    const body = JSON.parse(dataStr);
     const data = UpdateProductSchema.parse(body);
 
     // Fetch existing product and tiers for audit logging
@@ -184,9 +227,77 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // Create audit logs after transaction
     if (auditRows.length > 0) {
+      const auditLogsWithReason = auditRows.map(row => ({
+        ...row,
+        reason: priceReason || row.reason || 'Admin update',
+      }));
       await prisma.priceAuditLog.createMany({
-        data: auditRows,
+        data: auditLogsWithReason,
       });
+    }
+
+    // Handle image uploads if provided
+    if (imageFiles.length > 0) {
+      console.log(`Processing ${imageFiles.length} new images for product ${params.id}`);
+
+      const newImageUrls: string[] = [];
+      const failedImages: string[] = [];
+
+      for (const file of imageFiles) {
+        try {
+          const url = await uploadToDigitalOcean(file);
+          newImageUrls.push(url);
+          console.log(`✓ Uploaded: ${file.name}`);
+        } catch (err) {
+          console.error(`✗ Failed to upload ${file.name}: ${err}`);
+          failedImages.push(file.name);
+        }
+      }
+
+      // Add new images to product
+      if (newImageUrls.length > 0) {
+        console.log(`Creating ${newImageUrls.length} image records in database`);
+
+        await prisma.productImage.createMany({
+          data: newImageUrls.map((url, idx) => ({
+            productId: params.id,
+            url,
+            isPrimary: idx === 0 && updated.images.length === 0, // Only first is primary if no existing images
+            sortOrder: updated.images.length + idx, // Add new images after existing ones
+          })),
+        });
+
+        console.log(`✓ Images saved to database`);
+
+        // Refetch product with updated images
+        const finalProduct = await prisma.product.findUnique({
+          where: { id: params.id },
+          include: {
+            priceTiers: true,
+            images: { orderBy: { sortOrder: 'asc' } },
+            hsn: true,
+            categories: true,
+            occasions: true,
+          },
+        });
+
+        const serialized = serializeProduct(finalProduct!);
+        return NextResponse.json({
+          ...serialized,
+          _meta: {
+            imagesUploaded: newImageUrls.length,
+            imagesFailed: failedImages.length,
+            failedImages: failedImages,
+          },
+        });
+      } else if (failedImages.length > 0) {
+        return NextResponse.json(
+          {
+            error: `Failed to upload all images: ${failedImages.join(', ')}`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const serialized = serializeProduct(updated);
@@ -200,7 +311,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
 

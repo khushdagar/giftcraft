@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
+import { toast } from '@/lib/stores/toast-store';
 
 const ProductSchema = z.object({
   name: z.string().min(1, 'Name required'),
@@ -85,6 +86,19 @@ export function ProductForm({
     },
   });
 
+  // Load existing images when editing
+  useEffect(() => {
+    if (mode === 'edit' && initialData?.images) {
+      setImages(
+        initialData.images.map((img: any) => ({
+          id: img.id,
+          url: img.url,
+          isPrimary: img.isPrimary,
+        }))
+      );
+    }
+  }, [mode, initialData]);
+
   // Auto-generate slug from product name
   const nameValue = useWatch({ control: form.control, name: 'name' });
   useEffect(() => {
@@ -102,6 +116,12 @@ export function ProductForm({
     setError(null);
 
     try {
+      // Show loading toast for image uploads
+      const hasNewImages = images.some((img) => img.file);
+      if (hasNewImages) {
+        toast.info('📤 Uploading images...', 0); // No auto-dismiss
+      }
+
       // Use FormData to handle both JSON and files
       const formData = new FormData();
 
@@ -136,10 +156,24 @@ export function ProductForm({
       }
 
       const product = await res.json();
-      router.push('/admin/products');
-      router.refresh();
+
+      // Show success toast with a small delay to ensure visibility
+      const successMsg =
+        mode === 'create'
+          ? `✅ Product "${product.name}" created successfully!`
+          : `✅ Product "${product.name}" updated successfully!`;
+
+      toast.success(successMsg, 4000); // 4 seconds visibility
+
+      // Wait a moment before navigating to let toast display
+      setTimeout(() => {
+        router.push('/admin/products');
+        router.refresh();
+      }, 500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      const errorMsg = err instanceof Error ? err.message : 'Something went wrong';
+      setError(errorMsg);
+      toast.error(`❌ Error: ${errorMsg}`, 6000);
     } finally {
       setLoading(false);
     }
@@ -278,25 +312,90 @@ export function ProductForm({
             {/* Upload Area */}
             <label className="border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-blue-500 transition block text-center">
               <input
+                key={`file-input-${images.length}`}
                 type="file"
                 multiple
                 accept="image/*"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const files = Array.from(e.target.files || []);
-                  files.forEach((file) => {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
+
+                  if (files.length === 0) return;
+
+                  // Only upload if in edit mode (product already exists)
+                  if (mode === 'edit' && initialData?.id) {
+                    try {
+                      toast.info('📤 Uploading images...', 0); // No auto-dismiss
+
+                      const formData = new FormData();
+                      files.forEach((file) => {
+                        formData.append('images', file);
+                      });
+
+                      const res = await fetch(`/api/admin/products/${initialData.id}/images`, {
+                        method: 'POST',
+                        body: formData,
+                      });
+
+                      if (!res.ok) {
+                        const error = await res.json();
+                        throw new Error(error.error || 'Upload failed');
+                      }
+
+                      const result = await res.json();
+
+                      // Update local images state with uploaded images
                       setImages((prev) => [
                         ...prev,
-                        {
-                          url: event.target?.result as string,
-                          isPrimary: prev.length === 0,
-                          file,
-                        },
+                        ...result.images.map((img: any) => ({
+                          id: img.id,
+                          url: img.url,
+                          isPrimary: img.isPrimary,
+                        })),
                       ]);
-                    };
-                    reader.readAsDataURL(file);
-                  });
+
+                      // Show result toast
+                      if (result.uploadedCount > 0) {
+                        toast.success(`✅ ${result.uploadedCount} image(s) saved to database!`);
+                      }
+                      if (result.failedCount > 0) {
+                        toast.error(`⚠️ Failed: ${result.failedImages.join(', ')}`);
+                      }
+                    } catch (err) {
+                      const errorMsg = err instanceof Error ? err.message : 'Upload failed';
+                      toast.error(`❌ Error: ${errorMsg}`);
+                    }
+                  } else if (mode === 'create') {
+                    // For create mode, just add to local state (will be uploaded on save)
+                    let loadedCount = 0;
+
+                    files.forEach((file) => {
+                      // Validate file size (5MB)
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast.error(`❌ ${file.name} exceeds 5MB limit`);
+                        return;
+                      }
+
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setImages((prev) => [
+                          ...prev,
+                          {
+                            url: event.target?.result as string,
+                            isPrimary: prev.length === 0,
+                            file,
+                          },
+                        ]);
+                        loadedCount++;
+                        if (loadedCount === files.length) {
+                          toast.info(`✅ ${files.length} image(s) ready to upload`);
+                        }
+                      };
+                      reader.onerror = () => {
+                        toast.error(`❌ Failed to read ${file.name}`);
+                      };
+                      reader.readAsDataURL(file);
+                    });
+                  }
                 }}
                 className="hidden"
               />
@@ -333,13 +432,29 @@ export function ProductForm({
                         {!img.isPrimary && (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
+                              // Update local state
                               setImages((prev) =>
                                 prev.map((p, i) => ({
                                   ...p,
                                   isPrimary: i === idx,
                                 }))
                               );
+
+                              // If image has ID (saved in DB), update in database
+                              if (img.id && mode === 'edit' && initialData?.id) {
+                                try {
+                                  const res = await fetch(
+                                    `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
+                                    { method: 'PUT' }
+                                  );
+                                  if (!res.ok) {
+                                    toast.error('Failed to update primary image');
+                                  }
+                                } catch (err) {
+                                  console.error('Error updating primary image:', err);
+                                }
+                              }
                             }}
                             className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-blue-700"
                           >
@@ -348,8 +463,34 @@ export function ProductForm({
                         )}
                         <button
                           type="button"
-                          onClick={() => {
-                            setImages((prev) => prev.filter((_, i) => i !== idx));
+                          onClick={async () => {
+                            // If image has ID (saved in DB), delete from database
+                            if (img.id && mode === 'edit' && initialData?.id) {
+                              try {
+                                toast.info('🗑️ Deleting image...', 0);
+
+                                const res = await fetch(
+                                  `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
+                                  { method: 'DELETE' }
+                                );
+
+                                if (!res.ok) {
+                                  const error = await res.json();
+                                  throw new Error(error.error || 'Delete failed');
+                                }
+
+                                // Remove from local state
+                                setImages((prev) => prev.filter((_, i) => i !== idx));
+                                toast.success('✅ Image deleted');
+                              } catch (err) {
+                                const errorMsg = err instanceof Error ? err.message : 'Delete failed';
+                                toast.error(`❌ Error: ${errorMsg}`);
+                              }
+                            } else {
+                              // Not saved yet, just remove from local state
+                              setImages((prev) => prev.filter((_, i) => i !== idx));
+                              toast.info('Image removed');
+                            }
                           }}
                           className="bg-red-600 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-red-700"
                         >

@@ -71,6 +71,7 @@ export function Navbar() {
           </li>
 
           <li><Link href="/pricing" className="text-sm font-medium text-ink-2 hover:text-ink">Pricing</Link></li>
+          <li><Link href="/planner" className="text-sm font-medium text-ink-2 hover:text-ink">Budget Planner</Link></li>
           <li><Link href="/blog" className="text-sm font-medium text-ink-2 hover:text-ink">Blog</Link></li>
           <li><Link href="/contact" className="text-sm font-medium text-ink-2 hover:text-ink">Contact</Link></li>
         </ul>
@@ -151,7 +152,7 @@ export function Navbar() {
             </div>
             {[
               ["/", "Home"], ["/catalog", "Products"], ["/catalog?view=packs", "Packs"],
-              ["/pricing", "Pricing"], ["/blog", "Blog"], ["/contact", "Contact"],
+              ["/pricing", "Pricing"], ["/planner", "Budget Planner"], ["/blog", "Blog"], ["/contact", "Contact"],
               ["/dashboard", "Dashboard"],
             ].map(([href, label]) => (
               <Link

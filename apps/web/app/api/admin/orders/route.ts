@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
     const status = searchParams.get('status');
     const search = searchParams.get('search');
+    const includeSlaLogs = searchParams.get('include') === 'slaLogs';
 
     const skip = (page - 1) * limit;
 
@@ -47,6 +48,23 @@ export async function GET(request: NextRequest) {
           createdAt: true,
           billingJson: true,
           placedById: true,
+          company: {
+            select: { name: true },
+          },
+          items: {
+            select: { id: true },
+          },
+          ...(includeSlaLogs && {
+            slaLogs: {
+              where: { exitedAt: null },
+              select: {
+                enteredAt: true,
+                slaMinutes: true,
+              },
+              take: 1,
+              orderBy: { enteredAt: 'desc' },
+            },
+          }),
           _count: {
             select: { items: true },
           },

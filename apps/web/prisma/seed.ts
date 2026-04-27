@@ -58,17 +58,38 @@ async function main() {
 
   // ── Packaging ─────────────────────────────────────────────
   const pkgs = [
-    { slug: "white-box",   name: "White Gift Box",       price: 0,  description: "Included in every order" },
-    { slug: "kraft-box",   name: "Kraft Craft Box",      price: 25, description: "Eco recycled brown board" },
-    { slug: "premium-box", name: "Premium Rigid Box",    price: 85, description: "Magnetic closure, ribbon pull" },
-    { slug: "luxe-trunk",  name: "Luxe Wooden Trunk",    price: 350,description: "For VIP hampers" },
+    { slug: "white-box",   name: "White Gift Box",       price: 0,  description: "Included in every order", imageUrl: null },
+    { slug: "kraft-box",   name: "Kraft Craft Box",      price: 25, description: "Eco recycled brown board", imageUrl: null },
+    { slug: "premium-box", name: "Premium Rigid Box",    price: 85, description: "Magnetic closure, ribbon pull", imageUrl: null },
+    { slug: "luxe-trunk",  name: "Luxe Wooden Trunk",    price: 350,description: "For VIP hampers", imageUrl: null },
+    {
+      slug: "swag-mailer-1125x875x4",
+      name: "Custom Mailer Box 11.25 x 8.75 x 4",
+      price: 1649,
+      description: "Swagup SKU: P9NRERK | Full Color printing | US/Global Shipping",
+      imageUrl: "https://swagup-static.swagup.com/platform/media/form/products/01tPH000007lcAfYAI/01tPH000007lcAfYAI-1727109886009.png"
+    },
+    {
+      slug: "swag-mailer-19x14x10.5",
+      name: "Custom Mailer Box 19 x 14 x 10.5",
+      price: 3055,
+      description: "Swagup SKU: PE9ES0V | Full Color printing | Global Shipping",
+      imageUrl: "https://swagup-static.swagup.com/platform/media/form/068PH00000KPTZaYAP.png"
+    },
+    {
+      slug: "swag-mailer-16x12x6",
+      name: "Standard Custom Mailer Box 16 x 12 x 6",
+      price: 2500,
+      description: "Swagup SKU: P2UDALM | Full Color printing | Premium mailer box",
+      imageUrl: "https://swagup-static.swagup.com/platform/media/form/068PH00000KPTZaYAP.png"
+    },
   ];
   for (let i = 0; i < pkgs.length; i++) {
     const p = pkgs[i]!;
     await prisma.packaging.upsert({
       where: { slug: p.slug },
       create: { ...p, price: new Prisma.Decimal(p.price), sortOrder: i, isActive: true },
-      update: {},
+      update: { imageUrl: p.imageUrl },
     });
   }
 

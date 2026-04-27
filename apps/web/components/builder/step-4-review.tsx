@@ -100,7 +100,7 @@ export function Step4Review() {
       shippingFlat,
       discount: coupon?.discountAmount || 0,
       sellerStateCode: 'DL',
-      buyerStateCode: shippingZone?.stateCode || 'DL',
+      buyerStateCode: 'DL', // Default to Delhi; state code mapping not yet available
       razorpayFeePct: 2.36,
       razorpayFeeGstPct: 18,
     });
