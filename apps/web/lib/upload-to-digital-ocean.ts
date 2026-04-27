@@ -8,10 +8,16 @@ function getS3Client(): S3Client {
     const accessKey = process.env.DO_SPACES_KEY;
     const secretKey = process.env.DO_SPACES_SECRET;
 
+    console.log('[DO Upload] Initializing S3Client');
+    console.log('[DO Upload] Region:', region);
+    console.log('[DO Upload] Access Key loaded:', !!accessKey);
+    console.log('[DO Upload] Secret Key loaded:', !!secretKey);
+
     if (!accessKey || !secretKey) {
       throw new Error('Digital Ocean Spaces credentials not configured');
     }
 
+    console.log('[DO Upload] Creating S3Client with credentials');
     s3Client = new S3Client({
       region,
       credentials: {
