@@ -50,8 +50,21 @@ export async function uploadToDigitalOcean(file: File, folder: string = 'product
     console.log(`✓ Image uploaded: ${fileName}`);
     return url;
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error('Digital Ocean upload error:', errorMsg, { error });
+    console.error('Digital Ocean upload error:', error);
+
+    // Extract detailed error info
+    let errorMsg = 'Unknown error';
+    if (error instanceof Error) {
+      errorMsg = error.message;
+      console.error('Error name:', error.name);
+      console.error('Error stack:', error.stack);
+    }
+
+    // Log full error object for AWS SDK errors
+    if (typeof error === 'object' && error !== null) {
+      console.error('Full error object:', JSON.stringify(error, null, 2));
+    }
+
     throw new Error(`Upload failed: ${errorMsg}`);
   }
 }
