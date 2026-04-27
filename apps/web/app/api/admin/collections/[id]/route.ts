@@ -12,6 +12,32 @@ const UpdateCollectionSchema = z.object({
   productIds: z.array(z.string()).optional(),
 });
 
+export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await auth();
+
+    if (!session || session.user.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const collection = await prisma.collection.findUnique({
+      where: { id: params.id },
+      include: {
+        products: { include: { product: true } },
+      },
+    });
+
+    if (!collection) {
+      return NextResponse.json({ error: 'Collection not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(collection);
+  } catch (error) {
+    console.error('Error fetching collection:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
@@ -67,7 +93,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
 

@@ -9,6 +9,28 @@ const UpdateHsnCodeSchema = z.object({
   defaultGstRate: z.number().min(0).max(100).optional(),
 });
 
+export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await auth();
+    if (!session || session.user.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const hsnCode = await prisma.hsnCode.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!hsnCode) {
+      return NextResponse.json({ error: 'HSN code not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(hsnCode);
+  } catch (error) {
+    console.error('Error fetching HSN code:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
@@ -46,7 +68,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session || session.user.role !== 'super_admin') {

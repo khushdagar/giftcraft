@@ -12,6 +12,28 @@ const UpdateShippingZoneSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await auth();
+    if (!session || session.user.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const zone = await prisma.shippingZone.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!zone) {
+      return NextResponse.json({ error: 'Zone not found' }, { status: 404 });
+    }
+
+    return NextResponse.json(zone);
+  } catch (error) {
+    console.error('Error fetching shipping zone:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
@@ -52,7 +74,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const session = await auth();
     if (!session || session.user.role !== 'super_admin') {
