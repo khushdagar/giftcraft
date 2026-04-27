@@ -61,8 +61,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         uploadedImages.push(savedImage);
         console.log(`✓ Image saved: ${file.name}`);
       } catch (err) {
-        failedImages.push(file.name);
-        console.error(`✗ Failed to save ${file.name}: ${err}`);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        failedImages.push(`${file.name}: ${errorMsg}`);
+        console.error(`✗ Failed to save ${file.name}:`, err);
       }
     }
 
