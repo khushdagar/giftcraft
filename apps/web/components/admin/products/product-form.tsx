@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
-import { toast } from '@/lib/stores/toast-store';
+import { toast, useToastStore } from '@/lib/stores/toast-store';
 
 const ProductSchema = z.object({
   name: z.string().min(1, 'Name required'),
@@ -324,7 +324,8 @@ export function ProductForm({
                   // Only upload if in edit mode (product already exists)
                   if (mode === 'edit' && initialData?.id) {
                     try {
-                      toast.info('📤 Uploading images...', 0); // No auto-dismiss
+                      // Show uploading toast and capture its ID for later dismissal
+                      const uploadingToastId = toast.info('📤 Uploading images...', 0); // No auto-dismiss
 
                       const formData = new FormData();
                       files.forEach((file) => {
@@ -342,6 +343,9 @@ export function ProductForm({
                       }
 
                       const result = await res.json();
+
+                      // Dismiss the uploading toast
+                      useToastStore.getState().removeToast(uploadingToastId);
 
                       // Update local images state with uploaded images
                       setImages((prev) => [
@@ -361,6 +365,9 @@ export function ProductForm({
                         toast.error(`⚠️ Failed: ${result.failedImages.join(', ')}`);
                       }
                     } catch (err) {
+                      // Dismiss the uploading toast on error
+                      useToastStore.getState().removeToast(uploadingToastId);
+
                       const errorMsg = err instanceof Error ? err.message : 'Upload failed';
                       toast.error(`❌ Error: ${errorMsg}`);
                     }
