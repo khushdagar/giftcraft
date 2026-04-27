@@ -347,15 +347,15 @@ export function ProductForm({
                       // Dismiss the uploading toast
                       useToastStore.getState().removeToast(uploadingToastId);
 
-                      // Update local images state with uploaded images
-                      setImages((prev) => [
-                        ...prev,
-                        ...result.images.map((img: any) => ({
+                      // Replace local images state with all images from server
+                      // (result.images already contains ALL images, not just new ones)
+                      setImages(
+                        result.images.map((img: any) => ({
                           id: img.id,
                           url: img.url,
                           isPrimary: img.isPrimary,
-                        })),
-                      ]);
+                        }))
+                      );
 
                       // Show result toast
                       if (result.uploadedCount > 0) {
