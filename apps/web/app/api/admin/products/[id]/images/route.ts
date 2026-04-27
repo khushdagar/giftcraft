@@ -131,9 +131,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       take: 1,
     });
 
-    if (remainingImages.length > 0 && !remainingImages[0].isPrimary) {
+    const firstRemaining = remainingImages[0];
+    if (firstRemaining && !firstRemaining.isPrimary) {
       await prisma.productImage.update({
-        where: { id: remainingImages[0].id },
+        where: { id: firstRemaining.id },
         data: { isPrimary: true },
       });
     }
