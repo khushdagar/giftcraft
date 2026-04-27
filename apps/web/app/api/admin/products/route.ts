@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { serializeProduct } from "@/lib/serialize";
+import { uploadToDigitalOcean } from "@/lib/upload-to-digital-ocean";
 
 /**
  * GET /api/admin/products
@@ -121,42 +122,6 @@ const CreateProductSchema = z.object({
   categoryIds: z.array(z.string()).optional(),
   occasionIds: z.array(z.string()).optional(),
 });
-
-// Helper function to upload file to Digital Ocean Spaces
-async function uploadToDigitalOcean(file: File, folder: string = "products"): Promise<string> {
-  const buffer = await file.arrayBuffer();
-  const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`;
-
-  const accessKey = process.env.DO_SPACES_KEY;
-  const secretKey = process.env.DO_SPACES_SECRET;
-  const region = process.env.DO_SPACES_REGION || "sfo3";
-  const bucket = process.env.DO_SPACES_BUCKET || "giftcraft-dev";
-  const endpoint = `https://${region}.digitaloceanspaces.com`;
-
-  if (!accessKey || !secretKey) {
-    throw new Error("Digital Ocean Spaces credentials not configured");
-  }
-
-  // Create S3-compatible request
-  const url = new URL(`${endpoint}/${bucket}/${fileName}`);
-
-  // For simplicity, use public upload (you can add auth headers if needed)
-  const response = await fetch(url.toString(), {
-    method: "PUT",
-    headers: {
-      "Content-Type": file.type || "image/jpeg",
-    },
-    body: buffer,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Upload failed: ${response.statusText}`);
-  }
-
-  // Return the CDN URL
-  const cdnEndpoint = process.env.DO_SPACES_CDN_ENDPOINT || `https://${bucket}.${region}.cdn.digitaloceanspaces.com`;
-  return `${cdnEndpoint}/${fileName}`;
-}
 
 export async function POST(request: NextRequest) {
   try {
