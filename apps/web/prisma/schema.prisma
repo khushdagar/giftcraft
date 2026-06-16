@@ -431,9 +431,14 @@ model Vendor {
   notes            String?   @db.Text
   score            Decimal?  @db.Decimal(5, 2)
   priceConfirmedAt DateTime?
+
   products         ProductVendor[]
   payments         VendorPayment[]
   communications   VendorCommunication[]
+  pos              VendorPO[] @relation("VendorPos")
+  vendorScore      VendorScore? @relation("VendorScore")
+  paymentDetails   VendorPaymentDetails? @relation("PaymentDetails")
+
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -513,6 +518,8 @@ model Order {
   disputes        DisputeTicket[]
   einvoice        GstEinvoice?
   modifications   OrderModification[]
+  shipmentTracking ShipmentTracking? @relation("OrderShipments")
+  vendorPos       VendorPO[] @relation("OrderPos")
 
   revisionCount   Int @default(0)
 
@@ -1012,6 +1019,114 @@ model VendorCommunication {
   createdById String?
   createdBy   User?             @relation("VendorCommLogs", fields: [createdById], references: [id])
   createdAt   DateTime          @default(now())
+
+  @@index([vendorId])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   SHIPROCKET TRACKING
+// ═══════════════════════════════════════════════════════════
+model ShipmentTracking {
+  id String @id @default(cuid())
+  orderId String @unique
+  order Order @relation("OrderShipments", fields: [orderId], references: [id], onDelete: Cascade)
+
+  shiprocketShipmentId Int?
+  awbCode String @unique
+  courierName String?
+
+  // Status tracking
+  status String @default("pending")  // pending | picked_up | in_transit | out_for_delivery | delivered | exception
+  lastStatusUpdate DateTime @updatedAt
+
+  // Location history
+  currentLocation String?
+  estimatedDelivery DateTime?
+  deliveredAt DateTime?
+
+  // Metadata
+  trackingUrl String
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([awbCode])
+  @@index([status])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   VENDOR PO (Purchase Order)
+// ═══════════════════════════════════════════════════════════
+model VendorPO {
+  id String @id @default(cuid())
+  vendorId String
+  vendor Vendor @relation("VendorPos", fields: [vendorId], references: [id], onDelete: Cascade)
+  orderId String
+  order Order @relation("OrderPos", fields: [orderId], references: [id], onDelete: Cascade)
+
+  // Assignment details
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  deadline DateTime
+
+  // Status tracking
+  status String @default("pending")  // pending | in_production | qc_complete | ready_to_ship
+
+  // QC details
+  qcPhotos String[]  // Array of CDN URLs
+  qcCompletedAt DateTime?
+  qcNotes String? @db.Text
+
+  // Payment
+  ratePerUnit Decimal @db.Decimal(10, 2)
+  totalAmount Decimal @db.Decimal(10, 2)
+  paymentDueDate DateTime
+  paidAt DateTime?
+
+  // Communication
+  notes String? @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vendorId])
+  @@index([orderId])
+  @@index([status])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   VENDOR PERFORMANCE SCORING
+// ═══════════════════════════════════════════════════════════
+model VendorScore {
+  id String @id @default(cuid())
+  vendorId String @unique
+  vendor Vendor @relation("VendorScore", fields: [vendorId], references: [id], onDelete: Cascade)
+
+  qualityScore Float @default(0)       // 0-100
+  onTimeScore Float @default(0)        // 0-100
+  reliabilityScore Float @default(0)   // 0-100
+
+  lastUpdated DateTime @updatedAt
+
+  @@index([vendorId])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   VENDOR PAYMENT DETAILS
+// ═══════════════════════════════════════════════════════════
+model VendorPaymentDetails {
+  id String @id @default(cuid())
+  vendorId String @unique
+  vendor Vendor @relation("PaymentDetails", fields: [vendorId], references: [id], onDelete: Cascade)
+
+  bankAccountName String?
+  bankAccountNumber String?  // Stored encrypted
+  bankIfscCode String?
+  bankName String?
+
+  upiId String?
+  panNumber String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([vendorId])
 }
