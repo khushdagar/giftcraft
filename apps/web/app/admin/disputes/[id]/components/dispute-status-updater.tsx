@@ -1,113 +1,119 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
+import { z } from 'zod';
+
+const UpdateSchema = z.object({
+  status: z.enum(['open', 'under_review', 'resolved', 'closed']),
+  resolutionNote: z.string().min(10).max(1000).optional(),
+});
 
 interface DisputeStatusUpdaterProps {
   disputeId: string;
   currentStatus: string;
-  currentResolutionNote: string | null;
+  orderNumber: string;
 }
 
 export function DisputeStatusUpdater({
   disputeId,
   currentStatus,
-  currentResolutionNote,
+  orderNumber,
 }: DisputeStatusUpdaterProps) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(currentStatus);
-  const [resolutionNote, setResolutionNote] = useState(currentResolutionNote || '');
+  const [note, setNote] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const handleStatusChange = async () => {
-    if (status === 'resolved' && !resolutionNote.trim()) {
-      toast.error('Resolution note is required');
-      return;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccess(false);
 
-    setLoading(true);
     try {
-      const response = await fetch(`/api/admin/disputes/${disputeId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status,
-          resolutionNote: status === 'resolved' ? resolutionNote : undefined,
-        }),
-      });
+      const payload = { status, resolutionNote: note || undefined };
+      const validation = UpdateSchema.safeParse(payload);
 
-      if (!response.ok) {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to update dispute');
+      if (!validation.success) {
+        setError(validation.error.errors[0].message);
+        setIsLoading(false);
         return;
       }
 
-      toast.success('Dispute updated successfully');
-      router.refresh();
-    } catch (error) {
-      toast.error('Error updating dispute');
-      console.error(error);
+      const response = await fetch(`/api/disputes/${disputeId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validation.data),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error?.message || 'Failed to update dispute');
+        return;
+      }
+
+      setSuccess(true);
+      setNote('');
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const statusOptions = [
-    { value: 'open', label: 'Open', color: 'bg-sky-50 text-sky-700' },
-    { value: 'under_review', label: 'Under Review', color: 'bg-amber-50 text-amber-700' },
-    { value: 'resolved', label: 'Resolved', color: 'bg-em-50 text-em-700' },
-    { value: 'closed', label: 'Closed', color: 'bg-recessed text-ink-2' },
-  ];
-
   return (
-    <div className="border border-bdr rounded-lg p-6 bg-canvas">
-      <h3 className="text-lg font-bold text-ink mb-6">Update Status</h3>
+    <form onSubmit={handleSubmit} className="rounded-md border-2 border-bdr bg-white p-5 space-y-4">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">Update Status</p>
 
-      <div className="mb-6">
-        <label className="block text-sm font-semibold text-ink mb-3">Status</label>
-        <div className="grid grid-cols-4 gap-2">
-          {statusOptions.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setStatus(option.value)}
-              className={`px-4 py-3 rounded-lg text-sm font-semibold transition ${
-                status === option.value
-                  ? `${option.color} ring-2 ring-offset-2 ring-ink`
-                  : 'bg-elevated text-ink hover:bg-recessed'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="w-full px-4 py-2 rounded-md border-2 border-bdr focus:border-navy-800 focus:outline-none"
+        >
+          <option value="open">Open</option>
+          <option value="under_review">Under Review</option>
+          <option value="resolved">Resolved</option>
+          <option value="closed">Closed</option>
+        </select>
       </div>
 
-      {status === 'resolved' && (
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-ink mb-2">Resolution Note *</label>
-          <Textarea
-            value={resolutionNote}
-            onChange={(e) => setResolutionNote(e.target.value)}
-            placeholder="Explain how the dispute was resolved, any compensation offered, etc."
-            rows={5}
-            required
+      {(status === 'resolved' || status === 'closed') && (
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">
+            Resolution Note
+          </label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Explain how this dispute was resolved..."
+            rows={4}
+            className="w-full px-4 py-2 rounded-md border-2 border-bdr focus:border-navy-800 focus:outline-none resize-none"
           />
-          <p className="text-xs text-ink-2 mt-2">This will be sent to the customer</p>
+          {note.length < 10 && note.length > 0 && (
+            <p className="text-xs text-err mt-1">Minimum 10 characters</p>
+          )}
         </div>
       )}
 
-      <div className="flex gap-3">
-        <Button
-          onClick={handleStatusChange}
-          disabled={loading}
-          className="bg-em px-6 font-bold rounded-2xl"
-        >
-          {loading ? 'Updating...' : 'Update Dispute'}
-        </Button>
-      </div>
-    </div>
+      {error && (
+        <div className="rounded-md bg-err/10 p-3">
+          <p className="text-xs text-err">{error}</p>
+        </div>
+      )}
+
+      {success && (
+        <div className="rounded-md bg-emerald-50 border-2 border-emerald-200 p-3">
+          <p className="text-xs text-emerald-700 font-semibold">Dispute updated successfully</p>
+        </div>
+      )}
+
+      <Button type="submit" disabled={isLoading} className="w-full">
+        {isLoading ? 'Updating...' : 'Update Dispute'}
+      </Button>
+    </form>
   );
 }
