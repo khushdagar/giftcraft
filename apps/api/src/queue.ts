@@ -29,7 +29,7 @@ function getRedisConnection(): Redis | null {
         console.error('❌ Redis connection error (production):', err);
         process.exit(1);
       } else {
-        console.warn('⚠️  Redis unavailable (development mode) - running without job queue:', err.message);
+        console.warn('⚠️  Redis unavailable (development mode):', err.message);
       }
       redisAvailable = false;
     });
@@ -39,15 +39,19 @@ function getRedisConnection(): Redis | null {
       redisAvailable = true;
     });
 
-    // Try to connect
-    connection.connect().catch((err) => {
+    // Try to connect (async, won't crash app if it fails)
+    connection.connect().catch((err: any) => {
       if (process.env.NODE_ENV === 'production') {
-        console.error('❌ Failed to connect to Redis (production):', err.message);
+        console.error('❌ Failed to connect to Redis (production):', err?.message || err);
         process.exit(1);
-      } else {
-        console.warn('⚠️  Redis connection failed (development mode) - features using job queue will be disabled');
       }
+      // In dev mode, just log and continue without Redis
       redisAvailable = false;
+    }).finally(() => {
+      // Always continue - don't let this block app startup
+      if (!redisAvailable) {
+        console.warn('⚠️  Redis unavailable - features using job queue will be disabled');
+      }
     });
 
     redisConnection = connection;

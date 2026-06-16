@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
-import { Upload, X, FileIcon } from 'lucide-react';
+import { Upload, X, FileIcon, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { suggestPackaging } from '@/lib/packaging-calculator';
 
 interface Packaging {
   id: string;
@@ -14,6 +16,9 @@ interface Packaging {
   price: number;
   description?: string | null;
   imageUrl?: string | null;
+  lengthCm?: number | null;
+  widthCm?: number | null;
+  heightCm?: number | null;
 }
 
 interface Addon {
@@ -99,6 +104,22 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
   const printingTechniques = Array.from(
     new Set(selectedProducts.map((p) => p.printingTechnique).filter(Boolean))
   ) as string[];
+
+  // Calculate packaging suggestion based on product dimensions
+  const suggestedPackaging = useMemo(() => {
+    if (selectedProducts.length === 0) return null;
+
+    const productsForCalculation = selectedProducts.map(p => ({
+      id: p.id,
+      name: p.name,
+      lengthCm: (p as any).dimensionL,
+      widthCm: (p as any).dimensionW,
+      heightCm: (p as any).dimensionH,
+      quantity: p.quantity || 1,
+    }));
+
+    return suggestPackaging(productsForCalculation, packagingOptions);
+  }, [selectedProducts, packagingOptions]);
 
   const addonsTotal = addons.reduce((sum, a) => sum + a.price, 0);
   const packagingTotal = packaging?.price || 0;
@@ -207,102 +228,115 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
         />
       </div>
 
-      {/* Packaging Selection - Product Card Style Grid */}
+      {/* Packaging Selection - Drag-to-Scroll Slider */}
       <div className="space-y-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">Select Your Packaging</p>
-          <p className="text-xs text-ink-2">Choose the perfect box for your {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-ink-2">Drag to browse • Choose the perfect box for your {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''}</p>
         </div>
 
+        {/* Packaging Suggestion */}
+        {suggestedPackaging && selectedProducts.length > 0 && packaging?.id !== suggestedPackaging.id && (
+          <div className="rounded-md bg-amber-50 border-2 border-amber-200 p-4 flex gap-3">
+            <div className="flex-shrink-0 pt-0.5">
+              <Lightbulb className="h-5 w-5 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm text-amber-900">Perfect Match Found!</p>
+              <p className="text-sm text-amber-800 mt-1">
+                We recommend the <span className="font-bold">{suggestedPackaging.name}</span> for your products.
+                Your {selectedProducts.length} item{selectedProducts.length !== 1 ? 's' : ''} will fit perfectly!
+              </p>
+              <button
+                onClick={() => setPackaging(suggestedPackaging as any)}
+                className="mt-2 text-sm font-semibold text-amber-700 hover:text-amber-900 underline"
+              >
+                Select this packaging →
+              </button>
+            </div>
+          </div>
+        )}
+
         {packagingOptions.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {packagingOptions.map((pkg) => {
-              const isSelected = packaging?.id === pkg.id;
-              const isIncluded = pkg.price === 0;
+          <div className="overflow-hidden">
+            <motion.div
+              drag="x"
+              dragElastic={0.2}
+              dragMomentum={{ power: 0.2 }}
+              className="flex gap-3 cursor-grab active:cursor-grabbing"
+              style={{ width: 'fit-content' }}
+            >
+              {packagingOptions.map((pkg) => {
+                const isSelected = packaging?.id === pkg.id;
+                const isIncluded = pkg.price === 0;
 
-              return (
-                <button
-                  key={pkg.id}
-                  onClick={() => setPackaging(isSelected ? null : pkg)}
-                  className={`group rounded-gc-l border-2 overflow-hidden transition-all hover:shadow-lg ${
-                    isSelected
-                      ? 'border-em bg-em-50 shadow-md'
-                      : 'border-bdr bg-white hover:border-em-300'
-                  }`}
-                >
-                  {/* Image Section */}
-                  <div className="relative aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
-                    {pkg.imageUrl ? (
-                      <img
-                        src={pkg.imageUrl}
-                        alt={pkg.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                      />
-                    ) : (
-                      <div className="text-center">
-                        <div className="text-5xl mb-2">📦</div>
-                        <p className="text-xs text-gray-500 font-semibold">{pkg.name}</p>
-                      </div>
-                    )}
-
-                    {/* Selection Indicator */}
-                    {isSelected && (
-                      <div className="absolute inset-0 bg-em/10 flex items-center justify-center">
-                        <div className="w-8 h-8 rounded-full bg-em text-white flex items-center justify-center text-lg font-bold">
-                          ✓
+                return (
+                  <motion.button
+                    key={pkg.id}
+                    onClick={() => setPackaging(isSelected ? null : pkg)}
+                    className={`group flex-shrink-0 w-40 rounded-md border-2 overflow-hidden transition-all hover:shadow-lg ${
+                      isSelected
+                        ? 'border-em bg-em-50 shadow-md'
+                        : 'border-bdr bg-white hover:border-em-300'
+                    }`}
+                    whileHover={{ y: -4 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {/* Image Section */}
+                    <div className="relative aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+                      {pkg.imageUrl ? (
+                        <img
+                          src={pkg.imageUrl}
+                          alt={pkg.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <div className="text-center">
+                          <div className="text-5xl mb-2">📦</div>
+                          <p className="text-xs text-gray-500 font-semibold">{pkg.name}</p>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Included Badge */}
-                    {isIncluded && (
-                      <div className="absolute top-2 right-2 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold px-2 py-1">
-                        Included
-                      </div>
-                    )}
-                  </div>
+                      {/* Selection Indicator */}
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-em/10 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full bg-em text-white flex items-center justify-center text-lg font-bold">
+                            ✓
+                          </div>
+                        </div>
+                      )}
 
-                  {/* Content Section */}
-                  <div className="p-3 space-y-2">
-                    <div>
-                      <p className="font-bold text-sm text-ink line-clamp-2">{pkg.name}</p>
-                      {pkg.description && (
-                        <p className="text-xs text-ink-3 mt-1 line-clamp-2">{pkg.description}</p>
+                      {/* Included Badge */}
+                      {isIncluded && (
+                        <div className="absolute top-2 right-2 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold px-2 py-1">
+                          Included
+                        </div>
                       )}
                     </div>
 
-                    {/* Price */}
-                    {pkg.price > 0 ? (
+                    {/* Content Section */}
+                    <div className="p-3 space-y-2">
                       <div>
-                        <p className="text-xs text-ink-3">Add cost</p>
-                        <p className="text-sm font-black text-em">+{formatRupees(pkg.price)}</p>
+                        <p className="font-bold text-sm text-ink line-clamp-2">{pkg.name}</p>
+                        {pkg.description && (
+                          <p className="text-xs text-ink-3 mt-1 line-clamp-2">{pkg.description}</p>
+                        )}
                       </div>
-                    ) : (
-                      <p className="text-xs font-semibold text-emerald-600">No additional cost</p>
-                    )}
 
-                    {/* Fits Info */}
-                    {isSelected && selectedProducts.length > 0 && (
-                      <div className="pt-2 border-t border-bdr">
-                        <p className="text-[10px] font-semibold text-ink-2 mb-1">Perfect for:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {selectedProducts.slice(0, 2).map((p) => (
-                            <span key={p.id} className="bg-gray-100 text-ink-2 text-[9px] rounded px-1.5 py-0.5">
-                              {p.name?.split(' ')[0]}
-                            </span>
-                          ))}
-                          {selectedProducts.length > 2 && (
-                            <span className="bg-gray-100 text-ink-2 text-[9px] rounded px-1.5 py-0.5">
-                              +{selectedProducts.length - 2}
-                            </span>
-                          )}
+                      {/* Price */}
+                      {pkg.price > 0 ? (
+                        <div>
+                          <p className="text-xs text-ink-3">Add cost</p>
+                          <p className="text-sm font-black text-em">+{formatRupees(pkg.price)}</p>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
+                      ) : (
+                        <p className="text-xs font-semibold text-emerald-600">Free</p>
+                      )}
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </motion.div>
           </div>
         )}
 

@@ -109,8 +109,8 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
                 onClick={() => setSelectedCategory(null)}
                 className={`px-4 py-2 rounded-full text-xs font-semibold transition whitespace-nowrap border-2 ${
                   !selectedCategory
-                    ? 'bg-navy-800 text-white border-navy-800'
-                    : 'border-gray-300 text-ink hover:border-navy-800'
+                    ? 'bg-navy-900 text-white border-navy-900'
+                    : 'border-gray-300 text-gray-700 hover:border-navy-800'
                 }`}
               >
                 All
@@ -121,8 +121,8 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
                   onClick={() => setSelectedCategory(cat.id)}
                   className={`px-4 py-2 rounded-full text-xs font-semibold transition whitespace-nowrap border-2 ${
                     selectedCategory === cat.id
-                      ? 'bg-navy-800 text-white border-navy-800'
-                      : 'border-gray-300 text-ink hover:border-navy-800'
+                      ? 'bg-navy-900 text-white border-navy-900'
+                      : 'border-gray-300 text-gray-700 hover:border-navy-800'
                   }`}
                 >
                   {cat.name}
@@ -267,7 +267,7 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
             {/* Title with Step Badge */}
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-black text-ink">Your Gift Pack</h3>
-              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">2</div>
+              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">{selected.length}</div>
             </div>
 
             {/* Icon Grid Box */}

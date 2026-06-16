@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useBuilderStore } from "@/store/builder";
 
 const OCCASIONS = [
   { icon: "🪔", name: "Diwali", slug: "diwali" },
@@ -27,6 +28,8 @@ export function Navbar() {
   const { data: session } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const products = useBuilderStore((state) => state.products);
+  const productCount = products.length;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -72,6 +75,7 @@ export function Navbar() {
 
           <li><Link href="/pricing" className="text-sm font-medium text-ink-2 hover:text-ink">Pricing</Link></li>
           <li><Link href="/planner" className="text-sm font-medium text-ink-2 hover:text-ink">Budget Planner</Link></li>
+          <li><Link href="/box" className="text-sm font-medium text-ink-2 hover:text-ink">Build Your Box</Link></li>
           <li><Link href="/blog" className="text-sm font-medium text-ink-2 hover:text-ink">Blog</Link></li>
           <li><Link href="/contact" className="text-sm font-medium text-ink-2 hover:text-ink">Contact</Link></li>
         </ul>
@@ -126,6 +130,11 @@ export function Navbar() {
 
           <Link href="/builder" className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink" aria-label="Gift Pack">
             <ShoppingBag className="h-5 w-5" />
+            {productCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-em text-white text-[10px] font-bold">
+                {productCount}
+              </span>
+            )}
           </Link>
 
           <button

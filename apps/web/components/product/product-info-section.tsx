@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { PricingBlock } from './pricing-block';
 import { ColorSelector } from './color-selector';
 import { ExpertHelp } from './expert-help';
-import { PackagingSelector } from './packaging-selector';
 import { AddonsSelector } from './addons-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,7 @@ interface ProductInfoSectionProps {
   gstRate: number;
   moq: number;
   categoryName: string;
+  variants?: any[];
 }
 
 export function ProductInfoSection({
@@ -24,6 +24,7 @@ export function ProductInfoSection({
   gstRate,
   moq,
   categoryName,
+  variants,
 }: ProductInfoSectionProps) {
   const [currentQty, setCurrentQty] = useState(moq);
   const isUnderMinimum = currentQty < moq;
@@ -64,7 +65,19 @@ export function ProductInfoSection({
       )}
 
       {/* Color selector */}
-      <ColorSelector />
+      <ColorSelector
+        options={
+          variants && variants.length > 0
+            ? variants
+                .filter((v: any) => v.kind === 'color')
+                .map((v: any) => ({
+                  name: v.value,
+                  hex: v.hexColor || '#000000',
+                }))
+            : undefined
+        }
+        isDynamic={!variants || variants.length === 0}
+      />
 
       {/* Pricing - with qty tracking */}
       <PricingBlock
@@ -101,9 +114,8 @@ export function ProductInfoSection({
       {/* Expert help */}
       <ExpertHelp productName={product.name} productId={product.id} />
 
-      {/* Packaging & Addons */}
-      <div className="mt-8 space-y-6">
-        <PackagingSelector productId={product.id} />
+      {/* Addons */}
+      <div className="mt-8">
         <AddonsSelector productId={product.id} />
       </div>
     </div>

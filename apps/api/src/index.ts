@@ -19,6 +19,18 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { initSlaChecker } from "./workers/sla-checker";
 
+// Handle unhandled promise rejections gracefully in development
+if (process.env.NODE_ENV !== 'production') {
+  process.on('unhandledRejection', (reason, promise) => {
+    // Don't crash on Redis connection errors in development
+    if (reason instanceof Error && reason.message.includes('ECONNREFUSED')) {
+      // Silently ignore connection refused errors (Redis not running)
+      return;
+    }
+    console.error('Unhandled Rejection:', reason);
+  });
+}
+
 const app = express();
 const PORT = Number(process.env.API_PORT ?? 4000);
 

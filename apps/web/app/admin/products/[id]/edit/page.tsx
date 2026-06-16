@@ -21,6 +21,7 @@ export default async function EditProductPage({ params }: { params: { id: string
       hsn: { include: { hsn: true } },
       categories: { include: { category: true } },
       occasions: { include: { occasion: true } },
+      variants: { orderBy: { sortOrder: 'asc' } },
     },
   });
 

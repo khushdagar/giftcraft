@@ -46,6 +46,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
       hsn: { include: { hsn: true } },
       categories: { include: { category: true } },
       occasions: { include: { occasion: true } },
+      variants: { orderBy: { sortOrder: "asc" } },
     },
   });
 
@@ -110,6 +111,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
           gstRate={gstRate}
           moq={moq}
           categoryName={categoryName}
+          variants={product.variants}
         />
       </div>
 

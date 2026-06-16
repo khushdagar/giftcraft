@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { BuilderLayout } from '@/components/builder/builder-layout';
 import { BuilderContent } from '@/components/builder/builder-content';
-import { QuantityModal } from '@/components/builder/quantity-modal';
+import { BuilderReset } from '@/components/builder/builder-reset';
 
 async function getBuilderData() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -50,6 +50,7 @@ export default async function BuilderPage() {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <BuilderReset />
       <BuilderLayout>
         <BuilderContent
           allProducts={products}
@@ -58,7 +59,6 @@ export default async function BuilderPage() {
           addonOptions={addons}
         />
       </BuilderLayout>
-      <QuantityModal />
     </div>
   );
 }

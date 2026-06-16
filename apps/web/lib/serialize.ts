@@ -13,6 +13,7 @@ import type {
   Packaging,
   Addon,
   ShippingZone,
+  ProductVariant,
 } from '@prisma/client';
 
 export interface SerializedPriceTier extends Omit<PriceTier, 'costPrice' | 'sellPrice'> {
@@ -40,7 +41,7 @@ export interface SerializedAddon extends Omit<Addon, 'price'> {
 export interface SerializedShippingZone extends ShippingZone {}
 
 export interface SerializedProduct
-  extends Omit<Product, 'priceTiers' | 'hsn' | 'auditLogs' | 'brand'> {
+  extends Omit<Product, 'priceTiers' | 'hsn' | 'auditLogs' | 'brand' | 'dimensionL' | 'dimensionW' | 'dimensionH'> {
   brand?: string | null;
   priceTiers?: SerializedPriceTier[];
   images?: ProductImage[];
@@ -48,6 +49,10 @@ export interface SerializedProduct
   categories?: any[];
   occasions?: any[];
   vendors?: any[];
+  variants?: ProductVariant[];
+  lengthCm?: number | null;
+  widthCm?: number | null;
+  heightCm?: number | null;
 }
 
 export function serializePriceTier(tier: PriceTier): SerializedPriceTier {
@@ -97,11 +102,18 @@ export function serializeProduct(
     categories?: any[];
     occasions?: any[];
     vendors?: any[];
+    variants?: ProductVariant[];
   }
 ): SerializedProduct {
   return {
     ...product,
+    // Map database dimension fields to form field names for compatibility
+    lengthCm: product.dimensionL,
+    widthCm: product.dimensionW,
+    heightCm: product.dimensionH,
     priceTiers: product.priceTiers?.map(serializePriceTier),
+    images: product.images || [],
     hsn: product.hsn ? serializeProductHsn(product.hsn) : null,
+    variants: product.variants || [],
   };
 }

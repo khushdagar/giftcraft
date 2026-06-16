@@ -9,7 +9,7 @@ import * as Tabs from '@radix-ui/react-tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, Plus, Trash2, X } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { toast, useToastStore } from '@/lib/stores/toast-store';
 
@@ -23,6 +23,9 @@ const ProductSchema = z.object({
   material: z.string().optional(),
   dimensions: z.string().optional(),
   weightG: z.number().optional(),
+  lengthCm: z.number().min(0).optional(),
+  widthCm: z.number().min(0).optional(),
+  heightCm: z.number().min(0).optional(),
   leadTimeDays: z.number().min(1).optional(),
   hsnId: z.string().min(1, 'HSN code required'),
   printingTechnique: z.string().optional(),
@@ -32,6 +35,15 @@ const ProductSchema = z.object({
   isEcoCertified: z.boolean().default(false),
   categoryIds: z.array(z.string()).optional(),
   occasionIds: z.array(z.string()).optional(),
+  variants: z.array(
+    z.object({
+      id: z.string().optional(),
+      kind: z.string(),
+      value: z.string(),
+      hexColor: z.string().optional(),
+      sortOrder: z.number().optional(),
+    })
+  ).optional(),
   priceTiers: z.array(
     z.object({
       tier: z.number(),
@@ -68,6 +80,12 @@ export function ProductForm({
   const [priceReason, setPriceReason] = useState('');
   const [images, setImages] = useState<Array<{ id?: string; url: string; isPrimary: boolean; file?: File }>>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; parentId?: string | null }>>([]);
+  const [occasions, setOccasions] = useState<Array<{ id: string; name: string; icon?: string }>>([]);
+  const [variants, setVariants] = useState<Array<{ id?: string; kind: string; value: string; hexColor?: string; sortOrder: number }>>(
+    mode === 'edit' && initialData?.variants ? initialData.variants : []
+  );
+  const [newVariant, setNewVariant] = useState({ kind: 'color', value: '', hexColor: '' });
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(ProductSchema),
@@ -85,6 +103,41 @@ export function ProductForm({
       ],
     },
   });
+
+  // Load categories, occasions, and variants
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [catsRes, occasionsRes] = await Promise.all([
+          fetch('/api/admin/categories'),
+          fetch('/api/occasions'),
+        ]);
+
+        if (catsRes.ok) {
+          const catsData = await catsRes.json();
+          setCategories(catsData.categories || []);
+        }
+
+        if (occasionsRes.ok) {
+          const occasionsData = await occasionsRes.json();
+          setOccasions(occasionsData.occasions || []);
+        }
+
+        // If editing and variants not in initialData, fetch them from API
+        if (mode === 'edit' && initialData?.id && !initialData.variants) {
+          const variantsRes = await fetch(`/api/admin/products/${initialData.id}/variants`);
+          if (variantsRes.ok) {
+            const variantsData = await variantsRes.json();
+            setVariants(variantsData || []);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories/occasions/variants:', error);
+      }
+    };
+
+    fetchData();
+  }, [mode, initialData?.id, initialData?.variants]);
 
   // Load existing images when editing
   useEffect(() => {
@@ -125,8 +178,25 @@ export function ProductForm({
       // Use FormData to handle both JSON and files
       const formData = new FormData();
 
-      // Add product data
-      formData.append('data', JSON.stringify(data));
+      // Add product data with variants
+      const dataWithVariants = {
+        ...data,
+        variants: variants.map((v, idx) => ({
+          kind: v.kind,
+          value: v.value,
+          hexColor: v.hexColor || null,
+          sortOrder: v.sortOrder ?? idx,
+        })),
+      };
+
+      // Debug logging
+      console.log('📋 Submitting product with data:', {
+        name: dataWithVariants.name,
+        variants: dataWithVariants.variants,
+        mode,
+      });
+
+      formData.append('data', JSON.stringify(dataWithVariants));
       if (mode === 'edit' && priceReason) {
         formData.append('priceReason', priceReason);
       }
@@ -152,10 +222,26 @@ export function ProductForm({
 
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || 'Failed to save product');
+        const errorMsg = error.error || `Server error: ${res.status}`;
+        console.error('❌ API Error:', { status: res.status, errorMsg, fullError: error });
+        throw new Error(errorMsg);
       }
 
       const product = await res.json();
+      console.log('✅ Product saved successfully:', { id: product.id, name: product.name });
+
+      // For edit mode, refresh variants from API
+      if (mode === 'edit' && initialData?.id) {
+        try {
+          const variantsRes = await fetch(`/api/admin/products/${initialData.id}/variants`);
+          if (variantsRes.ok) {
+            const variantsData = await variantsRes.json();
+            setVariants(variantsData || []);
+          }
+        } catch (err) {
+          console.error('Failed to refresh variants:', err);
+        }
+      }
 
       // Show success toast with a small delay to ensure visibility
       const successMsg =
@@ -191,15 +277,28 @@ export function ProductForm({
         </div>
       )}
 
+      {Object.keys(form.formState.errors).length > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-sm font-semibold text-yellow-900 mb-2">⚠️ Validation Errors - Please fix:</p>
+          <ul className="text-sm text-yellow-800 space-y-1">
+            {Object.entries(form.formState.errors).map(([field, error]: any) => (
+              <li key={field}>• <strong>{field}:</strong> {error?.message || 'Invalid value'}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <Tabs.Root value={tab} onValueChange={setTab} className="space-y-4">
         {/* Tab list */}
         <Tabs.List className="flex gap-1 border-b border-gray-200 overflow-x-auto no-scrollbar">
           {[
             { id: 'basic', label: 'Basic' },
             { id: 'tax', label: 'Tax/HSN' },
+            { id: 'categories', label: 'Categories' },
             { id: 'images', label: 'Images' },
             { id: 'printing', label: 'Printing' },
             { id: 'pricing', label: 'Pricing' },
+            { id: 'variants', label: 'Variants' },
             { id: 'vendor', label: 'Vendor' },
             { id: 'visibility', label: 'Visibility' },
             { id: 'analytics', label: 'Analytics' },
@@ -282,6 +381,25 @@ export function ProductForm({
                 <Input type="number" {...form.register('leadTimeDays', { valueAsNumber: true })} />
               </div>
             </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm font-semibold text-blue-900 mb-3">Product Dimensions (cm)</p>
+              <p className="text-xs text-blue-800 mb-3">Required for automatic packaging suggestions</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Length (L)</label>
+                  <Input type="number" step="0.1" min="0" {...form.register('lengthCm', { valueAsNumber: true })} placeholder="cm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Width (W)</label>
+                  <Input type="number" step="0.1" min="0" {...form.register('widthCm', { valueAsNumber: true })} placeholder="cm" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Height (H)</label>
+                  <Input type="number" step="0.1" min="0" {...form.register('heightCm', { valueAsNumber: true })} placeholder="cm" />
+                </div>
+              </div>
+            </div>
           </Tabs.Content>
 
           {/* Tax/HSN */}
@@ -298,6 +416,75 @@ export function ProductForm({
               {form.formState.errors.hsnId && (
                 <p className="text-xs text-red-600 mt-1">{form.formState.errors.hsnId.message}</p>
               )}
+            </div>
+          </Tabs.Content>
+
+          {/* Categories & Occasions */}
+          <Tabs.Content value="categories" className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-900">
+                Select categories and occasions for this product.
+              </p>
+            </div>
+
+            {/* Categories */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-3">Categories</label>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {categories.length === 0 ? (
+                  <p className="text-sm text-gray-500">Loading categories...</p>
+                ) : (
+                  categories.map((cat) => (
+                    <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.watch('categoryIds')?.includes(cat.id) || false}
+                        onChange={(e) => {
+                          const current = form.getValues('categoryIds') || [];
+                          if (e.target.checked) {
+                            form.setValue('categoryIds', [...current, cat.id]);
+                          } else {
+                            form.setValue('categoryIds', current.filter((id) => id !== cat.id));
+                          }
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-700" style={{ paddingLeft: cat.parentId ? '1.5rem' : '0' }}>
+                        {cat.name}
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Occasions */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-3">Occasions</label>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {occasions.length === 0 ? (
+                  <p className="text-sm text-gray-500">Loading occasions...</p>
+                ) : (
+                  occasions.map((occ) => (
+                    <label key={occ.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.watch('occasionIds')?.includes(occ.id) || false}
+                        onChange={(e) => {
+                          const current = form.getValues('occasionIds') || [];
+                          if (e.target.checked) {
+                            form.setValue('occasionIds', [...current, occ.id]);
+                          } else {
+                            form.setValue('occasionIds', current.filter((id) => id !== occ.id));
+                          }
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-700">{occ.icon ? `${occ.icon} ` : ''}{occ.name}</span>
+                    </label>
+                  ))
+                )}
+              </div>
             </div>
           </Tabs.Content>
 
@@ -323,9 +510,10 @@ export function ProductForm({
 
                   // Only upload if in edit mode (product already exists)
                   if (mode === 'edit' && initialData?.id) {
+                    let uploadingToastId: string | null = null;
                     try {
                       // Show uploading toast and capture its ID for later dismissal
-                      const uploadingToastId = toast.info('📤 Uploading images...', 0); // No auto-dismiss
+                      uploadingToastId = toast.info('📤 Uploading images...', 0); // No auto-dismiss
 
                       const formData = new FormData();
                       files.forEach((file) => {
@@ -345,7 +533,9 @@ export function ProductForm({
                       const result = await res.json();
 
                       // Dismiss the uploading toast
-                      useToastStore.getState().removeToast(uploadingToastId);
+                      if (uploadingToastId) {
+                        useToastStore.getState().removeToast(uploadingToastId);
+                      }
 
                       // Replace local images state with all images from server
                       // (result.images already contains ALL images, not just new ones)
@@ -366,7 +556,9 @@ export function ProductForm({
                       }
                     } catch (err) {
                       // Dismiss the uploading toast on error
-                      useToastStore.getState().removeToast(uploadingToastId);
+                      if (uploadingToastId) {
+                        useToastStore.getState().removeToast(uploadingToastId);
+                      }
 
                       const errorMsg = err instanceof Error ? err.message : 'Upload failed';
                       toast.error(`❌ Error: ${errorMsg}`);
@@ -652,6 +844,163 @@ export function ProductForm({
                   placeholder="e.g. Supplier cost increase, Promotional pricing"
                 />
                 <p className="text-xs text-gray-500 mt-1">Required to create price audit log</p>
+              </div>
+            )}
+          </Tabs.Content>
+
+          {/* Variants */}
+          <Tabs.Content value="variants" className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-900">
+                Add product variants like color, size, material, etc.
+              </p>
+            </div>
+
+            {/* Add New Variant Form */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-gray-900">Add New Variant</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Type *</label>
+                  <select
+                    value={newVariant.kind}
+                    onChange={(e) => setNewVariant({ ...newVariant, kind: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  >
+                    <option value="color">Color</option>
+                    <option value="size">Size</option>
+                    <option value="material">Material</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Value *</label>
+                  <Input
+                    type="text"
+                    placeholder="e.g. Red, Large, Cotton"
+                    value={newVariant.value}
+                    onChange={(e) => setNewVariant({ ...newVariant, value: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {newVariant.kind === 'color' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Color Code</label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={newVariant.hexColor || '#000000'}
+                      onChange={(e) => setNewVariant({ ...newVariant, hexColor: e.target.value })}
+                      className="w-16 h-10 p-1 border border-gray-300 rounded-lg cursor-pointer"
+                    />
+                    <Input
+                      type="text"
+                      placeholder="#000000"
+                      value={newVariant.hexColor}
+                      onChange={(e) => setNewVariant({ ...newVariant, hexColor: e.target.value })}
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  // Validation
+                  const trimmedValue = newVariant.value.trim();
+                  if (!trimmedValue) {
+                    toast.error('❌ Please enter a variant value', 3000);
+                    return;
+                  }
+
+                  // Validate hex color if provided
+                  if (newVariant.kind === 'color' && newVariant.hexColor) {
+                    const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+                    if (!hexRegex.test(newVariant.hexColor)) {
+                      toast.error('❌ Invalid hex color format (use #RRGGBB)', 3000);
+                      return;
+                    }
+                  }
+
+                  // Check for duplicates
+                  const isDuplicate = variants.some(
+                    (v) => v.kind === newVariant.kind && v.value.toLowerCase() === trimmedValue.toLowerCase()
+                  );
+                  if (isDuplicate) {
+                    toast.error(`❌ This ${newVariant.kind} variant already exists`, 3000);
+                    return;
+                  }
+
+                  setVariants([
+                    ...variants,
+                    {
+                      kind: newVariant.kind,
+                      value: trimmedValue,
+                      hexColor: newVariant.hexColor || undefined,
+                      sortOrder: variants.length,
+                    },
+                  ]);
+                  setNewVariant({ kind: 'color', value: '', hexColor: '' });
+                  toast.success('✅ Variant added', 2000);
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                <Plus className="h-4 w-4" /> Add Variant
+              </button>
+            </div>
+
+            {/* Variants List */}
+            {variants.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-gray-900">Product Variants ({variants.length})</h3>
+                <div className="grid gap-2">
+                  {variants.map((variant, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center gap-3">
+                        {variant.kind === 'color' && variant.hexColor && (
+                          <div
+                            className="w-6 h-6 rounded-md border border-gray-300"
+                            style={{ backgroundColor: variant.hexColor }}
+                          />
+                        )}
+                        <div>
+                          <p className="text-xs text-gray-500 font-semibold uppercase">{variant.kind}</p>
+                          <p className="text-sm font-medium text-gray-900">{variant.value}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            if (mode === 'edit' && variant.id) {
+                              // Delete from API if already saved
+                              const res = await fetch(
+                                `/api/admin/products/${initialData?.id}/variants?variantId=${variant.id}`,
+                                { method: 'DELETE' }
+                              );
+                              if (!res.ok) {
+                                const error = await res.json();
+                                throw new Error(error.error || 'Failed to delete variant');
+                              }
+                            }
+                            // Remove from local list
+                            setVariants(variants.filter((_, i) => i !== idx));
+                            toast.success('✅ Variant removed', 2000);
+                          } catch (err) {
+                            const errorMsg = err instanceof Error ? err.message : 'Failed to remove variant';
+                            toast.error(`❌ Error: ${errorMsg}`, 4000);
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-700 p-1"
+                        title="Remove variant"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </Tabs.Content>

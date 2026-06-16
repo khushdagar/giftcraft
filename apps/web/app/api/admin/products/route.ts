@@ -90,6 +90,9 @@ const CreateProductSchema = z.object({
   sku: z.string().min(1, "SKU required"),
   descriptionShort: z.string().optional(),
   descriptionLong: z.string().optional(),
+  lengthCm: z.number().min(0).optional(),
+  widthCm: z.number().min(0).optional(),
+  heightCm: z.number().min(0).optional(),
   status: z.enum(["active", "draft", "archived", "seasonal"]).default("draft"),
   printingTechnique: z.enum([
     "screen_print",
@@ -117,10 +120,18 @@ const CreateProductSchema = z.object({
     })
   ).min(1),
   
-  // Optional: image URLs, category IDs, occasion IDs
+  // Optional: image URLs, category IDs, occasion IDs, variants
   imageUrls: z.array(z.string().url()).optional(),
   categoryIds: z.array(z.string()).optional(),
   occasionIds: z.array(z.string()).optional(),
+  variants: z.array(
+    z.object({
+      kind: z.string(),
+      value: z.string(),
+      hexColor: z.string().nullable().optional(),
+      sortOrder: z.number().optional(),
+    })
+  ).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -181,6 +192,9 @@ export async function POST(request: NextRequest) {
         sku: data.sku,
         descriptionShort: data.descriptionShort,
         descriptionLong: data.descriptionLong,
+        dimensionL: data.lengthCm,
+        dimensionW: data.widthCm,
+        dimensionH: data.heightCm,
         status: data.status,
         printingTechnique: data.printingTechnique,
         printingPosition: data.printingPosition,
@@ -223,6 +237,20 @@ export async function POST(request: NextRequest) {
           occasions: {
             createMany: {
               data: data.occasionIds.map((id) => ({ occasionId: id })),
+            },
+          },
+        }),
+
+        // Create variants
+        ...(data.variants?.length && {
+          variants: {
+            createMany: {
+              data: data.variants.map((variant, idx) => ({
+                kind: variant.kind,
+                value: variant.value,
+                hexColor: variant.hexColor || null,
+                sortOrder: idx,
+              })),
             },
           },
         }),

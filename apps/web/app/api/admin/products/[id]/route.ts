@@ -14,9 +14,9 @@ const UpdateProductSchema = z.object({
   descriptionShort: z.string().optional(),
   descriptionLong: z.string().optional(),
   material: z.string().optional(),
-  dimensionL: z.number().optional(),
-  dimensionW: z.number().optional(),
-  dimensionH: z.number().optional(),
+  lengthCm: z.number().min(0).optional(),
+  widthCm: z.number().min(0).optional(),
+  heightCm: z.number().min(0).optional(),
   weightG: z.number().optional(),
   status: z.enum(['active', 'draft', 'archived', 'seasonal']).optional(),
   printingTechnique: z
@@ -42,6 +42,15 @@ const UpdateProductSchema = z.object({
   reason: z.string().optional(),
   categoryIds: z.array(z.string()).optional(),
   occasionIds: z.array(z.string()).optional(),
+  variants: z.array(
+    z.object({
+      id: z.string().optional(),
+      kind: z.string(),
+      value: z.string(),
+      hexColor: z.string().nullable().optional(),
+      sortOrder: z.number().optional(),
+    })
+  ).optional(),
 });
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -60,6 +69,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         hsn: true,
         categories: { include: { category: true } },
         occasions: { include: { occasion: true } },
+        variants: { orderBy: { sortOrder: 'asc' } },
       },
     });
 
@@ -151,9 +161,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           ...(data.descriptionShort !== undefined && { descriptionShort: data.descriptionShort }),
           ...(data.descriptionLong !== undefined && { descriptionLong: data.descriptionLong }),
           ...(data.material !== undefined && { material: data.material }),
-          ...(data.dimensionL !== undefined && { dimensionL: data.dimensionL }),
-          ...(data.dimensionW !== undefined && { dimensionW: data.dimensionW }),
-          ...(data.dimensionH !== undefined && { dimensionH: data.dimensionH }),
+          ...(data.lengthCm !== undefined && { dimensionL: data.lengthCm }),
+          ...(data.widthCm !== undefined && { dimensionW: data.widthCm }),
+          ...(data.heightCm !== undefined && { dimensionH: data.heightCm }),
           ...(data.weightG !== undefined && { weightG: data.weightG }),
           ...(data.status && { status: data.status }),
           ...(data.printingTechnique && { printingTechnique: data.printingTechnique }),
@@ -217,6 +227,22 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
             data: data.occasionIds.map((occasionId) => ({
               productId: params.id,
               occasionId,
+            })),
+          });
+        }
+      }
+
+      // Update variants if provided
+      if (data.variants) {
+        await tx.productVariant.deleteMany({ where: { productId: params.id } });
+        if (data.variants.length > 0) {
+          await tx.productVariant.createMany({
+            data: data.variants.map((variant, idx) => ({
+              productId: params.id,
+              kind: variant.kind,
+              value: variant.value,
+              hexColor: variant.hexColor || null,
+              sortOrder: idx,
             })),
           });
         }

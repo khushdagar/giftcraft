@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Image as ImageIcon, AlertCircle, Zap } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Image as ImageIcon, AlertCircle, Zap, Box, Gift, Sparkles } from 'lucide-react';
 
 const NAV = [
   { section: "Overview", items: [
@@ -11,6 +11,10 @@ const NAV = [
   { section: "Commerce", items: [
     { href: "/admin/products", icon: Package, label: "Products" },
     { href: "/admin/orders", icon: ShoppingBag, label: "Orders", badge: "3" },
+    { href: "/admin/packaging", icon: Box, label: "Packaging" },
+    { href: "/admin/addons", icon: Gift, label: "Add-ons" },
+    { href: "/admin/goc", icon: Sparkles, label: "GOC Campaigns" },
+    { href: "/admin/samples", icon: Box, label: "Samples" },
     { href: "/admin/disputes", icon: AlertCircle, label: "Disputes" },
     { href: "/admin/clients", icon: Users, label: "Clients" },
     { href: "/admin/vendors", icon: Truck, label: "Vendors" },

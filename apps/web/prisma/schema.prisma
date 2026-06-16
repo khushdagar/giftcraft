@@ -119,6 +119,20 @@ enum ConsentKind {
   dpdp_consent
 }
 
+enum GocCampaignStatus {
+  draft
+  active
+  paused
+  expired
+}
+
+enum SampleOrderStatus {
+  requested
+  approved
+  shipped
+  rejected
+}
+
 // ═══════════════════════════════════════════════════════════
 //   NEXTAUTH ADAPTER TABLES (required by @auth/prisma-adapter)
 // ═══════════════════════════════════════════════════════════
@@ -182,6 +196,8 @@ model User {
   vendorCommLogs    VendorCommunication[]  @relation("VendorCommLogs")
   notificationPref  NotificationPreference?
   consentLogs       ConsentLog[]
+  gocCampaigns      GocCampaign[]          @relation("CampaignCreatedBy")
+  sampleOrders      SampleOrder[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -206,10 +222,11 @@ model Company {
   website     String?
   logoUrl     String?
 
-  users       User[]
-  orders      Order[]
-  quotes      Quote[]
-  brandAssets BrandAsset[]
+  users          User[]
+  orders         Order[]
+  quotes         Quote[]
+  brandAssets    BrandAsset[]
+  gocCampaigns   GocCampaign[]
 
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -267,6 +284,8 @@ model Product {
   collectionLinks   CollectionProduct[]
   orderItems        OrderItem[]
   auditLogs         PriceAuditLog[]
+  gocOptions        GocOption[]
+  sampleOrders      SampleOrder[]
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -373,6 +392,9 @@ model Packaging {
   description String?
   price       Decimal  @db.Decimal(10, 2)
   imageUrl    String?
+  lengthCm    Float?
+  widthCm     Float?
+  heightCm    Float?
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
 }
@@ -384,6 +406,9 @@ model Addon {
   description String?
   price       Decimal  @db.Decimal(10, 2)
   imageUrl    String?
+  lengthCm    Float?
+  widthCm     Float?
+  heightCm    Float?
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
 }
@@ -702,23 +727,64 @@ model InventoryMovement {
 }
 
 model GocCampaign {
-  id        String   @id @default(cuid())
-  name      String
-  companyId String?
-  createdAt DateTime @default(now())
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  description String?
+  heroImage   String?
+  status      GocCampaignStatus @default(draft)
+  claimLimit  Int?              // null = unlimited
+  expiresAt   DateTime?
+  companyId   String?
+  createdById String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  company     Company?          @relation(fields: [companyId], references: [id])
+  createdBy   User?             @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  options     GocOption[]
+  claims      GocClaim[]
+
+  @@index([companyId])
+  @@index([slug])
+  @@index([status])
 }
 
 model GocOption {
-  id         String @id @default(cuid())
+  id         String      @id @default(cuid())
   campaignId String
   productId  String
+  sortOrder  Int         @default(0)
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+
+  campaign   GocCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product    Product     @relation(fields: [productId], references: [id])
+  claims     GocClaim[]
+
+  @@index([campaignId])
+  @@index([productId])
 }
 
 model GocClaim {
-  id         String   @id @default(cuid())
-  campaignId String
-  email      String
-  claimedAt  DateTime @default(now())
+  id          String      @id @default(cuid())
+  campaignId  String
+  optionId    String?
+  token       String      @unique   // nanoid(16) for unique claim URL
+  claimerName String?
+  claimerEmail String?
+  claimerPhone String?
+  addressJson Json?
+  status      String      @default("pending")  // pending|submitted|fulfilled
+  claimedAt   DateTime?
+  createdAt   DateTime    @default(now())
+
+  campaign    GocCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  option      GocOption?  @relation(fields: [optionId], references: [id])
+
+  @@index([campaignId])
+  @@index([token])
+  @@index([status])
 }
 
 model CompanyWallet {
@@ -849,11 +915,24 @@ model OrderModification {
 }
 
 model SampleOrder {
-  id        String   @id @default(cuid())
-  productId String
-  userId    String?
-  status    String   @default("requested")
-  createdAt DateTime @default(now())
+  id          String            @id @default(cuid())
+  productId   String
+  userId      String?
+  status      SampleOrderStatus @default(requested)
+  addressJson Json?
+  notes       String?
+  adminNotes  String?
+  approvedAt  DateTime?
+  shippedAt   DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  product     Product           @relation(fields: [productId], references: [id])
+  user        User?             @relation(fields: [userId], references: [id])
+
+  @@index([productId])
+  @@index([userId])
+  @@index([status])
 }
 
 model Reseller {

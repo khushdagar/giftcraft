@@ -12,6 +12,9 @@ export interface BuilderProduct {
   hsnCode?: string;
   gstRate?: number;
   leadTimeDays?: number;
+  dimensionL?: number | null;
+  dimensionW?: number | null;
+  dimensionH?: number | null;
   priceTiers?: Array<{ tier: number; minQty: number; maxQty: number | null; sellPrice: number }>;
   images?: Array<{ url: string }>;
 }
@@ -240,11 +243,44 @@ export const useBuilderStore = create<BuilderState>()(
     {
       name: "giftcraft-builder",
       version: 2,
-      partialize: (state) => ({
-        ...state,
-        logo: state.logo ? { file: null, preview: state.logo.preview } : null,
-        csvRecipients: null,
-      }),
+      partialize: (state) => {
+        // Check if we're on a fresh start (has product param in URL)
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          const productParam = params.get('product');
+
+          // For fresh starts, don't persist products, packaging, addons, etc.
+          if (productParam) {
+            return {
+              currentStep: 1,
+              recipientType: null,
+              packQuantity: 50,
+              products: [],
+              packaging: null,
+              addons: [],
+              logo: null,
+              sleeve: false,
+              pincode: null,
+              shippingZone: null,
+              address: null,
+              csvRecipients: null,
+              csvRecipientCount: 0,
+              deliveryMode: "single",
+              cardMessage: "",
+              brandingNotes: "",
+              delivDate: null,
+              coupon: null,
+            };
+          }
+        }
+
+        // Normal persist behavior
+        return {
+          ...state,
+          logo: state.logo ? { file: null, preview: state.logo.preview } : null,
+          csvRecipients: null,
+        };
+      },
     }
   )
 );
