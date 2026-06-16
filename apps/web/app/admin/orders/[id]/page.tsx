@@ -5,6 +5,7 @@ import { formatRupees } from '@/lib/utils';
 import Link from 'next/link';
 import { OrderStatusUpdater } from './components/order-status-updater';
 import { ShiprocketShipButton } from './components/shiprocket-ship-button';
+import { SlaLogDisplay } from '@/components/admin/orders/sla-log-display';
 import { FileDown } from 'lucide-react';
 
 export default async function AdminOrderDetailPage({
@@ -23,6 +24,9 @@ export default async function AdminOrderDetailPage({
       items: true,
       timeline: {
         orderBy: { createdAt: 'asc' },
+      },
+      slaLogs: {
+        orderBy: { enteredAt: 'asc' },
       },
     },
   });
@@ -196,6 +200,13 @@ export default async function AdminOrderDetailPage({
         <div className="lg:sticky lg:top-20 lg:h-fit space-y-4">
           {/* Status Updater */}
           <OrderStatusUpdater orderId={order.id} currentStatus={order.status} />
+
+          {/* SLA Log Display */}
+          {order.slaLogs && order.slaLogs.length > 0 && (
+            <div className="rounded-md border-2 border-bdr bg-white p-5">
+              <SlaLogDisplay slaLogs={order.slaLogs} currentStatus={order.status} />
+            </div>
+          )}
 
           {/* Shiprocket Shipment */}
           {order.status === 'packed' && (

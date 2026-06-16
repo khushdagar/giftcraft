@@ -1,6 +1,7 @@
 import { formatRupees } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, ShoppingBag, Users, FileText, Package, Clock } from "lucide-react";
+import { SlaAlertWidget } from "@/components/admin/dashboard/sla-alert-widget";
 
 export default function AdminDashboard() {
   return (
@@ -19,6 +20,9 @@ export default function AdminDashboard() {
         <MiniKpi label="Clients" value="56" change="+4 this mo" positive />
         <MiniKpi label="Mockups Pending" value="5" change="2 overdue" negative />
       </div>
+
+      {/* SLA Alert Widget */}
+      <SlaAlertWidget />
 
       {/* Pipeline kanban */}
       <div className="rounded-md bg-white p-5 shadow-card">
