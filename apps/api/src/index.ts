@@ -18,6 +18,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { initSlaChecker } from "./workers/sla-checker";
+import { initShiprocketTracker } from "./workers/shiprocket-tracker";
 
 // Handle unhandled promise rejections gracefully in development
 if (process.env.NODE_ENV !== 'production') {
@@ -65,6 +66,9 @@ app.listen(PORT, async () => {
   try {
     await initSlaChecker();
     console.log(`🔧 SLA Checker worker initialized`);
+
+    await initShiprocketTracker();
+    console.log(`🔧 Shiprocket Tracker worker initialized`);
   } catch (err) {
     console.error(`❌ Failed to initialize workers:`, err);
   }

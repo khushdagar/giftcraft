@@ -96,4 +96,32 @@ export function getSlaCheckerQueue(): Queue | null {
   return queue;
 }
 
+// Create Shiprocket tracker queue
+export function getShiprocketTrackerQueue(): Queue | null {
+  const redis = getRedisConnection();
+  if (!redis) return null;
+
+  const queue = new Queue('shiprocket-tracker', {
+    connection: redis,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 2000,
+      },
+      removeOnComplete: true,
+      removeOnFail: false,
+    },
+  });
+
+  // Suppress error emissions in development when Redis is unavailable
+  if (process.env.NODE_ENV !== 'production') {
+    queue.on('error', () => {
+      // Silently ignore connection errors in development
+    });
+  }
+
+  return queue;
+}
+
 export { redisConnection };
