@@ -98,7 +98,7 @@ export default function AdminClientDetailPage() {
           <div>
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-3xl font-black tracking-tight text-ink">{client.name}</h1>
+                <h1 className="text-3xl font-normal tracking-tight text-ink">{client.name}</h1>
                 <p className="mt-1 text-sm text-ink-2">{client.email}</p>
               </div>
             </div>
@@ -114,22 +114,22 @@ export default function AdminClientDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Company Details */}
           <div className="border border-bdr rounded-lg p-6 space-y-4">
-            <h2 className="text-lg font-bold text-ink">Company Details</h2>
+            <h2 className="text-lg font-normal text-ink">Company Details</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-xs text-ink-2 uppercase font-semibold">GSTIN</p>
+                <p className="text-xs text-ink-2 uppercase font-normal">GSTIN</p>
                 <p className="text-sm text-ink mt-1">{client.gstin || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-ink-2 uppercase font-semibold">PAN</p>
+                <p className="text-xs text-ink-2 uppercase font-normal">PAN</p>
                 <p className="text-sm text-ink mt-1">{client.pan || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-ink-2 uppercase font-semibold">Phone</p>
+                <p className="text-xs text-ink-2 uppercase font-normal">Phone</p>
                 <p className="text-sm text-ink mt-1">{client.phone || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-xs text-ink-2 uppercase font-semibold">Website</p>
+                <p className="text-xs text-ink-2 uppercase font-normal">Website</p>
                 <p className="text-sm text-ink mt-1">
                   {client.website ? (
                     <a href={client.website} target="_blank" rel="noopener noreferrer" className="text-em hover:underline">
@@ -145,7 +145,7 @@ export default function AdminClientDetailPage() {
             {/* Address */}
             {(client.addressLine || client.city || client.state) && (
               <div className="pt-4 border-t border-bdr">
-                <p className="text-xs text-ink-2 uppercase font-semibold">Address</p>
+                <p className="text-xs text-ink-2 uppercase font-normal">Address</p>
                 <p className="text-sm text-ink mt-2">
                   {client.addressLine && <div>{client.addressLine}</div>}
                   {(client.city || client.state || client.pincode) && (
@@ -163,7 +163,7 @@ export default function AdminClientDetailPage() {
           {/* Team Members */}
           {client.users.length > 0 && (
             <div className="border border-bdr rounded-lg p-6 space-y-4">
-              <h2 className="text-lg font-bold text-ink">Team Members ({client.users.length})</h2>
+              <h2 className="text-lg font-normal text-ink">Team Members ({client.users.length})</h2>
               <div className="divide-y divide-bdr">
                 {client.users.map((user) => (
                   <div key={user.id} className="py-3 flex items-center justify-between">
@@ -171,7 +171,7 @@ export default function AdminClientDetailPage() {
                       <p className="text-sm font-medium text-ink">{user.name || 'Unnamed'}</p>
                       <p className="text-xs text-ink-2">{user.email}</p>
                     </div>
-                    <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 capitalize">
+                    <span className="inline-block px-2 py-1 rounded-full text-xs font-normal bg-gray-100 text-gray-700 capitalize">
                       {user.role}
                     </span>
                   </div>
@@ -183,7 +183,7 @@ export default function AdminClientDetailPage() {
           {/* Orders */}
           {client.orders.length > 0 && (
             <div className="border border-bdr rounded-lg p-6 space-y-4">
-              <h2 className="text-lg font-bold text-ink">Recent Orders ({client.orders.length})</h2>
+              <h2 className="text-lg font-normal text-ink">Recent Orders ({client.orders.length})</h2>
               <div className="divide-y divide-bdr">
                 {client.orders.slice(0, 5).map((order) => (
                   <div key={order.id} className="py-3">
@@ -197,8 +197,8 @@ export default function AdminClientDetailPage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-ink">₹{order.totalAmount.toLocaleString('en-IN')}</p>
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold capitalize mt-1 ${
+                        <p className="text-sm font-normal text-ink">₹{order.totalAmount.toLocaleString('en-IN')}</p>
+                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-normal capitalize mt-1 ${
                           order.status === 'completed'
                             ? 'bg-emerald-100 text-emerald-700'
                             : order.status === 'shipped'
@@ -227,9 +227,9 @@ export default function AdminClientDetailPage() {
         <div className="space-y-6">
           {/* Tier Card */}
           <div className="border border-bdr rounded-lg p-6 space-y-4">
-            <h2 className="text-lg font-bold text-ink">Membership Tier</h2>
+            <h2 className="text-lg font-normal text-ink">Membership Tier</h2>
             <div className={`p-4 rounded-lg ${getTierBadgeColor(client.tier)}`}>
-              <p className="text-sm font-bold uppercase tracking-wider">{client.tier}</p>
+              <p className="text-sm font-normal uppercase tracking-wider">{client.tier}</p>
             </div>
 
             {editingTier ? (
@@ -282,15 +282,15 @@ export default function AdminClientDetailPage() {
 
           {/* Stats Card */}
           <div className="border border-bdr rounded-lg p-6 space-y-4">
-            <h2 className="text-lg font-bold text-ink">Stats</h2>
+            <h2 className="text-lg font-normal text-ink">Stats</h2>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-ink-2">Total Orders</p>
-                <p className="text-2xl font-black text-em">{client.orders.length}</p>
+                <p className="text-2xl font-normal text-em">{client.orders.length}</p>
               </div>
               <div className="flex justify-between items-center">
                 <p className="text-sm text-ink-2">Total Spent</p>
-                <p className="text-lg font-bold text-ink">
+                <p className="text-lg font-normal text-ink">
                   ₹{client.orders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString('en-IN')}
                 </p>
               </div>

@@ -71,10 +71,10 @@ export default async function DisputeDetailPage({
       <div className="border-b border-bdr pb-8">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-ink">{dispute.subject}</h1>
+            <h1 className="text-3xl font-normal tracking-tight text-ink">{dispute.subject}</h1>
             <p className="mt-2 text-sm text-ink-2">Order {dispute.order.orderNumber}</p>
           </div>
-          <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${statusColors[dispute.status]}`}>
+          <span className={`inline-block px-4 py-2 rounded-full text-sm font-normal ${statusColors[dispute.status]}`}>
             {dispute.status.replace('_', ' ').charAt(0).toUpperCase() + dispute.status.slice(1)}
           </span>
         </div>
@@ -88,12 +88,12 @@ export default async function DisputeDetailPage({
       </div>
 
       <div className="border border-bdr rounded-lg p-6">
-        <h3 className="text-lg font-bold text-ink mb-4">Issue Details</h3>
+        <h3 className="text-lg font-normal text-ink mb-4">Issue Details</h3>
         <p className="text-sm text-ink whitespace-pre-wrap">{dispute.body}</p>
 
         {dispute.photoUrls.length > 0 && (
           <div className="mt-6">
-            <p className="text-sm font-semibold text-ink mb-3">Photos ({dispute.photoUrls.length})</p>
+            <p className="text-sm font-normal text-ink mb-3">Photos ({dispute.photoUrls.length})</p>
             <div className="grid grid-cols-3 gap-4">
               {dispute.photoUrls.map((url, idx) => (
                 <a
@@ -113,7 +113,7 @@ export default async function DisputeDetailPage({
 
       {dispute.resolutionNote && (
         <div className="border border-em-200 bg-em-50 rounded-lg p-6">
-          <h3 className="text-lg font-bold text-em-700 mb-3">Resolution</h3>
+          <h3 className="text-lg font-normal text-em-700 mb-3">Resolution</h3>
           <p className="text-sm text-em-700 whitespace-pre-wrap">{dispute.resolutionNote}</p>
           {dispute.resolvedAt && (
             <p className="text-xs text-em-600 mt-3">

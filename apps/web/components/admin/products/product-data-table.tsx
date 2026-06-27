@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, Edit2 } from 'lucide-react';
+import { Trash2, Edit2, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -47,7 +47,17 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
   const [search, setSearch] = useState(searchParams.get('search') || '');
   const [status, setStatus] = useState(searchParams.get('status') || '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Navigate pages while keeping the current search/status filters.
+  const goToPage = (target: number) => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (status) params.set('status', status);
+    params.set('page', String(target));
+    router.push(`/admin/products?${params.toString()}`, { scroll: false });
+  };
 
   useEffect(() => {
     debounceRef.current = setTimeout(() => {
@@ -93,6 +103,53 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} product${selected.size > 1 ? 's' : ''}? This cannot be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const ids = Array.from(selected);
+      const results = await Promise.allSettled(
+        ids.map((id) =>
+          fetch(`/api/admin/products/${id}`, { method: 'DELETE' }).then(async (r) => ({
+            ok: r.ok,
+            body: (await r.json().catch(() => ({}))) as { archived?: boolean },
+          }))
+        )
+      );
+
+      let deleted = 0;
+      let archived = 0;
+      let failed = 0;
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value.ok) {
+          if (r.value.body?.archived) archived++;
+          else deleted++;
+        } else {
+          failed++;
+        }
+      }
+
+      setSelected(new Set());
+      router.refresh();
+
+      const notes: string[] = [];
+      if (archived > 0)
+        notes.push(
+          `${archived} product${archived > 1 ? 's were' : ' was'} used in orders and archived instead of deleted.`
+        );
+      if (failed > 0)
+        notes.push(`${failed} product${failed > 1 ? 's' : ''} could not be removed.`);
+      if (notes.length > 0) alert(notes.join('\n'));
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Search and filters */}
@@ -125,8 +182,8 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
           <span className="text-sm font-medium text-blue-900">{selected.size} selected</span>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              Delete
+            <Button variant="outline" size="sm" onClick={handleBulkDelete} disabled={deleting}>
+              {deleting ? 'Deleting…' : `Delete ${selected.size}`}
             </Button>
           </div>
         </div>
@@ -150,12 +207,12 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
                   className="rounded"
                 />
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">SKU</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Category</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Price</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Name</th>
+              <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">SKU</th>
+              <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Category</th>
+              <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Price</th>
+              <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Status</th>
+              <th className="px-4 py-3 text-right text-xs font-normal text-gray-600 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -182,7 +239,7 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
                     <p className="text-sm text-gray-600">{category}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-sm font-semibold text-gray-900 tabnum">{formatRupees(price)}</p>
+                    <p className="text-sm font-normal text-gray-900 tabnum">{formatRupees(price)}</p>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={statusVariants[product.status] || 'grey'}>{product.status}</Badge>
@@ -213,20 +270,42 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
         <div className="flex items-center justify-center gap-2 mt-6">
           <Button
             variant="outline"
+            size="sm"
             disabled={page === 1}
-            onClick={() => router.push(`/admin/products?page=${page - 1}`)}
+            onClick={() => goToPage(1)}
+            title="First page"
           >
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page === 1}
+            onClick={() => goToPage(page - 1)}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
             Previous
           </Button>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-600 px-2">
             Page {page} of {totalPages}
           </span>
           <Button
             variant="outline"
+            size="sm"
             disabled={page === totalPages}
-            onClick={() => router.push(`/admin/products?page=${page + 1}`)}
+            onClick={() => goToPage(page + 1)}
           >
             Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page === totalPages}
+            onClick={() => goToPage(totalPages)}
+            title="Last page"
+          >
+            <ChevronsRight className="h-4 w-4" />
           </Button>
         </div>
       )}

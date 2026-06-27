@@ -92,7 +92,7 @@ export default async function SlaViolationsPage({
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-black text-ink">SLA Violations</h1>
+        <h1 className="text-3xl font-normal text-ink">SLA Violations</h1>
         <p className="text-sm text-ink-2 mt-1">
           {total} order{total !== 1 ? 's' : ''} with breached SLAs
         </p>
@@ -102,7 +102,7 @@ export default async function SlaViolationsPage({
       {enriched.length === 0 ? (
         <div className="bg-emerald-50 rounded-md border-2 border-em-200 p-12 text-center">
           <AlertCircle className="w-12 h-12 text-em mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-bold text-em-700 mb-2">No Violations Found</h3>
+          <h3 className="text-lg font-normal text-em-700 mb-2">No Violations Found</h3>
           <p className="text-em-600">All orders are meeting their SLA targets 🎉</p>
         </div>
       ) : (
@@ -112,28 +112,28 @@ export default async function SlaViolationsPage({
             <table className="w-full">
               <thead className="bg-gray-50 border-b-2 border-bdr">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-ink-2 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">
                     Order
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-ink-2 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">
                     Company
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-ink-2 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">
                     Stage
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-ink-2 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-ink-2 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">
                     Time Spent
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-ink-2 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">
                     SLA Target
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-ink-2 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">
                     Breached By
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-ink-2 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">
                     Action
                   </th>
                 </tr>
@@ -144,7 +144,7 @@ export default async function SlaViolationsPage({
                     key={log.id}
                     className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
                   >
-                    <td className="px-6 py-4 text-sm font-semibold text-ink">
+                    <td className="px-6 py-4 text-sm font-normal text-ink">
                       {log.order.orderNumber}
                     </td>
                     <td className="px-6 py-4 text-sm text-ink-2">
@@ -153,7 +153,7 @@ export default async function SlaViolationsPage({
                     <td className="px-6 py-4 text-sm text-ink-2">{log.stage}</td>
                     <td className="px-6 py-4 text-sm">
                       <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        className={`px-2 py-1 rounded-full text-xs font-normal ${
                           log.order.status === 'completed'
                             ? 'bg-emerald-100 text-emerald-700'
                             : 'bg-amber-100 text-amber-700'
@@ -162,17 +162,17 @@ export default async function SlaViolationsPage({
                         {log.order.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-ink">
+                    <td className="px-6 py-4 text-sm font-normal text-ink">
                       {log.elapsedMinutes}m
                     </td>
                     <td className="px-6 py-4 text-sm text-ink-2">{log.slaMinutes}m</td>
-                    <td className="px-6 py-4 text-sm font-bold text-rose-600">
+                    <td className="px-6 py-4 text-sm font-normal text-rose-600">
                       +{log.breachedByFormatted}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <Link
                         href={`/admin/orders/${log.orderId}`}
-                        className="inline-flex items-center gap-1 text-navy-800 hover:text-navy-900 font-semibold"
+                        className="inline-flex items-center gap-1 text-navy-800 hover:text-navy-900 font-normal"
                       >
                         Review <ExternalLink className="w-4 h-4" />
                       </Link>
@@ -193,7 +193,7 @@ export default async function SlaViolationsPage({
                 {page > 1 && (
                   <Link
                     href={`?page=${page - 1}&limit=${limit}`}
-                    className="px-4 py-2 rounded-md border-2 border-bdr hover:bg-gray-50 font-semibold text-sm"
+                    className="px-4 py-2 rounded-md border-2 border-bdr hover:bg-gray-50 font-normal text-sm"
                   >
                     ← Previous
                   </Link>
@@ -201,7 +201,7 @@ export default async function SlaViolationsPage({
                 {page < totalPages && (
                   <Link
                     href={`?page=${page + 1}&limit=${limit}`}
-                    className="px-4 py-2 rounded-md border-2 border-bdr hover:bg-gray-50 font-semibold text-sm"
+                    className="px-4 py-2 rounded-md border-2 border-bdr hover:bg-gray-50 font-normal text-sm"
                   >
                     Next →
                   </Link>

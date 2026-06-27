@@ -63,42 +63,42 @@ export default async function VendorPODetailPage({ params }: { params: { poId: s
         </Link>
       </div>
 
-      <h1 className="text-3xl font-black text-ink">PO: {po.order.orderNumber}</h1>
+      <h1 className="text-3xl font-normal text-ink">PO: {po.order.orderNumber}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">Order Info</p>
+            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-4">Order Info</p>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-ink-2">Company</span>
-                <span className="font-semibold text-ink">{po.order.company.name}</span>
+                <span className="font-normal text-ink">{po.order.company?.name || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-2">Quantity</span>
-                <span className="font-semibold text-ink">{po.order.packQuantity}</span>
+                <span className="font-normal text-ink">{po.order.packQuantity}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-2">Deadline</span>
-                <span className="font-semibold text-ink">{new Date(po.deadline).toLocaleDateString('en-IN')}</span>
+                <span className="font-normal text-ink">{new Date(po.deadline).toLocaleDateString('en-IN')}</span>
               </div>
               <div className="flex justify-between border-t border-bdr pt-3">
                 <span className="text-ink-2">Amount</span>
-                <span className="font-semibold text-ink tabnum">{formatRupees(Number(po.totalAmount))}</span>
+                <span className="font-normal text-ink tabnum">{formatRupees(Number(po.totalAmount))}</span>
               </div>
             </div>
           </div>
 
           <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">Items</p>
+            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-4">Items</p>
             <div className="space-y-2 text-sm">
               {po.order.items.map((item, idx) => (
                 <div key={idx} className="flex justify-between pb-2 border-b border-bdr last:border-0">
                   <div>
-                    <p className="font-semibold text-ink">{item.productId}</p>
+                    <p className="font-normal text-ink">{item.productId}</p>
                     <p className="text-xs text-ink-2">{formatRupees(Number(item.unitPrice))}</p>
                   </div>
-                  <span className="font-semibold">{item.quantity} units</span>
+                  <span className="font-normal">{item.quantity} units</span>
                 </div>
               ))}
             </div>
@@ -107,17 +107,17 @@ export default async function VendorPODetailPage({ params }: { params: { poId: s
 
         <div className="space-y-6">
           <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">Status</p>
-            <span className={`inline-block text-sm font-semibold px-4 py-2 rounded-full ${getStatusColor(po.status)}`}>
+            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">Status</p>
+            <span className={`inline-block text-sm font-normal px-4 py-2 rounded-full ${getStatusColor(po.status)}`}>
               {po.status === 'in_progress' ? 'In Progress' : po.status.charAt(0).toUpperCase() + po.status.slice(1)}
             </span>
           </div>
 
           <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">Contact</p>
+            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">Contact</p>
             <div className="text-sm">
-              <p className="font-semibold text-ink">{po.order.company.name}</p>
-              <p className="text-ink-2">{po.order.company.phone || 'N/A'}</p>
+              <p className="font-normal text-ink">{po.order.company?.name || 'N/A'}</p>
+              <p className="text-ink-2">{po.order.company?.phone || 'N/A'}</p>
             </div>
           </div>
         </div>

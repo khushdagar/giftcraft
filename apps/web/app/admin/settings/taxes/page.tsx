@@ -139,9 +139,9 @@ export default function TaxesSettingsPage() {
         </Link>
         <div className="flex items-center gap-2 mb-2">
           <DollarSign className="h-5 w-5 text-em-400" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Configuration</p>
+          <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Configuration</p>
         </div>
-        <h1 className="text-3xl font-bold text-ink">Tax Codes</h1>
+        <h1 className="text-3xl font-normal text-ink">Tax Codes</h1>
         <p className="text-sm text-ink-2 mt-2">Manage HSN codes and GST rates for products</p>
       </div>
 
@@ -161,7 +161,7 @@ export default function TaxesSettingsPage() {
 
         {/* Form */}
         <div className="bg-white border border-bdr rounded-md p-6">
-          <h2 className="text-lg font-semibold text-ink mb-4">{editingId ? 'Edit HSN Code' : 'Add New HSN Code'}</h2>
+          <h2 className="text-lg font-normal text-ink mb-4">{editingId ? 'Edit HSN Code' : 'Add New HSN Code'}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -225,10 +225,10 @@ export default function TaxesSettingsPage() {
             <table className="w-full">
               <thead className="bg-elevated border-b border-bdr">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink uppercase">HSN Code</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink uppercase">Description</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink uppercase">GST Rate</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-ink uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">HSN Code</th>
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">Description</th>
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">GST Rate</th>
+                  <th className="px-6 py-3 text-right text-xs font-normal text-ink uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-bdr">

@@ -53,7 +53,7 @@ export function KanbanCard({ order }: KanbanCardProps) {
     >
       <Link href={`/admin/orders/${order.id}`} className="block group">
         {/* Order Number */}
-        <h3 className="font-bold text-sm text-ink group-hover:text-em transition-colors">
+        <h3 className="font-normal text-sm text-ink group-hover:text-em transition-colors">
           {order.orderNumber}
         </h3>
 
@@ -68,7 +68,7 @@ export function KanbanCard({ order }: KanbanCardProps) {
         </p>
 
         {/* Amount */}
-        <p className="font-bold text-base text-ink mt-2">
+        <p className="font-normal text-base text-ink mt-2">
           {formatRupees(order.grandTotal)}
         </p>
 

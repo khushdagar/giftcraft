@@ -26,7 +26,7 @@ export default async function DisputeDetailPage({ params }: { params: { id: stri
         select: {
           id: true, orderNumber: true, status: true, grandTotal: true, createdAt: true,
           deliveryDate: true,
-          company: { select: { id: true, name: true, phone: true, email: true } },
+          company: { select: { id: true, name: true, phone: true } },
           items: { select: { productId: true, quantity: true, unitPrice: true, totalPrice: true } },
         },
       },
@@ -56,11 +56,11 @@ export default async function DisputeDetailPage({ params }: { params: { id: stri
           <ArrowLeft className="w-4 h-4" /> Disputes
         </Link>
         <span>/</span>
-        <span className="font-semibold text-ink">{dispute.id}</span>
+        <span className="font-normal text-ink">{dispute.id}</span>
       </div>
 
       <div>
-        <h1 className="text-3xl font-black text-ink">Dispute #{dispute.id.slice(-8).toUpperCase()}</h1>
+        <h1 className="text-3xl font-normal text-ink">Dispute #{dispute.id.slice(-8).toUpperCase()}</h1>
         <p className="text-sm text-ink-2 mt-1">
           Order {dispute.order.orderNumber} · Filed {new Date(dispute.createdAt).toLocaleDateString('en-IN')}
         </p>
@@ -71,8 +71,8 @@ export default async function DisputeDetailPage({ params }: { params: { id: stri
           <div className="rounded-md border-2 border-bdr bg-white p-5">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Status</p>
-                <p className={`inline-block mt-2 px-3 py-1.5 rounded-full text-xs font-semibold border-2 ${getStatusBadgeColor(dispute.status)}`}>
+                <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Status</p>
+                <p className={`inline-block mt-2 px-3 py-1.5 rounded-full text-xs font-normal border-2 ${getStatusBadgeColor(dispute.status)}`}>
                   {getStatusLabel(dispute.status)}
                 </p>
               </div>
@@ -85,16 +85,16 @@ export default async function DisputeDetailPage({ params }: { params: { id: stri
 
             <div className="space-y-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">Subject</p>
-                <p className="text-base font-semibold text-ink">{dispute.subject}</p>
+                <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-2">Subject</p>
+                <p className="text-base font-normal text-ink">{dispute.subject}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">Description</p>
+                <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-2">Description</p>
                 <p className="text-sm text-ink-2 whitespace-pre-wrap">{dispute.body}</p>
               </div>
               {dispute.resolutionNote && (
                 <div className="rounded-md bg-emerald-50 border-2 border-emerald-200 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 mb-2">Resolution</p>
+                  <p className="text-xs font-normal uppercase tracking-wider text-emerald-700 mb-2">Resolution</p>
                   <p className="text-sm text-emerald-700 whitespace-pre-wrap">{dispute.resolutionNote}</p>
                 </div>
               )}
@@ -108,40 +108,40 @@ export default async function DisputeDetailPage({ params }: { params: { id: stri
           )}
 
           <div className="rounded-md border-2 border-bdr bg-white p-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">Order Details</p>
+            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-4">Order Details</p>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-ink-2">Order</span>
-                <Link href={`/admin/orders/${dispute.order.id}`} className="text-em hover:underline font-semibold flex items-center gap-1">
+                <Link href={`/admin/orders/${dispute.order.id}`} className="text-em hover:underline font-normal flex items-center gap-1">
                   {dispute.order.orderNumber} <ExternalLink className="w-3 h-3" />
                 </Link>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-2">Company</span>
-                <span className="font-semibold text-ink">{dispute.order.company?.name}</span>
+                <span className="font-normal text-ink">{dispute.order.company?.name}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-2">Total</span>
-                <span className="font-semibold text-ink tabnum">{formatRupees(Number(dispute.order.grandTotal))}</span>
+                <span className="font-normal text-ink tabnum">{formatRupees(Number(dispute.order.grandTotal))}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink-2">Status</span>
-                <span className="font-semibold text-ink">{dispute.order.status.replace('_', ' ')}</span>
+                <span className="font-normal text-ink">{dispute.order.status.replace('_', ' ')}</span>
               </div>
             </div>
           </div>
 
           {dispute.submittedBy && (
             <div className="rounded-md border-2 border-bdr bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">Submitted By</p>
+              <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-4">Submitted By</p>
               <div className="space-y-2 text-sm">
                 <div>
                   <p className="text-ink-3 text-xs">Name</p>
-                  <p className="font-semibold text-ink">{dispute.submittedBy.name}</p>
+                  <p className="font-normal text-ink">{dispute.submittedBy.name}</p>
                 </div>
                 <div>
                   <p className="text-ink-3 text-xs">Email</p>
-                  <p className="font-semibold text-ink text-xs break-all">{dispute.submittedBy.email}</p>
+                  <p className="font-normal text-ink text-xs break-all">{dispute.submittedBy.email}</p>
                 </div>
               </div>
             </div>

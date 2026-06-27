@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 
+// 'draft' and 'quote_sent' are pre-order states and never apply once an order
+// exists, so they're intentionally excluded from the admin dropdown.
 const STATUS_OPTIONS = [
-  'draft',
-  'quote_sent',
   'confirmed',
   'mockup_pending',
   'mockup_approved',
@@ -32,6 +32,12 @@ export function OrderStatusUpdater({
   const [newStatus, setNewStatus] = useState(currentStatus);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Keep the dropdown in sync when the order status changes elsewhere (e.g.
+  // after "Mark Paid" / a balance payment refreshes the page data).
+  useEffect(() => {
+    setNewStatus(currentStatus);
+  }, [currentStatus]);
 
   const handleUpdateStatus = async () => {
     if (!newStatus || newStatus === currentStatus) {
@@ -63,12 +69,12 @@ export function OrderStatusUpdater({
 
   return (
     <div className="rounded-md border-2 border-bdr bg-white p-5">
-      <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
+      <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-4">
         Update Status
       </p>
       <div className="space-y-3">
         <div>
-          <label className="text-xs font-semibold text-ink-3 block mb-2">New Status</label>
+          <label className="text-xs font-normal text-ink-3 block mb-2">New Status</label>
           <select
             value={newStatus}
             onChange={(e) => setNewStatus(e.target.value)}
@@ -86,7 +92,7 @@ export function OrderStatusUpdater({
           </select>
         </div>
         <div>
-          <label className="text-xs font-semibold text-ink-3 block mb-2">Note (optional)</label>
+          <label className="text-xs font-normal text-ink-3 block mb-2">Note (optional)</label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}

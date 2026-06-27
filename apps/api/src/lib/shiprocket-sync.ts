@@ -3,15 +3,47 @@ import axios from 'axios';
 
 const prisma = new PrismaClient();
 
-const SHIPROCKET_API_URL = 'https://apiv2.shiprocket.in/v1/external';
-const SHIPROCKET_API_KEY = process.env.SHIPROCKET_API_KEY || '';
+const SHIPROCKET_API_URL =
+  process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external';
+const SHIPROCKET_EMAIL = process.env.SHIPROCKET_EMAIL || '';
+const SHIPROCKET_PASSWORD = process.env.SHIPROCKET_PASSWORD || '';
+
+// Shiprocket tokens are valid 24h; cache for 23.5h to stay under the limit.
+let cachedToken: { value: string; expiresAt: number } | null = null;
+const TOKEN_EXPIRY_MS = 23.5 * 60 * 60 * 1000;
+
+/**
+ * Get a valid Shiprocket bearer token, logging in with email+password when the
+ * cached token is missing or expired.
+ */
+async function getShiprocketToken(): Promise<string | null> {
+  if (cachedToken && Date.now() < cachedToken.expiresAt) {
+    return cachedToken.value;
+  }
+  if (!SHIPROCKET_EMAIL || !SHIPROCKET_PASSWORD) {
+    console.warn('⚠️  SHIPROCKET_EMAIL/PASSWORD not set - tracking fetch skipped');
+    return null;
+  }
+  try {
+    const { data } = await axios.post(`${SHIPROCKET_API_URL}/auth/login`, {
+      email: SHIPROCKET_EMAIL,
+      password: SHIPROCKET_PASSWORD,
+    });
+    if (!data?.token) return null;
+    cachedToken = { value: data.token, expiresAt: Date.now() + TOKEN_EXPIRY_MS };
+    return cachedToken.value;
+  } catch (error) {
+    console.error('Shiprocket auth failed:', error);
+    return null;
+  }
+}
 
 /**
  * Fetch tracking data from Shiprocket for a given AWB code
  */
 export async function fetchShiprocketTracking(awbCode: string) {
-  if (!SHIPROCKET_API_KEY) {
-    console.warn('⚠️  SHIPROCKET_API_KEY not set - tracking fetch skipped');
+  const token = await getShiprocketToken();
+  if (!token) {
     return null;
   }
 
@@ -20,7 +52,7 @@ export async function fetchShiprocketTracking(awbCode: string) {
       `${SHIPROCKET_API_URL}/courier/track/awb/${awbCode}`,
       {
         headers: {
-          'Authorization': `Bearer ${SHIPROCKET_API_KEY}`,
+          'Authorization': `Bearer ${token}`,
         },
       }
     );
@@ -104,7 +136,6 @@ export async function updateShipmentTracking(
       status,
       currentLocation,
       estimatedDelivery,
-      updatedAt: new Date(),
     },
   });
 }

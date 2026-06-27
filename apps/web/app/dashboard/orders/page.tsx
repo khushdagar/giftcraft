@@ -76,7 +76,7 @@ export default function OrdersPage() {
       <div className="flex items-end justify-between">
         <div>
           <p className="overline text-ink-3">Orders</p>
-          <h1 className="mt-1 text-3xl font-black">Your <span className="italic text-em">history.</span></h1>
+          <h1 className="mt-1 text-3xl font-normal">Your <span className="italic text-em">history.</span></h1>
         </div>
         <Button asChild variant="em"><Link href="/builder">New Order</Link></Button>
       </div>
@@ -86,7 +86,7 @@ export default function OrdersPage() {
           <button
             key={t}
             onClick={() => setFilter(t === "All" ? null : t)}
-            className={`rounded-md-p px-4 py-1.5 text-xs font-semibold transition whitespace-nowrap ${
+            className={`rounded-md-p px-4 py-1.5 text-xs font-normal transition whitespace-nowrap ${
               (t === "All" ? filter === null : filter === t)
                 ? "bg-white text-ink shadow-card"
                 : "text-ink-2 hover:text-ink"
@@ -98,7 +98,7 @@ export default function OrdersPage() {
       </div>
 
       <div className="rounded-md bg-white shadow-card">
-        <div className="grid grid-cols-12 gap-3 border-b border-bdr px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-ink-3">
+        <div className="grid grid-cols-12 gap-3 border-b border-bdr px-5 py-3 text-[10px] font-normal uppercase tracking-wider text-ink-3">
           <div className="col-span-4">Order</div>
           <div className="col-span-3 hidden sm:block">Status</div>
           <div className="col-span-2 hidden sm:block">Amount</div>
@@ -115,7 +115,7 @@ export default function OrdersPage() {
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="px-5 py-12 text-center text-sm text-ink-3">
-            No orders found. <Link href="/builder" className="text-em font-semibold">Start a new one →</Link>
+            No orders found. <Link href="/builder" className="text-em font-normal">Start a new one →</Link>
           </div>
         ) : (
           filteredOrders.map((o) => (
@@ -145,7 +145,7 @@ export default function OrdersPage() {
               {/* Status and Price */}
               <div className="hidden sm:flex items-center gap-4 flex-shrink-0">
                 <Badge variant={getStatusVariant(o.status)}>{getStatusLabel(o.status)}</Badge>
-                <p className="font-semibold tabnum">{formatRupees(Number(o.grandTotal))}</p>
+                <p className="font-normal tabnum">{formatRupees(Number(o.grandTotal))}</p>
               </div>
 
               <div className="text-right text-ink-3 flex-shrink-0">→</div>

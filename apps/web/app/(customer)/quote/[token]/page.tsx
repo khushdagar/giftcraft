@@ -39,7 +39,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <h1 className="text-3xl font-black text-ink mb-2">Quote Not Found</h1>
+          <h1 className="text-3xl font-normal text-ink mb-2">Quote Not Found</h1>
           <p className="text-ink-3 mb-6">This quote doesn't exist or has been removed.</p>
           <Button asChild variant="em" size="lg">
             <Link href="/builder">Create Your Own Pack</Link>
@@ -55,7 +55,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <h1 className="text-3xl font-black text-ink mb-2">Quote Expired</h1>
+          <h1 className="text-3xl font-normal text-ink mb-2">Quote Expired</h1>
           <p className="text-ink-3 mb-2">
             This quote expired on {quote.expiresAt.toLocaleDateString('en-IN')}
           </p>
@@ -82,7 +82,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
       <div className="container-gc-w max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-black text-ink">Quote Preview</h1>
+          <h1 className="text-3xl font-normal text-ink">Quote Preview</h1>
           <p className="text-ink-3 mt-1">Quote #{quote.id.slice(0, 8).toUpperCase()}</p>
         </div>
 
@@ -92,17 +92,17 @@ export default async function QuotePage({ params }: { params: { token: string } 
           <div className="space-y-6">
             {/* Products */}
             <div className="rounded-md border-2 border-bdr bg-white p-5 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Items</p>
+              <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Items</p>
               {products.map((product: any) => (
                 <div
                   key={product.id}
                   className="flex items-center justify-between pb-2 border-b border-bdr last:border-0 last:pb-0"
                 >
                   <div>
-                    <p className="text-sm font-semibold text-ink">{product.name}</p>
+                    <p className="text-sm font-normal text-ink">{product.name}</p>
                     <p className="text-xs text-ink-3">×{product.quantity}</p>
                   </div>
-                  <p className="text-sm font-black tabnum text-ink">
+                  <p className="text-sm font-normal tabnum text-ink">
                     {formatRupees(product.sellPrice * product.quantity)}
                   </p>
                 </div>
@@ -112,13 +112,13 @@ export default async function QuotePage({ params }: { params: { token: string } 
             {/* Customizations */}
             {(packaging || addons.length > 0) && (
               <div className="rounded-md border-2 border-bdr bg-white p-5 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
                   Customizations
                 </p>
                 {packaging && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-ink-2">{packaging.name}</span>
-                    <span className="font-semibold text-ink">
+                    <span className="font-normal text-ink">
                       +{formatRupees(packaging.price * payload.packQuantity)}
                     </span>
                   </div>
@@ -128,7 +128,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
                     {addons.map((addon: any) => (
                       <div key={addon.id} className="flex items-center justify-between text-sm">
                         <span className="text-ink-3">{addon.name}</span>
-                        <span className="font-semibold text-ink">
+                        <span className="font-normal text-ink">
                           +{formatRupees(addon.price * payload.packQuantity)}
                         </span>
                       </div>
@@ -141,9 +141,11 @@ export default async function QuotePage({ params }: { params: { token: string } 
             {/* Shipping */}
             {shippingZone && (
               <div className="rounded-md border-2 border-sky-200 bg-sky-50 p-5">
-                <p className="text-xs text-sky-700 font-semibold mb-2">{shippingZone.zoneName}</p>
-                <p className="text-lg font-black text-sky-900 tabnum">
-                  {formatRupees(shippingZone.flatRate)}
+                <p className="text-xs text-sky-700 font-normal mb-2">
+                  {shippingZone.zoneName} · Shipping (incl. GST)
+                </p>
+                <p className="text-lg font-normal text-sky-900 tabnum">
+                  {(pricing.shipping ?? 0) > 0 ? formatRupees(pricing.shipping) : 'FREE'}
                 </p>
               </div>
             )}
@@ -153,36 +155,27 @@ export default async function QuotePage({ params }: { params: { token: string } 
           <div className="space-y-4">
             <div className="rounded-md bg-dark text-inv p-5 space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>Subtotal</span>
-                <span className="font-semibold tabnum">{formatRupees(pricing.subtotal || 0)}</span>
+                <span>Subtotal (before shipping, GST)</span>
+                <span className="font-normal tabnum">{formatRupees(pricing.itemsSubtotal || 0)}</span>
               </div>
-              {pricing.cgst > 0 && (
+              {/* GST — single combined line (shipping is already GST-inclusive) */}
+              {(pricing.cgst || 0) + (pricing.sgst || 0) + (pricing.igst || 0) > 0 && (
                 <div className="flex items-center justify-between text-sm">
-                  <span>CGST (9%)</span>
-                  <span className="font-semibold tabnum">+{formatRupees(pricing.cgst)}</span>
-                </div>
-              )}
-              {pricing.sgst > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span>SGST (9%)</span>
-                  <span className="font-semibold tabnum">+{formatRupees(pricing.sgst)}</span>
-                </div>
-              )}
-              {pricing.igst > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span>IGST (18%)</span>
-                  <span className="font-semibold tabnum">+{formatRupees(pricing.igst)}</span>
+                  <span>GST</span>
+                  <span className="font-normal tabnum">
+                    +{formatRupees((pricing.cgst || 0) + (pricing.sgst || 0) + (pricing.igst || 0))}
+                  </span>
                 </div>
               )}
               {pricing.razorpayFee > 0 && (
                 <div className="flex items-center justify-between text-sm border-t border-inv/20 pt-2">
                   <span>Payment Fee</span>
-                  <span className="font-semibold tabnum">+{formatRupees(pricing.razorpayFee)}</span>
+                  <span className="font-normal tabnum">+{formatRupees(pricing.razorpayFee)}</span>
                 </div>
               )}
               <div className="border-t border-inv/20 pt-3 flex items-center justify-between">
-                <span className="font-semibold">Total</span>
-                <span className="text-2xl font-black tabnum">{formatRupees(pricing.grandTotal || 0)}</span>
+                <span className="font-normal">Total</span>
+                <span className="text-2xl font-normal tabnum">{formatRupees(pricing.grandTotal || 0)}</span>
               </div>
             </div>
 
@@ -210,7 +203,7 @@ export default async function QuotePage({ params }: { params: { token: string } 
 
             {/* Info */}
             <div className="rounded-md bg-blue-50 border border-blue-200 p-3">
-              <p className="text-[10px] font-semibold text-blue-900 mb-1">ℹ️ Quote Info</p>
+              <p className="text-[10px] font-normal text-blue-900 mb-1">ℹ️ Quote Info</p>
               <p className="text-[10px] text-blue-800 leading-relaxed">
                 Valid until {quote.expiresAt.toLocaleDateString('en-IN')}
               </p>

@@ -73,17 +73,19 @@ export function CheckoutSummary({
 
         {/* Subtotal */}
         <div className="flex items-center justify-between pb-4 border-b border-bdr">
-          <span className="text-sm text-ink-2">Subtotal</span>
-          <span className="font-black text-ink tabnum">{formatRupees(pricing.subtotal)}</span>
+          <span className="text-sm text-ink-2">Subtotal (before shipping, GST)</span>
+          <span className="font-black text-ink tabnum">{formatRupees(pricing.itemsSubtotal)}</span>
         </div>
 
-        {/* Shipping */}
-        {shippingZone && (
-          <div className="flex items-center justify-between pb-4 border-b border-bdr">
-            <span className="text-sm text-ink-2">Shipping (Bulk - ₹90/pack)</span>
-            <span className="font-black text-ink tabnum">+{formatRupees(shippingZone?.flatRate || 0)}</span>
-          </div>
-        )}
+        {/* Shipping — weight-based (SOW: ₹/kg per zone) */}
+        <div className="flex items-center justify-between pb-4 border-b border-bdr">
+          <span className="text-sm text-ink-2">
+            Shipping{shippingZone?.zoneName ? ` (${shippingZone.zoneName})` : ''}
+          </span>
+          <span className="font-black text-ink tabnum">
+            {pricing.shipping > 0 ? `+${formatRupees(pricing.shipping)}` : 'FREE'}
+          </span>
+        </div>
 
         {/* GST Breakdown per HSN */}
         <div className="space-y-2 pb-4 border-b border-bdr">
@@ -115,7 +117,7 @@ export function CheckoutSummary({
           <div className="flex items-center justify-between pb-4 border-b border-bdr">
             <div>
               <p className="text-sm text-ink-2">Payment Processing</p>
-              <p className="text-xs text-ink-3 italic">Razorpay -2.36%</p>
+              <p className="text-xs text-ink-3 italic">Razorpay 2%</p>
             </div>
             <span className="font-black text-ink tabnum">+{formatRupees(pricing.razorpayFee)}</span>
           </div>

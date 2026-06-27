@@ -94,10 +94,10 @@ export function VendorPaymentsTab({ vendorId }: { vendorId: string }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-ink">Payment Records</h3>
+        <h3 className="text-lg font-normal text-ink">Payment Records</h3>
         <Button
           onClick={() => setShowForm(!showForm)}
-          className="rounded-2xl bg-em px-6 font-bold"
+          className="rounded-2xl bg-em px-6 font-normal"
         >
           {showForm ? 'Cancel' : '+ Add Payment'}
         </Button>
@@ -107,7 +107,7 @@ export function VendorPaymentsTab({ vendorId }: { vendorId: string }) {
         <form onSubmit={handleSubmit} className="border border-bdr rounded-lg p-6 bg-canvas">
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-semibold text-ink mb-2">Invoice Number</label>
+              <label className="block text-sm font-normal text-ink mb-2">Invoice Number</label>
               <Input
                 name="invoiceNumber"
                 value={formData.invoiceNumber}
@@ -116,7 +116,7 @@ export function VendorPaymentsTab({ vendorId }: { vendorId: string }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-ink mb-2">Amount *</label>
+              <label className="block text-sm font-normal text-ink mb-2">Amount *</label>
               <Input
                 type="number"
                 name="amount"
@@ -129,7 +129,7 @@ export function VendorPaymentsTab({ vendorId }: { vendorId: string }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-ink mb-2">Due Date *</label>
+            <label className="block text-sm font-normal text-ink mb-2">Due Date *</label>
             <Input
               type="datetime-local"
               name="dueDate"
@@ -140,7 +140,7 @@ export function VendorPaymentsTab({ vendorId }: { vendorId: string }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-ink mb-2">Notes</label>
+            <label className="block text-sm font-normal text-ink mb-2">Notes</label>
             <Input
               name="notes"
               value={formData.notes}
@@ -149,7 +149,7 @@ export function VendorPaymentsTab({ vendorId }: { vendorId: string }) {
             />
           </div>
 
-          <Button type="submit" className="rounded-2xl bg-em px-6 font-bold">
+          <Button type="submit" className="rounded-2xl bg-em px-6 font-normal">
             Add Payment
           </Button>
         </form>
@@ -159,10 +159,10 @@ export function VendorPaymentsTab({ vendorId }: { vendorId: string }) {
         <table className="w-full">
           <thead className="bg-elevated border-b border-bdr">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-ink-2 uppercase">Invoice</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-ink-2 uppercase">Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-ink-2 uppercase">Due Date</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-ink-2 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">Invoice</th>
+              <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">Amount</th>
+              <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">Due Date</th>
+              <th className="px-6 py-3 text-left text-xs font-normal text-ink-2 uppercase">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-bdr">
@@ -176,10 +176,10 @@ export function VendorPaymentsTab({ vendorId }: { vendorId: string }) {
               payments.map((payment) => (
                 <tr key={payment.id} className="hover:bg-canvas">
                   <td className="px-6 py-4 text-sm text-ink">{payment.invoiceNumber || '—'}</td>
-                  <td className="px-6 py-4 text-sm font-semibold text-ink">₹{Number(payment.amount).toFixed(2)}</td>
+                  <td className="px-6 py-4 text-sm font-normal text-ink">₹{Number(payment.amount).toFixed(2)}</td>
                   <td className="px-6 py-4 text-sm text-ink">{new Date(payment.dueDate).toLocaleDateString('en-IN')}</td>
                   <td className="px-6 py-4">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusColors[payment.status] || 'bg-gray-100'}`}>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-normal ${statusColors[payment.status] || 'bg-gray-100'}`}>
                       {payment.status.replace('_', ' ').charAt(0).toUpperCase() + payment.status.slice(1)}
                     </span>
                   </td>

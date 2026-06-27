@@ -90,10 +90,10 @@ export function VendorCommunicationsTab({ vendorId }: { vendorId: string }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-ink">Communication Log</h3>
+        <h3 className="text-lg font-normal text-ink">Communication Log</h3>
         <Button
           onClick={() => setShowForm(!showForm)}
-          className="rounded-2xl bg-em px-6 font-bold"
+          className="rounded-2xl bg-em px-6 font-normal"
         >
           {showForm ? 'Cancel' : '+ Log Communication'}
         </Button>
@@ -102,7 +102,7 @@ export function VendorCommunicationsTab({ vendorId }: { vendorId: string }) {
       {showForm && (
         <form onSubmit={handleSubmit} className="border border-bdr rounded-lg p-6 bg-canvas">
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-ink mb-2">Type *</label>
+            <label className="block text-sm font-normal text-ink mb-2">Type *</label>
             <select
               value={formData.type}
               onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value as any }))}
@@ -117,7 +117,7 @@ export function VendorCommunicationsTab({ vendorId }: { vendorId: string }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold text-ink mb-2">Details *</label>
+            <label className="block text-sm font-normal text-ink mb-2">Details *</label>
             <Textarea
               value={formData.note}
               onChange={(e) => setFormData((prev) => ({ ...prev, note: e.target.value }))}
@@ -127,7 +127,7 @@ export function VendorCommunicationsTab({ vendorId }: { vendorId: string }) {
             />
           </div>
 
-          <Button type="submit" className="rounded-2xl bg-em px-6 font-bold">
+          <Button type="submit" className="rounded-2xl bg-em px-6 font-normal">
             Log Communication
           </Button>
         </form>
@@ -143,7 +143,7 @@ export function VendorCommunicationsTab({ vendorId }: { vendorId: string }) {
                 <div className="text-2xl">{typeIcons[comm.type] || '📌'}</div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${typeColors[comm.type]}`}>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-normal ${typeColors[comm.type]}`}>
                       {comm.type.replace('_', ' ').charAt(0).toUpperCase() + comm.type.slice(1)}
                     </span>
                     <span className="text-xs text-ink-2">

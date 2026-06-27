@@ -16,6 +16,9 @@ export async function GET(
         images: {
           orderBy: { sortOrder: 'asc' },
         },
+        variants: {
+          orderBy: { sortOrder: 'asc' },
+        },
         hsn: {
           include: {
             hsn: true,

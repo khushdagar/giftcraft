@@ -4,16 +4,33 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
 const UpdateVendorSchema = z.object({
+  code: z.string().nullable().optional(),
   name: z.string().min(2).max(100).optional(),
+  type: z.string().nullable().optional(),
+  productsServices: z.string().nullable().optional(),
   contactName: z.string().min(2).max(100).optional(),
   email: z.string().email().optional(),
   phone: z.string().min(10).max(20).optional(),
+  whatsapp: z.string().nullable().optional(),
   city: z.string().min(2).max(50).optional(),
   state: z.string().length(2).optional(),
   address: z.string().optional(),
   gst: z.string().optional(),
   paymentTerms: z.string().optional(),
+  avgLeadDays: z.number().int().nullable().optional(),
+  minOrderQty: z.number().int().nullable().optional(),
+  qualityRating: z.number().int().min(1).max(5).nullable().optional(),
+  reliabilityRating: z.number().int().min(1).max(5).nullable().optional(),
+  creditDays: z.number().int().nullable().optional(),
+  onboardingStatus: z.string().optional(),
+  gstKycReceived: z.boolean().optional(),
+  bankDetailsReceived: z.boolean().optional(),
+  agreementSigned: z.boolean().optional(),
+  samplesReceived: z.boolean().optional(),
+  lastUsedAt: z.string().nullable().optional(),
+  onboardedAt: z.string().nullable().optional(),
   notes: z.string().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export async function GET(
@@ -46,6 +63,7 @@ export async function GET(
         gst: true,
         paymentTerms: true,
         notes: true,
+        isActive: true,
         score: true,
         priceConfirmedAt: true,
         createdAt: true,
@@ -97,9 +115,14 @@ export async function PATCH(
       );
     }
 
+    const { lastUsedAt, onboardedAt, ...rest } = validation.data;
+    const updateData: any = { ...rest };
+    if (lastUsedAt !== undefined) updateData.lastUsedAt = lastUsedAt ? new Date(lastUsedAt) : null;
+    if (onboardedAt !== undefined) updateData.onboardedAt = onboardedAt ? new Date(onboardedAt) : null;
+
     const vendor = await prisma.vendor.update({
       where: { id },
-      data: validation.data,
+      data: updateData,
       select: {
         id: true,
         name: true,
@@ -113,6 +136,7 @@ export async function PATCH(
         gst: true,
         paymentTerms: true,
         notes: true,
+        isActive: true,
         score: true,
         priceConfirmedAt: true,
         updatedAt: true,

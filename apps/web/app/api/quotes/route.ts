@@ -24,6 +24,13 @@ export async function POST(req: NextRequest) {
       pricing,
       deliveryMode,
       discount,
+      logoUrl,
+      brandingNotes,
+      cardMessage,
+      address,
+      delivDate,
+      pincode,
+      csvRecipientCount,
     } = body;
 
     // Generate unique share token
@@ -46,6 +53,14 @@ export async function POST(req: NextRequest) {
           pricing,
           deliveryMode,
           discount,
+          logoUrl: logoUrl || null,
+          brandingNotes: brandingNotes || '',
+          cardMessage: cardMessage || '',
+          // Delivery details (Step 3)
+          address: address || null,
+          delivDate: delivDate || null,
+          pincode: pincode || null,
+          csvRecipientCount: csvRecipientCount || 0,
         },
       },
     });

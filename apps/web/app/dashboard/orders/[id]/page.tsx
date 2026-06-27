@@ -3,7 +3,8 @@ import { auth } from '@/auth';
 import { formatRupees } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, FileDown } from 'lucide-react';
+import { PayBalanceButton } from './components/pay-balance-button';
 
 function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
@@ -12,6 +13,7 @@ function getStatusLabel(status: string): string {
     confirmed: "Confirmed",
     mockup_pending: "Mockup Review",
     mockup_approved: "Approved",
+    payment_pending: "Payment Pending",
     production: "In Production",
     quality_check: "QC",
     packed: "Packed",
@@ -26,7 +28,7 @@ function getStatusLabel(status: string): string {
 }
 
 function getStatusVariant(status: string): "em" | "gold" | "grey" {
-  if (status === "mockup_pending") return "gold";
+  if (status === "mockup_pending" || status === "payment_pending") return "gold";
   if (status === "delivered" || status === "completed") return "grey";
   return "em";
 }
@@ -58,13 +60,16 @@ export default async function OrderDetailPage({
         },
       },
       timeline: true,
+      artworkApprovals: {
+        orderBy: { revision: 'desc' },
+      },
     },
   }) as any;
 
   if (!order || order.placedById !== session.user.id) {
     return (
       <div className="max-w-2xl space-y-6">
-        <Link href="/dashboard/orders" className="inline-flex items-center gap-2 text-sm font-semibold text-em hover:underline">
+        <Link href="/dashboard/orders" className="inline-flex items-center gap-2 text-sm font-normal text-em hover:underline">
           <ChevronLeft className="w-4 h-4" />
           Back to Orders
         </Link>
@@ -80,7 +85,7 @@ export default async function OrderDetailPage({
   return (
     <div className="max-w-4xl space-y-6">
       {/* Back Button */}
-      <Link href="/dashboard/orders" className="inline-flex items-center gap-2 text-sm font-semibold text-em hover:underline">
+      <Link href="/dashboard/orders" className="inline-flex items-center gap-2 text-sm font-normal text-em hover:underline">
         <ChevronLeft className="w-4 h-4" />
         Back to Orders
       </Link>
@@ -89,22 +94,136 @@ export default async function OrderDetailPage({
       <div className="flex items-end justify-between">
         <div>
           <p className="overline text-ink-3">Order Details</p>
-          <h1 className="mt-1 text-3xl font-black">#{order.orderNumber}</h1>
+          <h1 className="mt-1 text-3xl font-normal">#{order.orderNumber}</h1>
           <p className="mt-1 text-sm text-ink-3">
             Created {new Date(order.createdAt).toLocaleDateString('en-IN')}
           </p>
         </div>
-        <Badge variant={getStatusVariant(order.status)}>
-          {getStatusLabel(order.status)}
-        </Badge>
+        {(() => {
+          // Derived "Payment Pending" label when the mockup is approved but a
+          // balance is still due.
+          const amountPaid = Number((order.billingJson as any)?.amountPaid ?? 0);
+          const balance = Math.max(0, Number(order.grandTotal) - amountPaid);
+          const showPaymentPending = order.status === 'mockup_approved' && balance > 0;
+          return (
+            <Badge variant={showPaymentPending ? 'gold' : getStatusVariant(order.status)}>
+              {showPaymentPending ? 'Payment Pending' : getStatusLabel(order.status)}
+            </Badge>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Balance payment due — shown once the mockup is approved and a
+              balance remains (derived "payment pending" state). */}
+          {(order.status === 'mockup_approved' || order.status === 'payment_pending') && (() => {
+            const amountPaid = Number((order.billingJson as any)?.amountPaid ?? 0);
+            const balance = Math.max(0, Number(order.grandTotal) - amountPaid);
+            if (balance <= 0) return null;
+            return (
+              <div className="rounded-md border-2 border-gold/40 bg-gold-50 p-5">
+                <p className="text-xs font-normal uppercase tracking-wider text-gold-700 mb-2">
+                  Payment Pending
+                </p>
+                <p className="text-sm text-ink-2 mb-1">
+                  Your mockup is approved 🎉 Complete the remaining balance to start production.
+                </p>
+                <p className="text-2xl font-black tabular-nums text-ink mb-4">
+                  {formatRupees(balance)} <span className="text-sm font-normal text-ink-3">due</span>
+                </p>
+                <div className="max-w-xs">
+                  <PayBalanceButton orderId={order.id} balanceDue={balance} />
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Design Approval / Mockup — only relevant while the order is in the
+              mockup phase; once it advances to production+ the timeline/status
+              badge tell the story, so we hide this banner. */}
+          {(() => {
+            const approval = order.artworkApprovals?.[0];
+            if (!approval) return null;
+            if (!['mockup_pending', 'mockup_approved'].includes(order.status)) {
+              return null;
+            }
+
+            if (approval.status === 'pending') {
+              return (
+                <div className="rounded-md border-2 border-gold/40 bg-gold-50 p-5">
+                  <p className="text-xs font-normal uppercase tracking-wider text-gold-700 mb-3">
+                    Mockup ready for your approval
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {approval.fileUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={approval.fileUrl}
+                        alt={`Mockup v${approval.revision}`}
+                        className="h-28 w-28 flex-shrink-0 rounded-md border-2 border-gold/30 object-cover bg-white"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm text-ink-2 mb-3">
+                        Our design team has prepared the branding artwork (version {approval.revision}) for
+                        your order. Please review and approve it so we can start production.
+                      </p>
+                      <Link
+                        href={`/approve/${approval.token}`}
+                        className="inline-flex items-center justify-center px-5 py-2.5 rounded-2xl bg-em text-white text-sm font-normal hover:bg-em-700 transition"
+                      >
+                        Review &amp; Approve Mockup
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            if (approval.status === 'revision_requested') {
+              return (
+                <div className="rounded-md border-2 border-rose-200 bg-rose-50 p-5">
+                  <p className="text-xs font-normal uppercase tracking-wider text-rose-700 mb-2">
+                    Changes requested
+                  </p>
+                  <p className="text-sm text-ink-2">
+                    Thanks for your feedback on mockup v{approval.revision}. Our design team is preparing an
+                    updated version — you'll get a new approval link shortly.
+                  </p>
+                </div>
+              );
+            }
+
+            if (approval.status === 'approved') {
+              // When a balance is still due, the "Payment Pending" banner above
+              // carries the messaging — don't also claim it's in production.
+              const amountPaid = Number((order.billingJson as any)?.amountPaid ?? 0);
+              const balance = Math.max(0, Number(order.grandTotal) - amountPaid);
+              if (balance > 0) return null;
+              return (
+                <div className="rounded-md border-2 border-em-200 bg-em-50 p-5">
+                  <p className="text-xs font-normal uppercase tracking-wider text-em-700 mb-2">
+                    Mockup approved
+                  </p>
+                  <p className="text-sm text-ink-2">
+                    You approved the artwork (v{approval.revision})
+                    {approval.approvedAt
+                      ? ` on ${new Date(approval.approvedAt).toLocaleDateString('en-IN')}`
+                      : ''}
+                    . Your order is moving into production.
+                  </p>
+                </div>
+              );
+            }
+
+            return null;
+          })()}
+
           {/* Order Items */}
           <div className="rounded-md border-2 border-gray-200 bg-white p-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-4">
+            <p className="text-xs font-normal uppercase tracking-wider text-gray-600 mb-4">
               Items
             </p>
             <div className="space-y-3">
@@ -114,7 +233,7 @@ export default async function OrderDetailPage({
                     <p className="font-medium text-sm">{item.product?.name || 'Product'}</p>
                     <p className="text-xs text-gray-500">×{item.quantity}</p>
                   </div>
-                  <p className="font-bold text-sm tabular-nums">
+                  <p className="font-normal text-sm tabular-nums">
                     {formatRupees(Number(item.totalPrice))}
                   </p>
                 </div>
@@ -124,7 +243,7 @@ export default async function OrderDetailPage({
 
           {/* Billing Info */}
           <div className="rounded-md border-2 border-gray-200 bg-white p-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-4">
+            <p className="text-xs font-normal uppercase tracking-wider text-gray-600 mb-4">
               Billing Information
             </p>
             {billingJson ? (
@@ -150,7 +269,7 @@ export default async function OrderDetailPage({
           {/* Timeline */}
           {order.timeline.length > 0 && (
             <div className="rounded-md border-2 border-gray-200 bg-white p-5">
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-600 mb-4">
+              <p className="text-xs font-normal uppercase tracking-wider text-gray-600 mb-4">
                 Timeline
               </p>
               <div className="space-y-4">
@@ -178,7 +297,7 @@ export default async function OrderDetailPage({
         <div className="lg:col-span-1 space-y-4">
           {/* Pricing Summary */}
           <div className="rounded-md border-2 border-gray-200 bg-white p-5 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+            <p className="text-xs font-normal uppercase tracking-wider text-gray-600">
               Pricing
             </p>
 
@@ -188,13 +307,6 @@ export default async function OrderDetailPage({
                 <span className="font-medium">{formatRupees(Number(order.subtotal))}</span>
               </div>
 
-              {Number(order.shippingAmount) > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="font-medium">+{formatRupees(Number(order.shippingAmount))}</span>
-                </div>
-              )}
-
               {Number(order.packagingAmount) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Packaging</span>
@@ -202,24 +314,27 @@ export default async function OrderDetailPage({
                 </div>
               )}
 
-              {Number(order.cgstAmount) > 0 && (
+              {Number(order.addonsAmount) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">CGST</span>
-                  <span className="font-medium">+{formatRupees(Number(order.cgstAmount))}</span>
+                  <span className="text-gray-600">Add-ons</span>
+                  <span className="font-medium">+{formatRupees(Number(order.addonsAmount))}</span>
                 </div>
               )}
 
-              {Number(order.sgstAmount) > 0 && (
+              {Number(order.shippingAmount) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">SGST</span>
-                  <span className="font-medium">+{formatRupees(Number(order.sgstAmount))}</span>
+                  <span className="text-gray-600">Shipping (incl. GST)</span>
+                  <span className="font-medium">+{formatRupees(Number(order.shippingAmount))}</span>
                 </div>
               )}
 
-              {Number(order.igstAmount) > 0 && (
+              {/* GST — single combined line (shipping is already GST-inclusive) */}
+              {Number(order.cgstAmount) + Number(order.sgstAmount) + Number(order.igstAmount) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">IGST</span>
-                  <span className="font-medium">+{formatRupees(Number(order.igstAmount))}</span>
+                  <span className="text-gray-600">GST</span>
+                  <span className="font-medium">
+                    +{formatRupees(Number(order.cgstAmount) + Number(order.sgstAmount) + Number(order.igstAmount))}
+                  </span>
                 </div>
               )}
 
@@ -230,16 +345,45 @@ export default async function OrderDetailPage({
                 </div>
               )}
 
-              <div className="border-t border-gray-200 pt-2 flex justify-between font-bold">
+              <div className="border-t border-gray-200 pt-2 flex justify-between font-normal">
                 <span>Grand Total</span>
                 <span>{formatRupees(Number(order.grandTotal))}</span>
               </div>
+
+              {/* Advance paid + pending balance (price-lock path) */}
+              {order.paidAt && (() => {
+                const amountPaid = Number((order.billingJson as any)?.amountPaid ?? 0);
+                const isFull = (order.billingJson as any)?.paymentType === 'full';
+                const balance = Math.max(0, Number(order.grandTotal) - amountPaid);
+                return (
+                  <div className="border-t border-gray-200 pt-2 space-y-1">
+                    <div className="flex justify-between text-em-700">
+                      <span>Advance Paid ({isFull ? 'full' : '10%'})</span>
+                      <span>−{formatRupees(amountPaid)}</span>
+                    </div>
+                    <div className="flex justify-between font-normal">
+                      <span>Balance Pending</span>
+                      <span>{formatRupees(balance)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
+
+            <a
+              href={`/api/orders/${order.id}/invoice`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 flex items-center justify-center gap-2 w-full px-4 py-2 rounded-md border border-em text-em hover:bg-em-50 transition text-sm font-normal"
+            >
+              <FileDown className="w-4 h-4" />
+              Download {order.paidAt ? 'Tax Invoice' : 'Proforma Invoice'}
+            </a>
           </div>
 
           {/* Order Info */}
           <div className="rounded-md border-2 border-gray-200 bg-white p-5 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">
+            <p className="text-xs font-normal uppercase tracking-wider text-gray-600">
               Order Info
             </p>
             <div className="space-y-2 text-sm">
@@ -257,7 +401,7 @@ export default async function OrderDetailPage({
           {/* Tracking */}
           {order.awbCode && (
             <div className="rounded-md border-2 border-em-200 bg-em-50 p-5 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-em-700">
+              <p className="text-xs font-normal uppercase tracking-wider text-em-700">
                 Shipment Tracking
               </p>
               <div className="space-y-2 text-sm">
@@ -277,7 +421,7 @@ export default async function OrderDetailPage({
                   href={order.trackingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block w-full text-center px-4 py-2 rounded-md border border-em-200 text-em-700 hover:bg-em-100 transition text-sm font-semibold mt-3"
+                  className="block w-full text-center px-4 py-2 rounded-md border border-em-200 text-em-700 hover:bg-em-100 transition text-sm font-normal mt-3"
                 >
                   Track Shipment
                 </a>

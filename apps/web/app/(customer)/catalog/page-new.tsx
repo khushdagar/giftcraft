@@ -429,7 +429,7 @@ export default function CatalogPage() {
           >
             <button
               onClick={() => setViewMode('products')}
-              className={`px-6 py-2 rounded-full text-sm font-semibold transition ${
+              className={`px-6 py-2 rounded-full text-sm font-normal transition ${
                 viewMode === 'products'
                   ? 'bg-surface text-ink shadow-card'
                   : 'text-ink-2 hover:text-ink'
@@ -439,7 +439,7 @@ export default function CatalogPage() {
             </button>
             <button
               onClick={() => setViewMode('packs')}
-              className={`px-6 py-2 rounded-full text-sm font-semibold transition ${
+              className={`px-6 py-2 rounded-full text-sm font-normal transition ${
                 viewMode === 'packs'
                   ? 'bg-surface text-ink shadow-card'
                   : 'text-ink-2 hover:text-ink'
@@ -473,7 +473,7 @@ export default function CatalogPage() {
 
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="md:hidden h-11 px-4 bg-surface border-2 border-bdr rounded-full text-sm font-semibold text-ink flex items-center gap-2"
+                className="md:hidden h-11 px-4 bg-surface border-2 border-bdr rounded-full text-sm font-normal text-ink flex items-center gap-2"
               >
                 ☰ Filters
               </button>
@@ -481,7 +481,7 @@ export default function CatalogPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="h-11 px-4 pr-10 border-2 border-bdr bg-surface text-sm font-semibold text-ink rounded-full outline-none appearance-none"
+                className="h-11 px-4 pr-10 border-2 border-bdr bg-surface text-sm font-normal text-ink rounded-full outline-none appearance-none"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239B9B93' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
                   backgroundRepeat: 'no-repeat',
@@ -511,7 +511,7 @@ export default function CatalogPage() {
                   <button
                     key={cat}
                     onClick={() => toggleCategory(cat)}
-                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-em-50 text-em-700 hover:bg-em hover:text-white transition"
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-normal rounded-full bg-em-50 text-em-700 hover:bg-em hover:text-white transition"
                   >
                     {cat} ✕
                   </button>
@@ -520,7 +520,7 @@ export default function CatalogPage() {
                   <button
                     key={brand}
                     onClick={() => toggleBrand(brand)}
-                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-em-50 text-em-700 hover:bg-em hover:text-white transition"
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-normal rounded-full bg-em-50 text-em-700 hover:bg-em hover:text-white transition"
                   >
                     {brand} ✕
                   </button>
@@ -528,7 +528,7 @@ export default function CatalogPage() {
                 {ecoOnly && (
                   <button
                     onClick={() => setEcoOnly(false)}
-                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-em-50 text-em-700 hover:bg-em hover:text-white transition"
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-normal rounded-full bg-em-50 text-em-700 hover:bg-em hover:text-white transition"
                   >
                     Eco-Friendly ✕
                   </button>
@@ -536,14 +536,14 @@ export default function CatalogPage() {
                 {brandingOnly && (
                   <button
                     onClick={() => setBrandingOnly(false)}
-                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-em-50 text-em-700 hover:bg-em hover:text-white transition"
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-normal rounded-full bg-em-50 text-em-700 hover:bg-em hover:text-white transition"
                   >
                     Branding Available ✕
                   </button>
                 )}
                 <button
                   onClick={clearFilters}
-                  className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-elevated text-ink-2 hover:bg-recessed transition"
+                  className="inline-flex items-center gap-1 px-3 py-1 text-xs font-normal rounded-full bg-elevated text-ink-2 hover:bg-recessed transition"
                 >
                   Clear All
                 </button>
@@ -653,7 +653,7 @@ export default function CatalogPage() {
                             className="flex-1 h-1 bg-recessed rounded accent-em cursor-pointer"
                           />
                         </div>
-                        <div className="flex justify-between text-xs font-semibold text-ink">
+                        <div className="flex justify-between text-xs font-normal text-ink">
                           <span>{formatPrice(priceMin)}</span>
                           <span>{formatPrice(priceMax)}</span>
                         </div>
@@ -769,13 +769,13 @@ export default function CatalogPage() {
                   <div className="md:hidden flex gap-2 mt-8 pt-4 border-t border-bdr">
                     <button
                       onClick={() => setSidebarOpen(false)}
-                      className="flex-1 h-11 bg-em text-white rounded-full font-semibold text-sm"
+                      className="flex-1 h-11 bg-em text-white rounded-full font-normal text-sm"
                     >
                       Show Results
                     </button>
                     <button
                       onClick={clearFilters}
-                      className="h-11 px-4 border-2 border-bdr rounded-full text-sm text-ink-2 font-semibold"
+                      className="h-11 px-4 border-2 border-bdr rounded-full text-sm text-ink-2 font-normal"
                     >
                       Clear
                     </button>
@@ -797,7 +797,7 @@ export default function CatalogPage() {
                     <div className="flex gap-4 justify-center flex-wrap">
                       <button
                         onClick={clearFilters}
-                        className="px-6 h-10 bg-em text-white rounded-full font-semibold text-sm"
+                        className="px-6 h-10 bg-em text-white rounded-full font-normal text-sm"
                       >
                         Clear All Filters
                       </button>
@@ -807,7 +807,7 @@ export default function CatalogPage() {
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-6 h-10 border-2 border-bdr rounded-full font-semibold text-sm text-ink-2 flex items-center gap-2"
+                        className="px-6 h-10 border-2 border-bdr rounded-full font-normal text-sm text-ink-2 flex items-center gap-2"
                       >
                         💬 Contact Us
                       </a>
@@ -853,10 +853,10 @@ export default function CatalogPage() {
                     <p className="text-white/50 text-sm mb-3">
                       {collection.desc}
                     </p>
-                    <p className="text-white/35 text-xs font-semibold">
+                    <p className="text-white/35 text-xs font-normal">
                       {collection.productIds.length} products
                     </p>
-                    <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-white/10 rounded-full text-white text-sm font-semibold hover:bg-white/20 transition">
+                    <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-white/10 rounded-full text-white text-sm font-normal hover:bg-white/20 transition">
                       Browse Pack →
                     </div>
                   </div>
@@ -881,7 +881,7 @@ function FilterSection({
   return (
     <div className="pb-4 mb-4 border-b border-bdr last:border-b-0 last:mb-0 last:pb-0">
       {title && (
-        <h4 className="font-display text-sm font-semibold text-ink mb-3">
+        <h4 className="font-display text-sm font-normal text-ink mb-3">
           {title}
         </h4>
       )}
@@ -902,16 +902,16 @@ function ProductCard({ product }: { product: Product }) {
 
           {/* Badges */}
           <div className="absolute top-2 left-2 flex gap-2 flex-wrap">
-            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gold-50 text-gold-700">
+            <span className="text-xs font-normal px-2 py-1 rounded-full bg-gold-50 text-gold-700">
               MIN {product.moq}
             </span>
             {product.eco && (
-              <span className="text-xs font-semibold px-2 py-1 rounded-full bg-em-50 text-em-700">
+              <span className="text-xs font-normal px-2 py-1 rounded-full bg-em-50 text-em-700">
                 🍃 ECO
               </span>
             )}
             {product.technique !== 'None' && (
-              <span className="text-xs font-semibold px-2 py-1 rounded-full bg-em-50/20 text-em-700 text-[10px]">
+              <span className="text-xs font-normal px-2 py-1 rounded-full bg-em-50/20 text-em-700 text-[10px]">
                 🎨 {product.technique}
               </span>
             )}
@@ -920,13 +920,13 @@ function ProductCard({ product }: { product: Product }) {
 
         {/* Content */}
         <div className="p-3">
-          <p className="text-xs text-ink-3 uppercase font-semibold mb-1">
+          <p className="text-xs text-ink-3 uppercase font-normal mb-1">
             {product.brand}
           </p>
-          <h3 className="text-sm font-semibold text-ink line-clamp-2 min-h-9 mb-2">
+          <h3 className="text-sm font-normal text-ink line-clamp-2 min-h-9 mb-2">
             {product.name}
           </h3>
-          <p className="text-base font-bold text-em tabular-nums mb-1">
+          <p className="text-base font-normal text-em tabular-nums mb-1">
             From {formatPrice(product.tiers?.[0] ?? 0)}
           </p>
           <p className="text-xs text-ink-3 uppercase tracking-wider">
@@ -942,7 +942,7 @@ function ProductCard({ product }: { product: Product }) {
             e.preventDefault();
             // Add to builder logic
           }}
-          className="w-[calc(100%-28px)] mx-3.5 mb-3 h-8 bg-em text-white text-xs font-semibold rounded-full hover:bg-em-600 transition opacity-0 group-hover:opacity-100"
+          className="w-[calc(100%-28px)] mx-3.5 mb-3 h-8 bg-em text-white text-xs font-normal rounded-full hover:bg-em-600 transition opacity-0 group-hover:opacity-100"
         >
           Add to Pack
         </button>

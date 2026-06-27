@@ -52,6 +52,7 @@ enum OrderStatus {
   confirmed
   mockup_pending
   mockup_approved
+  payment_pending
   production
   quality_check
   packed
@@ -183,6 +184,7 @@ model User {
   emailVerified DateTime?
   image         String?
   phone         String?
+  passwordHash  String?   // Set when the user registers with email/password; null for OAuth-only users
   role          UserRole  @default(company_member)
   companyId     String?
 
@@ -264,11 +266,16 @@ model Product {
   dimensionW        Float?
   dimensionH        Float?
   weightG           Float?
+  moq               Int      @default(25)   // Minimum order quantity per product (from product master)
   leadTimeDays      Int      @default(10)
   status            ProductStatus @default(draft)
   printingTechnique PrintingTechnique @default(none)
   printingPosition  String?
+  brandingArea      String?  // e.g. "60×40 mm" — printable area
   isEcoCertified    Boolean  @default(false)
+  ecoCertification  String?  // e.g. "GOTS", "FSC", "GRS", "rPET"
+  sampleAvailable   Boolean  @default(false)
+  recipientTags     String[] @default([])   // e.g. "All staff", "Senior, VIP Clients"
   isFeatured        Boolean  @default(false)
   sortOrder         Int      @default(0)
   metaTitle         String?
@@ -337,6 +344,7 @@ model Category {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  imageUrl  String?  // Category cover image (from Unsplash or custom)
   parentId  String?
   parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children  Category[] @relation("CategoryTree")
@@ -418,16 +426,35 @@ model Addon {
 // ═══════════════════════════════════════════════════════════
 model Vendor {
   id               String    @id @default(cuid())
+  code             String?   @unique  // Vendor code e.g. "V001"
   name             String
   slug             String    @unique
+  type             String?   // e.g. "Packaging - Boxes", "Brand - Drinkware", "Manufacturer - Apparel"
+  productsServices String?   @db.Text // What the vendor supplies
   contactName      String?
   email            String?
   phone            String?
+  whatsapp         String?
   city             String?
   state            String?
   address          String?   @db.Text
   gst              String?
   paymentTerms     String?
+  avgLeadDays      Int?      // Average lead time (days)
+  minOrderQty      Int?      // Minimum order quantity
+  qualityRating    Int?      // Manual 1-5 rating
+  reliabilityRating Int?     // Manual 1-5 rating
+  lastUsedAt       DateTime?
+  creditDays       Int?
+  // Onboarding checklist (from vendor master)
+  onboardingStatus String    @default("pending") // pending | to_approach | onboarding | onboarded
+  gstKycReceived   Boolean   @default(false)
+  bankDetailsReceived Boolean @default(false)
+  agreementSigned  Boolean   @default(false)
+  samplesReceived  Boolean   @default(false)
+  onboardedAt      DateTime?
+  source           String    @default("admin") // admin | self_registration
+  isActive         Boolean   @default(true) // Active vendors are usable for sourcing/POs
   notes            String?   @db.Text
   score            Decimal?  @db.Decimal(5, 2)
   priceConfirmedAt DateTime?
@@ -446,13 +473,18 @@ model Vendor {
 }
 
 model ProductVendor {
-  id        String   @id @default(cuid())
-  productId String
-  vendorId  String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  costPrice Decimal? @db.Decimal(10, 2)
-  isPrimary Boolean  @default(false)
+  id                   String    @id @default(cuid())
+  productId            String
+  vendorId             String
+  product              Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vendor               Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  costPrice            Decimal?  @db.Decimal(10, 2)
+  isPrimary            Boolean   @default(false)
+  vendorSku            String?   // Vendor's own SKU for this product
+  vendorMoq            Int?      // Vendor minimum order quantity
+  vendorLeadDays       Int?      // Vendor lead time in days
+  sourcingStatus       String?   // e.g. "ok", "to_approach", "onboarding", "onboarded"
+  lastPriceConfirmedAt DateTime? // When this vendor's price was last confirmed
 
   @@unique([productId, vendorId])
 }
@@ -632,7 +664,16 @@ model ShippingZone {
   id         String   @id @default(cuid())
   name       String
   states     String[] // list of state codes covered
+
+  // Weight-based rate model (SOW §Shipping Zones: "rate per kg per zone").
+  ratePerKg              Decimal  @default(0) @db.Decimal(10, 2) // ₹ per kg of parcel weight
+  minCharge              Decimal  @default(0) @db.Decimal(10, 2) // minimum shipping charge per shipment
+  freeShippingThreshold  Decimal? @db.Decimal(10, 2)            // order subtotal ≥ this ⇒ free (null = never)
+  individualSurchargePct Decimal  @default(0) @db.Decimal(5, 2)  // extra % for individual delivery
+
+  // Legacy flat rate — kept for back-compat/fallback when ratePerKg is unset.
   flatRate   Decimal  @db.Decimal(10, 2)
+
   etaMinDays Int
   etaMaxDays Int
   isActive   Boolean  @default(true)
@@ -1136,4 +1177,33 @@ model WhiteLabelStore {
   companyId String @unique
   subdomain String @unique
   themeJson Json
+}
+
+// ═══════════════════════════════════════════════════════════
+//   PRODUCT ENQUIRIES (Quick Quote leads from product pages)
+// ═══════════════════════════════════════════════════════════
+enum EnquiryStatus {
+  new
+  contacted
+  quoted
+  closed
+}
+
+model Enquiry {
+  id          String        @id @default(cuid())
+  companyName String
+  contactName String
+  email       String
+  phone       String
+  quantity    Int?
+  message     String?       @db.Text
+  // Denormalised product reference (no FK so deleting a product keeps the lead).
+  productId   String?
+  productName String?
+  status      EnquiryStatus @default(new)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
 }

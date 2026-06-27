@@ -21,33 +21,53 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would typically send the form data to your backend
-    console.log('Enquiry form submitted:', {
-      ...formData,
-      productName,
-      productId,
-    });
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      onClose();
-      setFormData({
-        companyName: '',
-        contactName: '',
-        email: '',
-        phone: '',
-        quantity: '',
-        message: '',
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/enquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          quantity: formData.quantity || undefined,
+          productName,
+          productId,
+        }),
       });
-    }, 2000);
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Something went wrong. Please try again.');
+      }
+
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        onClose();
+        setFormData({
+          companyName: '',
+          contactName: '',
+          email: '',
+          phone: '',
+          quantity: '',
+          message: '',
+        });
+      }, 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit enquiry');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -79,6 +99,12 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                 <div className="rounded-md bg-elevated p-3">
                   <p className="text-xs text-ink-3">Product</p>
                   <p className="font-semibold text-ink">{productName}</p>
+                </div>
+              )}
+
+              {error && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {error}
                 </div>
               )}
 
@@ -175,14 +201,16 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
               <div className="flex gap-3 pt-4">
                 <button
                   type="submit"
-                  className="flex-1 rounded-full bg-em py-3 text-white font-semibold hover:bg-em/90 transition"
+                  disabled={submitting}
+                  className="flex-1 rounded-full bg-em py-3 text-white font-semibold hover:bg-em/90 transition disabled:opacity-60"
                 >
-                  Submit Enquiry
+                  {submitting ? 'Submitting…' : 'Submit Enquiry'}
                 </button>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-full border border-bdr px-6 py-3 font-semibold text-ink hover:bg-elevated transition"
+                  disabled={submitting}
+                  className="rounded-full border border-bdr px-6 py-3 font-semibold text-ink hover:bg-elevated transition disabled:opacity-60"
                 >
                   Cancel
                 </button>

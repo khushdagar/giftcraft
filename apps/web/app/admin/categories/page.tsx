@@ -12,29 +12,47 @@ export default async function AdminCategoriesPage() {
     redirect('/');
   }
 
-  const categories = await prisma.category.findMany({
-    where: { parentId: null },
-    include: {
-      children: {
-        include: {
-          children: {
-            orderBy: { sortOrder: 'asc' },
+  // Select a lightweight product shape + a count at every category level so the
+  // tree can show how many products each category holds and list them.
+  const productsInclude = {
+    include: { product: { select: { id: true, name: true, sku: true, status: true } } },
+    orderBy: { product: { name: 'asc' } },
+  } as const;
+
+  const [categories, totalProducts] = await Promise.all([
+    prisma.category.findMany({
+      where: { parentId: null },
+      include: {
+        _count: { select: { products: true } },
+        products: productsInclude,
+        children: {
+          include: {
+            _count: { select: { products: true } },
+            products: productsInclude,
+            children: {
+              include: {
+                _count: { select: { products: true } },
+                products: productsInclude,
+              },
+              orderBy: { sortOrder: 'asc' },
+            },
           },
+          orderBy: { sortOrder: 'asc' },
         },
-        orderBy: { sortOrder: 'asc' },
       },
-    },
-    orderBy: { sortOrder: 'asc' },
-  });
+      orderBy: { sortOrder: 'asc' },
+    }),
+    prisma.product.count(),
+  ]);
 
   return (
     <>
       <div className="mb-8 border-b border-bdr pb-8">
-        <h1 className="text-3xl font-black tracking-tight text-ink">Categories</h1>
+        <h1 className="text-3xl font-normal tracking-tight text-ink">Categories</h1>
         <p className="mt-1 text-sm text-ink-2">Manage product categories</p>
       </div>
 
-      <CategoryTree initialCategories={categories} />
+      <CategoryTree initialCategories={categories} totalProducts={totalProducts} />
     </>
   );
 }

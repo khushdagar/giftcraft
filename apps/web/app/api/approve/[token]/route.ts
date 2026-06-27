@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendRevisionReceivedEmail } from '@/lib/email';
+import { sendRevisionReceivedEmail, sendBalancePaymentLinkEmail } from '@/lib/email';
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
  * GET /api/approve/[token]
@@ -114,6 +116,8 @@ export async function POST(
             id: true,
             orderNumber: true,
             revisionCount: true,
+            grandTotal: true,
+            billingJson: true,
             placedBy: { select: { email: true, name: true } },
           },
         },
@@ -144,35 +148,64 @@ export async function POST(
     }
 
     if (action === 'approve') {
-      // Approve the artwork
-      const updated = await prisma.artworkApproval.update({
-        where: { id: approval.id },
-        data: {
-          status: 'approved',
-          approvedAt: new Date(),
-        },
+      // Work out the pending balance (grand total minus any advance paid).
+      const billing = (approval.order.billingJson as any) || {};
+      const grandTotal = Number(approval.order.grandTotal);
+      const amountPaid = Number(billing.amountPaid ?? 0);
+      const balanceDue = round2(Math.max(0, grandTotal - amountPaid));
+
+      // Status stays 'mockup_approved'; the "payment pending" state is derived
+      // from (mockup_approved + balance due) so we don't depend on a brand-new
+      // enum value. If there's no balance, go straight to production.
+      const nextStatus = balanceDue > 0 ? 'mockup_approved' : 'production';
+
+      // Approve the artwork AND advance the order status atomically — so we can
+      // never end up with an "approved but status unchanged" half-state.
+      const updated = await prisma.$transaction(async (tx) => {
+        const u = await tx.artworkApproval.update({
+          where: { id: approval.id },
+          data: { status: 'approved', approvedAt: new Date() },
+        });
+        await tx.order.update({
+          where: { id: approval.orderId },
+          data: { status: nextStatus },
+        });
+        await tx.orderTimeline.create({
+          data: {
+            orderId: approval.orderId,
+            status: nextStatus,
+            note:
+              balanceDue > 0
+                ? `Mockup approved by customer — balance of ₹${balanceDue.toFixed(2)} pending`
+                : 'Mockup approved by customer',
+          },
+        });
+        return u;
       });
 
-      // Update order status to mockup_approved
-      await prisma.order.update({
-        where: { id: approval.orderId },
-        data: { status: 'mockup_approved' },
-      });
-
-      // Create timeline entry
-      await prisma.orderTimeline.create({
-        data: {
-          orderId: approval.orderId,
-          status: 'mockup_approved',
-          note: 'Artwork approved by customer',
-        },
-      });
+      // Email the customer a payment link for the pending balance.
+      const customerEmail = approval.order.placedBy?.email || billing.email;
+      if (balanceDue > 0 && customerEmail) {
+        try {
+          await sendBalancePaymentLinkEmail({
+            customerEmail,
+            customerName: approval.order.placedBy?.name || billing.name || 'there',
+            orderNumber: approval.order.orderNumber,
+            orderId: approval.order.id,
+            balanceDue,
+          });
+        } catch (e) {
+          console.error('Balance payment email failed (non-blocking):', e);
+        }
+      }
 
       return NextResponse.json(
         {
           success: true,
           message: 'Artwork approved successfully',
           approval: updated,
+          balanceDue,
+          nextStatus,
         },
         { status: 200 }
       );

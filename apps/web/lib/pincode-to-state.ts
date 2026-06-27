@@ -60,16 +60,18 @@ const PINCODE_PREFIX_MAP: Record<string, string> = {
   // Andhra Pradesh
   '54': 'AP',
   '55': 'AP',
-  '56': 'AP',
-  // Karnataka
+  // Karnataka (560xxx–591xxx)
+  '56': 'KA',
   '57': 'KA',
   '58': 'KA',
+  '59': 'KA',
   // Tamil Nadu
   '60': 'TN',
   '61': 'TN',
   '62': 'TN',
   '63': 'TN',
   '64': 'TN',
+  '65': 'TN',
   // Kerala
   '67': 'KL',
   '68': 'KL',
@@ -112,4 +114,79 @@ export function pincodeToStateCode(pincode: string): string | null {
   }
   const prefix = pincode.slice(0, 2);
   return PINCODE_PREFIX_MAP[prefix] ?? null;
+}
+
+/**
+ * Full state / UT name → GST state code. Keys are lower-cased and stripped of
+ * punctuation so common spelling/format variants ("NCT of Delhi", "Delhi",
+ * "delhi") all resolve. Used as the authoritative source for the CGST+SGST vs
+ * IGST split (the buyer's selected delivery state), with pincode as a fallback.
+ */
+const STATE_NAME_TO_CODE: Record<string, string> = {
+  'andhra pradesh': 'AP',
+  'arunachal pradesh': 'AR',
+  assam: 'AS',
+  bihar: 'BR',
+  chhattisgarh: 'CG',
+  goa: 'GA',
+  gujarat: 'GJ',
+  haryana: 'HR',
+  'himachal pradesh': 'HP',
+  'jammu and kashmir': 'JK',
+  'jammu kashmir': 'JK',
+  jharkhand: 'JH',
+  karnataka: 'KA',
+  kerala: 'KL',
+  ladakh: 'LA',
+  'madhya pradesh': 'MP',
+  maharashtra: 'MH',
+  manipur: 'MN',
+  meghalaya: 'ML',
+  mizoram: 'MZ',
+  nagaland: 'NL',
+  odisha: 'OR',
+  orissa: 'OR',
+  punjab: 'PB',
+  rajasthan: 'RJ',
+  sikkim: 'SK',
+  'tamil nadu': 'TN',
+  telangana: 'TG',
+  tripura: 'TR',
+  'uttar pradesh': 'UP',
+  uttarakhand: 'UK',
+  uttaranchal: 'UK',
+  'west bengal': 'WB',
+  'andaman and nicobar islands': 'AN',
+  chandigarh: 'CH',
+  'dadra and nagar haveli': 'DN',
+  'dadra and nagar haveli and daman and diu': 'DN',
+  'daman and diu': 'DD',
+  delhi: 'DL',
+  'nct of delhi': 'DL',
+  'new delhi': 'DL',
+  lakshadweep: 'LD',
+  puducherry: 'PY',
+  pondicherry: 'PY',
+};
+
+export function stateNameToCode(stateName: string | null | undefined): string | null {
+  if (!stateName) return null;
+  // Already a 2-letter code? Accept it as-is.
+  const trimmed = stateName.trim();
+  if (/^[A-Za-z]{2}$/.test(trimmed)) return trimmed.toUpperCase();
+  const key = trimmed.toLowerCase().replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim();
+  return STATE_NAME_TO_CODE[key] ?? null;
+}
+
+/**
+ * Resolve the buyer's GST state code for the CGST/SGST vs IGST decision.
+ * The selected delivery state is authoritative; the pincode is a fallback for
+ * when the state is missing. Returns null when neither can be resolved (caller
+ * then defaults to intra-state, i.e. the seller's own state).
+ */
+export function resolveBuyerStateCode(
+  stateName: string | null | undefined,
+  pincode: string | null | undefined
+): string | null {
+  return stateNameToCode(stateName) ?? pincodeToStateCode(pincode || '') ?? null;
 }

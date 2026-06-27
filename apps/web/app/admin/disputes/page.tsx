@@ -56,7 +56,7 @@ export default async function AdminDisputesPage() {
       <div className="mb-8 border-b border-bdr pb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-ink">Disputes</h1>
+            <h1 className="text-3xl font-normal tracking-tight text-ink">Disputes</h1>
             <p className="mt-1 text-sm text-ink-2">{disputes.length} disputes total</p>
           </div>
         </div>
@@ -66,11 +66,11 @@ export default async function AdminDisputesPage() {
         <table className="w-full">
           <thead className="bg-elevated border-b border-bdr">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">Order</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">Subject</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">Status</th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">Window</th>
-              <th className="px-6 py-4 text-right text-xs font-semibold text-ink-2 uppercase">Actions</th>
+              <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Order</th>
+              <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Subject</th>
+              <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Status</th>
+              <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Window</th>
+              <th className="px-6 py-4 text-right text-xs font-normal text-ink-2 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-bdr">
@@ -86,12 +86,12 @@ export default async function AdminDisputesPage() {
                   <p className="text-sm text-ink max-w-xs truncate">{dispute.subject}</p>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusColors[dispute.status]}`}>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-normal ${statusColors[dispute.status]}`}>
                     {dispute.status.replace('_', ' ').charAt(0).toUpperCase() + dispute.status.slice(1)}
                   </span>
                 </td>
                 <td className="px-6 py-4">
-                  <span className={`text-xs font-semibold ${isExpired(dispute.windowExpiresAt) ? 'text-err' : 'text-em-700'}`}>
+                  <span className={`text-xs font-normal ${isExpired(dispute.windowExpiresAt) ? 'text-err' : 'text-em-700'}`}>
                     {isExpired(dispute.windowExpiresAt) ? 'Expired' : new Date(dispute.windowExpiresAt).toLocaleDateString('en-IN')}
                   </span>
                 </td>

@@ -88,7 +88,7 @@ export default function NewCollectionPage() {
           <Link href="/admin/collections" className="text-blue-600 hover:underline text-sm">
             ← Back to Collections
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 mt-4">Create Collection</h1>
+          <h1 className="text-2xl font-normal text-gray-900 mt-4">Create Collection</h1>
         </div>
 
         {error && (

@@ -39,7 +39,7 @@ export default async function AssetsPage() {
     <div>
       <div className="mb-8 flex items-center justify-between border-b border-bdr pb-8">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-ink">Brand Assets</h1>
+          <h1 className="text-3xl font-normal tracking-tight text-ink">Brand Assets</h1>
           <p className="mt-1 text-sm text-ink-2">Manage logos and brand materials</p>
         </div>
         <Button variant="em" className="flex items-center gap-2">
@@ -68,7 +68,7 @@ export default async function AssetsPage() {
                 )}
               </div>
               <div className="p-4">
-                <h3 className="font-semibold text-ink truncate">{asset.name}</h3>
+                <h3 className="font-normal text-ink truncate">{asset.name}</h3>
                 <p className="text-xs text-ink-3 mt-1">
                   {new Date(asset.createdAt).toLocaleDateString()}
                 </p>

@@ -70,13 +70,13 @@ export function FeaturedProductsSlider({ products }: { products: Product[] }) {
 
                 {/* Content */}
                 <div className="p-4">
-                  <p className="font-semibold text-ink text-sm line-clamp-2">
+                  <p className="font-normal text-ink text-sm line-clamp-2">
                     {product.name}
                   </p>
-                  <p className="text-lg font-black text-em tabnum mt-2">
+                  <p className="text-lg font-normal text-em tabnum mt-2">
                     From {formatRupees(lowestPrice)}
                   </p>
-                  <button className="mt-3 w-full bg-em text-white text-xs font-semibold py-2 rounded-md hover:bg-em-600 transition">
+                  <button className="mt-3 w-full bg-em text-white text-xs font-normal py-2 rounded-md hover:bg-em-600 transition">
                     Add to Pack
                   </button>
                 </div>

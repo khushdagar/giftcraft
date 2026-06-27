@@ -43,14 +43,14 @@ export function ColorSelector({ options = DEFAULT_COLORS, onSelect, isDynamic = 
     <div className="mt-6">
       <p className="mb-3 text-sm font-medium text-ink">
         Colour: <span className="font-semibold">{selected.name}</span>
-        {isDynamic && <span className="ml-2 text-xs text-ink-3">(Dynamic)</span>}
+        {/* {isDynamic && <span className="ml-2 text-xs text-ink-3">(Dynamic)</span>} */}
       </p>
       <div className="flex gap-3">
         {options.map((color) => (
           <button
             key={color.name}
             onClick={() => handleSelect(color)}
-            className={`h-10 w-10 rounded-full border-2 transition ${
+            className={`h-10 w-10 rounded-full transition ${
               selected.name === color.name
                 ? 'border-ink ring-2 ring-ink ring-offset-2'
                 : 'border-bdr hover:border-ink'

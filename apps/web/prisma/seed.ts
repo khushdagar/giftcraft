@@ -36,23 +36,39 @@ async function main() {
   await upsertSetting("mockup.paid_revision_price", 500);
 
   // ── Shipping zones ─────────────────────────────────────────
-  const zones: { name: string; states: string[]; flatRate: number; etaMin: number; etaMax: number }[] = [
-    { name: "Delhi Local",   states: ["DL"],                         flatRate: 50,  etaMin: 1, etaMax: 2 },
-    { name: "NCR",           states: ["HR", "UP"],                   flatRate: 100, etaMin: 2, etaMax: 3 },
-    { name: "North India",   states: ["PB", "CH", "JK", "HP", "UT", "RJ"], flatRate: 180, etaMin: 3, etaMax: 5 },
-    { name: "Metro Cities",  states: ["MH", "KA", "TN", "TG", "WB"], flatRate: 220, etaMin: 3, etaMax: 5 },
-    { name: "Rest of India", states: ["AP", "GJ", "MP", "OR", "KL", "BR", "JH", "CG", "AS"], flatRate: 280, etaMin: 5, etaMax: 7 },
-    { name: "North-East / Islands", states: ["ML", "MN", "NL", "TR", "AR", "MZ", "SK", "AN", "LD"], flatRate: 420, etaMin: 7, etaMax: 10 },
+  // Weight-based rates (SOW: ₹ per kg per zone). `minCharge` is the floor for a
+  // shipment; `flatRate` is kept only as a legacy fallback. Free shipping is
+  // disabled (`freeAt: null`) — shipping is always charged by weight. Individual
+  // delivery adds a %.
+  const zones: {
+    name: string; states: string[];
+    ratePerKg: number; minCharge: number; freeAt: number | null; indivPct: number;
+    flatRate: number; etaMin: number; etaMax: number;
+  }[] = [
+    { name: "Delhi Local",   states: ["DL"],                              ratePerKg: 40,  minCharge: 50,  freeAt: null, indivPct: 15, flatRate: 50,  etaMin: 1, etaMax: 2 },
+    { name: "NCR",           states: ["HR"],                              ratePerKg: 55,  minCharge: 80,  freeAt: null, indivPct: 15, flatRate: 100, etaMin: 2, etaMax: 3 },
+    { name: "North India",   states: ["PB", "CH", "JK", "HP", "UT", "RJ", "UP"], ratePerKg: 70,  minCharge: 120, freeAt: null, indivPct: 15, flatRate: 180, etaMin: 3, etaMax: 5 },
+    { name: "Metro Cities",  states: ["MH", "KA", "TN", "TG", "WB"],      ratePerKg: 80,  minCharge: 150, freeAt: null, indivPct: 15, flatRate: 220, etaMin: 3, etaMax: 5 },
+    { name: "Rest of India", states: ["AP", "GJ", "MP", "OR", "KL", "BR", "JH", "CG", "AS"], ratePerKg: 95,  minCharge: 180, freeAt: null, indivPct: 20, flatRate: 280, etaMin: 5, etaMax: 7 },
+    { name: "North-East / Islands", states: ["ML", "MN", "NL", "TR", "AR", "MZ", "SK", "AN", "LD"], ratePerKg: 140, minCharge: 300, freeAt: null, indivPct: 20, flatRate: 420, etaMin: 7, etaMax: 10 },
   ];
   for (const z of zones) {
+    const fields = {
+      name: z.name,
+      states: z.states,
+      ratePerKg: new Prisma.Decimal(z.ratePerKg),
+      minCharge: new Prisma.Decimal(z.minCharge),
+      freeShippingThreshold: z.freeAt != null ? new Prisma.Decimal(z.freeAt) : null,
+      individualSurchargePct: new Prisma.Decimal(z.indivPct),
+      flatRate: new Prisma.Decimal(z.flatRate),
+      etaMinDays: z.etaMin,
+      etaMaxDays: z.etaMax,
+      isActive: true,
+    };
     await prisma.shippingZone.upsert({
       where: { id: `zone-${z.name.replace(/\s/g, "-").toLowerCase()}` },
-      create: {
-        id: `zone-${z.name.replace(/\s/g, "-").toLowerCase()}`,
-        name: z.name, states: z.states, flatRate: new Prisma.Decimal(z.flatRate),
-        etaMinDays: z.etaMin, etaMaxDays: z.etaMax, isActive: true,
-      },
-      update: {},
+      create: { id: `zone-${z.name.replace(/\s/g, "-").toLowerCase()}`, ...fields },
+      update: fields,
     });
   }
 

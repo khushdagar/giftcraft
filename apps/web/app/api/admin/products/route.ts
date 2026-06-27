@@ -83,16 +83,30 @@ export async function GET(request: NextRequest) {
   }
 }
 
+const VendorLinkSchema = z.object({
+  vendorId: z.string().min(1),
+  isPrimary: z.boolean().optional(),
+  costPrice: z.number().nonnegative().nullable().optional(),
+  vendorSku: z.string().nullable().optional(),
+  vendorMoq: z.number().int().nullable().optional(),
+  vendorLeadDays: z.number().int().nullable().optional(),
+  sourcingStatus: z.string().nullable().optional(),
+  lastPriceConfirmedAt: z.string().nullable().optional(),
+});
+
 const CreateProductSchema = z.object({
   name: z.string().min(3, "Product name required"),
-  slug: z.string().min(3, "Slug required").regex(/^[a-z0-9-]+$/, "Invalid slug format"),
-  brand: z.string().optional(),
+  slug: z.string().min(1).nullable().optional(),
+  brand: z.string().nullable().optional(),
   sku: z.string().min(1, "SKU required"),
-  descriptionShort: z.string().optional(),
-  descriptionLong: z.string().optional(),
-  lengthCm: z.number().min(0).optional(),
-  widthCm: z.number().min(0).optional(),
-  heightCm: z.number().min(0).optional(),
+  descriptionShort: z.string().nullable().optional(),
+  descriptionLong: z.string().nullable().optional(),
+  material: z.string().nullable().optional(),
+  weightG: z.number().nullable().optional(),
+  lengthCm: z.number().min(0).nullable().optional(),
+  widthCm: z.number().min(0).nullable().optional(),
+  heightCm: z.number().min(0).nullable().optional(),
+  moq: z.number().int().nullable().optional(),
   status: z.enum(["active", "draft", "archived", "seasonal"]).default("draft"),
   printingTechnique: z.enum([
     "screen_print",
@@ -102,13 +116,18 @@ const CreateProductSchema = z.object({
     "digital_print",
     "emboss",
     "none",
-  ]),
-  printingPosition: z.string().optional(),
-  leadTimeDays: z.number().int().default(10),
+  ]).nullable().optional(),
+  printingPosition: z.string().nullable().optional(),
+  brandingArea: z.string().nullable().optional(),
+  leadTimeDays: z.number().int().nullable().optional(),
   isEcoCertified: z.boolean().default(false),
+  ecoCertification: z.string().nullable().optional(),
+  sampleAvailable: z.boolean().default(false),
+  recipientTags: z.array(z.string()).nullable().optional(),
   isFeatured: z.boolean().default(false),
-  hsnId: z.string().min(1, "HSN code required"),
-  
+  hsnCode: z.string().nullable().optional(),
+  hsnId: z.string().nullable().optional(), // legacy: an HsnCode id
+
   // Price tiers (up to 12)
   priceTiers: z.array(
     z.object({
@@ -118,12 +137,12 @@ const CreateProductSchema = z.object({
       costPrice: z.number().positive(),
       sellPrice: z.number().positive(),
     })
-  ).min(1),
-  
-  // Optional: image URLs, category IDs, occasion IDs, variants
-  imageUrls: z.array(z.string().url()).optional(),
-  categoryIds: z.array(z.string()).optional(),
-  occasionIds: z.array(z.string()).optional(),
+  ).nullable().optional(),
+
+  // Optional: image URLs, category IDs, occasion IDs, variants, vendors
+  imageUrls: z.array(z.string().url()).nullable().optional(),
+  categoryIds: z.array(z.string()).nullable().optional(),
+  occasionIds: z.array(z.string()).nullable().optional(),
   variants: z.array(
     z.object({
       kind: z.string(),
@@ -131,7 +150,8 @@ const CreateProductSchema = z.object({
       hexColor: z.string().nullable().optional(),
       sortOrder: z.number().optional(),
     })
-  ).optional(),
+  ).nullable().optional(),
+  vendors: z.array(VendorLinkSchema).nullable().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -177,35 +197,58 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "SKU already exists" }, { status: 409 });
     }
 
-    // Verify HSN exists
-    const hsn = await prisma.hsnCode.findUnique({ where: { id: data.hsnId } });
+    // Resolve HSN by code (preferred) or legacy id; auto-create the code if new.
+    let hsn = null as Awaited<ReturnType<typeof prisma.hsnCode.findUnique>> | null;
+    const hsnCodeValue = (data.hsnCode || "").trim();
+    if (hsnCodeValue) {
+      hsn = await prisma.hsnCode.findUnique({ where: { code: hsnCodeValue } });
+      if (!hsn) {
+        hsn = await prisma.hsnCode.create({
+          data: {
+            code: hsnCodeValue,
+            description: `HSN ${hsnCodeValue}`,
+            defaultGstRate: new Prisma.Decimal(18),
+          },
+        });
+      }
+    } else if (data.hsnId) {
+      hsn = await prisma.hsnCode.findUnique({ where: { id: data.hsnId } });
+    }
     if (!hsn) {
-      return NextResponse.json({ error: "HSN code not found" }, { status: 400 });
+      return NextResponse.json({ error: "HSN code is required" }, { status: 400 });
     }
 
     // Create product with all related data
     const product = await prisma.product.create({
       data: {
         name: data.name,
-        slug: data.slug,
+        // Slug is required; derive from the name when not provided.
+        slug: data.slug || data.name.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
         brand: data.brand,
         sku: data.sku,
         descriptionShort: data.descriptionShort,
         descriptionLong: data.descriptionLong,
+        material: data.material,
+        weightG: data.weightG,
         dimensionL: data.lengthCm,
         dimensionW: data.widthCm,
         dimensionH: data.heightCm,
+        ...(data.moq != null && { moq: data.moq }),
         status: data.status,
-        printingTechnique: data.printingTechnique,
+        printingTechnique: data.printingTechnique ?? undefined,
         printingPosition: data.printingPosition,
-        leadTimeDays: data.leadTimeDays,
+        brandingArea: data.brandingArea,
+        leadTimeDays: data.leadTimeDays ?? undefined,
         isEcoCertified: data.isEcoCertified,
+        ecoCertification: data.ecoCertification,
+        sampleAvailable: data.sampleAvailable,
+        ...(data.recipientTags?.length && { recipientTags: data.recipientTags }),
         isFeatured: data.isFeatured,
-        
+
         // Create price tiers
         priceTiers: {
           createMany: {
-            data: data.priceTiers.map((tier) => ({
+            data: (data.priceTiers ?? []).map((tier) => ({
               tier: tier.tier,
               minQty: tier.minQty,
               maxQty: tier.maxQty,
@@ -218,7 +261,7 @@ export async function POST(request: NextRequest) {
         // Link HSN
         hsn: {
           create: {
-            hsnId: data.hsnId,
+            hsnId: hsn.id,
             gstRate: hsn.defaultGstRate,
           },
         },
@@ -266,6 +309,26 @@ export async function POST(request: NextRequest) {
             },
           },
         }),
+
+        // Link vendors (sourcing details from product master)
+        ...(data.vendors?.length && {
+          vendors: {
+            createMany: {
+              data: data.vendors.map((v) => ({
+                vendorId: v.vendorId,
+                isPrimary: v.isPrimary ?? false,
+                costPrice: v.costPrice != null ? new Prisma.Decimal(v.costPrice) : null,
+                vendorSku: v.vendorSku || null,
+                vendorMoq: v.vendorMoq ?? null,
+                vendorLeadDays: v.vendorLeadDays ?? null,
+                sourcingStatus: v.sourcingStatus || null,
+                lastPriceConfirmedAt: v.lastPriceConfirmedAt
+                  ? new Date(v.lastPriceConfirmedAt)
+                  : null,
+              })),
+            },
+          },
+        }),
       },
       include: {
         priceTiers: true,
@@ -276,7 +339,7 @@ export async function POST(request: NextRequest) {
 
     // Create audit logs for each price tier
     await prisma.priceAuditLog.createMany({
-      data: data.priceTiers.map((tier) => ({
+      data: (data.priceTiers ?? []).map((tier) => ({
         productId: product.id,
         tier: tier.tier,
         newCost: new Prisma.Decimal(tier.costPrice),

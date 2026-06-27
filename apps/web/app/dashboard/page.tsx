@@ -26,10 +26,10 @@ function Kpi({ label, value, icon: Icon, accent }: KpiProps) {
     <div className={`rounded-md border-2 p-4 transition ${accentMap[accent]}`}>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">
+          <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-2">
             {label}
           </p>
-          <p className="text-2xl font-black">
+          <p className="text-2xl font-normal">
             {value}
           </p>
         </div>
@@ -167,7 +167,7 @@ export default async function DashboardPage() {
     <div className="max-w-6xl space-y-8">
       <div>
         <p className="overline text-ink-3">Dashboard</p>
-        <h1 className="mt-1 text-3xl sm:text-4xl font-black">Welcome back, <span className="italic text-em">{firstName}.</span></h1>
+        <h1 className="mt-1 text-3xl sm:text-4xl font-normal">Welcome back, <span className="italic text-em">{firstName}.</span></h1>
         <p className="mt-1 text-sm text-ink-2">Here&apos;s what&apos;s happening with your gifting.</p>
       </div>
 
@@ -183,9 +183,9 @@ export default async function DashboardPage() {
       {mockupAlert ? (
         <div className="rounded-md border-2 border-gold/30 bg-gold-50 p-5">
           <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-white font-bold">!</div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-white font-normal">!</div>
             <div className="flex-1">
-              <p className="font-semibold text-gold-700">Mockups awaiting your review</p>
+              <p className="font-normal text-gold-700">Mockups awaiting your review</p>
               <p className="mt-1 text-sm text-ink-2">Order #{mockupAlert.orderNumber} (Pack × {mockupAlert.packQuantity}) has mockups ready. Approve to start production.</p>
             </div>
             <Button asChild variant="outline" size="sm"><Link href="/dashboard/orders">Review now</Link></Button>
@@ -196,8 +196,8 @@ export default async function DashboardPage() {
       {/* Recent orders */}
       <div className="rounded-md bg-white shadow-card">
         <div className="flex items-center justify-between border-b border-bdr p-5">
-          <h2 className="font-display text-lg font-bold">Recent orders</h2>
-          <Link href="/dashboard/orders" className="text-xs font-semibold text-em">See all →</Link>
+          <h2 className="font-display text-lg font-normal">Recent orders</h2>
+          <Link href="/dashboard/orders" className="text-xs font-normal text-em">See all →</Link>
         </div>
         <div className="divide-y divide-bdr">
           {recentOrders.length > 0 ? (
@@ -229,14 +229,14 @@ export default async function DashboardPage() {
                   {/* Status and Price */}
                   <div className="flex items-center gap-4 flex-shrink-0">
                     <Badge variant={getStatusVariant(o.status)}>{getStatusLabel(o.status)}</Badge>
-                    <p className="font-black tabnum text-sm whitespace-nowrap">{formatRupees(Number(o.grandTotal))}</p>
+                    <p className="font-normal tabnum text-sm whitespace-nowrap">{formatRupees(Number(o.grandTotal))}</p>
                   </div>
                 </Link>
               );
             })
           ) : (
             <div className="p-5 text-center text-sm text-ink-3">
-              No orders yet. <Link href="/builder" className="text-em font-semibold">Start building →</Link>
+              No orders yet. <Link href="/builder" className="text-em font-normal">Start building →</Link>
             </div>
           )}
         </div>

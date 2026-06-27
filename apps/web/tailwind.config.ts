@@ -87,8 +87,9 @@ const config: Config = {
       },
 
       fontFamily: {
-        display: ["var(--font-playfair)", "Georgia", "serif"],
-        sans: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
+        sans: ["var(--font-roboto)", "system-ui", "-apple-system", "sans-serif"],
+        serif: ["'Playfair Display'", "Georgia", "serif"],
+        display: ["'Playfair Display'", "Georgia", "serif"],
       },
 
       fontSize: {

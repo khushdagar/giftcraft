@@ -2,9 +2,10 @@
 
 import { useState, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
-import { Upload, X, FileIcon, Lightbulb } from 'lucide-react';
+import { Upload, X, FileIcon, Lightbulb, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,8 +68,22 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
   } = useBuilderStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // "Your Saved Logos" — previously uploaded logos from the brand asset library.
+  const { data: savedLogos = [], refetch: refetchSavedLogos } = useQuery({
+    queryKey: ['brand-assets'],
+    queryFn: async () => {
+      const res = await fetch('/api/brand-assets');
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.assets || []) as Array<{ id: string; name: string; url: string }>;
+    },
+  });
+
+  const isImageName = (name: string) => /\.(png|jpe?g|svg)$/i.test(name);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -88,13 +103,31 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
       return;
     }
 
-    const preview = URL.createObjectURL(file);
-    setLogo(file, preview);
+    // Upload to Digital Ocean Spaces + save to the brand asset library.
     setLogoError(null);
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch('/api/brand-assets', { method: 'POST', body });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Upload failed');
+      }
+      setLogo({ url: data.url, name: data.name });
+      refetchSavedLogos();
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : 'Failed to upload logo. Please try again.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const clearLogo = () => {
-    setLogo(null, null);
+    setLogo(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -121,8 +154,10 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
     return suggestPackaging(productsForCalculation, packagingOptions);
   }, [selectedProducts, packagingOptions]);
 
-  const addonsTotal = addons.reduce((sum, a) => sum + a.price, 0);
-  const packagingTotal = packaging?.price || 0;
+  // Number(...) guards against Decimal-as-string values, which would make `+`
+  // concatenate instead of add.
+  const addonsTotal = addons.reduce((sum, a) => sum + Number(a.price), 0);
+  const packagingTotal = Number(packaging?.price) || 0;
 
   return (
     <div className="space-y-6">
@@ -137,15 +172,29 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Your Logo</p>
         <div className="max-w-xs">
           {!logo ? (
-            <label className="flex flex-col items-center justify-center rounded-md border-2 border-dashed border-bdr bg-elevated p-4 cursor-pointer hover:border-em transition">
-              <Upload className="h-6 w-6 text-ink-3 mb-2" />
-              <p className="text-xs font-semibold text-ink-2">Upload your logo</p>
-              <p className="text-[10px] text-ink-3 mt-1 text-center">JPG, PNG, SVG, AI, EPS, PDF • Max 10MB</p>
+            <label
+              className={`flex flex-col items-center justify-center rounded-md border-2 border-dashed border-bdr bg-elevated p-4 transition ${
+                uploading ? 'cursor-wait opacity-70' : 'cursor-pointer hover:border-em'
+              }`}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-6 w-6 text-em mb-2 animate-spin" />
+                  <p className="text-xs font-semibold text-ink-2">Uploading…</p>
+                </>
+              ) : (
+                <>
+                  <Upload className="h-6 w-6 text-ink-3 mb-2" />
+                  <p className="text-xs font-semibold text-ink-2">Upload your logo</p>
+                  <p className="text-[10px] text-ink-3 mt-1 text-center">JPG, PNG, SVG, AI, EPS, PDF • Max 10MB</p>
+                </>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept=".jpg,.jpeg,.png,.svg,.ai,.eps,.pdf"
                 onChange={handleLogoUpload}
+                disabled={uploading}
                 className="hidden"
               />
             </label>
@@ -155,15 +204,15 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
                 <div className="text-green-600 text-lg">✓</div>
                 <div>
                   <p className="text-xs font-semibold text-green-700">Logo uploaded successfully!</p>
-                  <p className="text-[10px] text-green-600 mt-0.5">{logo.file?.name || 'Ready to print'}</p>
+                  <p className="text-[10px] text-green-600 mt-0.5">{logo.name || 'Ready to print'}</p>
                 </div>
               </div>
 
               <div className="relative rounded-md border-2 border-bdr bg-white overflow-hidden">
-                {logo.preview && logo.preview.includes('data:image') ? (
+                {isImageName(logo.name) ? (
                   <div className="relative aspect-square bg-gray-50 flex items-center justify-center p-4">
                     <img
-                      src={logo.preview}
+                      src={logo.url}
                       alt="Logo preview"
                       className="max-w-full max-h-full object-contain"
                     />
@@ -172,8 +221,7 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
                   <div className="aspect-square bg-gray-50 flex items-center justify-center p-4">
                     <div className="text-center">
                       <FileIcon className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                      <p className="text-xs text-gray-600 font-semibold">{logo.file?.name || 'File uploaded'}</p>
-                      <p className="text-[10px] text-gray-500 mt-1">{logo.file?.size ? `${(logo.file.size / 1024).toFixed(1)} KB` : ''}</p>
+                      <p className="text-xs text-gray-600 font-semibold">{logo.name || 'File uploaded'}</p>
                     </div>
                   </div>
                 )}
@@ -189,6 +237,41 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
           )}
           {logoError && <p className="text-xs text-red-600 mt-2">{logoError}</p>}
         </div>
+
+        {/* Your Saved Logos — reuse a logo from the brand asset library (SOW §3.4.3) */}
+        {savedLogos.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">Your Saved Logos</p>
+            <div className="flex flex-wrap gap-2">
+              {savedLogos.map((asset) => {
+                const isSelected = logo?.url === asset.url;
+                return (
+                  <button
+                    key={asset.id}
+                    type="button"
+                    onClick={() => setLogo({ url: asset.url, name: asset.name })}
+                    title={asset.name}
+                    className={`h-16 w-16 rounded-md border-2 bg-gray-50 flex items-center justify-center overflow-hidden transition ${
+                      isSelected ? 'border-em ring-2 ring-em-100' : 'border-bdr hover:border-em-300'
+                    }`}
+                  >
+                    {isImageName(asset.name) ? (
+                      <img src={asset.url} alt={asset.name} className="max-h-full max-w-full object-contain p-1" />
+                    ) : (
+                      <FileIcon className="h-6 w-6 text-gray-400" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Branding application note (SOW §3.3.9) */}
+        <p className="text-[11px] text-ink-3 leading-relaxed max-w-md">
+          Your logo will be applied using the product&apos;s standard printing technique.
+          Final placement is confirmed during the design approval stage after you place your order.
+        </p>
       </div>
 
       {/* Printing Info */}
@@ -262,7 +345,7 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
             <motion.div
               drag="x"
               dragElastic={0.2}
-              dragMomentum={{ power: 0.2 }}
+              dragTransition={{ power: 0.2 }}
               className="flex gap-3 cursor-grab active:cursor-grabbing"
               style={{ width: 'fit-content' }}
             >
@@ -350,15 +433,6 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
             </div>
           </div>
         )}
-      </div>
-
-      {/* Branded Sleeve Toggle */}
-      <div className="flex items-center justify-between rounded-md border-2 border-gray-200 p-4 bg-white">
-        <div>
-          <p className="font-semibold text-sm text-ink">Branded Sleeve</p>
-          <p className="text-xs text-ink-3 mt-1">Add a custom printed sleeve (+₹60/pack)</p>
-        </div>
-        <Switch checked={sleeve} onCheckedChange={setSleeve} />
       </div>
 
       {/* Add-ons Selection */}

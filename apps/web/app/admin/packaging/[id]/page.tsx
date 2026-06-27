@@ -91,7 +91,7 @@ export default function EditPackagingPage() {
     <div className="max-w-2xl">
       <div className="mb-6">
         <Link href="/admin/packaging" className="text-blue-600 hover:underline">← Back to Packaging</Link>
-        <h1 className="text-3xl font-bold mt-4">Edit: {formData.name}</h1>
+        <h1 className="text-3xl font-normal mt-4">Edit: {formData.name}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-md border p-6 space-y-6">
@@ -153,7 +153,7 @@ export default function EditPackagingPage() {
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-          <h3 className="font-semibold text-sm mb-4">Box Dimensions (cm)</h3>
+          <h3 className="font-normal text-sm mb-4">Box Dimensions (cm)</h3>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-sm font-medium mb-2">Length (L)</label>

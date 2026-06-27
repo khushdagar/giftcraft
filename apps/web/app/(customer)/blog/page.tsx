@@ -53,7 +53,7 @@ export default function BlogPage() {
           <div className="flex gap-4 items-center">
             <Mail className="w-6 h-6 text-em flex-shrink-0" />
             <div className="flex-1">
-              <h3 className="font-black text-em mb-1">Subscribe to Our Newsletter</h3>
+              <h3 className="font-normal text-em mb-1">Subscribe to Our Newsletter</h3>
               <p className="text-sm text-em-700 mb-3">
                 Monthly insights on gifting trends, product launches, and case studies.
               </p>
@@ -99,10 +99,10 @@ export default function BlogPage() {
 
               {/* Content */}
               <div className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">
+                <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-2">
                   Coming
                 </p>
-                <h3 className="font-black text-ink mb-2 group-hover:text-em transition">
+                <h3 className="font-normal text-ink mb-2 group-hover:text-em transition">
                   {article.title}
                 </h3>
                 <p className="text-sm text-ink-2 leading-relaxed">{article.description}</p>

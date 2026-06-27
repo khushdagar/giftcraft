@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import type { Category } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Flatten to include parentId for display
-    const flattened = [];
+    const flattened: Array<Category & { children?: Category[] }> = [];
     categories.forEach(cat => {
       if (!cat.parentId) {
         flattened.push(cat);
@@ -45,6 +46,7 @@ const CreateCategorySchema = z.object({
   slug: z.string().min(1, 'Slug required'),
   parentId: z.string().optional().nullable(),
   sortOrder: z.number().int().default(0),
+  imageUrl: z.string().url().optional().nullable(),
 });
 
 export async function POST(request: NextRequest) {
@@ -63,6 +65,7 @@ export async function POST(request: NextRequest) {
         slug: data.slug,
         parentId: data.parentId || null,
         sortOrder: data.sortOrder,
+        ...(data.imageUrl && { imageUrl: data.imageUrl }),
       }
     });
 

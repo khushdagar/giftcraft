@@ -20,7 +20,7 @@ export default function CheckoutSuccessPage() {
     return (
       <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <h1 className="text-3xl font-black text-ink mb-2">Oops!</h1>
+          <h1 className="text-3xl font-normal text-ink mb-2">Oops!</h1>
           <p className="text-ink-3 mb-6">We couldn't find your order information.</p>
           <Button asChild variant="em" size="lg">
             <Link href="/">Back to Home</Link>
@@ -76,7 +76,7 @@ export default function CheckoutSuccessPage() {
         <div className="text-6xl mb-6 animate-bounce">🎉</div>
 
         {/* Main heading */}
-        <h1 className="text-4xl font-black text-ink mb-2">Your order is confirmed!</h1>
+        <h1 className="text-4xl font-normal text-ink mb-2">Your order is confirmed!</h1>
         <p className="text-ink-3 mb-8">
           Thank you for choosing GiftCraft. Your gift pack is being prepared with care.
         </p>
@@ -84,10 +84,10 @@ export default function CheckoutSuccessPage() {
         {/* Order number badge */}
         <div className="mb-8 inline-block">
           <div className="rounded-md bg-gold-50 border-2 border-gold p-6">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gold-700 mb-2">
+            <p className="text-xs font-normal uppercase tracking-wider text-gold-700 mb-2">
               Order Number
             </p>
-            <p className="text-2xl font-black text-gold-900 tabnum">
+            <p className="text-2xl font-normal text-gold-900 tabnum">
               {orderId.slice(0, 8).toUpperCase()}
             </p>
           </div>
@@ -115,7 +115,7 @@ export default function CheckoutSuccessPage() {
 
         {/* Info box */}
         <div className="rounded-md bg-blue-50 border-2 border-blue-200 p-4">
-          <p className="text-xs font-semibold text-blue-900 mb-1">What's Next?</p>
+          <p className="text-xs font-normal text-blue-900 mb-1">What's Next?</p>
           <p className="text-xs text-blue-800 leading-relaxed">
             We'll send you email updates as your order moves through each stage. You can also track progress anytime using your order number.
           </p>

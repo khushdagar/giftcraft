@@ -8,6 +8,7 @@ const UpdateCategorySchema = z.object({
   slug: z.string().regex(/^[a-z0-9-]+$/).optional(),
   parentId: z.string().optional().nullable(),
   sortOrder: z.number().optional(),
+  imageUrl: z.string().url().optional().nullable(),
 });
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
@@ -64,6 +65,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ...(data.slug && { slug: data.slug }),
         ...(data.parentId !== undefined && { parentId: data.parentId }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
+        ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl || null }),
       },
     });
 
@@ -87,21 +89,24 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
 
     const category = await prisma.category.findUnique({
       where: { id: params.id },
-      include: { products: true },
+      select: { id: true, parentId: true },
     });
 
     if (!category) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 });
     }
 
-    if (category.products.length > 0) {
-      return NextResponse.json(
-        { error: 'Cannot delete category with associated products' },
-        { status: 409 }
-      );
-    }
+    // Deleting a category just un-tags its products (the ProductCategory join
+    // rows cascade-delete) — the products themselves are kept. Any sub-categories
+    // are promoted up to this category's parent so they aren't orphaned.
+    await prisma.$transaction([
+      prisma.category.updateMany({
+        where: { parentId: params.id },
+        data: { parentId: category.parentId },
+      }),
+      prisma.category.delete({ where: { id: params.id } }),
+    ]);
 
-    await prisma.category.delete({ where: { id: params.id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting category:', error);

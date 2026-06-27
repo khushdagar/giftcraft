@@ -33,7 +33,7 @@ export default async function VendorLayout({
       <div className="w-64 bg-white border-r-2 border-bdr flex flex-col">
         {/* Logo */}
         <Link href="/vendor/dashboard" className="px-6 py-6 border-b-2 border-bdr">
-          <p className="text-lg font-black text-ink">GiftCraft</p>
+          <p className="text-lg font-normal text-ink">GiftCraft</p>
           <p className="text-xs text-ink-3">Vendor Portal</p>
         </Link>
 
@@ -43,7 +43,7 @@ export default async function VendorLayout({
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-semibold text-ink-2 hover:bg-gray-100 hover:text-ink transition"
+              className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-normal text-ink-2 hover:bg-gray-100 hover:text-ink transition"
             >
               {typeof item.icon === 'string' ? (
                 <span>{item.icon}</span>
@@ -59,7 +59,7 @@ export default async function VendorLayout({
         <div className="px-4 py-4 border-t-2 border-bdr space-y-3">
           <div className="px-4 py-3 rounded-md bg-gray-50">
             <p className="text-xs text-ink-3">Logged in as</p>
-            <p className="text-sm font-semibold text-ink truncate">{session.user.name}</p>
+            <p className="text-sm font-normal text-ink truncate">{session.user.name}</p>
           </div>
 
           <form
@@ -70,7 +70,7 @@ export default async function VendorLayout({
           >
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md border-2 border-bdr text-ink-2 hover:bg-gray-50 hover:text-ink font-semibold text-sm transition"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md border-2 border-bdr text-ink-2 hover:bg-gray-50 hover:text-ink font-normal text-sm transition"
             >
               <LogOut className="w-4 h-4" />
               Sign Out

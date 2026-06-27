@@ -1,6 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  * {
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+
+  body, p, span, a, button, div, section, article, nav, li, ul, ol {
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  /* Nested spans/em inside headings must inherit Playfair, not the
+     global span → DM Sans rule above. */
+  h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
+    font-family: inherit;
+  }
+}
 
 @layer base {
   :root {
@@ -43,7 +65,7 @@
     font-size: 16px;
     line-height: 1.6;
   }
-  h1, h2, h3, h4 { @apply font-display font-medium; }
+  h1, h2, h3, h4 { @apply font-serif font-bold; }
   a { color: inherit; text-decoration: none; }
 }
 
@@ -52,11 +74,11 @@
   .container-gc   { @apply mx-auto w-full px-4 sm:px-8 lg:px-12; max-width: 1200px; }
   .container-gc-w { @apply mx-auto w-full px-4 sm:px-8 lg:px-12; max-width: 1440px; }
 
-  /* Editorial Playfair heading helpers */
-  .t-hero    { font-size: clamp(2.8rem,8vw,5.5rem); line-height: 1.04; letter-spacing:-0.02em; @apply font-display font-normal; }
-  .t-display { font-size: clamp(2.2rem,5.5vw,3.8rem); line-height: 1.08; letter-spacing:-0.015em; @apply font-display font-medium; }
-  .t-title   { font-size: clamp(1.8rem,4vw,2.8rem); line-height: 1.15; @apply font-display font-medium; }
-  .t-heading { font-size: clamp(1.3rem,3vw,1.8rem); line-height: 1.25; @apply font-display font-medium; }
+  /* Roboto heading helpers */
+  .t-hero    { font-size: clamp(2.8rem,8vw,5.5rem); line-height: 1.04; letter-spacing:-0.02em; @apply font-serif font-bold; }
+  .t-display { font-size: clamp(2.2rem,5.5vw,3.8rem); line-height: 1.08; letter-spacing:-0.015em; @apply font-serif font-bold; }
+  .t-title   { font-size: clamp(1.8rem,4vw,2.8rem); line-height: 1.15; @apply font-serif font-bold; }
+  .t-heading { font-size: clamp(1.3rem,3vw,1.8rem); line-height: 1.25; @apply font-serif font-bold; }
 
   /* Overline */
   .overline {
@@ -112,5 +134,145 @@
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CHECKOUT PAGE STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+@layer base {
+  .cw {
+    @apply mx-auto w-full;
+    max-width: 1200px;
+    padding: 0 clamp(16px, 4vw, 48px);
+  }
+
+  .cn {
+    @apply mx-auto w-full;
+    max-width: 780px;
+    padding: 0 clamp(16px, 4vw, 40px);
+  }
+}
+
+@layer components {
+  /* Form elements */
+  .form-group { @apply mb-3.5; }
+
+  .form-label {
+    @apply block text-xs font-semibold text-[#6B6B63] mb-1.5;
+  }
+
+  .form-label .optional {
+    @apply font-normal text-[#9B9B93] italic;
+  }
+
+  .form-input {
+    @apply w-full h-[46px] px-3.5 border-[1.5px] border-[#D4D4CF] rounded-[1.25rem] bg-white text-sm text-[#1A1A18] font-sans outline-none transition-all duration-200;
+  }
+
+  .form-input:focus {
+    @apply border-[#1A6B4F];
+    box-shadow: 0 0 0 3px rgba(26, 107, 79, 0.06);
+  }
+
+  .form-input.error {
+    @apply border-[#C4402A];
+  }
+
+  .form-input-hint {
+    @apply text-xs text-[#9B9B93] mt-0.5 italic;
+  }
+
+  .form-input-error {
+    @apply text-xs text-[#C4402A] mt-1 font-semibold;
+  }
+
+  .form-select {
+    @apply appearance-none pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239B9B93' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    cursor: pointer;
+  }
+
+  .checkbox-row {
+    @apply flex items-center gap-2 text-sm text-[#6B6B63] cursor-pointer mt-1.5;
+  }
+
+  .checkbox-row input {
+    accent-color: #1A6B4F;
+    @apply w-4 h-4 cursor-pointer;
+  }
+
+  /* Grid utilities */
+  .frow { @apply grid gap-3; }
+  .fr2 { @apply grid-cols-2; }
+  .fr3 { @apply grid-cols-3; }
+
+  @media (max-width: 600px) {
+    .fr2, .fr3 { @apply grid-cols-1; }
+  }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.93); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 16px rgba(26, 107, 79, 0.12); }
+    50% { box-shadow: 0 0 32px rgba(26, 107, 79, 0.25); }
+  }
+
+  .rv {
+    @apply opacity-0 transition-all duration-700;
+    transform: translateY(20px);
+  }
+
+  .rv.vis {
+    @apply opacity-100;
+    transform: translateY(0);
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .animate-pulse {
+    animation: pulseGlow 3s ease-in-out infinite;
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    animation: marquee 30s linear infinite;
+  }
+
+  @keyframes fadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
   }
 }

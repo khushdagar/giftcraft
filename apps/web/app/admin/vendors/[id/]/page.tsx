@@ -46,67 +46,67 @@ export default async function AdminVendorDetailPage({
         </Link>
       </div>
 
-      <h1 className="text-3xl font-black text-ink">{vendor.name}</h1>
+      <h1 className="text-3xl font-normal text-ink">{vendor.name}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="rounded-md border-2 border-bdr bg-white p-4">
-          <p className="text-xs font-semibold uppercase text-ink-3">Total POs</p>
-          <p className="text-2xl font-black text-ink mt-2">{totalPOs}</p>
+          <p className="text-xs font-normal uppercase text-ink-3">Total POs</p>
+          <p className="text-2xl font-normal text-ink mt-2">{totalPOs}</p>
         </div>
 
         <div className="rounded-md border-2 border-bdr bg-white p-4">
-          <p className="text-xs font-semibold uppercase text-ink-3">Completed</p>
-          <p className="text-2xl font-black text-em mt-2">{completedPOs}</p>
+          <p className="text-xs font-normal uppercase text-ink-3">Completed</p>
+          <p className="text-2xl font-normal text-em mt-2">{completedPOs}</p>
         </div>
 
         <div className="rounded-md border-2 border-bdr bg-white p-4">
-          <p className="text-xs font-semibold uppercase text-ink-3">Revenue</p>
-          <p className="text-xl font-black text-ink mt-2 tabnum">{formatRupees(totalRevenue)}</p>
+          <p className="text-xs font-normal uppercase text-ink-3">Revenue</p>
+          <p className="text-xl font-normal text-ink mt-2 tabnum">{formatRupees(totalRevenue)}</p>
         </div>
 
         <div className="rounded-md border-2 border-bdr bg-white p-4">
-          <p className="text-xs font-semibold uppercase text-ink-3">Quality Score</p>
-          <p className="text-2xl font-black text-em mt-2">{vendor.vendorScore?.qualityScore || '—'}</p>
+          <p className="text-xs font-normal uppercase text-ink-3">Quality Score</p>
+          <p className="text-2xl font-normal text-em mt-2">{vendor.vendorScore?.qualityScore || '—'}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 rounded-md border-2 border-bdr bg-white p-6">
-          <p className="text-xs font-semibold uppercase text-ink-3 mb-4">Contact Info</p>
+          <p className="text-xs font-normal uppercase text-ink-3 mb-4">Contact Info</p>
           <div className="space-y-3 text-sm">
             <div>
               <p className="text-ink-3">Email</p>
-              <p className="font-semibold text-ink break-all">{vendor.email}</p>
+              <p className="font-normal text-ink break-all">{vendor.email}</p>
             </div>
             <div>
               <p className="text-ink-3">Phone</p>
-              <p className="font-semibold text-ink">{vendor.phone || '—'}</p>
+              <p className="font-normal text-ink">{vendor.phone || '—'}</p>
             </div>
             <div>
               <p className="text-ink-3">Location</p>
-              <p className="font-semibold text-ink">{vendor.city && vendor.state ? `${vendor.city}, ${vendor.state}` : '—'}</p>
+              <p className="font-normal text-ink">{vendor.city && vendor.state ? `${vendor.city}, ${vendor.state}` : '—'}</p>
             </div>
             <div>
               <p className="text-ink-3">GST</p>
-              <p className="font-semibold text-ink">{vendor.gst || '—'}</p>
+              <p className="font-normal text-ink">{vendor.gst || '—'}</p>
             </div>
           </div>
         </div>
 
         <div className="rounded-md border-2 border-bdr bg-white p-6">
-          <p className="text-xs font-semibold uppercase text-ink-3 mb-4">Performance</p>
+          <p className="text-xs font-normal uppercase text-ink-3 mb-4">Performance</p>
           <div className="space-y-3 text-sm">
             <div>
               <p className="text-ink-3 text-xs">Quality</p>
-              <p className="font-black text-em">{vendor.vendorScore?.qualityScore}/100</p>
+              <p className="font-normal text-em">{vendor.vendorScore?.qualityScore}/100</p>
             </div>
             <div>
               <p className="text-ink-3 text-xs">On-Time</p>
-              <p className="font-black text-em">{vendor.vendorScore?.onTimeScore}/100</p>
+              <p className="font-normal text-em">{vendor.vendorScore?.onTimeScore}/100</p>
             </div>
             <div>
               <p className="text-ink-3 text-xs">Reliability</p>
-              <p className="font-black text-em">{vendor.vendorScore?.reliabilityScore}/100</p>
+              <p className="font-normal text-em">{vendor.vendorScore?.reliabilityScore}/100</p>
             </div>
           </div>
         </div>
@@ -114,8 +114,8 @@ export default async function AdminVendorDetailPage({
 
       <div className="rounded-md border-2 border-bdr bg-white p-6">
         <div className="flex justify-between items-center mb-4">
-          <p className="text-xs font-semibold uppercase text-ink-3">Recent POs</p>
-          <Link href={`/admin/vendors/${vendor.id}/pos`} className="text-em font-semibold hover:underline text-sm">
+          <p className="text-xs font-normal uppercase text-ink-3">Recent POs</p>
+          <Link href={`/admin/vendors/${vendor.id}/pos`} className="text-em font-normal hover:underline text-sm">
             View All
           </Link>
         </div>
@@ -127,11 +127,11 @@ export default async function AdminVendorDetailPage({
             {vendor.pos.slice(0, 5).map((po) => (
               <div key={po.id} className="flex justify-between items-center p-3 border border-bdr rounded-md">
                 <div>
-                  <p className="font-semibold text-ink">{po.order.orderNumber}</p>
+                  <p className="font-normal text-ink">{po.order.orderNumber}</p>
                   <p className="text-xs text-ink-2">{new Date(po.deadline).toLocaleDateString('en-IN')}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-ink tabnum">{formatRupees(Number(po.totalAmount))}</p>
+                  <p className="font-normal text-ink tabnum">{formatRupees(Number(po.totalAmount))}</p>
                   <p className="text-xs text-ink-2">{po.status}</p>
                 </div>
               </div>

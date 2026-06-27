@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { computeOrderShipping } from '@/lib/shipping';
 
 export interface BoxProduct {
   id: string;
@@ -12,6 +13,7 @@ export interface BoxProduct {
   hsnCode?: string;
   gstRate?: number;
   leadTimeDays?: number;
+  weightG?: number | null;
   priceTiers?: Array<{ tier: number; minQty: number; maxQty: number | null; sellPrice: number }>;
   images?: Array<{ url: string }>;
 }
@@ -56,6 +58,10 @@ export interface BoxState {
   pincode: string | null;
   shippingZone: {
     zoneName: string;
+    ratePerKg?: number;
+    minCharge?: number;
+    freeShippingThreshold?: number | null;
+    individualSurchargePct?: number;
     flatRate: number;
     etaMinDays: number;
     etaMaxDays: number;
@@ -255,7 +261,17 @@ export const useBoxStore = create<BoxState>()(
         state.addons.forEach((a) => {
           total += a.price * state.packQuantity;
         });
-        if (state.shippingZone) total += state.shippingZone.flatRate;
+        // Weight-based shipping (SOW: ₹/kg per zone), consistent with the builder.
+        total += computeOrderShipping({
+          products: state.products.map((p) => ({
+            weightG: p.weightG,
+            quantity: 1,
+            sellPrice: p.sellPrice,
+          })),
+          zone: state.shippingZone,
+          packQuantity: state.packQuantity,
+          deliveryMode: 'single',
+        }).shippingCost;
         if (state.coupon) total -= state.coupon.discountAmount;
         return Math.max(0, total);
       },

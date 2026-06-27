@@ -12,11 +12,16 @@ export interface BuilderProduct {
   hsnCode?: string;
   gstRate?: number;
   leadTimeDays?: number;
+  weightG?: number | null;
   dimensionL?: number | null;
   dimensionW?: number | null;
   dimensionH?: number | null;
   priceTiers?: Array<{ tier: number; minQty: number; maxQty: number | null; sellPrice: number }>;
   images?: Array<{ url: string }>;
+  // Selected variant (e.g. colour / size) chosen in the Quick View modal
+  variantValue?: string;
+  variantKind?: string;
+  variantHex?: string | null;
 }
 
 export interface BuilderState {
@@ -44,9 +49,11 @@ export interface BuilderState {
     price: number;
   }>;
 
+  // Uploaded logo, persisted to Digital Ocean Spaces + the company brand asset
+  // library. `url` is the public CDN URL; `name` is the original file name.
   logo: {
-    file: File | null;
-    preview: string | null;
+    url: string;
+    name: string;
   } | null;
 
   sleeve: boolean;
@@ -55,9 +62,21 @@ export interface BuilderState {
   pincode: string | null;
   shippingZone: {
     zoneName: string;
+    // Weight-based rate config (SOW: ₹/kg per zone)
+    ratePerKg?: number;
+    minCharge?: number;
+    freeShippingThreshold?: number | null;
+    individualSurchargePct?: number;
+    // Legacy flat rate (kept for back-compat)
     flatRate: number;
     etaMinDays: number;
     etaMaxDays: number;
+    // Quoted cost from the estimate API (Shiprocket real-time, or zone fallback).
+    shippingCost?: number | null;
+    perPackCost?: number | null;
+    isFree?: boolean;
+    source?: 'shiprocket' | 'zone' | null;
+    courierName?: string | null;
   } | null;
 
   address: {
@@ -109,11 +128,11 @@ export interface BuilderState {
   addAddon: (addon: { id: string; name: string; price: number }) => void;
   removeAddon: (addonId: string) => void;
 
-  setLogo: (file: File | null, preview: string | null) => void;
+  setLogo: (logo: { url: string; name: string } | null) => void;
   setSleeve: (enabled: boolean) => void;
 
   setPincode: (pincode: string | null) => void;
-  setShippingZone: (zone: { zoneName: string; flatRate: number; etaMinDays: number; etaMaxDays: number } | null) => void;
+  setShippingZone: (zone: BuilderState["shippingZone"]) => void;
   setAddress: (address: BuilderState["address"]) => void;
   setCsvRecipients: (recipients: BuilderState["csvRecipients"]) => void;
   setCsvRecipientCount: (count: number) => void;
@@ -162,22 +181,28 @@ export const useBuilderStore = create<BuilderState>()(
       openQuantityModal: () => set({ quantityModalOpen: true }),
       closeQuantityModal: () => set({ quantityModalOpen: false }),
       setRecipientType: (type) => set({ recipientType: type }),
-      setPackQuantity: (qty) => set({ packQuantity: qty }),
+      setPackQuantity: (qty) =>
+        set((state) => ({
+          packQuantity: qty,
+          // Re-price every product to the tier that matches the new pack quantity
+          products: state.products.map((p) => {
+            const tier =
+              p.priceTiers?.find(
+                (t) => qty >= t.minQty && (t.maxQty === null || qty <= t.maxQty)
+              ) || p.priceTiers?.[0];
+            return tier ? { ...p, sellPrice: tier.sellPrice } : p;
+          }),
+        })),
 
       addProduct: (product) => {
         const products = get().products;
         const existing = products.find((p) => p.id === product.id);
-        if (existing) {
-          set({
-            products: products.map((p) =>
-              p.id === product.id
-                ? { ...p, quantity: p.quantity + product.quantity }
-                : p
-            ),
-          });
-        } else {
-          set({ products: [...products, product] });
-        }
+        // Each product is exactly ONE unit per pack — packQuantity is the
+        // multiplier. Adding a product that's already in the pack is a no-op
+        // (do NOT accumulate quantity), otherwise the ?product= URL re-adding on
+        // every refresh would keep inflating the total.
+        if (existing) return;
+        set({ products: [...products, { ...product, quantity: 1 }] });
       },
 
       removeProduct: (productId) => {
@@ -186,9 +211,15 @@ export const useBuilderStore = create<BuilderState>()(
       },
 
       updateProductQuantity: (productId, quantity) => {
-        const products = get().products.map((p) =>
-          p.id === productId ? { ...p, quantity } : p
-        );
+        const products = get().products.map((p) => {
+          if (p.id !== productId) return p;
+          // Re-price to the tier that matches the new quantity
+          const tier =
+            p.priceTiers?.find(
+              (t) => quantity >= t.minQty && (t.maxQty === null || quantity <= t.maxQty)
+            ) || p.priceTiers?.[0];
+          return { ...p, quantity, sellPrice: tier?.sellPrice ?? p.sellPrice };
+        });
         set({ products });
       },
 
@@ -215,7 +246,7 @@ export const useBuilderStore = create<BuilderState>()(
         set({ addons });
       },
 
-      setLogo: (file, preview) => set({ logo: file ? { file, preview } : null }),
+      setLogo: (logo) => set({ logo }),
       setSleeve: (enabled) => set({ sleeve: enabled }),
 
       setPincode: (pincode) => set({ pincode }),
@@ -231,7 +262,10 @@ export const useBuilderStore = create<BuilderState>()(
       setCoupon: (coupon) => set({ coupon }),
 
       getProductsSubtotal: () => {
-        return get().products.reduce((sum, p) => sum + p.sellPrice * p.quantity, 0);
+        // Per-pack subtotal = one unit of each selected product. Quantity is
+        // always 1 per pack in this builder, so it's intentionally ignored here
+        // (guards against any stale/corrupted quantity inflating the total).
+        return get().products.reduce((sum, p) => sum + p.sellPrice, 0);
       },
 
       getTotalQuantity: () => {
@@ -242,45 +276,28 @@ export const useBuilderStore = create<BuilderState>()(
     }),
     {
       name: "giftcraft-builder",
-      version: 2,
-      partialize: (state) => {
-        // Check if we're on a fresh start (has product param in URL)
-        if (typeof window !== 'undefined') {
-          const params = new URLSearchParams(window.location.search);
-          const productParam = params.get('product');
-
-          // For fresh starts, don't persist products, packaging, addons, etc.
-          if (productParam) {
-            return {
-              currentStep: 1,
-              recipientType: null,
-              packQuantity: 50,
-              products: [],
-              packaging: null,
-              addons: [],
-              logo: null,
-              sleeve: false,
-              pincode: null,
-              shippingZone: null,
-              address: null,
-              csvRecipients: null,
-              csvRecipientCount: 0,
-              deliveryMode: "single",
-              cardMessage: "",
-              brandingNotes: "",
-              delivDate: null,
-              coupon: null,
-            };
-          }
+      // v5: re-normalise persisted product quantities to 1. Earlier inflation
+      // (units-stepper bug + the ?product= URL re-adding on refresh and
+      // accumulating quantity) could have grown a product's quantity past 1.
+      // Each product is exactly one unit per pack — packQuantity is the
+      // multiplier — so quantity is always 1.
+      version: 5,
+      migrate: (persisted: any) => {
+        if (persisted && Array.isArray(persisted.products)) {
+          persisted.products = persisted.products.map((p: any) => ({ ...p, quantity: 1 }));
         }
-
-        // Normal persist behavior
-        return {
-          ...state,
-          logo: state.logo ? { file: null, preview: state.logo.preview } : null,
-          csvRecipients: null,
-        };
+        return persisted;
       },
+      // Always persist the full builder state (minus the bulky CSV recipient
+      // list). Fresh-start clearing is handled by <BuilderReset/>, which wipes
+      // storage only on a true fresh entry (product param + no products yet).
+      // We must NOT wipe here on every save, or the delivery address/products
+      // entered in Steps 2–4 would never survive a reload while the URL still
+      // carries ?product=…  (that was the "address disappears" bug).
+      partialize: (state) => ({
+        ...state,
+        csvRecipients: null,
+      }),
     }
   )
 );

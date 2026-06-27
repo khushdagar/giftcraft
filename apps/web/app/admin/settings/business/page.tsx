@@ -81,9 +81,9 @@ export default function BusinessSettingsPage() {
         </Link>
         <div className="flex items-center gap-2 mb-2">
           <Building2 className="h-5 w-5 text-em-400" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Business</p>
+          <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Business</p>
         </div>
-        <h1 className="text-3xl font-bold text-ink">Company Information</h1>
+        <h1 className="text-3xl font-normal text-ink">Company Information</h1>
         <p className="text-sm text-ink-2 mt-2">Configure your business details and tax information</p>
       </div>
 

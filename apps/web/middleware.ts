@@ -23,16 +23,12 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // /checkout/* — must have session cookie
-  if (pathname.startsWith("/checkout")) {
-    if (!sessionCookie) {
-      return NextResponse.redirect(new URL(`/login?from=${pathname}`, request.url));
-    }
-  }
+  // NOTE: /checkout is intentionally NOT gated — guest checkout is allowed.
+  // Customer details (name, email, phone) are collected on the checkout form.
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/dashboard/:path*", "/checkout/:path*"],
+  matcher: ["/admin/:path*", "/dashboard/:path*"],
 };

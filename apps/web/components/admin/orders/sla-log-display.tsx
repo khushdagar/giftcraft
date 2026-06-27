@@ -61,7 +61,7 @@ export function SlaLogDisplay({ slaLogs, currentStatus }: SlaLogDisplayProps) {
       {/* Current SLA Card */}
       {currentSla && (
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-ink-3 mb-3">
+          <h3 className="text-sm font-normal uppercase tracking-wider text-ink-3 mb-3">
             Current Stage SLA
           </h3>
 
@@ -80,7 +80,7 @@ export function SlaLogDisplay({ slaLogs, currentStatus }: SlaLogDisplayProps) {
               <div className={`rounded-md border-2 p-6 ${slaStatus.bg} ${slaStatus.border}`}>
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <p className="text-2xl font-black text-ink">{currentSla.stage}</p>
+                    <p className="text-2xl font-normal text-ink">{currentSla.stage}</p>
                     <p className="text-xs text-ink-3 mt-1">
                       Entered {new Date(currentSla.enteredAt).toLocaleDateString('en-IN')} at{' '}
                       {new Date(currentSla.enteredAt).toLocaleTimeString('en-IN')}
@@ -94,7 +94,7 @@ export function SlaLogDisplay({ slaLogs, currentStatus }: SlaLogDisplayProps) {
                     ) : (
                       <CheckCircle className="w-6 h-6 text-emerald-600" />
                     )}
-                    <span className={`font-bold text-sm ${slaStatus.color}`}>
+                    <span className={`font-normal text-sm ${slaStatus.color}`}>
                       {slaStatus.status === 'breached'
                         ? 'SLA Breached'
                         : slaStatus.status === 'warning'
@@ -107,8 +107,8 @@ export function SlaLogDisplay({ slaLogs, currentStatus }: SlaLogDisplayProps) {
                 {/* Progress Bar */}
                 <div className="mb-4">
                   <div className="flex justify-between mb-2">
-                    <p className="text-xs font-semibold text-ink-2">Time Spent</p>
-                    <p className="text-xs font-semibold text-ink">
+                    <p className="text-xs font-normal text-ink-2">Time Spent</p>
+                    <p className="text-xs font-normal text-ink">
                       {formatMinutes(Math.round(elapsedMinutes))} / {formatMinutes(currentSla.slaMinutes)}
                     </p>
                   </div>
@@ -134,7 +134,7 @@ export function SlaLogDisplay({ slaLogs, currentStatus }: SlaLogDisplayProps) {
                 <div className="bg-white rounded-md p-3 border border-gray-200">
                   <p className="text-xs text-ink-3 mb-1">Time Remaining</p>
                   <p
-                    className={`text-lg font-black ${
+                    className={`text-lg font-normal ${
                       remainingMinutes < 0 ? 'text-rose-600' : 'text-ink'
                     }`}
                   >
@@ -152,7 +152,7 @@ export function SlaLogDisplay({ slaLogs, currentStatus }: SlaLogDisplayProps) {
       {/* Past SLAs History */}
       {pastSlas.length > 0 && (
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-ink-3 mb-3">
+          <h3 className="text-sm font-normal uppercase tracking-wider text-ink-3 mb-3">
             SLA History
           </h3>
 
@@ -178,14 +178,14 @@ export function SlaLogDisplay({ slaLogs, currentStatus }: SlaLogDisplayProps) {
                         <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                       )}
                       <div>
-                        <p className="text-sm font-semibold text-ink">{log.stage}</p>
+                        <p className="text-sm font-normal text-ink">{log.stage}</p>
                         <p className="text-xs text-ink-3">
                           {formatMinutes(Math.round(elapsedMinutes))} / {formatMinutes(log.slaMinutes)}
                         </p>
                       </div>
                     </div>
                     <span
-                      className={`text-xs font-bold px-2 py-1 rounded-full ${
+                      className={`text-xs font-normal px-2 py-1 rounded-full ${
                         slaStatus.status === 'breached'
                           ? 'bg-rose-200 text-rose-700'
                           : 'bg-emerald-200 text-emerald-700'

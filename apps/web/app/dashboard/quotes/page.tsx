@@ -30,7 +30,7 @@ export default async function QuotesPage() {
     <div>
       <div className="mb-8 flex items-center justify-between border-b border-bdr pb-8">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-ink">My Quotes</h1>
+          <h1 className="text-3xl font-normal tracking-tight text-ink">My Quotes</h1>
           <p className="mt-1 text-sm text-ink-2">View and manage your quote requests</p>
         </div>
         <Link href="/builder">
@@ -51,11 +51,11 @@ export default async function QuotesPage() {
             <div key={quote.id} className="rounded-md border-2 border-bdr p-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold text-ink">Quote #{quote.id.slice(0, 8)}</h3>
+                  <h3 className="font-normal text-ink">Quote #{quote.id.slice(0, 8)}</h3>
                   <p className="text-sm text-ink-2">{quote.company?.name}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-em">₹{Number((quote.payload as any)?.pricing?.grandTotal || 0).toLocaleString()}</p>
+                  <p className="font-normal text-em">₹{Number((quote.payload as any)?.pricing?.grandTotal || 0).toLocaleString()}</p>
                   <p className="text-xs text-ink-3">
                     {new Date(quote.createdAt).toLocaleDateString()}
                   </p>

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { CheckCircle, Confetti as ConfettiIcon } from 'lucide-react';
+import { CheckCircle, PartyPopper as ConfettiIcon } from 'lucide-react';
 import Link from 'next/link';
 import Confetti from 'react-confetti';
 import { useEffect, useState } from 'react';

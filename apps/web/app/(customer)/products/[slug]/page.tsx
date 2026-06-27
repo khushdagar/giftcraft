@@ -72,7 +72,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const serialized = serializeProduct(product);
   const serializedRelated = related.map(serializeProduct);
   const gstRate = product.hsn?.hsn ? Number(product.hsn.hsn.defaultGstRate) : 18;
-  const moq = product.priceTiers?.[0]?.minQty || 25;
+  // Use the product's own MOQ; fall back to the first tier's minQty.
+  const moq = (product as any).moq || product.priceTiers?.[0]?.minQty || 25;
 
   return (
     <div className="bg-canvas">
@@ -104,14 +105,15 @@ export default async function ProductPage({ params }: { params: { slug: string }
           />
         </div>
 
-        {/* Info */}
+        {/* Info — pass the serialized product (raw Prisma Decimals can't cross
+            the Server→Client boundary and crash React's RSC deserializer). */}
         <ProductInfoSection
-          product={product}
+          product={serialized}
           serialized={serialized}
           gstRate={gstRate}
           moq={moq}
           categoryName={categoryName}
-          variants={product.variants}
+          variants={serialized.variants}
         />
       </div>
 

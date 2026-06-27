@@ -6,7 +6,13 @@ import { z } from 'zod';
 const CreateShippingZoneSchema = z.object({
   name: z.string().min(1),
   states: z.array(z.string()),
-  flatRate: z.number().positive(),
+  // Weight-based rate model (SOW: ₹/kg per zone)
+  ratePerKg: z.number().nonnegative(),
+  minCharge: z.number().nonnegative(),
+  freeShippingThreshold: z.number().nonnegative().nullable().optional(),
+  individualSurchargePct: z.number().nonnegative().optional(),
+  // Legacy flat rate kept for back-compat (defaults to minCharge when omitted)
+  flatRate: z.number().nonnegative().optional(),
   etaMinDays: z.number().int().positive(),
   etaMaxDays: z.number().int().positive(),
   isActive: z.boolean().optional(),
@@ -44,7 +50,11 @@ export async function POST(request: NextRequest) {
       data: {
         name: data.name,
         states: data.states,
-        flatRate: data.flatRate,
+        ratePerKg: data.ratePerKg,
+        minCharge: data.minCharge,
+        freeShippingThreshold: data.freeShippingThreshold ?? null,
+        individualSurchargePct: data.individualSurchargePct ?? 0,
+        flatRate: data.flatRate ?? data.minCharge,
         etaMinDays: data.etaMinDays,
         etaMaxDays: data.etaMaxDays,
         isActive: data.isActive ?? true,

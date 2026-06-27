@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
 import { toast } from '@/lib/stores/toast-store';
@@ -23,6 +23,8 @@ interface Product {
   isEcoCertified?: boolean;
   printingTechnique?: string;
   leadTimeDays?: number;
+  recipientTags?: string[];
+  occasionIds?: string[];
   priceTiers?: Array<{ sellPrice: number }>;
   categories?: Array<{ categoryId: string; category?: { name: string } }>;
   images?: ProductImage[];
@@ -31,7 +33,14 @@ interface Product {
 interface Category {
   id: string;
   name: string;
+  slug?: string;
   subcategories?: Array<{ id: string; name: string }>;
+}
+
+interface Occasion {
+  id: string;
+  name: string;
+  slug?: string;
 }
 
 // Mapping of printing techniques to badges
@@ -53,6 +62,7 @@ function formatPrice(n: number) {
 
 export function CatalogClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const addProduct = useBuilderStore((state) => state.addProduct);
   const [view, setView] = useState<'products' | 'packs'>('products');
   const [search, setSearch] = useState('');
@@ -60,15 +70,56 @@ export function CatalogClient() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [occasions, setOccasions] = useState<Occasion[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
+  const [selectedOccasions, setSelectedOccasions] = useState<Set<string>>(new Set());
+  const [selectedRecipients, setSelectedRecipients] = useState<Set<string>>(new Set());
   const [ecoOnly, setEcoOnly] = useState(false);
   const [brandingOnly, setBrandingOnly] = useState(false);
   const [priceMin, setPriceMin] = useState<number | null>(null);
   const [priceMax, setPriceMax] = useState<number | null>(null);
+
+  // Seed the sidebar filters from the URL query params (e.g. when arriving from a
+  // nav "Occasions" dropdown link or a homepage category tile). Categories link by
+  // id; occasions link by slug — so we map the slug/name back to the occasion id
+  // the filter actually matches on. Runs after the filter data has loaded (so the
+  // slug→id lookup works) and again whenever the URL changes (clicking another
+  // occasion/category while already on the catalog re-selects it).
+  useEffect(() => {
+    if (loading) return;
+
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      const cat = categories.find(
+        (c) =>
+          c.id === categoryParam ||
+          c.slug === categoryParam ||
+          c.name.toLowerCase() === categoryParam.toLowerCase()
+      );
+      setSelectedCats(new Set([cat ? cat.id : categoryParam]));
+    }
+
+    const occasionParam = searchParams.get('occasion');
+    if (occasionParam) {
+      const occ = occasions.find(
+        (o) =>
+          o.slug === occasionParam ||
+          o.id === occasionParam ||
+          o.name.toLowerCase() === occasionParam.toLowerCase()
+      );
+      if (occ) setSelectedOccasions(new Set([occ.id]));
+    }
+
+    const recipientParam = searchParams.get('recipient');
+    if (recipientParam) {
+      setSelectedRecipients(new Set([recipientParam]));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, searchParams, categories, occasions]);
 
   // Fetch products and categories from API
   useEffect(() => {
@@ -98,6 +149,7 @@ export function CatalogClient() {
         if (categoriesRes.ok) {
           const categoriesData = await categoriesRes.json();
           setCategories(categoriesData.categories || []);
+          setOccasions(categoriesData.occasions || []);
         }
       } catch (error) {
         console.error('Failed to fetch catalog data:', error);
@@ -113,6 +165,29 @@ export function CatalogClient() {
   const brands = useMemo(() => {
     return [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
   }, [products]);
+
+  // Recipient tags actually present on products (so the filter matches real data).
+  const recipientTags = useMemo(() => {
+    const tags = new Set<string>();
+    products.forEach(p => p.recipientTags?.forEach(t => t && tags.add(t)));
+    return [...tags].sort();
+  }, [products]);
+
+  // Only show occasions that at least one product is tagged with.
+  const usedOccasions = useMemo(() => {
+    const ids = new Set<string>();
+    products.forEach(p => p.occasionIds?.forEach(id => ids.add(id)));
+    return occasions.filter(o => ids.has(o.id));
+  }, [occasions, products]);
+
+  // Only show categories that actually have products — a category with zero
+  // products everywhere (e.g. an empty "Gift Cards") just clutters the filter
+  // bar with a permanent (0) and can never narrow results.
+  const usedCategories = useMemo(() => {
+    const ids = new Set<string>();
+    products.forEach(p => p.categories?.forEach(c => ids.add(c.categoryId)));
+    return categories.filter(c => ids.has(c.id));
+  }, [categories, products]);
 
   // Get price range from products
   const priceRange = useMemo(() => {
@@ -151,6 +226,18 @@ export function CatalogClient() {
         return false;
       }
 
+      // Occasion filter (product matches if tagged with any selected occasion)
+      if (selectedOccasions.size > 0) {
+        const hasOccasion = p.occasionIds?.some(id => selectedOccasions.has(id));
+        if (!hasOccasion) return false;
+      }
+
+      // Recipient type filter (match any selected recipient tag)
+      if (selectedRecipients.size > 0) {
+        const hasRecipient = p.recipientTags?.some(t => selectedRecipients.has(t));
+        if (!hasRecipient) return false;
+      }
+
       // Eco filter
       if (ecoOnly && !p.isEcoCertified) return false;
 
@@ -172,7 +259,7 @@ export function CatalogClient() {
     else if (sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name));
 
     return result;
-  }, [products, search, sort, selectedCats, selectedBrands, ecoOnly, brandingOnly, priceMin, priceMax]);
+  }, [products, search, sort, selectedCats, selectedBrands, selectedOccasions, selectedRecipients, ecoOnly, brandingOnly, priceMin, priceMax]);
 
   const handleCatChange = (catId: string) => {
     const newCats = new Set(selectedCats);
@@ -188,10 +275,24 @@ export function CatalogClient() {
     setSelectedBrands(newBrands);
   };
 
+  const toggleSetValue = (
+    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+    value: string
+  ) => {
+    setter(prev => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
+
   const clearAll = () => {
     setSearch('');
     setSelectedCats(new Set());
     setSelectedBrands(new Set());
+    setSelectedOccasions(new Set());
+    setSelectedRecipients(new Set());
     setEcoOnly(false);
     setBrandingOnly(false);
     setPriceMin(priceRange.min || null);
@@ -243,7 +344,7 @@ export function CatalogClient() {
         </div>
 
         {/* Active Filters */}
-        {(search || selectedCats.size > 0 || selectedBrands.size > 0 || ecoOnly || brandingOnly || (priceMin !== null && priceMax !== null && (priceMin > (priceRange.min || 0) || priceMax < (priceRange.max || 3500)))) && (
+        {(search || selectedCats.size > 0 || selectedBrands.size > 0 || selectedOccasions.size > 0 || selectedRecipients.size > 0 || ecoOnly || brandingOnly || (priceMin !== null && priceMax !== null && (priceMin > (priceRange.min || 0) || priceMax < (priceRange.max || 3500)))) && (
           <div className="flex flex-wrap gap-2 mb-4">
             {Array.from(selectedCats).map(catId => {
               const cat = categories.find(c => c.id === catId);
@@ -256,6 +357,19 @@ export function CatalogClient() {
             {Array.from(selectedBrands).map(brand => (
               <button key={brand} onClick={() => handleBrandChange(brand)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>
                 Brand: {brand} ✕
+              </button>
+            ))}
+            {Array.from(selectedOccasions).map(occId => {
+              const occ = occasions.find(o => o.id === occId);
+              return (
+                <button key={occId} onClick={() => toggleSetValue(setSelectedOccasions, occId)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>
+                  {occ?.name} ✕
+                </button>
+              );
+            })}
+            {Array.from(selectedRecipients).map(tag => (
+              <button key={tag} onClick={() => toggleSetValue(setSelectedRecipients, tag)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>
+                {tag} ✕
               </button>
             ))}
             {ecoOnly && <button onClick={() => setEcoOnly(false)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>Eco-Friendly ✕</button>}
@@ -278,15 +392,15 @@ export function CatalogClient() {
               </div>
 
               {/* Categories */}
-              {categories.length > 0 && (
+              {usedCategories.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Categories</h4>
                   <div className="space-y-2">
-                    {categories.map(cat => (
+                    {usedCategories.map(cat => (
                       <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
                         <input type="checkbox" checked={selectedCats.has(cat.id)} onChange={() => handleCatChange(cat.id)} style={{ accentColor: '#1A6B4F' }} />
                         {cat.name}
-                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({products.filter(p => p.categories?.some(c => c.categoryId === cat.id)).length})</span>
+                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({filtered.filter(p => p.categories?.some(c => c.categoryId === cat.id)).length})</span>
                       </label>
                     ))}
                   </div>
@@ -317,7 +431,39 @@ export function CatalogClient() {
                       <label key={brand} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
                         <input type="checkbox" checked={selectedBrands.has(brand)} onChange={() => handleBrandChange(brand)} style={{ accentColor: '#1A6B4F' }} />
                         {brand}
-                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({products.filter(p => p.brand === brand).length})</span>
+                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({filtered.filter(p => p.brand === brand).length})</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Occasion */}
+              {usedOccasions.length > 0 && (
+                <div className="mb-4 pb-3 border-b">
+                  <h4 className="text-sm font-semibold mb-2">Occasion</h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {usedOccasions.map(occ => (
+                      <label key={occ.id} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
+                        <input type="checkbox" checked={selectedOccasions.has(occ.id)} onChange={() => toggleSetValue(setSelectedOccasions, occ.id)} style={{ accentColor: '#1A6B4F' }} />
+                        {occ.name}
+                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({filtered.filter(p => p.occasionIds?.includes(occ.id)).length})</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recipient Type */}
+              {recipientTags.length > 0 && (
+                <div className="mb-4 pb-3 border-b">
+                  <h4 className="text-sm font-semibold mb-2">Recipient Type</h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {recipientTags.map(tag => (
+                      <label key={tag} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
+                        <input type="checkbox" checked={selectedRecipients.has(tag)} onChange={() => toggleSetValue(setSelectedRecipients, tag)} style={{ accentColor: '#1A6B4F' }} />
+                        {tag}
+                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({filtered.filter(p => p.recipientTags?.includes(tag)).length})</span>
                       </label>
                     ))}
                   </div>
@@ -378,15 +524,15 @@ export function CatalogClient() {
                       slug: p.slug,
                       brand: p.brand,
                       printingTechnique: p.printingTechnique,
-                      hsnCode: p.hsnCode,
-                      gstRate: p.gstRate,
+                      hsnCode: (p as any).hsnCode,
+                      gstRate: (p as any).gstRate,
                       leadTimeDays: p.leadTimeDays,
-                      dimensionL: (p as any).dimensionL,
-                      dimensionW: (p as any).dimensionW,
-                      dimensionH: (p as any).dimensionH,
+                      dimensionL: (p as any).dimensionL ?? (p as any).lengthCm,
+                      dimensionW: (p as any).dimensionW ?? (p as any).widthCm,
+                      dimensionH: (p as any).dimensionH ?? (p as any).heightCm,
                       quantity: 1,
                       sellPrice: tierPrice,
-                      priceTiers: p.priceTiers,
+                      priceTiers: (p as any).priceTiers,
                       images: p.images,
                     });
 

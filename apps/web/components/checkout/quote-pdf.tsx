@@ -185,12 +185,12 @@ export function QuotePDF({ quoteId, expiresAt, payload, shareToken }: QuotePDFPr
           </View>
         )}
 
-        {/* Shipping */}
+        {/* Shipping (Shiprocket rate is already GST-inclusive) */}
         {shippingZone && (
           <View style={styles.section}>
             <View style={styles.row}>
-              <Text>{shippingZone.zoneName} Shipping</Text>
-              <Text>₹{shippingZone.flatRate.toFixed(2)}</Text>
+              <Text>{shippingZone.zoneName} Shipping (incl. GST)</Text>
+              <Text>₹{Number(pricing?.shipping || 0).toFixed(2)}</Text>
             </View>
           </View>
         )}
@@ -199,31 +199,15 @@ export function QuotePDF({ quoteId, expiresAt, payload, shareToken }: QuotePDFPr
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pricing Summary</Text>
           <View style={styles.row}>
-            <Text>Subtotal</Text>
-            <Text>₹{pricing.subtotal.toFixed(2)}</Text>
+            <Text>Subtotal (before shipping, GST)</Text>
+            <Text>₹{(pricing.itemsSubtotal ?? pricing.subtotal).toFixed(2)}</Text>
           </View>
 
-          {/* GST */}
-          {(pricing.cgst > 0 || pricing.sgst > 0 || pricing.igst > 0) && (
-            <View>
-              {pricing.cgst > 0 && (
-                <View style={styles.row}>
-                  <Text>CGST (9%)</Text>
-                  <Text>₹{pricing.cgst.toFixed(2)}</Text>
-                </View>
-              )}
-              {pricing.sgst > 0 && (
-                <View style={styles.row}>
-                  <Text>SGST (9%)</Text>
-                  <Text>₹{pricing.sgst.toFixed(2)}</Text>
-                </View>
-              )}
-              {pricing.igst > 0 && (
-                <View style={styles.row}>
-                  <Text>IGST (18%)</Text>
-                  <Text>₹{pricing.igst.toFixed(2)}</Text>
-                </View>
-              )}
+          {/* GST — single combined line (shipping is already GST-inclusive) */}
+          {(pricing.cgst || 0) + (pricing.sgst || 0) + (pricing.igst || 0) > 0 && (
+            <View style={styles.row}>
+              <Text>GST</Text>
+              <Text>₹{((pricing.cgst || 0) + (pricing.sgst || 0) + (pricing.igst || 0)).toFixed(2)}</Text>
             </View>
           )}
 

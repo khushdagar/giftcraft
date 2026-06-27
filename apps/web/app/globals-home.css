@@ -1,0 +1,220 @@
+/* GiftCraft Homepage Design System */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+
+:root {
+  --canvas: #FAFAF7;
+  --surface: #FFF;
+  --elevated: #F5F5F0;
+  --dark: #1A1A18;
+  --ink: #1A1A18;
+  --ink2: #6B6B63;
+  --ink3: #9B9B93;
+  --inv: #FAFAF7;
+  --em: #1A6B4F;
+  --em6: #145A42;
+  --em50: #E8F5EF;
+  --em7: #0F4934;
+  --em4: #2DA366;
+  --gold: #C4963C;
+  --gold50: #FBF5E9;
+  --gold2: #EDD5A3;
+  --gold7: #886528;
+  --err: #C4402A;
+  --suc: #2D8B56;
+  --bdr: #E8E8E3;
+  --bdr2: #D4D4CF;
+  --glass: rgba(255, 255, 255, 0.72);
+  --glassbdr: rgba(210, 210, 215, 0.30);
+  --shcard: 0 2px 8px rgba(0, 0, 0, 0.05), 0 4px 24px rgba(0, 0, 0, 0.04);
+  --shhover: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shfloat: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shglow: 0 0 20px rgba(26, 107, 79, 0.25), 0 0 60px rgba(26, 107, 79, 0.1);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --r: 2rem;
+  --rs: 1.25rem;
+  --rl: 2.5rem;
+  --rp: 999px;
+  --fd: 'Playfair Display', Georgia, serif;
+  --fb: 'DM Sans', system-ui, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--fb);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--canvas);
+  overflow-x: hidden;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Typography */
+h1, h2, h3, h4 {
+  font-family: var(--fd);
+  font-weight: 500;
+}
+
+.italic {
+  font-style: italic;
+}
+
+.balance {
+  text-wrap: balance;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 48px);
+}
+
+.container-w {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 48px);
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes floatB {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.rv {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+}
+
+.rv.vis {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.s1 { transition-delay: 0.06s; }
+.s2 { transition-delay: 0.12s; }
+.s3 { transition-delay: 0.18s; }
+.s4 { transition-delay: 0.24s; }
+.s5 { transition-delay: 0.30s; }
+.s6 { transition-delay: 0.36s; }
+.s7 { transition-delay: 0.42s; }
+.s8 { transition-delay: 0.48s; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: 68px;
+  right: 20px;
+  z-index: 999;
+  background: var(--dark);
+  color: var(--inv);
+  padding: 12px 24px;
+  border-radius: var(--rp);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--shfloat);
+  opacity: 0;
+  transform: translateX(20px);
+  transition: all 0.35s var(--ease);
+  pointer-events: none;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Trust logos marquee */
+.trust-logos {
+  display: flex;
+  overflow: hidden;
+  gap: 48px;
+}
+
+.trust-row {
+  display: flex;
+  gap: 48px;
+  animation: marquee 30s linear infinite;
+  min-width: 100%;
+}
+
+.trust-row span {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 16px;
+  opacity: 0.14;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}

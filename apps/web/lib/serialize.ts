@@ -48,6 +48,8 @@ export interface SerializedProduct
   hsn?: SerializedProductHsn | null;
   categories?: any[];
   occasions?: any[];
+  categoryIds?: string[];
+  occasionIds?: string[];
   vendors?: any[];
   variants?: ProductVariant[];
   lengthCm?: number | null;
@@ -105,6 +107,26 @@ export function serializeProduct(
     variants?: ProductVariant[];
   }
 ): SerializedProduct {
+  // Extract category IDs from the nested category objects
+  const categoryIds = product.categories?.map((cat: any) => cat.categoryId || cat.id) || [];
+  const occasionIds = product.occasions?.map((occ: any) => occ.occasionId || occ.id) || [];
+
+  // Serialize vendor links (costPrice is Decimal, dates must be plain)
+  const vendors = product.vendors?.map((v: any) => ({
+    id: v.id,
+    vendorId: v.vendorId,
+    vendorName: v.vendor?.name ?? null,
+    isPrimary: v.isPrimary,
+    costPrice: v.costPrice != null ? Number(v.costPrice) : null,
+    vendorSku: v.vendorSku ?? null,
+    vendorMoq: v.vendorMoq ?? null,
+    vendorLeadDays: v.vendorLeadDays ?? null,
+    sourcingStatus: v.sourcingStatus ?? null,
+    lastPriceConfirmedAt: v.lastPriceConfirmedAt
+      ? new Date(v.lastPriceConfirmedAt).toISOString()
+      : null,
+  }));
+
   return {
     ...product,
     // Map database dimension fields to form field names for compatibility
@@ -114,6 +136,9 @@ export function serializeProduct(
     priceTiers: product.priceTiers?.map(serializePriceTier),
     images: product.images || [],
     hsn: product.hsn ? serializeProductHsn(product.hsn) : null,
+    categoryIds,
+    occasionIds,
+    vendors: vendors || [],
     variants: product.variants || [],
   };
 }

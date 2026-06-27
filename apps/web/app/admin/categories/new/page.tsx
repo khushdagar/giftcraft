@@ -10,22 +10,20 @@ export default async function NewCategoryPage() {
     redirect('/');
   }
 
-  const categories = await prisma.category.findMany({
+  const parentCategories = await prisma.category.findMany({
     where: { parentId: null },
-    select: { id: true, name: true },
     orderBy: { sortOrder: 'asc' },
   });
 
   return (
-    <>
-      <div className="mb-8 border-b border-bdr pb-8">
-        <h1 className="text-3xl font-black tracking-tight text-ink">Create Category</h1>
-        <p className="mt-1 text-sm text-ink-2">Add a new product category</p>
+    <div className="min-h-screen bg-white py-12">
+      <div className="max-w-4xl mx-auto px-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-normal text-ink">Create New Category</h1>
+          <p className="text-sm text-gray-500 mt-2">Add a new category with optional image</p>
+        </div>
+        <CategoryForm mode="create" parentCategories={parentCategories} />
       </div>
-
-      <div className="max-w-2xl">
-        <CategoryForm parentCategories={categories} />
-      </div>
-    </>
+    </div>
   );
 }

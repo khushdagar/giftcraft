@@ -27,7 +27,7 @@ export default function PricingPage() {
             <div className="flex gap-4 items-start">
               <Gift className="w-6 h-6 text-em flex-shrink-0 mt-1" />
               <div className="flex-1">
-                <h3 className="font-black text-lg text-em mb-1">Base Product Price</h3>
+                <h3 className="font-normal text-lg text-em mb-1">Base Product Price</h3>
                 <p className="text-em-700">
                   Premium sourcing and standard branding (logos, prints) included in every product. No extra "branding cost" line.
                 </p>
@@ -40,7 +40,7 @@ export default function PricingPage() {
             <div className="flex gap-4 items-start">
               <Package className="w-6 h-6 text-gold-700 flex-shrink-0 mt-1" />
               <div className="flex-1">
-                <h3 className="font-black text-lg text-gold-900 mb-1">Packaging (Optional)</h3>
+                <h3 className="font-normal text-lg text-gold-900 mb-1">Packaging (Optional)</h3>
                 <p className="text-gold-800">
                   Custom boxes, sleeves, or premium unboxing experiences. Charged per unit across all packs.
                 </p>
@@ -53,7 +53,7 @@ export default function PricingPage() {
             <div className="flex gap-4 items-start">
               <Zap className="w-6 h-6 text-indigo-600 flex-shrink-0 mt-1" />
               <div className="flex-1">
-                <h3 className="font-black text-lg text-indigo-900 mb-1">Add-ons (Optional)</h3>
+                <h3 className="font-normal text-lg text-indigo-900 mb-1">Add-ons (Optional)</h3>
                 <p className="text-indigo-800">
                   Personalized cards, gift wrapping, thank-you notes, or bespoke inserts. Per-unit pricing, scales across all packs.
                 </p>
@@ -66,7 +66,7 @@ export default function PricingPage() {
             <div className="flex gap-4 items-start">
               <Truck className="w-6 h-6 text-sky-700 flex-shrink-0 mt-1" />
               <div className="flex-1">
-                <h3 className="font-black text-lg text-sky-900 mb-1">Shipping</h3>
+                <h3 className="font-normal text-lg text-sky-900 mb-1">Shipping</h3>
                 <p className="text-sky-800">
                   Flat rate per shipping zone (Metro/Tier-1/Tier-2). Same cost whether you send to 1 location or 100.
                 </p>
@@ -79,7 +79,7 @@ export default function PricingPage() {
             <div className="flex gap-4 items-start">
               <Calculator className="w-6 h-6 text-orange-700 flex-shrink-0 mt-1" />
               <div className="flex-1">
-                <h3 className="font-black text-lg text-orange-900 mb-1">GST (18%)</h3>
+                <h3 className="font-normal text-lg text-orange-900 mb-1">GST (18%)</h3>
                 <p className="text-orange-800 mb-2">
                   Applied per product HSN code. Calculated based on shipping location:
                 </p>
@@ -100,7 +100,7 @@ export default function PricingPage() {
             <div className="flex gap-4 items-start">
               <CreditCard className="w-6 h-6 text-ink flex-shrink-0 mt-1" />
               <div className="flex-1">
-                <h3 className="font-black text-lg text-ink mb-1">Payment Processing Fee</h3>
+                <h3 className="font-normal text-lg text-ink mb-1">Payment Processing Fee</h3>
                 <p className="text-ink-2 mb-2">
                   2% of the total order amount, plus 18% GST on the fee itself = approximately 2.36% effective rate.
                 </p>
@@ -114,7 +114,7 @@ export default function PricingPage() {
 
         {/* Example Calculation */}
         <div className="rounded-md border-2 border-dark bg-dark text-inv p-8 mb-12">
-          <h3 className="font-black text-xl mb-6">Example: 50 Corporate Welcome Kits</h3>
+          <h3 className="font-normal text-xl mb-6">Example: 50 Corporate Welcome Kits</h3>
           <div className="space-y-2 text-sm mb-6">
             <div className="flex justify-between">
               <span>50 Premium Flasks × ₹200</span>
@@ -146,7 +146,7 @@ export default function PricingPage() {
               <span className="tabnum">+₹397</span>
             </div>
             <div className="border-t border-inv/20 pt-2 my-2" />
-            <div className="flex justify-between text-lg font-black">
+            <div className="flex justify-between text-lg font-normal">
               <span>Grand Total</span>
               <span className="tabnum">₹16,032</span>
             </div>
@@ -159,10 +159,10 @@ export default function PricingPage() {
 
         {/* FAQ */}
         <div className="space-y-6 mb-12">
-          <h2 className="t-heading font-black text-ink">Frequently Asked Questions</h2>
+          <h2 className="t-heading font-normal text-ink">Frequently Asked Questions</h2>
 
           <details className="rounded-md border-2 border-bdr bg-white p-5 group cursor-pointer">
-            <summary className="font-semibold text-ink flex items-center justify-between">
+            <summary className="font-normal text-ink flex items-center justify-between">
               Why does the Razorpay fee exist?
               <span className="text-ink-3 group-open:rotate-180 transition">▼</span>
             </summary>
@@ -172,7 +172,7 @@ export default function PricingPage() {
           </details>
 
           <details className="rounded-md border-2 border-bdr bg-white p-5 group cursor-pointer">
-            <summary className="font-semibold text-ink flex items-center justify-between">
+            <summary className="font-normal text-ink flex items-center justify-between">
               Is branding (logo printing) included in the product price?
               <span className="text-ink-3 group-open:rotate-180 transition">▼</span>
             </summary>
@@ -182,7 +182,7 @@ export default function PricingPage() {
           </details>
 
           <details className="rounded-md border-2 border-bdr bg-white p-5 group cursor-pointer">
-            <summary className="font-semibold text-ink flex items-center justify-between">
+            <summary className="font-normal text-ink flex items-center justify-between">
               How is GST calculated?
               <span className="text-ink-3 group-open:rotate-180 transition">▼</span>
             </summary>
@@ -192,7 +192,7 @@ export default function PricingPage() {
           </details>
 
           <details className="rounded-md border-2 border-bdr bg-white p-5 group cursor-pointer">
-            <summary className="font-semibold text-ink flex items-center justify-between">
+            <summary className="font-normal text-ink flex items-center justify-between">
               Can I negotiate on bulk orders?
               <span className="text-ink-3 group-open:rotate-180 transition">▼</span>
             </summary>

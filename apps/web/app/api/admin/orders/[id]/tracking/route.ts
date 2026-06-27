@@ -76,7 +76,7 @@ export async function GET(
           status: order.shipmentTracking?.status || 'pending',
           estimatedDelivery: order.shipmentTracking?.estimatedDelivery || null,
           deliveredAt: order.shipmentTracking?.deliveredAt || null,
-          updatedAt: order.shipmentTracking?.updatedAt || null,
+          updatedAt: order.shipmentTracking?.lastStatusUpdate || null,
         },
       },
     });

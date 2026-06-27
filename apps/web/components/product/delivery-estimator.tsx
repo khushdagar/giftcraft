@@ -10,6 +10,8 @@ import { formatRupees } from '@/lib/utils';
 interface ShippingEstimate {
   zoneName: string;
   stateCode: string;
+  ratePerKg: number;
+  minCharge: number;
   flatRate: number;
   etaMinDays: number;
   etaMaxDays: number;
@@ -72,8 +74,15 @@ export function DeliveryEstimator() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-ink-2">Shipping:</span>
-                <span className="text-sm font-semibold tabnum">{formatRupees(estimate.flatRate)}</span>
+                <span className="text-sm font-semibold tabnum">
+                  {estimate.ratePerKg > 0
+                    ? `${formatRupees(estimate.ratePerKg)}/kg`
+                    : formatRupees(estimate.minCharge || estimate.flatRate)}
+                </span>
               </div>
+              <p className="text-[10px] text-ink-3 leading-snug">
+                Final shipping is calculated by total weight in the gift builder.
+              </p>
               <div className="flex items-center justify-between">
                 <span className="text-xs text-ink-2">Delivery:</span>
                 <span className="text-sm font-semibold text-ink">

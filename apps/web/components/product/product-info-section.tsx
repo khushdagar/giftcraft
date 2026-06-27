@@ -4,10 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { PricingBlock } from './pricing-block';
 import { ColorSelector } from './color-selector';
+import { SizeSelector } from './size-selector';
 import { ExpertHelp } from './expert-help';
 import { AddonsSelector } from './addons-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { resolveSwatchHex } from '@/lib/color-name';
 
 interface ProductInfoSectionProps {
   product: any;
@@ -65,25 +67,50 @@ export function ProductInfoSection({
       )}
 
       {/* Color selector */}
-      <ColorSelector
-        options={
-          variants && variants.length > 0
-            ? variants
-                .filter((v: any) => v.kind === 'color')
-                .map((v: any) => ({
-                  name: v.value,
-                  hex: v.hexColor || '#000000',
-                }))
-            : undefined
-        }
-        isDynamic={!variants || variants.length === 0}
-      />
+      {(() => {
+        const colorVariants = variants?.filter((v: any) => v.kind === 'color') || [];
+        const hasColorVariants = colorVariants.length > 0;
+
+        return (
+          <ColorSelector
+            options={
+              hasColorVariants
+                ? colorVariants.map((v: any) => ({
+                    name: v.value,
+                    // Auto-derive the swatch colour from the variant name when
+                    // no hex was saved (e.g. "Navy" -> navy, "White" -> white).
+                    hex: resolveSwatchHex(v.value, v.hexColor),
+                  }))
+                : undefined
+            }
+            isDynamic={!hasColorVariants}
+          />
+        );
+      })()}
+
+      {/* Size selector */}
+      {(() => {
+        const sizeVariants = variants?.filter((v: any) => v.kind === 'size') || [];
+        return (
+          <SizeSelector
+            options={
+              sizeVariants.length > 0
+                ? sizeVariants.map((v: any) => ({
+                    name: v.value,
+                  }))
+                : undefined
+            }
+          />
+        );
+      })()}
 
       {/* Pricing - with qty tracking */}
       <PricingBlock
         priceTiers={serialized.priceTiers || []}
         gstRate={gstRate}
         hsnCode={product.hsn?.hsn?.code}
+        printingTechnique={product.printingTechnique}
+        moq={moq}
         onQtyChange={setCurrentQty}
       />
 
@@ -99,7 +126,7 @@ export function ProductInfoSection({
           }`}
           size="lg"
         >
-          <Link href={`/builder?product=${product.id}`}>Add to Gift Builder</Link>
+          <Link href={`/builder?product=${product.id}&qty=${currentQty}`}>Add to Gift Builder</Link>
         </Button>
         <Button
           asChild

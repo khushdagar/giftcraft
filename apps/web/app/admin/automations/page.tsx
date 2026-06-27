@@ -90,10 +90,10 @@ export default function AdminAutomationsPage() {
       <div className="mb-8 border-b border-bdr pb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-ink">Automations</h1>
+            <h1 className="text-3xl font-normal tracking-tight text-ink">Automations</h1>
             <p className="mt-1 text-sm text-ink-2">{rules.length} rules configured</p>
           </div>
-          <Button asChild className="rounded-2xl bg-em px-6 py-2 font-bold hover:bg-em-600">
+          <Button asChild className="rounded-2xl bg-em px-6 py-2 font-normal hover:bg-em-600">
             <Link href="/admin/automations/new">+ New Rule</Link>
           </Button>
         </div>
@@ -106,7 +106,7 @@ export default function AdminAutomationsPage() {
       ) : rules.length === 0 ? (
         <div className="border border-bdr rounded-lg p-12 text-center">
           <p className="text-ink-2 mb-4">No automation rules configured yet</p>
-          <Button asChild className="rounded-2xl bg-em px-6 py-2 font-bold">
+          <Button asChild className="rounded-2xl bg-em px-6 py-2 font-normal">
             <Link href="/admin/automations/new">Create First Rule</Link>
           </Button>
         </div>
@@ -115,11 +115,11 @@ export default function AdminAutomationsPage() {
           <table className="w-full">
             <thead className="bg-elevated border-b border-bdr">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">Name</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">Trigger</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">Action</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">Status</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold text-ink-2 uppercase">Actions</th>
+                <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Name</th>
+                <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Trigger</th>
+                <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Action</th>
+                <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Status</th>
+                <th className="px-6 py-4 text-right text-xs font-normal text-ink-2 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-bdr">
@@ -129,12 +129,12 @@ export default function AdminAutomationsPage() {
                     <p className="text-sm font-medium text-ink">{rule.name}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">
+                    <span className="inline-block px-3 py-1 rounded-full text-xs font-normal bg-sky-100 text-sky-700">
                       {getTriggerLabel(rule.trigger)}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-violet-100 text-violet-700">
+                    <span className="inline-block px-3 py-1 rounded-full text-xs font-normal bg-violet-100 text-violet-700">
                       {getActionLabel(rule.action)}
                     </span>
                   </td>
@@ -142,7 +142,7 @@ export default function AdminAutomationsPage() {
                     <button
                       onClick={() => toggleMutation.mutate(rule)}
                       disabled={toggleMutation.isPending}
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition ${
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-normal cursor-pointer transition ${
                         rule.isActive
                           ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,13 @@ interface Collection {
   heroImage?: string;
   sortOrder: number;
   isActive: boolean;
+}
+
+interface ProductLite {
+  id: string;
+  name: string;
+  brand?: string | null;
+  image?: string | null;
 }
 
 export default function EditCollectionPage() {
@@ -39,7 +46,82 @@ export default function EditCollectionPage() {
     isActive: true,
   });
 
-  // Redirect if not admin
+  // Product selection
+  const [allProducts, setAllProducts] = useState<ProductLite[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+
+  // Fetch the collection (with its products) + the product list to choose from.
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const colRes = await fetch(`/api/admin/collections/${collectionId}`);
+        if (!colRes.ok) throw new Error('Failed to fetch collection');
+        const collection = await colRes.json();
+
+        setFormData({
+          id: collection.id,
+          name: collection.name,
+          slug: collection.slug,
+          description: collection.description || '',
+          heroImage: collection.heroImage || '',
+          sortOrder: collection.sortOrder || 0,
+          isActive: collection.isActive,
+        });
+
+        // Products already in this collection (full detail comes from the GET).
+        const colProducts: ProductLite[] = (collection.products || []).map((cp: any) => ({
+          id: cp.product?.id ?? cp.productId,
+          name: cp.product?.name ?? 'Product',
+          brand: cp.product?.brand ?? null,
+          image: cp.product?.images?.[0]?.url ?? null,
+        }));
+        setSelectedIds(colProducts.map((p) => p.id));
+
+        // Load ALL products by paginating (the API caps limit at 100 per page).
+        const list: ProductLite[] = [];
+        for (let page = 1; page <= 100; page++) {
+          const r = await fetch(`/api/admin/products?limit=100&page=${page}`);
+          if (!r.ok) break;
+          const d = await r.json();
+          const batch: ProductLite[] = (d.products || []).map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            brand: p.brand ?? null,
+            image: p.images?.[0]?.url ?? null,
+          }));
+          list.push(...batch);
+          const total = typeof d.total === 'number' ? d.total : list.length;
+          if (batch.length === 0 || list.length >= total) break;
+        }
+
+        // Merge so any current member also shows + is selectable.
+        const byId = new Map<string, ProductLite>();
+        [...list, ...colProducts].forEach((p) => byId.set(p.id, p));
+        setAllProducts(Array.from(byId.values()));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load collection');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [collectionId]);
+
+  const filteredProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    const base = q
+      ? allProducts.filter(
+          (p) => p.name.toLowerCase().includes(q) || (p.brand || '').toLowerCase().includes(q)
+        )
+      : allProducts;
+    // Show selected products first (stable order within each group).
+    const selected = new Set(selectedIds);
+    return [...base].sort((a, b) => (selected.has(a.id) ? 0 : 1) - (selected.has(b.id) ? 0 : 1));
+  }, [allProducts, productSearch, selectedIds]);
+
+  // Hooks above must run on every render; the role gate comes after them.
   if (session?.user?.role !== 'super_admin') {
     return (
       <div className="p-8 text-center">
@@ -51,41 +133,6 @@ export default function EditCollectionPage() {
     );
   }
 
-  // Fetch collection data
-  useEffect(() => {
-    const fetchCollection = async () => {
-      try {
-        const res = await fetch(`/api/admin/collections`);
-        if (!res.ok) throw new Error('Failed to fetch');
-
-        const collections = await res.json();
-        const collection = collections.find((c: any) => c.id === collectionId);
-
-        if (!collection) {
-          setError('Collection not found');
-          setLoading(false);
-          return;
-        }
-
-        setFormData({
-          id: collection.id,
-          name: collection.name,
-          slug: collection.slug,
-          description: collection.description || '',
-          heroImage: collection.heroImage || '',
-          sortOrder: collection.sortOrder || 0,
-          isActive: collection.isActive,
-        });
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load collection');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCollection();
-  }, [collectionId]);
-
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setFormData({
@@ -96,6 +143,10 @@ export default function EditCollectionPage() {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, ''),
     });
+  };
+
+  const toggleProduct = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,9 +163,8 @@ export default function EditCollectionPage() {
           slug: formData.slug,
           description: formData.description || undefined,
           heroImage: formData.heroImage || undefined,
-          sortOrder: Number(formData.sortOrder),
           isActive: formData.isActive,
-          productIds: [], // Keep existing products
+          productIds: selectedIds,
         }),
       });
 
@@ -163,19 +213,6 @@ export default function EditCollectionPage() {
     );
   }
 
-  if (error && loading) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-red-600 mb-4">{error}</p>
-        <Link href="/admin/collections">
-          <Button variant="outline" className="rounded-lg">
-            Back to Collections
-          </Button>
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-white p-8">
       <div className="max-w-2xl mx-auto">
@@ -183,11 +220,11 @@ export default function EditCollectionPage() {
           <Link href="/admin/collections" className="text-blue-600 hover:underline text-sm">
             ← Back to Collections
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900 mt-4">Edit Collection</h1>
+          <h1 className="text-2xl font-normal text-gray-900 mt-4">Edit Collection</h1>
           <p className="text-sm text-gray-600 mt-1">{formData.slug}</p>
         </div>
 
-        {error && !loading && (
+        {error && (
           <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200">
             <p className="text-red-700 text-sm">{error}</p>
           </div>
@@ -276,10 +313,49 @@ export default function EditCollectionPage() {
             </label>
           </div>
 
-          {/* Note about products */}
-          <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-            <p className="text-sm text-blue-700">
-              <strong>Note:</strong> To manage products in this collection, use the API or update directly.
+          {/* Products in this collection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Products ({selectedIds.length} selected)
+            </label>
+            <Input
+              type="text"
+              placeholder="Search products by name or brand..."
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              className="rounded-lg mb-3"
+            />
+            <div className="max-h-72 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
+              {filteredProducts.length === 0 ? (
+                <p className="text-sm text-gray-500 p-3">No products found.</p>
+              ) : (
+                filteredProducts.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-gray-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(p.id)}
+                      onChange={() => toggleProduct(p.id)}
+                      className="rounded"
+                    />
+                    {p.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image} alt={p.name} className="w-9 h-9 rounded object-cover bg-gray-100" />
+                    ) : (
+                      <span className="w-9 h-9 rounded bg-gray-100 flex items-center justify-center">📦</span>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm text-gray-900 truncate">{p.name}</p>
+                      {p.brand && <p className="text-xs text-gray-500 truncate">{p.brand}</p>}
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Tick products to include in this collection. Use search to filter by name or brand.
             </p>
           </div>
 

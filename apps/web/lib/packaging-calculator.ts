@@ -87,7 +87,7 @@ export function suggestPackaging(
     return volA - volB;
   });
 
-  return sorted[0];
+  return sorted[0] ?? null;
 }
 
 /**

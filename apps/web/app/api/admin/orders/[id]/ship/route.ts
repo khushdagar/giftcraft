@@ -25,6 +25,8 @@ export async function PATCH(
       select: {
         id: true,
         orderNumber: true,
+        shippingJson: true,
+        packQuantity: true,
         company: {
           select: {
             id: true,
@@ -32,11 +34,21 @@ export async function PATCH(
             phone: true,
           },
         },
+        placedBy: {
+          select: { email: true },
+        },
         items: {
           select: {
             id: true,
             product: {
-              select: { name: true, slug: true },
+              select: {
+                name: true,
+                slug: true,
+                weightG: true,
+                dimensionL: true,
+                dimensionW: true,
+                dimensionH: true,
+              },
             },
             quantity: true,
             unitPrice: true,
@@ -63,18 +75,55 @@ export async function PATCH(
       );
     }
 
+    // Resolve the real delivery address captured in the builder (Step 3).
+    // Shape: { name, company, address1, address2, city, state, pincode, phone }
+    const ship = (order.shippingJson ?? {}) as {
+      name?: string;
+      company?: string;
+      address1?: string;
+      address2?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+      phone?: string;
+    };
+
+    if (!ship.pincode || !ship.address1 || !ship.city) {
+      return NextResponse.json(
+        { error: 'Order has no valid delivery address — cannot create shipment.' },
+        { status: 400 }
+      );
+    }
+
+    // Parcel weight: sum(product weight in grams × quantity) → kg.
+    // Pack quantity multiplies the per-pack item weights. Min 0.5 kg floor.
+    const totalGrams = order.items.reduce(
+      (sum, item) => sum + (item.product.weightG ?? 0) * item.quantity,
+      0
+    ) * (order.packQuantity || 1);
+    const weightKg = Math.max(Math.round((totalGrams / 1000) * 100) / 100, 0.5);
+
+    // Parcel box dimensions (cm): take the largest product in each axis as a
+    // rough single-box estimate, with a sensible fallback when products lack data.
+    const dimsL = order.items.map((i) => i.product.dimensionL ?? 0);
+    const dimsW = order.items.map((i) => i.product.dimensionW ?? 0);
+    const dimsH = order.items.map((i) => i.product.dimensionH ?? 0);
+    const length = Math.max(...dimsL, 0) || 25;
+    const breadth = Math.max(...dimsW, 0) || 20;
+    const height = Math.max(...dimsH, 0) || 10;
+
     // Create shipment in Shiprocket
     const shipmentId = await createShipment({
       order_id: order.orderNumber,
       order_date: new Date().toISOString().split('T')[0]!,
-      pickup_location_id: 1, // Default pickup location — parameterize if needed
-      billing_address_name: order.company?.name || 'Company',
-      billing_address_phone: order.company?.phone || '9999999999',
-      billing_address_email: '',
-      billing_address: 'GiftCraft, Delhi', // Default — should come from order
-      billing_city: 'Delhi',
-      billing_state: 'DL',
-      billing_postcode: '110001',
+      pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || 'Home',
+      billing_address_name: ship.name || order.company?.name || 'Customer',
+      billing_address_phone: ship.phone || order.company?.phone || '9999999999',
+      billing_address_email: order.placedBy?.email || '',
+      billing_address: [ship.address1, ship.address2].filter(Boolean).join(', '),
+      billing_city: ship.city,
+      billing_state: ship.state || '',
+      billing_postcode: ship.pincode,
       shipping_is_billing: true,
       order_items: order.items.map((item) => ({
         name: item.product.name,
@@ -83,7 +132,10 @@ export async function PATCH(
       })),
       payment_method: 'prepaid',
       sub_total: Number(order.grandTotal),
-      weight: 1, // Default weight — should be calculated from product data
+      length,
+      breadth,
+      height,
+      weight: weightKg,
     });
 
     // Get AWB for shipment

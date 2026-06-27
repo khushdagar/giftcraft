@@ -10,7 +10,8 @@ import { prisma } from "@/lib/prisma";
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const url = new URL(request.url || 'http://localhost:3000');
+    const { searchParams } = url;
     const isBrowse = searchParams.get('browse') === 'true';
 
     const collections = await prisma.collection.findMany({

@@ -11,6 +11,10 @@ interface ShippingZone {
   id: string;
   name: string;
   states: string[];
+  ratePerKg: string;
+  minCharge: string;
+  freeShippingThreshold: string | null;
+  individualSurchargePct: string;
   flatRate: string;
   etaMinDays: number;
   etaMaxDays: number;
@@ -29,7 +33,10 @@ export default function ShippingSettingsPage() {
   const [formData, setFormData] = useState({
     name: '',
     states: '',
-    flatRate: '',
+    ratePerKg: '',
+    minCharge: '',
+    freeShippingThreshold: '',
+    individualSurchargePct: '',
     etaMinDays: '',
     etaMaxDays: '',
     isActive: true,
@@ -65,14 +72,24 @@ export default function ShippingSettingsPage() {
     try {
       const statesArray = formData.states.split(',').map(s => s.trim()).filter(s => s);
 
-      if (!formData.name || !formData.flatRate || !formData.etaMinDays || !formData.etaMaxDays || statesArray.length === 0) {
+      if (!formData.name || !formData.ratePerKg || !formData.minCharge || !formData.etaMinDays || !formData.etaMaxDays || statesArray.length === 0) {
         throw new Error('Please fill all required fields');
       }
 
+      const minCharge = parseFloat(formData.minCharge);
       const body = {
         name: formData.name,
         states: statesArray,
-        flatRate: parseFloat(formData.flatRate),
+        ratePerKg: parseFloat(formData.ratePerKg),
+        minCharge,
+        freeShippingThreshold: formData.freeShippingThreshold
+          ? parseFloat(formData.freeShippingThreshold)
+          : null,
+        individualSurchargePct: formData.individualSurchargePct
+          ? parseFloat(formData.individualSurchargePct)
+          : 0,
+        // Keep legacy flat rate in sync with the minimum charge.
+        flatRate: minCharge,
         etaMinDays: parseInt(formData.etaMinDays),
         etaMaxDays: parseInt(formData.etaMaxDays),
         isActive: formData.isActive,
@@ -96,7 +113,10 @@ export default function ShippingSettingsPage() {
       setFormData({
         name: '',
         states: '',
-        flatRate: '',
+        ratePerKg: '',
+        minCharge: '',
+        freeShippingThreshold: '',
+        individualSurchargePct: '',
         etaMinDays: '',
         etaMaxDays: '',
         isActive: true,
@@ -116,7 +136,10 @@ export default function ShippingSettingsPage() {
     setFormData({
       name: zone.name,
       states: zone.states.join(', '),
-      flatRate: zone.flatRate.toString(),
+      ratePerKg: zone.ratePerKg?.toString() ?? '',
+      minCharge: zone.minCharge?.toString() ?? zone.flatRate?.toString() ?? '',
+      freeShippingThreshold: zone.freeShippingThreshold?.toString() ?? '',
+      individualSurchargePct: zone.individualSurchargePct?.toString() ?? '',
       etaMinDays: zone.etaMinDays.toString(),
       etaMaxDays: zone.etaMaxDays.toString(),
       isActive: zone.isActive,
@@ -142,7 +165,10 @@ export default function ShippingSettingsPage() {
     setFormData({
       name: '',
       states: '',
-      flatRate: '',
+      ratePerKg: '',
+      minCharge: '',
+      freeShippingThreshold: '',
+      individualSurchargePct: '',
       etaMinDays: '',
       etaMaxDays: '',
       isActive: true,
@@ -158,9 +184,9 @@ export default function ShippingSettingsPage() {
         </Link>
         <div className="flex items-center gap-2 mb-2">
           <Truck className="h-5 w-5 text-em-400" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Configuration</p>
+          <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Configuration</p>
         </div>
-        <h1 className="text-3xl font-bold text-ink">Shipping Zones</h1>
+        <h1 className="text-3xl font-normal text-ink">Shipping Zones</h1>
         <p className="text-sm text-ink-2 mt-2">Define delivery zones, rates, and estimated delivery times</p>
       </div>
 
@@ -180,7 +206,7 @@ export default function ShippingSettingsPage() {
 
         {/* Form */}
         <div className="bg-white border border-bdr rounded-md p-6">
-          <h2 className="text-lg font-semibold text-ink mb-4">{editingId ? 'Edit Zone' : 'Add New Zone'}</h2>
+          <h2 className="text-lg font-normal text-ink mb-4">{editingId ? 'Edit Zone' : 'Add New Zone'}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -208,16 +234,57 @@ export default function ShippingSettingsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-ink mb-2">Flat Rate (₹) *</label>
+                <label className="block text-sm font-medium text-ink mb-2">Rate per kg (₹) *</label>
                 <Input
                   type="number"
                   step="0.01"
-                  value={formData.flatRate}
-                  onChange={(e) => handleChange('flatRate', e.target.value)}
-                  placeholder="100.00"
+                  value={formData.ratePerKg}
+                  onChange={(e) => handleChange('ratePerKg', e.target.value)}
+                  placeholder="40.00"
                   className="rounded-md"
                   required
                 />
+                <p className="text-xs text-ink-3 mt-1">Charged per kg of parcel weight.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-ink mb-2">Minimum charge (₹) *</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.minCharge}
+                  onChange={(e) => handleChange('minCharge', e.target.value)}
+                  placeholder="50.00"
+                  className="rounded-md"
+                  required
+                />
+                <p className="text-xs text-ink-3 mt-1">Floor for any single shipment.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-ink mb-2">Free shipping above (₹)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.freeShippingThreshold}
+                  onChange={(e) => handleChange('freeShippingThreshold', e.target.value)}
+                  placeholder="50000 (leave blank to disable)"
+                  className="rounded-md"
+                />
+                <p className="text-xs text-ink-3 mt-1">Order subtotal at/above which shipping is free.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-ink mb-2">Individual delivery surcharge (%)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.individualSurchargePct}
+                  onChange={(e) => handleChange('individualSurchargePct', e.target.value)}
+                  placeholder="15"
+                  className="rounded-md"
+                />
+                <p className="text-xs text-ink-3 mt-1">Extra % when each pack ships separately.</p>
               </div>
 
               <div>
@@ -280,12 +347,13 @@ export default function ShippingSettingsPage() {
             <table className="w-full">
               <thead className="bg-elevated border-b border-bdr">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink uppercase">Zone Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink uppercase">States</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink uppercase">Rate</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink uppercase">ETA</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink uppercase">Status</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-ink uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">Zone Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">States</th>
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">Rate / kg</th>
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">Min · Free above</th>
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">ETA</th>
+                  <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">Status</th>
+                  <th className="px-6 py-3 text-right text-xs font-normal text-ink uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-bdr">
@@ -293,10 +361,14 @@ export default function ShippingSettingsPage() {
                   <tr key={zone.id} className="hover:bg-elevated transition">
                     <td className="px-6 py-4 text-sm font-medium text-ink">{zone.name}</td>
                     <td className="px-6 py-4 text-sm text-ink-2">{zone.states.join(', ')}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-ink">₹{zone.flatRate}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-ink">₹{zone.ratePerKg ?? 0}/kg</td>
+                    <td className="px-6 py-4 text-sm text-ink-2">
+                      ₹{zone.minCharge ?? zone.flatRate} min
+                      {zone.freeShippingThreshold ? ` · free ≥ ₹${zone.freeShippingThreshold}` : ''}
+                    </td>
                     <td className="px-6 py-4 text-sm text-ink-2">{zone.etaMinDays}-{zone.etaMaxDays} days</td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                      <span className={`px-2 py-1 rounded text-xs font-normal ${
                         zone.isActive
                           ? 'bg-green-100 text-green-700'
                           : 'bg-gray-100 text-gray-700'

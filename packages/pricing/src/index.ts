@@ -127,24 +127,9 @@ export function computePricing(input: PricingInput): PricingBreakdown {
     totalSgst += packagingAddonsSgst;
     totalIgst += packagingAddonsIgst;
 
-    // Add shipping GST at 18%
-    const shippingGst = round2((shippingFlat * 18) / 100);
-    const shippingCgst = sameState ? round2(shippingGst / 2) : 0;
-    const shippingSgst = sameState ? round2(shippingGst / 2) : 0;
-    const shippingIgst = sameState ? 0 : shippingGst;
-
-    hsnBreakdown.push({
-      hsnCode: "9965",
-      gstRate: 18,
-      taxableAmount: round2(shippingFlat),
-      cgst: shippingCgst,
-      sgst: shippingSgst,
-      igst: shippingIgst,
-    });
-
-    totalCgst += shippingCgst;
-    totalSgst += shippingSgst;
-    totalIgst += shippingIgst;
+    // NOTE: No GST is added on shipping. The Shiprocket rate is already
+    // GST-inclusive, so charging 18% again here would double-tax shipping.
+    // Shipping flows through preTax as a tax-inclusive pass-through.
 
     const packaging = round2(packagingTotal);
     const addons = round2(addonsTotal);
@@ -164,6 +149,7 @@ export function computePricing(input: PricingInput): PricingBreakdown {
 
     return {
       subtotal: round2(productsSubtotal),
+      itemsSubtotal: round2(productsSubtotal + packaging + addons),
       packaging,
       addons,
       shipping: round2(shippingFlat),
@@ -206,6 +192,7 @@ export function computePricing(input: PricingInput): PricingBreakdown {
 
     return {
       subtotal: round2(subtotal),
+      itemsSubtotal: round2(subtotal + packaging + addons),
       packaging: round2(packaging),
       addons: round2(addons),
       shipping: round2(shippingFlat),

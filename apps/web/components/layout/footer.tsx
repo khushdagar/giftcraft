@@ -9,6 +9,7 @@ const COL_PRODUCT = [
 const COL_COMPANY = [
   ["/about", "About"],
   ["/blog", "Blog"],
+  ["/sell-with-us", "Sell With Us"],
   ["/careers", "Careers"],
   ["/press", "Press"],
 ];

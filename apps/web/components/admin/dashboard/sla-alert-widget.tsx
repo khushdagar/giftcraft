@@ -7,6 +7,7 @@ import { AlertCircle, TrendingUp } from 'lucide-react';
 
 interface SlaViolation {
   id: string;
+  orderId: string;
   orderNumber: string;
   status: string;
   stage: string;
@@ -68,7 +69,7 @@ export function SlaAlertWidget() {
           <div className="w-10 h-10 rounded-full bg-emerald-200 flex items-center justify-center">
             <span className="text-lg">✓</span>
           </div>
-          <h3 className="text-lg font-bold text-em-700">All SLAs On Track</h3>
+          <h3 className="text-lg font-normal text-em-700">All SLAs On Track</h3>
         </div>
         <p className="text-sm text-em-600">No orders breaching SLA targets</p>
       </motion.div>
@@ -88,7 +89,7 @@ export function SlaAlertWidget() {
             <AlertCircle className="w-5 h-5 text-rose-600" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-rose-700">SLA Violations</h3>
+            <h3 className="text-lg font-normal text-rose-700">SLA Violations</h3>
             <p className="text-xs text-rose-600">{total} order{total !== 1 ? 's' : ''} breached</p>
           </div>
         </div>
@@ -104,13 +105,13 @@ export function SlaAlertWidget() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-sm text-ink">{violation.orderNumber}</p>
+                <p className="font-normal text-sm text-ink">{violation.orderNumber}</p>
                 <p className="text-xs text-ink-3">
                   {violation.companyName} • {violation.stage}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs font-bold text-rose-600">
+                <p className="text-xs font-normal text-rose-600">
                   Overdue {violation.breachedByFormatted}
                 </p>
                 <p className="text-[10px] text-ink-3">
@@ -125,7 +126,7 @@ export function SlaAlertWidget() {
       {/* Footer */}
       <Link
         href="/admin/orders/sla-violations"
-        className="inline-block text-xs font-semibold text-rose-700 hover:text-rose-900 underline"
+        className="inline-block text-xs font-normal text-rose-700 hover:text-rose-900 underline"
       >
         View all {total} violation{total !== 1 ? 's' : ''} →
       </Link>

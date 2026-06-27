@@ -56,7 +56,7 @@ export default async function AdminOrdersKanbanPage() {
             <Link href="/admin/orders" className="text-em hover:text-em-700">
               <ChevronLeft className="w-5 h-5" />
             </Link>
-            <h1 className="text-2xl font-black text-ink">Kanban Board</h1>
+            <h1 className="text-2xl font-normal text-ink">Kanban Board</h1>
           </div>
           <p className="text-sm text-ink-3">
             Visualize and manage all orders across 12 stages. Drag cards to update status.

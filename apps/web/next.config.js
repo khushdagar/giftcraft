@@ -7,6 +7,7 @@ const nextConfig = {
       { protocol: "https", hostname: "*.cdn.digitaloceanspaces.com" },
       { protocol: "https", hostname: "*.digitaloceanspaces.com" },
       { protocol: "https", hostname: "cdn.swagupadmin.com" }, // SwagUp product images (demo data)
+      { protocol: "https", hostname: "images.unsplash.com" }, // Unsplash images for homepage
     ],
   },
   experimental: {

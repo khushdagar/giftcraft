@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { serializeProduct } from '@/lib/serialize';
+import { getHiddenCategoryIds } from '@/lib/catalog-visibility';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const url = new URL(request.url || 'http://localhost:3000');
+    const { searchParams } = url;
 
     const search = searchParams.get('search') || undefined;
     const categoryId = searchParams.get('categoryId') || undefined;
@@ -19,9 +21,17 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Number(searchParams.get('limit') || '24'));
     const sort = searchParams.get('sort') || 'featured';
 
+    // Packaging/add-on products are managed in their own tables and must never
+    // surface in the customer catalog — exclude any product in those categories.
+    const hiddenCategoryIds = await getHiddenCategoryIds();
+
     // Build where clause
     const where: Prisma.ProductWhereInput = {
       status: 'active',
+      // Combined via AND so it never collides with the `categories` (some) filter below.
+      ...(hiddenCategoryIds.length > 0 && {
+        AND: [{ categories: { none: { categoryId: { in: hiddenCategoryIds } } } }],
+      }),
       ...(search && {
         name: {
           contains: search,
@@ -74,9 +84,10 @@ export async function GET(request: NextRequest) {
       prisma.product.findMany({
         where,
         include: {
+          // Return ALL tiers (ordered) so the builder can re-price by quantity.
+          // The catalog card still uses priceTiers[0] (tier 1) for the "from" price.
           priceTiers: {
-            where: { tier: 1 },
-            take: 1,
+            orderBy: { tier: 'asc' },
           },
           images: {
             where: { isPrimary: true },

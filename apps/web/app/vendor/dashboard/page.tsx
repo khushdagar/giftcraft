@@ -90,7 +90,7 @@ export default async function VendorDashboardPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-black text-ink">Vendor Dashboard</h1>
+        <h1 className="text-3xl font-normal text-ink">Vendor Dashboard</h1>
         <p className="text-sm text-ink-2 mt-1">
           Welcome back, {vendor.name}. Here's what's happening with your orders.
         </p>
@@ -99,26 +99,26 @@ export default async function VendorDashboardPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="rounded-md border-2 border-bdr bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Active POs</p>
-          <p className="text-2xl font-black text-ink mt-2">{activePOs}</p>
+          <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Active POs</p>
+          <p className="text-2xl font-normal text-ink mt-2">{activePOs}</p>
           <p className="text-xs text-ink-2 mt-1">Pending completion</p>
         </div>
 
         <div className="rounded-md border-2 border-bdr bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Pending Payments</p>
-          <p className="text-2xl font-black text-ink mt-2">{pendingPayments}</p>
+          <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Pending Payments</p>
+          <p className="text-2xl font-normal text-ink mt-2">{pendingPayments}</p>
           <p className="text-xs text-ink-2 mt-1">Total: {formatRupees(totalPaymentDue)}</p>
         </div>
 
         <div className="rounded-md border-2 border-bdr bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Vendor Score</p>
-          <p className="text-2xl font-black text-em mt-2">{avgScore}/100</p>
+          <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Vendor Score</p>
+          <p className="text-2xl font-normal text-em mt-2">{avgScore}/100</p>
           <p className="text-xs text-ink-2 mt-1">Overall performance</p>
         </div>
 
         <div className="rounded-md border-2 border-bdr bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Contact</p>
-          <p className="text-sm font-semibold text-ink mt-2">{vendor.phone}</p>
+          <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Contact</p>
+          <p className="text-sm font-normal text-ink mt-2">{vendor.phone}</p>
           <p className="text-xs text-ink-2 mt-1 break-all">{vendor.email}</p>
         </div>
       </div>
@@ -126,11 +126,11 @@ export default async function VendorDashboardPage() {
       {/* Active POs Section */}
       <div className="rounded-md border-2 border-bdr bg-white p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-ink flex items-center gap-2">
+          <h2 className="text-lg font-normal text-ink flex items-center gap-2">
             <Package className="w-5 h-5 text-em" />
             Active Purchase Orders
           </h2>
-          <Link href="/vendor/po" className="text-em font-semibold hover:underline text-sm">
+          <Link href="/vendor/po" className="text-em font-normal hover:underline text-sm">
             View all
           </Link>
         </div>
@@ -146,17 +146,17 @@ export default async function VendorDashboardPage() {
                 className="flex items-center justify-between p-4 rounded-md border border-bdr hover:bg-gray-50 transition"
               >
                 <div className="flex-1">
-                  <p className="font-semibold text-ink">{po.order.orderNumber}</p>
+                  <p className="font-normal text-ink">{po.order.orderNumber}</p>
                   <p className="text-xs text-ink-2">
                     Qty: {po.order.packQuantity} • Due:{' '}
                     {new Date(po.deadline).toLocaleDateString('en-IN')}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-ink tabnum">
+                  <p className="font-normal text-ink tabnum">
                     {formatRupees(Number(po.totalAmount))}
                   </p>
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                  <span className={`text-xs font-normal px-2 py-1 rounded-full ${
                     po.status === 'pending'
                       ? 'bg-amber-100 text-amber-700'
                       : 'bg-blue-100 text-blue-700'
@@ -173,11 +173,11 @@ export default async function VendorDashboardPage() {
       {/* Pending Payments Section */}
       <div className="rounded-md border-2 border-bdr bg-white p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-ink flex items-center gap-2">
+          <h2 className="text-lg font-normal text-ink flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-em" />
             Pending Payments
           </h2>
-          <Link href="/vendor/payments" className="text-em font-semibold hover:underline text-sm">
+          <Link href="/vendor/payments" className="text-em font-normal hover:underline text-sm">
             View all
           </Link>
         </div>
@@ -185,7 +185,7 @@ export default async function VendorDashboardPage() {
         {pendingPayments === 0 ? (
           <div className="flex items-center justify-center py-8 text-emerald-600">
             <CheckCircle className="w-5 h-5 mr-2" />
-            <p className="text-sm font-semibold">All payments are up to date</p>
+            <p className="text-sm font-normal">All payments are up to date</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -195,13 +195,13 @@ export default async function VendorDashboardPage() {
                 className="flex items-center justify-between p-4 rounded-md border border-bdr"
               >
                 <div className="flex-1">
-                  <p className="font-semibold text-ink">{payment.invoiceNumber}</p>
+                  <p className="font-normal text-ink">{payment.invoiceNumber}</p>
                   <p className="text-xs text-ink-2">
                     Due: {new Date(payment.dueDate).toLocaleDateString('en-IN')}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-ink tabnum">
+                  <p className="font-normal text-ink tabnum">
                     {formatRupees(Number(payment.amount))}
                   </p>
                 </div>

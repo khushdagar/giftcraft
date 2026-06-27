@@ -79,7 +79,7 @@ export default async function CollectionDetailPage({
         {/* Content Overlay */}
         <div className="absolute inset-0 flex items-end p-6 sm:p-8">
           <div>
-            <h1 className="font-display text-3xl sm:text-4xl font-black text-white leading-tight">
+            <h1 className="font-display text-3xl sm:text-4xl font-normal text-white leading-tight">
               {collection.name}
             </h1>
             {collection.description && (
@@ -161,7 +161,7 @@ export default async function CollectionDetailPage({
                       <div className="p-3 bg-white">
                         {/* Brand */}
                         {product.brand && (
-                          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-1">
+                          <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-1">
                             {product.brand}
                           </p>
                         )}
@@ -172,21 +172,15 @@ export default async function CollectionDetailPage({
                         </p>
 
                         {/* Price */}
-                        <p className="mt-2 font-black text-lg text-ink tabnum">
+                        <p className="mt-2 font-normal text-lg text-ink tabnum">
                           {formatRupees(product.price)}
                         </p>
 
-                        {/* CTA Button */}
-                        <button
-                          className="mt-3 w-full py-2 px-3 rounded-md bg-em text-white text-xs font-semibold hover:bg-em-600 transition"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            // Navigate to builder with this product
-                            window.location.href = `/builder`;
-                          }}
-                        >
-                          Add to Pack
-                        </button>
+                        {/* CTA — part of the card link; leads to the product page
+                            where the customer picks a quantity and adds to a pack. */}
+                        <span className="mt-3 block w-full text-center py-2 px-3 rounded-md bg-em text-white text-xs font-normal group-hover:bg-em-600 transition">
+                          View &amp; Add to Pack
+                        </span>
                       </div>
                     </div>
                   </Link>

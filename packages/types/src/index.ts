@@ -54,7 +54,8 @@ export interface HsnGstLine {
 }
 
 export interface PricingBreakdown {
-  subtotal: number;
+  subtotal: number;            // products only (branding baked in) — DB column
+  itemsSubtotal: number;       // products + packaging + add-ons — the SOW "Subtotal (before shipping, GST)" display line
   packaging: number;
   addons: number;
   shipping: number;

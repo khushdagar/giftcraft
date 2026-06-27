@@ -12,7 +12,11 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/store/builder";
 
-const OCCASIONS = [
+interface NavOccasion { icon: string; name: string; slug: string }
+
+// Shown until the live occasions load (and if the fetch fails), so the menu
+// is never empty.
+const FALLBACK_OCCASIONS: NavOccasion[] = [
   { icon: "🪔", name: "Diwali", slug: "diwali" },
   { icon: "🎨", name: "Holi", slug: "holi" },
   { icon: "🎄", name: "Christmas", slug: "christmas" },
@@ -28,6 +32,7 @@ export function Navbar() {
   const { data: session } = useSession();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [occasions, setOccasions] = useState<NavOccasion[]>(FALLBACK_OCCASIONS);
   const products = useBuilderStore((state) => state.products);
   const productCount = products.length;
 
@@ -35,6 +40,21 @@ export function Navbar() {
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Load occasions managed in the admin panel; keep fallback on empty/error.
+  useEffect(() => {
+    let active = true;
+    fetch("/api/occasions")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!active || !Array.isArray(data) || data.length === 0) return;
+        setOccasions(
+          data.map((o: any) => ({ icon: o.icon || "🎁", name: o.name, slug: o.slug }))
+        );
+      })
+      .catch(() => {/* keep fallback */});
+    return () => { active = false; };
   }, []);
 
   const userInitial = session?.user?.name?.[0]?.toUpperCase() ?? "G";
@@ -60,7 +80,7 @@ export function Navbar() {
           <li className="group relative py-4">
             <button className="text-sm font-medium text-ink-2 hover:text-ink">Occasions ▾</button>
             <div className="glass invisible absolute left-1/2 top-full grid min-w-[480px] -translate-x-1/2 grid-cols-3 gap-1 rounded-md-s p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
-              {OCCASIONS.map((o) => (
+              {occasions.map((o) => (
                 <Link
                   key={o.slug}
                   href={`/catalog?occasion=${o.slug}`}

@@ -32,7 +32,7 @@ export default function CustomerError({
         </div>
 
         {/* Heading */}
-        <h1 className="text-3xl font-black text-gray-900 mb-2">Oops! Something went wrong</h1>
+        <h1 className="text-3xl font-normal text-gray-900 mb-2">Oops! Something went wrong</h1>
         <p className="text-gray-600 mb-8">
           We encountered an error while loading this page. Don't worry, you can try again or go back.
         </p>
@@ -40,7 +40,7 @@ export default function CustomerError({
         {/* Error Details (Dev Only) */}
         {process.env.NODE_ENV === 'development' && (
           <div className="bg-gray-900 text-gray-100 rounded-2xl p-4 mb-8 text-left text-xs font-mono overflow-auto max-h-40 border border-gray-700">
-            <p className="text-red-400 mb-2 font-semibold">{error.name}</p>
+            <p className="text-red-400 mb-2 font-normal">{error.name}</p>
             <p className="text-gray-300">{error.message}</p>
             {error.digest && <p className="text-gray-500 mt-2 text-xs">Digest: {error.digest}</p>}
           </div>
@@ -52,7 +52,7 @@ export default function CustomerError({
             onClick={reset}
             variant="em"
             size="lg"
-            className="w-full rounded-2xl font-bold"
+            className="w-full rounded-2xl font-normal"
           >
             Try Again
           </Button>
@@ -60,7 +60,7 @@ export default function CustomerError({
             onClick={handleGoBack}
             variant="outline"
             size="lg"
-            className="w-full rounded-2xl font-bold"
+            className="w-full rounded-2xl font-normal"
           >
             Go Back
           </Button>
@@ -68,7 +68,7 @@ export default function CustomerError({
             asChild
             variant="outline"
             size="lg"
-            className="w-full rounded-2xl font-bold"
+            className="w-full rounded-2xl font-normal"
           >
             <Link href="/">Back to Home</Link>
           </Button>

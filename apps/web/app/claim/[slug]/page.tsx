@@ -174,11 +174,11 @@ export default function GocClaimPage({ params }: PageProps) {
           className="bg-white rounded-md border-2 border-rose-300 p-8 max-w-md w-full text-center"
         >
           <AlertCircle className="w-16 h-16 text-rose-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-black text-ink mb-2">Oops!</h1>
+          <h1 className="text-2xl font-normal text-ink mb-2">Oops!</h1>
           <p className="text-ink-2 mb-6">{error}</p>
           <a
             href="/"
-            className="inline-block px-6 py-2 rounded-2xl bg-navy-800 text-white font-bold hover:bg-navy-900 transition"
+            className="inline-block px-6 py-2 rounded-2xl bg-navy-800 text-white font-normal hover:bg-navy-900 transition"
           >
             Back to Home
           </a>
@@ -215,7 +215,7 @@ export default function GocClaimPage({ params }: PageProps) {
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-navy-900/60 to-navy-800/40 flex items-center justify-center">
           <div className="text-center text-white px-4">
-            <h1 className="text-4xl sm:text-5xl font-black mb-2">{campaign.name}</h1>
+            <h1 className="text-4xl sm:text-5xl font-normal mb-2">{campaign.name}</h1>
             {campaign.description && (
               <p className="text-sm sm:text-base text-sky-100">{campaign.description}</p>
             )}
@@ -233,10 +233,10 @@ export default function GocClaimPage({ params }: PageProps) {
           >
             {/* Header */}
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+              <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
                 STEP 01
               </p>
-              <h2 className="text-3xl sm:text-4xl font-black mt-2 text-ink">
+              <h2 className="text-3xl sm:text-4xl font-normal mt-2 text-ink">
                 Choose Your Gift
               </h2>
               <p className="text-base text-ink-2 mt-3">
@@ -271,7 +271,7 @@ export default function GocClaimPage({ params }: PageProps) {
                   }
                   setCurrentStep('address');
                 }}
-                className="px-8 py-4 bg-navy-800 hover:bg-navy-900 text-white font-bold rounded-2xl transition transform hover:-translate-y-1"
+                className="px-8 py-4 bg-navy-800 hover:bg-navy-900 text-white font-normal rounded-2xl transition transform hover:-translate-y-1"
               >
                 Continue to Address
               </button>
@@ -285,10 +285,10 @@ export default function GocClaimPage({ params }: PageProps) {
           >
             {/* Header */}
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+              <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
                 STEP 02
               </p>
-              <h2 className="text-3xl sm:text-4xl font-black mt-2 text-ink">
+              <h2 className="text-3xl sm:text-4xl font-normal mt-2 text-ink">
                 Delivery Address
               </h2>
               <p className="text-base text-ink-2 mt-3">
@@ -314,10 +314,10 @@ export default function GocClaimPage({ params }: PageProps) {
                   />
                 </div>
                 <div>
-                  <p className="text-xs text-amber-700 uppercase font-semibold mb-1">
+                  <p className="text-xs text-amber-700 uppercase font-normal mb-1">
                     Selected Gift
                   </p>
-                  <p className="text-lg font-bold text-ink">
+                  <p className="text-lg font-normal text-ink">
                     {campaign.options.find((o) => o.id === selectedOptionId)?.product.name}
                   </p>
                   <button
@@ -340,7 +340,7 @@ export default function GocClaimPage({ params }: PageProps) {
             <div className="flex justify-center">
               <button
                 onClick={() => setCurrentStep('options')}
-                className="text-ink-2 hover:text-ink font-semibold underline"
+                className="text-ink-2 hover:text-ink font-normal underline"
               >
                 ← Back to Gift Selection
               </button>

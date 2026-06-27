@@ -120,7 +120,9 @@ export function CheckoutForm({
         {shippingZone && (
           <div className="flex items-center justify-between">
             <span className="text-sm text-ink-2">{shippingZone.zoneName} • {payload.packQuantity} packs</span>
-            <span className="font-semibold text-ink">{formatRupees(shippingZone.flatRate)}</span>
+            <span className="font-semibold text-ink">
+              {pricing?.shipping > 0 ? formatRupees(pricing.shipping) : 'FREE'}
+            </span>
           </div>
         )}
       </div>

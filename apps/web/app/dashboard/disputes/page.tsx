@@ -56,10 +56,10 @@ export default async function DisputesPage() {
       <div className="mb-8 border-b border-bdr pb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-ink">Disputes</h1>
+            <h1 className="text-3xl font-normal tracking-tight text-ink">Disputes</h1>
             <p className="mt-1 text-sm text-ink-2">Track and manage order disputes</p>
           </div>
-          <Button asChild className="rounded-2xl bg-em px-6 py-2 font-bold hover:bg-em-600">
+          <Button asChild className="rounded-2xl bg-em px-6 py-2 font-normal hover:bg-em-600">
             <Link href="/dashboard/disputes/new">+ File Dispute</Link>
           </Button>
         </div>
@@ -68,7 +68,7 @@ export default async function DisputesPage() {
       {disputes.length === 0 ? (
         <div className="border border-bdr rounded-lg p-8 text-center">
           <p className="text-ink-2 mb-4">No disputes yet</p>
-          <Button asChild className="rounded-2xl bg-em px-6 font-bold">
+          <Button asChild className="rounded-2xl bg-em px-6 font-normal">
             <Link href="/dashboard/disputes/new">File Your First Dispute</Link>
           </Button>
         </div>
@@ -82,11 +82,11 @@ export default async function DisputesPage() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="font-semibold text-ink">{dispute.subject}</p>
+                  <p className="font-normal text-ink">{dispute.subject}</p>
                   <p className="text-xs text-ink-2 mt-1">Order {dispute.order.orderNumber}</p>
                 </div>
                 <div className="text-right">
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusColors[dispute.status]}`}>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-normal ${statusColors[dispute.status]}`}>
                     {dispute.status.replace('_', ' ').charAt(0).toUpperCase() + dispute.status.slice(1)}
                   </span>
                   <p className="text-xs text-ink-2 mt-2">{new Date(dispute.createdAt).toLocaleDateString('en-IN')}</p>

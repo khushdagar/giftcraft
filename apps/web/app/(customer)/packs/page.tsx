@@ -78,7 +78,7 @@ export default function PacksPage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-black text-ink">{pack.name}</h3>
+                    <h3 className="text-lg font-normal text-ink">{pack.name}</h3>
                     <p className="text-sm text-ink-2 mt-1">{pack.description}</p>
                   </div>
                   <Icon className={`w-6 h-6 ${pack.textColor} flex-shrink-0`} />
@@ -96,7 +96,7 @@ export default function PacksPage() {
 
                 {/* Price & CTA */}
                 <div className="mt-auto pt-4 border-t border-current/20">
-                  <p className="text-sm font-semibold text-ink mb-3">{pack.priceRange}</p>
+                  <p className="text-sm font-normal text-ink mb-3">{pack.priceRange}</p>
                   <Button
                     asChild
                     variant="em"
@@ -112,7 +112,7 @@ export default function PacksPage() {
 
         {/* DIY Section */}
         <div className="rounded-md border-2 border-indigo-200 bg-[#EEF2FF] p-8 text-center mb-12">
-          <h2 className="text-2xl font-black text-indigo-900 mb-2">Design Your Own</h2>
+          <h2 className="text-2xl font-normal text-indigo-900 mb-2">Design Your Own</h2>
           <p className="text-indigo-800 mb-6">
             Not seeing what you need? Mix and match from our entire catalog of 500+ products.
           </p>
@@ -124,19 +124,19 @@ export default function PacksPage() {
         {/* Features */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <div className="text-2xl font-black text-em mb-2">500+</div>
+            <div className="text-2xl font-normal text-em mb-2">500+</div>
             <p className="text-ink-2 text-sm">
               Products to choose from. All with instant pricing and availability.
             </p>
           </div>
           <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <div className="text-2xl font-black text-gold-700 mb-2">7–10 days</div>
+            <div className="text-2xl font-normal text-gold-700 mb-2">7–10 days</div>
             <p className="text-ink-2 text-sm">
               Quick turnaround. Most orders ship within a week of approval.
             </p>
           </div>
           <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <div className="text-2xl font-black text-em mb-2">Branded</div>
+            <div className="text-2xl font-normal text-em mb-2">Branded</div>
             <p className="text-ink-2 text-sm">
               All products include standard branding. Premium packaging optional.
             </p>

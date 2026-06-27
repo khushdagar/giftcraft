@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
 export default async function AdminOrdersPage(props: {
-  searchParams: { page?: string; status?: string; search?: string };
+  searchParams: { page?: string; status?: string; search?: string; placedBy?: string };
 }) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== 'super_admin') {
@@ -16,6 +16,7 @@ export default async function AdminOrdersPage(props: {
   const page = parseInt(props.searchParams.page || '1');
   const status = props.searchParams.status;
   const search = props.searchParams.search;
+  const placedBy = props.searchParams.placedBy;
   const limit = 20;
   const skip = (page - 1) * limit;
 
@@ -23,6 +24,9 @@ export default async function AdminOrdersPage(props: {
   const where: any = {};
   if (status) {
     where.status = status;
+  }
+  if (placedBy) {
+    where.placedById = placedBy;
   }
   if (search) {
     where.orderNumber = {
@@ -96,7 +100,7 @@ export default async function AdminOrdersPage(props: {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-black text-ink">Orders</h1>
+          <h1 className="text-2xl font-normal text-ink">Orders</h1>
           <p className="text-sm text-ink-3 mt-1">Manage all customer orders</p>
         </div>
         <Link href="/admin/orders/kanban">
@@ -109,15 +113,8 @@ export default async function AdminOrdersPage(props: {
       {/* Filters */}
       <div className="flex gap-3 items-end">
         <div className="flex-1">
-          <label className="text-xs font-semibold text-ink-3 block mb-2">Search by Order #</label>
+          <label className="text-xs font-normal text-ink-3 block mb-2">Search by Order #</label>
           <form method="get" className="flex gap-2">
-            <input
-              type="text"
-              name="search"
-              placeholder="GC-2026-0001"
-              defaultValue={search || ''}
-              className="flex-1 px-3 py-2 rounded-md border border-bdr text-sm"
-            />
             <select
               name="status"
               defaultValue={status || ''}
@@ -132,6 +129,13 @@ export default async function AdminOrdersPage(props: {
               <option value="delivered">Delivered</option>
               <option value="cancelled">Cancelled</option>
             </select>
+            <input
+              type="text"
+              name="search"
+              placeholder="GC-2026-0001"
+              defaultValue={search || ''}
+              className="flex-1 px-3 py-2 rounded-md border border-bdr text-sm"
+            />
             <Button type="submit" variant="em" className="rounded-md">
               Search
             </Button>
@@ -149,22 +153,22 @@ export default async function AdminOrdersPage(props: {
           <table className="w-full">
             <thead>
               <tr className="border-b border-bdr bg-elevated/50">
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">
                   Order #
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">
                   Status
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">
                   Items
                 </th>
-                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <th className="px-6 py-4 text-right text-xs font-normal uppercase tracking-wider text-ink-3">
                   Amount
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">
                   Date
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-ink-3">
+                <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">
                   Action
                 </th>
               </tr>
@@ -173,10 +177,10 @@ export default async function AdminOrdersPage(props: {
               {orders.map((order) => (
                 <tr key={order.id} className="border-b border-bdr hover:bg-elevated/30 transition">
                   <td className="px-6 py-4">
-                    <p className="font-semibold text-ink">{order.orderNumber}</p>
+                    <p className="font-normal text-ink">{order.orderNumber}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-normal ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
                     </span>
                   </td>
@@ -184,7 +188,7 @@ export default async function AdminOrdersPage(props: {
                     <p className="text-sm text-ink-2">{order._count.items} items</p>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <p className="font-semibold text-ink tabnum">
+                    <p className="font-normal text-ink tabnum">
                       {formatRupees(Number(order.grandTotal))}
                     </p>
                   </td>
@@ -196,7 +200,7 @@ export default async function AdminOrdersPage(props: {
                   <td className="px-6 py-4">
                     <Link
                       href={`/admin/orders/${order.id}`}
-                      className="text-sm font-semibold text-em hover:underline"
+                      className="text-sm font-normal text-em hover:underline"
                     >
                       View
                     </Link>

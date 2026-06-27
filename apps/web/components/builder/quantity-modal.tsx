@@ -24,7 +24,7 @@ export function QuantityModal() {
     setCurrentStep,
   } = useBuilderStore();
 
-  const [localQty, setLocalQty] = useState(packQuantity);
+  const [localQty, setLocalQty] = useState(packQuantity || 25);
   const [mounted, setMounted] = useState(false);
 
   // Open modal on first visit (when recipientType is not set)

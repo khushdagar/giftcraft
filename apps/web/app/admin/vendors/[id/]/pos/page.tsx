@@ -48,7 +48,7 @@ export default async function AdminVendorPOsPage({
         </Link>
       </div>
 
-      <h1 className="text-3xl font-black text-ink">POs for {vendor.name}</h1>
+      <h1 className="text-3xl font-normal text-ink">POs for {vendor.name}</h1>
 
       {vendor.pos.length === 0 ? (
         <div className="rounded-md border-2 border-bdr bg-white p-12 text-center">
@@ -59,26 +59,26 @@ export default async function AdminVendorPOsPage({
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-bdr">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-ink-2 uppercase">Order</th>
-                <th className="px-6 py-4 text-center text-xs font-bold text-ink-2 uppercase">Qty</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-ink-2 uppercase">Amount</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-ink-2 uppercase">Deadline</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-ink-2 uppercase">Status</th>
+                <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Order</th>
+                <th className="px-6 py-4 text-center text-xs font-normal text-ink-2 uppercase">Qty</th>
+                <th className="px-6 py-4 text-right text-xs font-normal text-ink-2 uppercase">Amount</th>
+                <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Deadline</th>
+                <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-bdr">
               {vendor.pos.map((po) => (
                 <tr key={po.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-semibold text-ink">{po.order.orderNumber}</td>
+                  <td className="px-6 py-4 text-sm font-normal text-ink">{po.order.orderNumber}</td>
                   <td className="px-6 py-4 text-center text-sm text-ink">{po.order.packQuantity}</td>
-                  <td className="px-6 py-4 text-right text-sm font-semibold text-ink tabnum">
+                  <td className="px-6 py-4 text-right text-sm font-normal text-ink tabnum">
                     {formatRupees(Number(po.totalAmount))}
                   </td>
                   <td className="px-6 py-4 text-sm text-ink-2">
                     {new Date(po.deadline).toLocaleDateString('en-IN')}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`text-xs font-semibold px-3 py-1 rounded-full border-2 ${getStatusColor(po.status)}`}>
+                    <span className={`text-xs font-normal px-3 py-1 rounded-full border-2 ${getStatusColor(po.status)}`}>
                       {po.status === 'in_progress' ? 'In Progress' : po.status.charAt(0).toUpperCase() + po.status.slice(1)}
                     </span>
                   </td>

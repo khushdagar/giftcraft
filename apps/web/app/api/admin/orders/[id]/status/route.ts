@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { SLA_MINUTES } from '@/lib/constants';
 import { executeTrigger } from '@/lib/automation';
+import { sendOrderStatusEmail } from '@/lib/email';
 
 export async function PATCH(
   request: NextRequest,
@@ -31,8 +32,8 @@ export async function PATCH(
     // Validate status is a valid enum value
     const validStatuses = [
       'draft', 'quote_sent', 'confirmed', 'mockup_pending', 'mockup_approved',
-      'production', 'quality_check', 'packed', 'shipped', 'in_transit',
-      'delivered', 'completed', 'cancelled', 'refunded'
+      'payment_pending', 'production', 'quality_check', 'packed', 'shipped',
+      'in_transit', 'delivered', 'completed', 'cancelled', 'refunded'
     ];
 
     if (!validStatuses.includes(status)) {
@@ -91,7 +92,7 @@ export async function PATCH(
       data: { status },
       include: {
         company: { select: { id: true } },
-        placedBy: { select: { email: true } },
+        placedBy: { select: { email: true, name: true } },
       },
     });
 
@@ -134,6 +135,24 @@ export async function PATCH(
         customerEmail: order.placedBy?.email || undefined,
         orderNumber: order.orderNumber,
       });
+    }
+
+    // Email the customer on every status change (best-effort — never block).
+    const billing = (order.billingJson as any) || {};
+    const customerEmail = order.placedBy?.email || billing.email;
+    if (customerEmail) {
+      try {
+        await sendOrderStatusEmail({
+          customerEmail,
+          customerName: order.placedBy?.name || billing.name || 'there',
+          orderNumber: order.orderNumber,
+          orderId: order.id,
+          status,
+          note: note || undefined,
+        });
+      } catch (e) {
+        console.error('Status email failed (non-blocking):', e);
+      }
     }
 
     return NextResponse.json(

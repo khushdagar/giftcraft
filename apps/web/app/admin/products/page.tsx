@@ -51,19 +51,24 @@ export default async function AdminProductsPage({
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <>
-      <div className="mb-8 border-b border-bdr pb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-ink">Products</h1>
-            <p className="mt-1 text-sm text-ink-2">{total} products total</p>
-          </div>
-          <Button asChild className="rounded-2xl bg-emerald-600 px-6 py-2 font-bold hover:bg-emerald-700">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-normal tracking-tight text-ink">Products</h1>
+          <p className="mt-2 text-sm text-ink-2">Manage your product catalog</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button asChild variant="outline" className="rounded-2xl px-6 py-3 font-normal">
+            <Link href="/admin/products/bulk-upload">Bulk Upload</Link>
+          </Button>
+          <Button asChild className="rounded-2xl bg-emerald-600 px-8 py-3 font-normal hover:bg-emerald-700 text-white">
             <Link href="/admin/products/new">+ New Product</Link>
           </Button>
         </div>
       </div>
 
+      {/* Product Grid */}
       <ProductDataTable
         initialData={serialized}
         total={total}
@@ -71,6 +76,6 @@ export default async function AdminProductsPage({
         limit={limit}
         totalPages={totalPages}
       />
-    </>
+    </div>
   );
 }

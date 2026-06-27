@@ -49,7 +49,7 @@ export function DisputeTimeline({
 
   return (
     <div>
-      <p className="text-sm font-semibold text-ink mb-4">Timeline</p>
+      <p className="text-sm font-normal text-ink mb-4">Timeline</p>
 
       <div className="space-y-4">
         {statuses.map((status, idx) => {
@@ -73,14 +73,14 @@ export function DisputeTimeline({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <p
-                    className={`text-sm font-semibold ${
+                    className={`text-sm font-normal ${
                       isActive ? 'text-ink' : 'text-ink-3'
                     }`}
                   >
                     {getStatusLabel(status)}
                   </p>
                   {isCurrent && (
-                    <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                    <span className="text-xs font-normal text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                       Current
                     </span>
                   )}

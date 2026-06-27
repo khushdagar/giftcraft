@@ -9,32 +9,38 @@ import * as Tabs from '@radix-ui/react-tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Plus, Trash2, X } from 'lucide-react';
+import { AlertCircle, GripVertical, Plus, Trash2, X } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { toast, useToastStore } from '@/lib/stores/toast-store';
+import { resolveSwatchHex } from '@/lib/color-name';
 
 const ProductSchema = z.object({
   name: z.string().min(1, 'Name required'),
-  slug: z.string().min(3, 'Slug required').regex(/^[a-z0-9-]+$/, 'Invalid slug format'),
-  brand: z.string().optional(),
+  slug: z.string().nullable().optional(),
+  brand: z.string().nullable().optional(),
   sku: z.string().min(1, 'SKU required'),
-  descriptionShort: z.string().optional(),
-  descriptionLong: z.string().optional(),
-  material: z.string().optional(),
-  dimensions: z.string().optional(),
-  weightG: z.number().optional(),
-  lengthCm: z.number().min(0).optional(),
-  widthCm: z.number().min(0).optional(),
-  heightCm: z.number().min(0).optional(),
-  leadTimeDays: z.number().min(1).optional(),
-  hsnId: z.string().min(1, 'HSN code required'),
-  printingTechnique: z.string().optional(),
-  printingPosition: z.string().optional(),
+  descriptionShort: z.string().nullable().optional(),
+  descriptionLong: z.string().nullable().optional(),
+  material: z.string().nullable().optional(),
+  dimensions: z.string().nullable().optional(),
+  weightG: z.number().nullable().optional(),
+  lengthCm: z.number().nullable().optional(),
+  widthCm: z.number().nullable().optional(),
+  heightCm: z.number().nullable().optional(),
+  moq: z.number().nullable().optional(),
+  leadTimeDays: z.number().nullable().optional(),
+  hsnCode: z.string().nullable().optional(),
+  printingTechnique: z.string().nullable().optional(),
+  printingPosition: z.string().nullable().optional(),
+  brandingArea: z.string().nullable().optional(),
   status: z.enum(['draft', 'active', 'archived', 'seasonal']).default('draft'),
   isFeatured: z.boolean().default(false),
   isEcoCertified: z.boolean().default(false),
-  categoryIds: z.array(z.string()).optional(),
-  occasionIds: z.array(z.string()).optional(),
+  ecoCertification: z.string().nullable().optional(),
+  sampleAvailable: z.boolean().default(false),
+  recipientTags: z.array(z.string()).nullable().optional(),
+  categoryIds: z.array(z.string()).nullable().optional(),
+  occasionIds: z.array(z.string()).nullable().optional(),
   variants: z.array(
     z.object({
       id: z.string().optional(),
@@ -43,7 +49,7 @@ const ProductSchema = z.object({
       hexColor: z.string().optional(),
       sortOrder: z.number().optional(),
     })
-  ).optional(),
+  ).nullable().optional(),
   priceTiers: z.array(
     z.object({
       tier: z.number(),
@@ -52,12 +58,47 @@ const ProductSchema = z.object({
       costPrice: z.number(),
       sellPrice: z.number(),
     })
-  ).min(1, 'At least one price tier required'),
-  metaTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
+  ).nullable().optional(),
+  metaTitle: z.string().nullable().optional(),
+  metaDescription: z.string().nullable().optional(),
 });
 
 type ProductFormData = z.infer<typeof ProductSchema>;
+
+// Recipient tags from the product master (e.g. "All staff", "Senior, VIP Clients")
+const RECIPIENT_OPTIONS = [
+  'All staff',
+  'Trade-show',
+  'Employees',
+  'Clients',
+  'Senior',
+  'VIP Clients',
+  'Employees (Women)',
+];
+
+// Per-vendor sourcing status from the product master
+const SOURCING_OPTIONS = [
+  { value: 'ok', label: 'OK' },
+  { value: 'to_approach', label: 'To Approach' },
+  { value: 'onboarding', label: 'Onboarding' },
+  { value: 'onboarded', label: 'Onboarded' },
+];
+
+interface VendorOption {
+  id: string;
+  name: string;
+}
+
+interface VendorLink {
+  vendorId: string;
+  isPrimary: boolean;
+  costPrice: number | null;
+  vendorSku: string;
+  vendorMoq: number | null;
+  vendorLeadDays: number | null;
+  sourcingStatus: string;
+  lastPriceConfirmedAt: string; // YYYY-MM-DD for date input
+}
 
 interface SerializedProduct {
   id: string;
@@ -78,39 +119,115 @@ export function ProductForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [priceReason, setPriceReason] = useState('');
+  // Drag-to-reorder state for the price-tier rows.
+  const [dragTierIdx, setDragTierIdx] = useState<number | null>(null);
+  const [dragOverTierIdx, setDragOverTierIdx] = useState<number | null>(null);
   const [images, setImages] = useState<Array<{ id?: string; url: string; isPrimary: boolean; file?: File }>>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; parentId?: string | null }>>([]);
   const [occasions, setOccasions] = useState<Array<{ id: string; name: string; icon?: string }>>([]);
-  const [variants, setVariants] = useState<Array<{ id?: string; kind: string; value: string; hexColor?: string; sortOrder: number }>>(
-    mode === 'edit' && initialData?.variants ? initialData.variants : []
-  );
-  const [newVariant, setNewVariant] = useState({ kind: 'color', value: '', hexColor: '' });
+  const [variants, setVariants] = useState<Array<{ id?: string; kind: string; value: string; hexColor?: string; sortOrder: number }>>([]);
+  const [newVariant, setNewVariant] = useState({ kind: 'color', value: '', hexColor: '', customKind: '' });
+  const [vendorOptions, setVendorOptions] = useState<VendorOption[]>([]);
+  const [vendorLinks, setVendorLinks] = useState<VendorLink[]>([]);
+
+  // Initialize variants properly from initialData
+  useEffect(() => {
+    if (mode === 'edit' && initialData?.variants && Array.isArray(initialData.variants)) {
+      // Ensure all variants have required fields
+      const validVariants = initialData.variants
+        .filter(v => v && v.kind && v.value) // Filter out invalid variants
+        .map(v => ({
+          id: v.id,
+          kind: String(v.kind).toLowerCase(),
+          value: String(v.value).trim(),
+          hexColor: v.hexColor || undefined,
+          sortOrder: typeof v.sortOrder === 'number' ? v.sortOrder : 0,
+        }));
+      console.log('✅ Loaded variants:', validVariants);
+      setVariants(validVariants);
+    }
+  }, [mode, initialData?.id]);
+
+  // Initialize vendor links from initialData (edit mode)
+  useEffect(() => {
+    if (mode === 'edit' && initialData?.vendors && Array.isArray(initialData.vendors)) {
+      setVendorLinks(
+        initialData.vendors.map((v: any) => ({
+          vendorId: v.vendorId,
+          isPrimary: !!v.isPrimary,
+          costPrice: v.costPrice ?? null,
+          vendorSku: v.vendorSku ?? '',
+          vendorMoq: v.vendorMoq ?? null,
+          vendorLeadDays: v.vendorLeadDays ?? null,
+          sourcingStatus: v.sourcingStatus ?? '',
+          lastPriceConfirmedAt: v.lastPriceConfirmedAt
+            ? String(v.lastPriceConfirmedAt).slice(0, 10)
+            : '',
+        }))
+      );
+    }
+  }, [mode, initialData?.id]);
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(ProductSchema),
-    defaultValues: initialData || {
-      status: 'draft',
-      isFeatured: false,
-      isEcoCertified: false,
-      priceTiers: [
-        { tier: 1, minQty: 25, maxQty: 49, costPrice: 0, sellPrice: 0 },
-        { tier: 2, minQty: 50, maxQty: 99, costPrice: 0, sellPrice: 0 },
-        { tier: 3, minQty: 100, maxQty: 249, costPrice: 0, sellPrice: 0 },
-        { tier: 4, minQty: 250, maxQty: 499, costPrice: 0, sellPrice: 0 },
-        { tier: 5, minQty: 500, maxQty: 999, costPrice: 0, sellPrice: 0 },
-        { tier: 6, minQty: 1000, maxQty: null, costPrice: 0, sellPrice: 0 },
-      ],
-    },
+    defaultValues: initialData
+      ? {
+          ...initialData,
+          // HSN comes back nested (hsn.hsn.code) — surface the code for the field
+          hsnCode:
+            (initialData as any).hsn?.hsn?.code ??
+            (initialData as any).hsnCode ??
+            '',
+          categoryIds: (initialData as any).categoryIds || [],
+          occasionIds: (initialData as any).occasionIds || [],
+        }
+      : {
+          status: 'draft',
+          isFeatured: false,
+          isEcoCertified: false,
+          categoryIds: [],
+          occasionIds: [],
+          priceTiers: [
+            { tier: 1, minQty: 25, maxQty: 49, costPrice: 0, sellPrice: 0 },
+            { tier: 2, minQty: 50, maxQty: 99, costPrice: 0, sellPrice: 0 },
+            { tier: 3, minQty: 100, maxQty: 249, costPrice: 0, sellPrice: 0 },
+            { tier: 4, minQty: 250, maxQty: 499, costPrice: 0, sellPrice: 0 },
+            { tier: 5, minQty: 500, maxQty: 999, costPrice: 0, sellPrice: 0 },
+            { tier: 6, minQty: 1000, maxQty: null, costPrice: 0, sellPrice: 0 },
+          ],
+        },
   });
 
-  // Load categories, occasions, and variants
+  // Move a price-tier row from one position to another (drag-and-drop). The row's
+  // data (qty range, prices) travels with it; the `tier` number is re-sequenced
+  // 1..n to match the new visual order.
+  const reorderPriceTier = (from: number, to: number) => {
+    const tiers = [...(form.getValues('priceTiers') || [])];
+    if (
+      from === to ||
+      from < 0 ||
+      to < 0 ||
+      from >= tiers.length ||
+      to >= tiers.length
+    ) {
+      return;
+    }
+    const [moved] = tiers.splice(from, 1);
+    if (!moved) return;
+    tiers.splice(to, 0, moved);
+    const renumbered = tiers.map((t, i) => ({ ...t, tier: i + 1 }));
+    form.setValue('priceTiers', renumbered, { shouldDirty: true });
+  };
+
+  // Load categories and occasions
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [catsRes, occasionsRes] = await Promise.all([
+        const [catsRes, occasionsRes, vendorsRes] = await Promise.all([
           fetch('/api/admin/categories'),
-          fetch('/api/occasions'),
+          fetch('/api/admin/occasions'),
+          fetch('/api/admin/vendors'),
         ]);
 
         if (catsRes.ok) {
@@ -120,24 +237,22 @@ export function ProductForm({
 
         if (occasionsRes.ok) {
           const occasionsData = await occasionsRes.json();
-          setOccasions(occasionsData.occasions || []);
+          // /api/admin/occasions returns a bare array of occasion records.
+          setOccasions(Array.isArray(occasionsData) ? occasionsData : occasionsData.occasions || []);
         }
 
-        // If editing and variants not in initialData, fetch them from API
-        if (mode === 'edit' && initialData?.id && !initialData.variants) {
-          const variantsRes = await fetch(`/api/admin/products/${initialData.id}/variants`);
-          if (variantsRes.ok) {
-            const variantsData = await variantsRes.json();
-            setVariants(variantsData || []);
-          }
+        if (vendorsRes.ok) {
+          const vendorsData = await vendorsRes.json();
+          // API shape: { success, data: [{ id, name, ... }] }
+          setVendorOptions((vendorsData.data || []).map((v: any) => ({ id: v.id, name: v.name })));
         }
       } catch (error) {
-        console.error('Failed to fetch categories/occasions/variants:', error);
+        console.error('Failed to fetch categories/occasions/vendors:', error);
       }
     };
 
     fetchData();
-  }, [mode, initialData?.id, initialData?.variants]);
+  }, []);
 
   // Load existing images when editing
   useEffect(() => {
@@ -178,20 +293,65 @@ export function ProductForm({
       // Use FormData to handle both JSON and files
       const formData = new FormData();
 
-      // Add product data with variants
+      // Validate variants before submission
+      const validVariants = variants.filter(v => v.kind && v.value);
+      if (validVariants.length !== variants.length) {
+        setError('Some variants are missing kind or value');
+        toast.error('❌ All variants must have a type and value', 3000);
+        setLoading(false);
+        return;
+      }
+
+      // Build vendor links payload (drop rows without a vendor selected)
+      const vendorsPayload = vendorLinks
+        .filter((v) => v.vendorId)
+        .map((v) => ({
+          vendorId: v.vendorId,
+          isPrimary: v.isPrimary,
+          costPrice: v.costPrice != null && !Number.isNaN(v.costPrice) ? v.costPrice : null,
+          vendorSku: v.vendorSku?.trim() || null,
+          vendorMoq: v.vendorMoq != null && !Number.isNaN(v.vendorMoq) ? v.vendorMoq : null,
+          vendorLeadDays:
+            v.vendorLeadDays != null && !Number.isNaN(v.vendorLeadDays) ? v.vendorLeadDays : null,
+          sourcingStatus: v.sourcingStatus || null,
+          lastPriceConfirmedAt: v.lastPriceConfirmedAt || null,
+        }));
+
+      // Add product data with variants - ensure proper data types
       const dataWithVariants = {
         ...data,
-        variants: variants.map((v, idx) => ({
-          kind: v.kind,
-          value: v.value,
-          hexColor: v.hexColor || null,
-          sortOrder: v.sortOrder ?? idx,
-        })),
+        vendors: vendorsPayload,
+        variants: validVariants.length > 0 ? validVariants.map((v, idx) => {
+          const variant: any = {
+            kind: String(v.kind).trim().toLowerCase(),
+            value: String(v.value).trim(),
+            sortOrder: idx,
+          };
+          // Only include hexColor for color variants
+          if (v.hexColor && (v.kind.toLowerCase() === 'color' || v.kind === 'color')) {
+            variant.hexColor = String(v.hexColor).trim();
+          } else {
+            variant.hexColor = null;
+          }
+          return variant;
+        }) : [],
       };
+
+      // Validate that all variants have required fields
+      if (dataWithVariants.variants && dataWithVariants.variants.length > 0) {
+        const invalidVariant = dataWithVariants.variants.find(v => !v.kind || !v.value);
+        if (invalidVariant) {
+          setError('Invalid variant data detected');
+          toast.error('❌ All variants must have a type and value', 3000);
+          setLoading(false);
+          return;
+        }
+      }
 
       // Debug logging
       console.log('📋 Submitting product with data:', {
         name: dataWithVariants.name,
+        variantCount: dataWithVariants.variants.length,
         variants: dataWithVariants.variants,
         mode,
       });
@@ -222,8 +382,17 @@ export function ProductForm({
 
       if (!res.ok) {
         const error = await res.json();
+        console.error('❌ API Error:', { status: res.status, fullError: error });
+
+        // Handle array of validation errors
+        if (Array.isArray(error.error)) {
+          const detailedErrors = error.error
+            .map((e: any) => `${e.path}: ${e.message}`)
+            .join('\n');
+          throw new Error(`Validation errors:\n${detailedErrors}`);
+        }
+
         const errorMsg = error.error || `Server error: ${res.status}`;
-        console.error('❌ API Error:', { status: res.status, errorMsg, fullError: error });
         throw new Error(errorMsg);
       }
 
@@ -270,16 +439,16 @@ export function ProductForm({
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
           <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-red-900">Error</p>
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="flex-1">
+            <p className="text-sm font-normal text-red-900">Error</p>
+            <p className="text-sm text-red-700 whitespace-pre-wrap">{error}</p>
           </div>
         </div>
       )}
 
       {Object.keys(form.formState.errors).length > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-sm font-semibold text-yellow-900 mb-2">⚠️ Validation Errors - Please fix:</p>
+          <p className="text-sm font-normal text-yellow-900 mb-2">⚠️ Validation Errors - Please fix:</p>
           <ul className="text-sm text-yellow-800 space-y-1">
             {Object.entries(form.formState.errors).map(([field, error]: any) => (
               <li key={field}>• <strong>{field}:</strong> {error?.message || 'Invalid value'}</li>
@@ -306,7 +475,7 @@ export function ProductForm({
             <Tabs.Trigger
               key={t.id}
               value={t.id}
-              className={`shrink-0 rounded-md-p px-4 py-2 text-xs font-semibold transition ${
+              className={`shrink-0 rounded-md-p px-4 py-2 text-xs font-normal transition ${
                 tab === t.id
                   ? 'bg-dark text-inv'
                   : 'text-ink-3 hover:text-ink border-b-2 border-transparent'
@@ -322,7 +491,7 @@ export function ProductForm({
           {/* Basic */}
           <Tabs.Content value="basic" className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Product Name *</label>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Product Name *</label>
               <Input {...form.register('name')} placeholder="e.g. Stainless Steel Flask 500ml" />
               {form.formState.errors.name && (
                 <p className="text-xs text-red-600 mt-1">{form.formState.errors.name.message}</p>
@@ -331,28 +500,28 @@ export function ProductForm({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1">Slug</label>
+                <label className="block text-sm font-normal text-gray-900 mb-1">Slug</label>
                 <Input {...form.register('slug')} placeholder="auto-generated from name" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1">SKU *</label>
+                <label className="block text-sm font-normal text-gray-900 mb-1">SKU *</label>
                 <Input {...form.register('sku')} placeholder="e.g. FLASK-500-SS" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1">Brand</label>
+                <label className="block text-sm font-normal text-gray-900 mb-1">Brand</label>
                 <Input {...form.register('brand')} placeholder="e.g. Borosil" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1">Material</label>
+                <label className="block text-sm font-normal text-gray-900 mb-1">Material</label>
                 <Input {...form.register('material')} placeholder="e.g. Stainless Steel 304" />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Short Description</label>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Short Description</label>
               <textarea
                 {...form.register('descriptionShort')}
                 placeholder="Brief product description"
@@ -362,7 +531,7 @@ export function ProductForm({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Long Description</label>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Long Description</label>
               <textarea
                 {...form.register('descriptionLong')}
                 placeholder="Detailed product description"
@@ -371,31 +540,36 @@ export function ProductForm({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1">Weight (g)</label>
+                <label className="block text-sm font-normal text-gray-900 mb-1">Weight (g)</label>
                 <Input type="number" {...form.register('weightG', { valueAsNumber: true })} />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1">Lead Time (days)</label>
+                <label className="block text-sm font-normal text-gray-900 mb-1">Lead Time (days)</label>
                 <Input type="number" {...form.register('leadTimeDays', { valueAsNumber: true })} />
+              </div>
+              <div>
+                <label className="block text-sm font-normal text-gray-900 mb-1">MOQ</label>
+                <Input type="number" {...form.register('moq', { valueAsNumber: true })} placeholder="e.g. 25" />
+                <p className="text-xs text-gray-500 mt-1">Min. order quantity</p>
               </div>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm font-semibold text-blue-900 mb-3">Product Dimensions (cm)</p>
+              <p className="text-sm font-normal text-blue-900 mb-3">Product Dimensions (cm)</p>
               <p className="text-xs text-blue-800 mb-3">Required for automatic packaging suggestions</p>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1">Length (L)</label>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Length (L)</label>
                   <Input type="number" step="0.1" min="0" {...form.register('lengthCm', { valueAsNumber: true })} placeholder="cm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1">Width (W)</label>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Width (W)</label>
                   <Input type="number" step="0.1" min="0" {...form.register('widthCm', { valueAsNumber: true })} placeholder="cm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1">Height (H)</label>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Height (H)</label>
                   <Input type="number" step="0.1" min="0" {...form.register('heightCm', { valueAsNumber: true })} placeholder="cm" />
                 </div>
               </div>
@@ -410,11 +584,11 @@ export function ProductForm({
               </p>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">HSN Code *</label>
-              <Input {...form.register('hsnId')} placeholder="e.g. 9617" required />
-              <p className="text-xs text-gray-500 mt-1">HSN code ID for tax classification</p>
-              {form.formState.errors.hsnId && (
-                <p className="text-xs text-red-600 mt-1">{form.formState.errors.hsnId.message}</p>
+              <label className="block text-sm font-normal text-gray-900 mb-1">HSN Code *</label>
+              <Input {...form.register('hsnCode')} placeholder="e.g. 4202" required />
+              <p className="text-xs text-gray-500 mt-1">HSN code for tax classification (GST rate is taken from it)</p>
+              {form.formState.errors.hsnCode && (
+                <p className="text-xs text-red-600 mt-1">{form.formState.errors.hsnCode.message}</p>
               )}
             </div>
           </Tabs.Content>
@@ -429,7 +603,7 @@ export function ProductForm({
 
             {/* Categories */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-3">Categories</label>
+              <label className="block text-sm font-normal text-gray-900 mb-3">Categories</label>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {categories.length === 0 ? (
                   <p className="text-sm text-gray-500">Loading categories...</p>
@@ -460,7 +634,7 @@ export function ProductForm({
 
             {/* Occasions */}
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-3">Occasions</label>
+              <label className="block text-sm font-normal text-gray-900 mb-3">Occasions</label>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {occasions.length === 0 ? (
                   <p className="text-sm text-gray-500">Loading occasions...</p>
@@ -485,6 +659,38 @@ export function ProductForm({
                   ))
                 )}
               </div>
+            </div>
+
+            {/* Recipient Tags */}
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-3">Recipient Tags</label>
+              <div className="flex flex-wrap gap-2">
+                {RECIPIENT_OPTIONS.map((tag) => {
+                  const selected = form.watch('recipientTags')?.includes(tag) || false;
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        const current = form.getValues('recipientTags') || [];
+                        if (current.includes(tag)) {
+                          form.setValue('recipientTags', current.filter((t) => t !== tag));
+                        } else {
+                          form.setValue('recipientTags', [...current, tag]);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-full border text-sm transition ${
+                        selected
+                          ? 'bg-dark text-inv border-dark'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Who this product is meant for (from the product master)</p>
             </div>
           </Tabs.Content>
 
@@ -599,7 +805,7 @@ export function ProductForm({
                 className="hidden"
               />
               <div>
-                <p className="text-sm font-semibold text-gray-900">Click to upload images</p>
+                <p className="text-sm font-normal text-gray-900">Click to upload images</p>
                 <p className="text-xs text-gray-500 mt-1">PNG, JPG, WebP up to 5MB each</p>
               </div>
             </label>
@@ -607,7 +813,7 @@ export function ProductForm({
             {/* Image List */}
             {images.length > 0 && (
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-gray-900">Uploaded Images ({images.length})</p>
+                <p className="text-sm font-normal text-gray-900">Uploaded Images ({images.length})</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {images.map((img, idx) => (
                     <div key={idx} className="relative group">
@@ -621,7 +827,7 @@ export function ProductForm({
 
                       {/* Primary Badge */}
                       {img.isPrimary && (
-                        <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded font-semibold">
+                        <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded font-normal">
                           Primary
                         </div>
                       )}
@@ -655,7 +861,7 @@ export function ProductForm({
                                 }
                               }
                             }}
-                            className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-blue-700"
+                            className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-normal hover:bg-blue-700"
                           >
                             Set Primary
                           </button>
@@ -691,7 +897,7 @@ export function ProductForm({
                               toast.info('Image removed');
                             }
                           }}
-                          className="bg-red-600 text-white px-2 py-1 rounded text-xs font-semibold hover:bg-red-700"
+                          className="bg-red-600 text-white px-2 py-1 rounded text-xs font-normal hover:bg-red-700"
                         >
                           Remove
                         </button>
@@ -706,13 +912,13 @@ export function ProductForm({
           {/* Printing */}
           <Tabs.Content value="printing" className="space-y-4">
             <div className="bg-gold-50 border border-gold rounded-lg p-4">
-              <p className="text-sm text-gold-700 font-semibold">
+              <p className="text-sm text-gold-700 font-normal">
                 💡 Printing cost is included in the sellPrice — no separate "Branding Cost" line is shown to customers.
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Printing Technique</label>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Printing Technique</label>
               <select
                 {...form.register('printingTechnique')}
                 className="w-full border border-gray-300 rounded-lg p-2 text-sm"
@@ -728,15 +934,21 @@ export function ProductForm({
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Printing Position</label>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Printing Position</label>
               <Input {...form.register('printingPosition')} placeholder="e.g. Front Center, Back, Sleeve" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Branding Area</label>
+              <Input {...form.register('brandingArea')} placeholder="e.g. 60×40 mm" />
+              <p className="text-xs text-gray-500 mt-1">Maximum printable area for the logo/branding</p>
             </div>
           </Tabs.Content>
 
           {/* Pricing */}
           <Tabs.Content value="pricing" className="space-y-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-900">Price Tiers</h3>
+              <h3 className="text-sm font-normal text-gray-900">Price Tiers</h3>
               <button
                 type="button"
                 onClick={() => {
@@ -750,7 +962,7 @@ export function ProductForm({
                   };
                   form.setValue('priceTiers', [...tiers, newTier]);
                 }}
-                className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition"
+                className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white text-xs font-normal rounded-lg hover:bg-green-700 transition"
               >
                 <Plus className="w-4 h-4" /> Add Tier
               </button>
@@ -760,13 +972,14 @@ export function ProductForm({
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-2 py-2 text-left text-xs font-semibold">Tier</th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold">Min Qty</th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold">Max Qty</th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold">Cost Price</th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold">Sell Price</th>
-                    <th className="px-2 py-2 text-left text-xs font-semibold">Margin %</th>
-                    <th className="px-2 py-2 text-center text-xs font-semibold">Action</th>
+                    <th className="px-2 py-2 text-left text-xs font-normal w-6"></th>
+                    <th className="px-2 py-2 text-left text-xs font-normal">Tier</th>
+                    <th className="px-2 py-2 text-left text-xs font-normal">Min Qty</th>
+                    <th className="px-2 py-2 text-left text-xs font-normal">Max Qty</th>
+                    <th className="px-2 py-2 text-left text-xs font-normal">Cost Price</th>
+                    <th className="px-2 py-2 text-left text-xs font-normal">Sell Price</th>
+                    <th className="px-2 py-2 text-left text-xs font-normal">Margin %</th>
+                    <th className="px-2 py-2 text-center text-xs font-normal">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -779,8 +992,42 @@ export function ProductForm({
                     const canDelete = tiers.length > 1;
 
                     return (
-                      <tr key={`tier-${idx}`} className="hover:bg-gray-50">
-                        <td className="px-2 py-2 font-semibold">{tier.tier}</td>
+                      <tr
+                        key={`tier-${idx}`}
+                        onDragOver={(e) => {
+                          if (dragTierIdx === null) return;
+                          e.preventDefault();
+                          if (dragOverTierIdx !== idx) setDragOverTierIdx(idx);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (dragTierIdx !== null) reorderPriceTier(dragTierIdx, idx);
+                          setDragTierIdx(null);
+                          setDragOverTierIdx(null);
+                        }}
+                        className={`transition-colors ${
+                          dragTierIdx === idx
+                            ? 'opacity-40'
+                            : dragOverTierIdx === idx
+                              ? 'bg-green-50'
+                              : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <td className="px-2 py-2 text-center align-middle">
+                          <span
+                            draggable
+                            onDragStart={() => setDragTierIdx(idx)}
+                            onDragEnd={() => {
+                              setDragTierIdx(null);
+                              setDragOverTierIdx(null);
+                            }}
+                            className="inline-flex cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                            title="Drag to reorder"
+                          >
+                            <GripVertical className="w-4 h-4" />
+                          </span>
+                        </td>
+                        <td className="px-2 py-2 font-normal">{tier.tier}</td>
                         <td className="px-2 py-2">
                           <input
                             type="number"
@@ -812,7 +1059,7 @@ export function ProductForm({
                             className="w-20 border border-gray-300 rounded p-1 text-xs"
                           />
                         </td>
-                        <td className={`px-2 py-2 font-semibold text-xs ${marginColor}`}>{margin}%</td>
+                        <td className={`px-2 py-2 font-normal text-xs ${marginColor}`}>{margin}%</td>
                         <td className="px-2 py-2 text-center">
                           {canDelete && (
                             <button
@@ -837,7 +1084,7 @@ export function ProductForm({
 
             {mode === 'edit' && (
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1">Change Reason *</label>
+                <label className="block text-sm font-normal text-gray-900 mb-1">Change Reason *</label>
                 <Input
                   value={priceReason}
                   onChange={(e) => setPriceReason(e.target.value)}
@@ -851,20 +1098,22 @@ export function ProductForm({
           {/* Variants */}
           <Tabs.Content value="variants" className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-900">
-                Add product variants like color, size, material, etc.
+              <p className="text-sm text-blue-900 font-normal">
+                💡 Add product variants like color, size, material, etc. You can add multiple values at once by separating them with commas (e.g., "Small, Medium, Large"). Use the "Custom" type to add any variant type you want (e.g., Brand, Design, Collection).
               </p>
             </div>
 
             {/* Add New Variant Form */}
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-              <h3 className="text-sm font-semibold text-gray-900">Add New Variant</h3>
+              <h3 className="text-sm font-normal text-gray-900">Add New Variant</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1">Type *</label>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Type *</label>
                   <select
                     value={newVariant.kind}
-                    onChange={(e) => setNewVariant({ ...newVariant, kind: e.target.value })}
+                    onChange={(e) => {
+                      setNewVariant({ ...newVariant, kind: e.target.value, customKind: '' });
+                    }}
                     className="w-full border border-gray-300 rounded-lg p-2 text-sm"
                   >
                     <option value="color">Color</option>
@@ -874,19 +1123,42 @@ export function ProductForm({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1">Value *</label>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Value *</label>
                   <Input
                     type="text"
-                    placeholder="e.g. Red, Large, Cotton"
+                    placeholder={
+                      newVariant.kind === 'color'
+                        ? 'e.g. Red, Blue, Green'
+                        : newVariant.kind === 'size'
+                        ? 'e.g. Small, Medium, Large, XL'
+                        : newVariant.kind === 'material'
+                        ? 'e.g. Cotton, Polyester, Wool'
+                        : 'e.g. Nike, Adidas, Puma'
+                    }
                     value={newVariant.value}
                     onChange={(e) => setNewVariant({ ...newVariant, value: e.target.value })}
                   />
+                  <p className="text-xs text-gray-500 mt-1">💡 Separate multiple values with commas to add them all at once</p>
                 </div>
               </div>
 
+              {/* Custom Variant Type Input */}
+              {newVariant.kind === 'custom' && (
+                <div>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Custom Type Name *</label>
+                  <Input
+                    type="text"
+                    placeholder="e.g. Brand, Design, Pattern, Collection"
+                    value={newVariant.customKind}
+                    onChange={(e) => setNewVariant({ ...newVariant, customKind: e.target.value })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">What would you like to call this variant type?</p>
+                </div>
+              )}
+
               {newVariant.kind === 'color' && (
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1">Color Code</label>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Color Code</label>
                   <div className="flex gap-2">
                     <Input
                       type="color"
@@ -908,15 +1180,37 @@ export function ProductForm({
               <button
                 type="button"
                 onClick={() => {
+                  // Determine the actual kind to use
+                  const actualKind = newVariant.kind === 'custom' ? newVariant.customKind : newVariant.kind;
+
                   // Validation
-                  const trimmedValue = newVariant.value.trim();
-                  if (!trimmedValue) {
+                  if (newVariant.kind === 'custom') {
+                    const customKindTrimmed = actualKind.trim();
+                    if (!customKindTrimmed) {
+                      toast.error('❌ Please enter a custom variant type name', 3000);
+                      return;
+                    }
+                  }
+
+                  const rawValue = newVariant.value.trim();
+                  if (!rawValue) {
                     toast.error('❌ Please enter a variant value', 3000);
                     return;
                   }
 
-                  // Validate hex color if provided
-                  if (newVariant.kind === 'color' && newVariant.hexColor) {
+                  // Split by comma to support multiple values (e.g., "Small, Medium, Large")
+                  const values = rawValue
+                    .split(',')
+                    .map((v) => v.trim())
+                    .filter((v) => v.length > 0);
+
+                  if (values.length === 0) {
+                    toast.error('❌ Please enter at least one variant value', 3000);
+                    return;
+                  }
+
+                  // Validate hex color only if single color variant
+                  if (newVariant.kind === 'color' && newVariant.hexColor && values.length === 1) {
                     const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
                     if (!hexRegex.test(newVariant.hexColor)) {
                       toast.error('❌ Invalid hex color format (use #RRGGBB)', 3000);
@@ -925,27 +1219,46 @@ export function ProductForm({
                   }
 
                   // Check for duplicates
-                  const isDuplicate = variants.some(
-                    (v) => v.kind === newVariant.kind && v.value.toLowerCase() === trimmedValue.toLowerCase()
-                  );
-                  if (isDuplicate) {
-                    toast.error(`❌ This ${newVariant.kind} variant already exists`, 3000);
+                  const newVariants: Array<{ id?: string; kind: string; value: string; hexColor?: string; sortOrder: number }> = [];
+                  const duplicates: string[] = [];
+
+                  values.forEach((value) => {
+                    const isDuplicate = variants.some(
+                      (v) => v.kind.toLowerCase() === actualKind.toLowerCase() && v.value.toLowerCase() === value.toLowerCase()
+                    );
+
+                    if (isDuplicate) {
+                      duplicates.push(value);
+                    } else {
+                      newVariants.push({
+                        kind: actualKind,
+                        value,
+                        hexColor: newVariant.kind === 'color' && newVariant.hexColor ? newVariant.hexColor : undefined,
+                        sortOrder: variants.length + newVariants.length,
+                      });
+                    }
+                  });
+
+                  if (newVariants.length === 0) {
+                    toast.error(`❌ All values already exist as variants`, 3000);
                     return;
                   }
 
-                  setVariants([
-                    ...variants,
-                    {
-                      kind: newVariant.kind,
-                      value: trimmedValue,
-                      hexColor: newVariant.hexColor || undefined,
-                      sortOrder: variants.length,
-                    },
-                  ]);
-                  setNewVariant({ kind: 'color', value: '', hexColor: '' });
-                  toast.success('✅ Variant added', 2000);
+                  setVariants([...variants, ...newVariants]);
+                  setNewVariant({ kind: 'color', value: '', hexColor: '', customKind: '' });
+
+                  const message =
+                    newVariants.length === 1
+                      ? `✅ 1 variant added`
+                      : `✅ ${newVariants.length} variants added`;
+
+                  if (duplicates.length > 0) {
+                    toast.warning(`${message} (${duplicates.join(', ')} already existed)`, 3000);
+                  } else {
+                    toast.success(message, 2000);
+                  }
                 }}
-                className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white text-sm font-semibold py-2 rounded-lg hover:bg-blue-700 transition"
+                className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white text-sm font-normal py-2 rounded-lg hover:bg-blue-700 transition"
               >
                 <Plus className="h-4 w-4" /> Add Variant
               </button>
@@ -954,22 +1267,53 @@ export function ProductForm({
             {/* Variants List */}
             {variants.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-gray-900">Product Variants ({variants.length})</h3>
+                <h3 className="text-sm font-normal text-gray-900">Product Variants ({variants.length})</h3>
                 <div className="grid gap-2">
                   {variants.map((variant, idx) => (
                     <div key={idx} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-3">
                       <div className="flex items-center gap-3">
-                        {variant.kind === 'color' && variant.hexColor && (
+                        {variant.kind === 'color' && (
                           <div
                             className="w-6 h-6 rounded-md border border-gray-300"
-                            style={{ backgroundColor: variant.hexColor }}
+                            style={{ backgroundColor: resolveSwatchHex(variant.value, variant.hexColor) }}
                           />
                         )}
                         <div>
-                          <p className="text-xs text-gray-500 font-semibold uppercase">{variant.kind}</p>
+                          <p className="text-xs text-gray-500 font-normal uppercase">{variant.kind}</p>
                           <p className="text-sm font-medium text-gray-900">{variant.value}</p>
                         </div>
                       </div>
+                      {/* Inline colour editor for existing colour variants */}
+                      {variant.kind === 'color' && (
+                        <div className="flex items-center gap-2 ml-auto mr-3">
+                          <input
+                            type="color"
+                            value={resolveSwatchHex(variant.value, variant.hexColor)}
+                            onChange={(e) =>
+                              setVariants(
+                                variants.map((v, i) =>
+                                  i === idx ? { ...v, hexColor: e.target.value } : v
+                                )
+                              )
+                            }
+                            className="w-9 h-9 p-1 border border-gray-300 rounded-lg cursor-pointer bg-white"
+                            title="Pick colour"
+                          />
+                          <Input
+                            type="text"
+                            placeholder="#000000"
+                            value={variant.hexColor || ''}
+                            onChange={(e) =>
+                              setVariants(
+                                variants.map((v, i) =>
+                                  i === idx ? { ...v, hexColor: e.target.value } : v
+                                )
+                              )
+                            }
+                            className="w-28 text-sm"
+                          />
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={async () => {
@@ -1007,13 +1351,167 @@ export function ProductForm({
 
           {/* Vendor */}
           <Tabs.Content value="vendor" className="space-y-4">
-            <p className="text-sm text-gray-600">Vendor selection coming soon</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+              <p className="text-sm text-blue-900">
+                Link this product to its vendor(s) with sourcing details. Mark one as Primary.
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setVendorLinks((prev) => [
+                    ...prev,
+                    {
+                      vendorId: '',
+                      isPrimary: prev.length === 0,
+                      costPrice: null,
+                      vendorSku: '',
+                      vendorMoq: null,
+                      vendorLeadDays: null,
+                      sourcingStatus: '',
+                      lastPriceConfirmedAt: '',
+                    },
+                  ])
+                }
+                className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-normal rounded-lg hover:bg-blue-700 transition shrink-0"
+              >
+                <Plus className="w-4 h-4" /> Add Vendor
+              </button>
+            </div>
+
+            {vendorOptions.length === 0 && (
+              <p className="text-sm text-gray-500">
+                No vendors found. Create vendors under Admin → Vendors first.
+              </p>
+            )}
+
+            {vendorLinks.length === 0 ? (
+              <p className="text-sm text-gray-500">No vendors linked yet. Click "Add Vendor" to start.</p>
+            ) : (
+              <div className="space-y-3">
+                {vendorLinks.map((link, idx) => {
+                  const update = (patch: Partial<VendorLink>) =>
+                    setVendorLinks((prev) =>
+                      prev.map((l, i) => (i === idx ? { ...l, ...patch } : l))
+                    );
+                  return (
+                    <div key={idx} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-normal text-gray-500 uppercase">Vendor {idx + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => setVendorLinks((prev) => prev.filter((_, i) => i !== idx))}
+                          className="text-red-600 hover:text-red-700 p-1"
+                          title="Remove vendor"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-normal text-gray-700 mb-1">Vendor *</label>
+                          <select
+                            value={link.vendorId}
+                            onChange={(e) => update({ vendorId: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                          >
+                            <option value="">Select vendor…</option>
+                            {vendorOptions.map((v) => (
+                              <option key={v.id} value={v.id}>{v.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-normal text-gray-700 mb-1">Sourcing Status</label>
+                          <select
+                            value={link.sourcingStatus}
+                            onChange={(e) => update({ sourcingStatus: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                          >
+                            <option value="">—</option>
+                            {SOURCING_OPTIONS.map((s) => (
+                              <option key={s.value} value={s.value}>{s.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-xs font-normal text-gray-700 mb-1">Vendor SKU</label>
+                          <Input
+                            value={link.vendorSku}
+                            onChange={(e) => update({ vendorSku: e.target.value })}
+                            placeholder="SKU"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-normal text-gray-700 mb-1">Vendor Cost ₹</label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={link.costPrice ?? ''}
+                            onChange={(e) =>
+                              update({ costPrice: e.target.value === '' ? null : Number(e.target.value) })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-normal text-gray-700 mb-1">Vendor MOQ</label>
+                          <Input
+                            type="number"
+                            value={link.vendorMoq ?? ''}
+                            onChange={(e) =>
+                              update({ vendorMoq: e.target.value === '' ? null : Number(e.target.value) })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-normal text-gray-700 mb-1">Vendor Lead (days)</label>
+                          <Input
+                            type="number"
+                            value={link.vendorLeadDays ?? ''}
+                            onChange={(e) =>
+                              update({ vendorLeadDays: e.target.value === '' ? null : Number(e.target.value) })
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 items-end">
+                        <div>
+                          <label className="block text-xs font-normal text-gray-700 mb-1">Last Price Confirmed</label>
+                          <Input
+                            type="date"
+                            value={link.lastPriceConfirmedAt}
+                            onChange={(e) => update({ lastPriceConfirmedAt: e.target.value })}
+                          />
+                        </div>
+                        <label className="flex items-center gap-2 cursor-pointer pb-2">
+                          <input
+                            type="radio"
+                            name="primaryVendor"
+                            checked={link.isPrimary}
+                            onChange={() =>
+                              setVendorLinks((prev) =>
+                                prev.map((l, i) => ({ ...l, isPrimary: i === idx }))
+                              )
+                            }
+                          />
+                          <span className="text-sm font-normal text-gray-900">Primary Vendor</span>
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Tabs.Content>
 
           {/* Visibility */}
           <Tabs.Content value="visibility" className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Status</label>
+              <label className="block text-sm font-normal text-gray-900 mb-2">Status</label>
               <select
                 {...form.register('status')}
                 className="w-full border border-gray-300 rounded-lg p-2 text-sm"
@@ -1025,24 +1523,34 @@ export function ProductForm({
               </select>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" {...form.register('isFeatured')} className="rounded" />
-                <span className="text-sm font-semibold text-gray-900">Featured Product</span>
+                <span className="text-sm font-normal text-gray-900">Featured Product</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" {...form.register('isEcoCertified')} className="rounded" />
-                <span className="text-sm font-semibold text-gray-900">Eco-Certified</span>
+                <span className="text-sm font-normal text-gray-900">Eco-Certified</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" {...form.register('sampleAvailable')} className="rounded" />
+                <span className="text-sm font-normal text-gray-900">Sample Available</span>
               </label>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Meta Title</label>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Eco Certification</label>
+              <Input {...form.register('ecoCertification')} placeholder="e.g. GOTS, FSC, GRS, rPET" />
+              <p className="text-xs text-gray-500 mt-1">Name of the eco certification (if eco-certified)</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Meta Title</label>
               <Input {...form.register('metaTitle')} placeholder="SEO page title" />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Meta Description</label>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Meta Description</label>
               <textarea
                 {...form.register('metaDescription')}
                 placeholder="SEO description"

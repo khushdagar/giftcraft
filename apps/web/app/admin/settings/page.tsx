@@ -51,9 +51,9 @@ export default async function SettingsPage() {
       <div>
         <div className="flex items-center gap-2 mb-2">
           <Settings className="h-5 w-5 text-ink-3" />
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Configuration</p>
+          <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Configuration</p>
         </div>
-        <h1 className="text-3xl font-bold text-ink">Settings</h1>
+        <h1 className="text-3xl font-normal text-ink">Settings</h1>
         <p className="text-sm text-ink-2 mt-2">Manage platform configuration and business settings</p>
       </div>
 
@@ -70,14 +70,14 @@ export default async function SettingsPage() {
               <div className="flex items-start justify-between mb-3">
                 <Icon className="h-6 w-6 text-em-400" />
                 {setting.badge && (
-                  <span className="inline-block px-2 py-1 bg-em-50 text-em-700 text-xs font-semibold rounded-md">
+                  <span className="inline-block px-2 py-1 bg-em-50 text-em-700 text-xs font-normal rounded-md">
                     {setting.badge}
                   </span>
                 )}
               </div>
-              <h3 className="font-semibold text-ink text-lg mb-1">{setting.title}</h3>
+              <h3 className="font-normal text-ink text-lg mb-1">{setting.title}</h3>
               <p className="text-sm text-ink-2 mb-4">{setting.description}</p>
-              <p className="text-xs font-semibold text-em group-hover:underline">Configure →</p>
+              <p className="text-xs font-normal text-em group-hover:underline">Configure →</p>
             </Link>
           );
         })}

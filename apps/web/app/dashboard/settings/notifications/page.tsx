@@ -122,7 +122,7 @@ export default function NotificationsSettingsPage() {
   return (
     <div className="max-w-2xl space-y-8">
       <div>
-        <h1 className="text-3xl font-black tracking-tight text-ink">Notification Preferences</h1>
+        <h1 className="text-3xl font-normal tracking-tight text-ink">Notification Preferences</h1>
         <p className="mt-1 text-sm text-ink-2">Manage how you receive notifications</p>
       </div>
 
@@ -130,7 +130,7 @@ export default function NotificationsSettingsPage() {
         {preferenceCategories.map((category) => (
           <div key={category.title} className="border border-bdr rounded-lg p-6 space-y-4">
             <div>
-              <h2 className="text-lg font-bold text-ink">{category.title}</h2>
+              <h2 className="text-lg font-normal text-ink">{category.title}</h2>
               <p className="text-sm text-ink-2 mt-1">{category.description}</p>
             </div>
 
@@ -170,7 +170,7 @@ export default function NotificationsSettingsPage() {
 
       {/* Data Privacy & Protection Act Consent */}
       <div className="border border-bdr rounded-lg p-6 space-y-4 bg-elevated">
-        <h2 className="text-lg font-bold text-ink">Data Privacy & Protection</h2>
+        <h2 className="text-lg font-normal text-ink">Data Privacy & Protection</h2>
         <p className="text-sm text-ink-2">
           We respect your privacy. Your data is securely stored and only used as per your preferences above.
           By using GiftCraft, you consent to our{' '}
@@ -186,7 +186,7 @@ export default function NotificationsSettingsPage() {
         <Button
           onClick={handleSave}
           disabled={!unsavedChanges || updateMutation.isPending}
-          className="flex-1 rounded-2xl bg-em px-6 py-3 font-bold hover:bg-em-600"
+          className="flex-1 rounded-2xl bg-em px-6 py-3 font-normal hover:bg-em-600"
         >
           {updateMutation.isPending ? 'Saving...' : 'Save Preferences'}
         </Button>

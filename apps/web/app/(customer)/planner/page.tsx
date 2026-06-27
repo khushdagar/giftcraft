@@ -48,7 +48,7 @@ export default function BudgetPlannerPage() {
       <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl sm:text-6xl font-black tracking-tighter text-ink mb-4">
+          <h1 className="text-5xl sm:text-6xl font-normal tracking-tighter text-ink mb-4">
             Budget Planner
           </h1>
           <p className="text-lg text-ink-2">
@@ -61,7 +61,7 @@ export default function BudgetPlannerPage() {
           {steps.map((s) => (
             <div
               key={s.number}
-              className={`flex items-center justify-center w-12 h-12 rounded-full font-bold text-sm transition ${
+              className={`flex items-center justify-center w-12 h-12 rounded-full font-normal text-sm transition ${
                 s.number === step
                   ? 'bg-em text-white'
                   : s.number < step

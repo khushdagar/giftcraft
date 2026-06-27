@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bell, Search, LogOut } from "lucide-react";
+import { Search, LogOut } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { NotificationBell } from "@/components/admin/notification-bell";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -15,7 +16,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="grid min-h-screen bg-white md:grid-cols-[256px_1fr]">
       {/* Dark sidebar */}
       <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-ink/10 bg-dark text-inv md:flex">
-        <Link href="/" className="px-5 py-4 font-display text-base font-bold tracking-tight text-inv">
+        <Link href="/" className="px-5 py-4 font-display text-base font-normal tracking-tight text-inv">
           GiftCraft <span className="text-xs font-normal text-inv/40">admin</span>
         </Link>
 
@@ -46,10 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input placeholder="Search orders, products, clients..." className="h-9 border-gray-200 bg-gray-50 pl-10 text-sm text-gray-700 placeholder:text-gray-500 focus:bg-white" />
           </div>
-          <button className="relative flex h-9 w-9 items-center justify-center rounded-md text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900" aria-label="Notifications, 3 unread">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 h-5 w-5 rounded-full bg-err flex items-center justify-center text-[10px] font-bold leading-none text-white">3</span>
-          </button>
+          <NotificationBell />
         </header>
 
         <main className="min-h-[calc(100vh-64px)] bg-gray-50 p-6 lg:p-8">{children}</main>

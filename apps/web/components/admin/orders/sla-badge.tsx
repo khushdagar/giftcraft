@@ -66,7 +66,7 @@ export function SLABadge({ enteredAt, slaMinutes }: SLABadgeProps) {
       {status === 'on-track' && <CheckCircle className={`h-3.5 w-3.5 ${colors.icon}`} />}
       {status === 'warning' && <Clock className={`h-3.5 w-3.5 ${colors.icon}`} />}
       {status === 'breached' && <AlertTriangle className={`h-3.5 w-3.5 ${colors.icon}`} />}
-      <span className={`text-xs font-semibold ${colors.text}`}>{timeDisplay}</span>
+      <span className={`text-xs font-normal ${colors.text}`}>{timeDisplay}</span>
     </div>
   );
 }

@@ -7,27 +7,34 @@ import { serializeProduct } from '@/lib/serialize';
 import { uploadToDigitalOcean } from '@/lib/upload-to-digital-ocean';
 
 const UpdateProductSchema = z.object({
-  name: z.string().min(3).optional(),
-  slug: z.string().regex(/^[a-z0-9-]+$/).optional(),
-  brand: z.string().optional(),
-  sku: z.string().optional(),
-  descriptionShort: z.string().optional(),
-  descriptionLong: z.string().optional(),
-  material: z.string().optional(),
-  lengthCm: z.number().min(0).optional(),
-  widthCm: z.number().min(0).optional(),
-  heightCm: z.number().min(0).optional(),
-  weightG: z.number().optional(),
-  status: z.enum(['active', 'draft', 'archived', 'seasonal']).optional(),
+  name: z.string().min(3).nullable().optional(),
+  slug: z.string().regex(/^[a-z0-9-]+$/).nullable().optional(),
+  brand: z.string().nullable().optional(),
+  sku: z.string().nullable().optional(),
+  descriptionShort: z.string().nullable().optional(),
+  descriptionLong: z.string().nullable().optional(),
+  material: z.string().nullable().optional(),
+  lengthCm: z.number().min(0).nullable().optional(),
+  widthCm: z.number().min(0).nullable().optional(),
+  heightCm: z.number().min(0).nullable().optional(),
+  weightG: z.number().nullable().optional(),
+  moq: z.number().int().nullable().optional(),
+  hsnCode: z.string().nullable().optional(),
+  status: z.enum(['active', 'draft', 'archived', 'seasonal']).nullable().optional(),
   printingTechnique: z
     .enum(['screen_print', 'uv_print', 'embroidery', 'laser_engraving', 'digital_print', 'emboss', 'none'])
+    .nullable()
     .optional(),
-  printingPosition: z.string().optional(),
-  leadTimeDays: z.number().int().optional(),
-  isEcoCertified: z.boolean().optional(),
-  isFeatured: z.boolean().optional(),
-  metaTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
+  printingPosition: z.string().nullable().optional(),
+  brandingArea: z.string().nullable().optional(),
+  leadTimeDays: z.number().int().nullable().optional(),
+  isEcoCertified: z.boolean().nullable().optional(),
+  ecoCertification: z.string().nullable().optional(),
+  sampleAvailable: z.boolean().nullable().optional(),
+  recipientTags: z.array(z.string()).nullable().optional(),
+  isFeatured: z.boolean().nullable().optional(),
+  metaTitle: z.string().nullable().optional(),
+  metaDescription: z.string().nullable().optional(),
   priceTiers: z
     .array(
       z.object({
@@ -38,19 +45,32 @@ const UpdateProductSchema = z.object({
         sellPrice: z.number().positive(),
       })
     )
+    .nullable()
     .optional(),
-  reason: z.string().optional(),
-  categoryIds: z.array(z.string()).optional(),
-  occasionIds: z.array(z.string()).optional(),
+  reason: z.string().nullable().optional(),
+  categoryIds: z.array(z.string()).nullable().optional(),
+  occasionIds: z.array(z.string()).nullable().optional(),
   variants: z.array(
     z.object({
       id: z.string().optional(),
-      kind: z.string(),
-      value: z.string(),
+      kind: z.string().min(1, 'Variant kind cannot be empty'),
+      value: z.string().min(1, 'Variant value cannot be empty'),
       hexColor: z.string().nullable().optional(),
-      sortOrder: z.number().optional(),
+      sortOrder: z.number().int().optional(),
     })
-  ).optional(),
+  ).nullable().optional(),
+  vendors: z.array(
+    z.object({
+      vendorId: z.string().min(1),
+      isPrimary: z.boolean().optional(),
+      costPrice: z.number().nonnegative().nullable().optional(),
+      vendorSku: z.string().nullable().optional(),
+      vendorMoq: z.number().int().nullable().optional(),
+      vendorLeadDays: z.number().int().nullable().optional(),
+      sourcingStatus: z.string().nullable().optional(),
+      lastPriceConfirmedAt: z.string().nullable().optional(),
+    })
+  ).nullable().optional(),
 });
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -165,12 +185,17 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           ...(data.widthCm !== undefined && { dimensionW: data.widthCm }),
           ...(data.heightCm !== undefined && { dimensionH: data.heightCm }),
           ...(data.weightG !== undefined && { weightG: data.weightG }),
+          ...(data.moq != null && { moq: data.moq }),
           ...(data.status && { status: data.status }),
           ...(data.printingTechnique && { printingTechnique: data.printingTechnique }),
           ...(data.printingPosition !== undefined && { printingPosition: data.printingPosition }),
+          ...(data.brandingArea !== undefined && { brandingArea: data.brandingArea }),
           ...(data.leadTimeDays && { leadTimeDays: data.leadTimeDays }),
-          ...(data.isEcoCertified !== undefined && { isEcoCertified: data.isEcoCertified }),
-          ...(data.isFeatured !== undefined && { isFeatured: data.isFeatured }),
+          ...(data.isEcoCertified != null && { isEcoCertified: data.isEcoCertified }),
+          ...(data.ecoCertification !== undefined && { ecoCertification: data.ecoCertification }),
+          ...(data.sampleAvailable != null && { sampleAvailable: data.sampleAvailable }),
+          ...(data.recipientTags !== undefined && { recipientTags: data.recipientTags ?? [] }),
+          ...(data.isFeatured != null && { isFeatured: data.isFeatured }),
           ...(data.metaTitle !== undefined && { metaTitle: data.metaTitle }),
           ...(data.metaDescription !== undefined && { metaDescription: data.metaDescription }),
         },
@@ -232,6 +257,22 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         }
       }
 
+      // Update HSN if provided (resolve code → HsnCode, auto-create if new)
+      if (data.hsnCode !== undefined && data.hsnCode && data.hsnCode.trim()) {
+        const code = data.hsnCode.trim();
+        let hsnCode = await tx.hsnCode.findUnique({ where: { code } });
+        if (!hsnCode) {
+          hsnCode = await tx.hsnCode.create({
+            data: { code, description: `HSN ${code}`, defaultGstRate: new Prisma.Decimal(18) },
+          });
+        }
+        await tx.productHsn.upsert({
+          where: { productId: params.id },
+          create: { productId: params.id, hsnId: hsnCode.id, gstRate: hsnCode.defaultGstRate },
+          update: { hsnId: hsnCode.id, gstRate: hsnCode.defaultGstRate },
+        });
+      }
+
       // Update variants if provided
       if (data.variants) {
         await tx.productVariant.deleteMany({ where: { productId: params.id } });
@@ -243,6 +284,28 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
               value: variant.value,
               hexColor: variant.hexColor || null,
               sortOrder: idx,
+            })),
+          });
+        }
+      }
+
+      // Update vendor links if provided (full replace)
+      if (data.vendors) {
+        await tx.productVendor.deleteMany({ where: { productId: params.id } });
+        if (data.vendors.length > 0) {
+          await tx.productVendor.createMany({
+            data: data.vendors.map((v) => ({
+              productId: params.id,
+              vendorId: v.vendorId,
+              isPrimary: v.isPrimary ?? false,
+              costPrice: v.costPrice != null ? new Prisma.Decimal(v.costPrice) : null,
+              vendorSku: v.vendorSku || null,
+              vendorMoq: v.vendorMoq ?? null,
+              vendorLeadDays: v.vendorLeadDays ?? null,
+              sourcingStatus: v.sourcingStatus || null,
+              lastPriceConfirmedAt: v.lastPriceConfirmedAt
+                ? new Date(v.lastPriceConfirmedAt)
+                : null,
             })),
           });
         }
@@ -331,7 +394,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   } catch (error) {
     console.error('Error updating product:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
+      const formattedErrors = error.errors.map((e) => ({
+        path: e.path.join('.'),
+        message: e.message,
+        code: e.code,
+      }));
+      console.error('Validation errors:', formattedErrors);
+      return NextResponse.json({ error: formattedErrors }, { status: 400 });
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -353,13 +422,30 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    // Soft delete: set status to archived
-    await prisma.product.update({
-      where: { id: params.id },
-      data: { status: 'archived' },
-    });
+    // Products referenced by real orders or sample orders can't be hard-deleted
+    // without destroying that history — archive them instead.
+    const [orderItems, sampleOrders] = await Promise.all([
+      prisma.orderItem.count({ where: { productId: params.id } }),
+      prisma.sampleOrder.count({ where: { productId: params.id } }),
+    ]);
 
-    return NextResponse.json({ archived: true });
+    if (orderItems > 0 || sampleOrders > 0) {
+      await prisma.product.update({
+        where: { id: params.id },
+        data: { status: 'archived' },
+      });
+      return NextResponse.json({ archived: true, reason: 'referenced_by_orders' });
+    }
+
+    // Otherwise hard delete. Most relations cascade; remove the two that don't
+    // (price-audit log + GOC options are product metadata, safe to drop).
+    await prisma.$transaction([
+      prisma.priceAuditLog.deleteMany({ where: { productId: params.id } }),
+      prisma.gocOption.deleteMany({ where: { productId: params.id } }),
+      prisma.product.delete({ where: { id: params.id } }),
+    ]);
+
+    return NextResponse.json({ deleted: true });
   } catch (error) {
     console.error('Error deleting product:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -7,7 +7,7 @@ export default function NotFound() {
       <div className="container-gc-w max-w-lg text-center">
         {/* 404 */}
         <div className="rounded-md border-2 border-err/20 bg-err/5 p-12 mb-8">
-          <p className="text-7xl font-black text-err">404</p>
+          <p className="text-7xl font-normal text-err">404</p>
         </div>
 
         {/* Heading */}
@@ -32,7 +32,7 @@ export default function NotFound() {
         {/* Help Link */}
         <p className="text-sm text-ink-3">
           Still need help?{' '}
-          <Link href="/contact" className="text-em font-semibold hover:underline">
+          <Link href="/contact" className="text-em font-normal hover:underline">
             Get in touch
           </Link>
         </p>

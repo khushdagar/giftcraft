@@ -315,12 +315,13 @@ describe("Pricing Engine", () => {
       // HSN 4820: 1000 * 50 = 50000, GST 12% = 6000, CGST=3000, SGST=3000
       // HSN 6505: 500 * 50 = 25000, GST 18% = 4500, CGST=2250, SGST=2250
       // HSN 4819 (packaging+addons): 3750, GST 18% = 675, CGST=337.5, SGST=337.5
-      // HSN 9965 (shipping): 1000, GST 18% = 180, CGST=90, SGST=90
-      // Total CGST = 3000 + 2250 + 337.5 + 90 = 5677.5
-      // Total SGST = 5677.5
-      // Total GST = 11355
+      // Shipping is GST-inclusive (Shiprocket) — no separate shipping GST line.
+      // Total CGST = 3000 + 2250 + 337.5 = 5587.5
+      // Total SGST = 5587.5
+      // Total GST = 11175
 
-      expect(result.hsnBreakdown.length).toBe(4);
+      expect(result.hsnBreakdown.length).toBe(3);
+      expect(result.hsnBreakdown.some((l) => l.hsnCode === "9965")).toBe(false);
       expect(result.hsnBreakdown[0].hsnCode).toBe("4820");
       expect(result.hsnBreakdown[0].gstRate).toBe(12);
       expect(result.hsnBreakdown[1].hsnCode).toBe("6505");

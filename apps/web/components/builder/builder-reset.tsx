@@ -12,29 +12,30 @@ export function BuilderReset() {
   const searchParams = useSearchParams();
   const clearAll = useBuilderStore((state) => state.clearAll);
   const setCurrentStep = useBuilderStore((state) => state.setCurrentStep);
-  const products = useBuilderStore((state) => state.products);
 
   useEffect(() => {
     // Check if we're entering builder fresh from product detail page
     const productParam = searchParams.get('product');
 
     if (productParam) {
-      // Only reset if no products have been added yet (true fresh start from product detail)
-      // If products exist, they were just added from catalog "Add to Pack", so preserve them
-      if (products.length === 0) {
-        // Clear persisted localStorage state for fresh start
+      // Read LIVE state (not a stale closure) so we don't wipe a product that
+      // BuilderContent may have just added from the ?product=&qty= params.
+      const liveProducts = useBuilderStore.getState().products;
+
+      // Only reset if no products have been added yet (true fresh start)
+      if (liveProducts.length === 0) {
         try {
           localStorage.removeItem('giftcraft-builder');
         } catch (e) {
           // Ignore errors
         }
 
-        // Clear all builder state and reset to step 1
         clearAll();
         setCurrentStep(1);
       }
     }
-  }, [searchParams, products.length, clearAll, setCurrentStep]);
+    // Intentionally run only on searchParams change — we read live store state inside.
+  }, [searchParams, clearAll, setCurrentStep]);
 
   return null;
 }

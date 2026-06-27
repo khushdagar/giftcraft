@@ -108,12 +108,12 @@ export default function DashboardSamplesPage() {
         className="flex items-center justify-between"
       >
         <div>
-          <h1 className="text-3xl font-black text-ink">Sample Orders</h1>
+          <h1 className="text-3xl font-normal text-ink">Sample Orders</h1>
           <p className="text-sm text-ink-2 mt-1">Request and track product samples</p>
         </div>
         <Button
           onClick={() => setShowModal(true)}
-          className="bg-navy-800 hover:bg-navy-900 text-white font-bold rounded-2xl px-6 py-3"
+          className="bg-navy-800 hover:bg-navy-900 text-white font-normal rounded-2xl px-6 py-3"
         >
           Request Sample
         </Button>
@@ -130,7 +130,7 @@ export default function DashboardSamplesPage() {
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition border-2 ${
+            className={`px-4 py-2 rounded-full text-sm font-normal transition border-2 ${
               filterStatus === status
                 ? 'bg-navy-800 text-white border-navy-800'
                 : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
@@ -150,7 +150,7 @@ export default function DashboardSamplesPage() {
           className="bg-gray-50 rounded-md border-2 border-gray-200 p-12 text-center"
         >
           <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-ink mb-2">No samples yet</h3>
+          <h3 className="text-lg font-normal text-ink mb-2">No samples yet</h3>
           <p className="text-ink-2 mb-6">
             {filterStatus === 'all'
               ? 'You haven\'t requested any samples yet.'
@@ -161,7 +161,7 @@ export default function DashboardSamplesPage() {
               setFilterStatus('all');
               setShowModal(true);
             }}
-            className="bg-navy-800 hover:bg-navy-900 text-white font-bold rounded-2xl px-6 py-2"
+            className="bg-navy-800 hover:bg-navy-900 text-white font-normal rounded-2xl px-6 py-2"
           >
             Request Your First Sample
           </Button>
@@ -194,7 +194,7 @@ export default function DashboardSamplesPage() {
                 <div className="absolute top-3 right-3">
                   <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${badge.bg} border-2 ${badge.border} backdrop-blur-sm`}>
                     <span className="text-sm">{badge.icon}</span>
-                    <span className={`text-xs font-semibold ${badge.text}`}>{badge.label}</span>
+                    <span className={`text-xs font-normal ${badge.text}`}>{badge.label}</span>
                   </div>
                 </div>
               </div>
@@ -202,7 +202,7 @@ export default function DashboardSamplesPage() {
               {/* Content */}
               <div className="p-4 space-y-3">
                 <div>
-                  <h3 className="font-bold text-ink">{sample.product.name}</h3>
+                  <h3 className="font-normal text-ink">{sample.product.name}</h3>
                   <p className="text-sm text-ink-2 mt-1">
                     Regular price: ₹{sample.product.basePrice}
                   </p>
@@ -231,7 +231,7 @@ export default function DashboardSamplesPage() {
                 {/* Notes */}
                 {sample.adminNotes && (
                   <div className="bg-white rounded-md p-2 border border-gray-200">
-                    <p className="text-xs font-semibold text-ink-2 mb-1">Admin Notes</p>
+                    <p className="text-xs font-normal text-ink-2 mb-1">Admin Notes</p>
                     <p className="text-xs text-ink-3">{sample.adminNotes}</p>
                   </div>
                 )}
@@ -241,14 +241,14 @@ export default function DashboardSamplesPage() {
                   {canConvert && (
                     <Link
                       href={`/builder?product=${sample.product.id}`}
-                      className="block text-center px-4 py-2 bg-em hover:bg-em-700 text-white text-sm font-bold rounded-2xl transition"
+                      className="block text-center px-4 py-2 bg-em hover:bg-em-700 text-white text-sm font-normal rounded-2xl transition"
                     >
                       Convert to Bulk Order
                     </Link>
                   )}
                   {sample.status === 'shipped' && (
                     <button
-                      className="w-full px-4 py-2 bg-sky-100 hover:bg-sky-200 text-sky-700 text-sm font-bold rounded-2xl transition border-2 border-sky-200"
+                      className="w-full px-4 py-2 bg-sky-100 hover:bg-sky-200 text-sky-700 text-sm font-normal rounded-2xl transition border-2 border-sky-200"
                     >
                       Track Shipment
                     </button>

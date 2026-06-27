@@ -3,21 +3,12 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBuilderStore } from '@/store/builder';
-import { INDIAN_STATES } from '@/lib/constants';
 import { computePricing } from '@giftcraft/pricing';
+import { computeOrderShipping } from '@/lib/shipping';
+import { SELLER_STATE_CODE } from '@/lib/constants';
+import { resolveBuyerStateCode } from '@/lib/pincode-to-state';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-
-interface DeliveryFormData {
-  recipientName: string;
-  companyName: string;
-  address1: string;
-  address2: string;
-  city: string;
-  state: string;
-  pincode: string;
-}
+import { ChevronLeft, ChevronRight, MapPin, CalendarDays, Users } from 'lucide-react';
 
 export function Step4Review() {
   const router = useRouter();
@@ -25,8 +16,6 @@ export function Step4Review() {
     deliveryMode,
     address,
     delivDate,
-    setAddress,
-    setDelivDate,
     setCurrentStep,
     products,
     packQuantity,
@@ -35,76 +24,90 @@ export function Step4Review() {
     sleeve,
     shippingZone,
     coupon,
+    logo,
+    brandingNotes,
+    cardMessage,
+    pincode,
+    csvRecipientCount,
   } = useBuilderStore();
-
-  const [formData, setFormData] = useState<DeliveryFormData>({
-    recipientName: address?.name || '',
-    companyName: address?.company || '',
-    address1: address?.address1 || '',
-    address2: address?.address2 || '',
-    city: address?.city || '',
-    state: address?.state || '',
-    pincode: address?.pincode || '',
-  });
 
   const [loading, setLoading] = useState(false);
 
-  // Calculate delivery confidence
-  const getDeliveryConfidence = () => {
-    if (!delivDate) return null;
-    const selectedDate = new Date(delivDate);
-    const today = new Date();
-    const daysUntil = Math.ceil((selectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  // Delivery details are entered (and auto-saved) in Step 3. Step 4 only reviews
+  // them, so confirm they're complete before allowing the order to proceed.
+  // Which required address fields are still missing (single-location delivery).
+  const missingAddressFields: string[] = [];
+  if (deliveryMode === 'single') {
+    if (!address?.name?.trim()) missingAddressFields.push('Name');
+    if (!address?.address1?.trim()) missingAddressFields.push('Address Line 1');
+    if (!address?.city?.trim()) missingAddressFields.push('City');
+    if (!address?.state) missingAddressFields.push('State');
+    if (!/^\d{6}$/.test(address?.pincode || '')) missingAddressFields.push('a 6-digit Pincode');
+    if (!address?.phone?.trim()) missingAddressFields.push('Phone');
+  }
 
-    if (daysUntil < 7) return { level: 'tight', color: 'text-red-600', label: 'Very Tight' };
-    if (daysUntil < 14) return { level: 'moderate', color: 'text-amber-600', label: 'Moderate' };
-    return { level: 'comfortable', color: 'text-green-600', label: 'Comfortable' };
-  };
+  const deliveryComplete =
+    deliveryMode === 'individual'
+      ? csvRecipientCount > 0
+      : missingAddressFields.length === 0;
 
-  const handleAddressChange = (field: keyof DeliveryFormData, value: string) => {
-    const updated = { ...formData, [field]: value };
-    setFormData(updated);
-    setAddress({
-      name: updated.recipientName,
-      company: updated.companyName,
-      address1: updated.address1,
-      address2: updated.address2,
-      city: updated.city,
-      state: updated.state,
-      pincode: updated.pincode,
-      phone: address?.phone || '',
-    });
-  };
+  // An address is partially entered (so show what's missing rather than "none").
+  const hasPartialAddress =
+    deliveryMode === 'single' &&
+    !!(address?.name?.trim() || address?.address1?.trim() || address?.pincode?.trim());
 
-  const handleDateChange = (date: string) => {
-    setDelivDate(date);
-  };
+  // Calculate pricing for quote creation. Shipping uses the quoted cost from the
+  // estimate API (Shiprocket real-time courier rate, or zone fallback); recompute
+  // locally only as a safety net if no pincode has been checked yet.
+  const shippingFlat =
+    shippingZone?.shippingCost ??
+    computeOrderShipping({
+      // One unit of each product per pack; packQuantity is the multiplier.
+      products: products.map((p) => ({
+        weightG: p.weightG,
+        quantity: 1,
+        sellPrice: p.sellPrice,
+        dimensionL: p.dimensionL,
+        dimensionW: p.dimensionW,
+        dimensionH: p.dimensionH,
+      })),
+      zone: shippingZone,
+      packQuantity,
+      deliveryMode,
+    }).shippingCost;
 
-  // Calculate pricing for quote creation
-  const shippingRatePerPack = deliveryMode === 'single' ? 90 : 140;
-  const shippingFlat = shippingRatePerPack * packQuantity;
+  // GST split (CGST+SGST vs IGST) is determined by the buyer's delivery state
+  // (SOW §3.4.4). The selected state is authoritative — Delhi (= seller state)
+  // → CGST+SGST, any other state → IGST — with the pincode as a fallback. Only
+  // when neither resolves do we default to the seller state (intra-state).
+  const buyerStateCode =
+    resolveBuyerStateCode(address?.state, address?.pincode || pincode) ||
+    SELLER_STATE_CODE;
 
   const pricing = useMemo(() => {
     const productsForPricing = products.map((p) => ({
       sellPrice: p.sellPrice,
-      quantity: p.quantity,
+      // One unit of each product per pack; packQuantity is the multiplier.
+      // (Matches the server-side recompute in /api/orders.)
+      quantity: 1,
       hsnCode: p.hsnCode || '4820',
       gstRate: p.gstRate || 18,
     }));
 
     return computePricing({
       products: productsForPricing,
-      packagingPerUnit: packaging?.price || 0,
-      addonsPerUnit: addons.reduce((sum, a) => sum + a.price, 0) + (sleeve ? 60 : 0),
+      packagingPerUnit: Number(packaging?.price) || 0,
+      addonsPerUnit: addons.reduce((sum, a) => sum + Number(a.price), 0) + (sleeve ? 60 : 0),
       packQuantity,
       shippingFlat,
       discount: coupon?.discountAmount || 0,
-      sellerStateCode: 'DL',
-      buyerStateCode: 'DL', // Default to Delhi; state code mapping not yet available
-      razorpayFeePct: 2.36,
-      razorpayFeeGstPct: 18,
+      sellerStateCode: SELLER_STATE_CODE,
+      buyerStateCode,
+      // Flat 2% payment-processing fee on the amount (no GST-on-fee added).
+      razorpayFeePct: 2,
+      razorpayFeeGstPct: 0,
     });
-  }, [products, packQuantity, packaging, addons, sleeve, shippingFlat, coupon, shippingZone]);
+  }, [products, packQuantity, packaging, addons, sleeve, shippingFlat, coupon, shippingZone, buyerStateCode]);
 
   const handleProceedToCheckout = async () => {
     setLoading(true);
@@ -122,6 +125,14 @@ export function Step4Review() {
           pricing,
           deliveryMode,
           discount: coupon?.discountAmount || 0,
+          logoUrl: logo?.url || null,
+          brandingNotes,
+          cardMessage,
+          // Delivery details collected in Step 3
+          address,
+          delivDate,
+          pincode,
+          csvRecipientCount,
         }),
       });
 
@@ -138,15 +149,24 @@ export function Step4Review() {
     }
   };
 
-  const today = new Date().toISOString().split('T')[0];
-  const confidence = getDeliveryConfidence();
+  const formattedDate = delivDate
+    ? new Date(delivDate).toLocaleDateString('en-IN', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : null;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <p className="overline text-ink-3">STEP 04</p>
-        <h2 className="text-3xl font-black mt-1">Review & Order</h2>
+        <h2 className="text-3xl font-black mt-1">Review &amp; Order</h2>
+        <p className="text-sm text-ink-3 mt-1">
+          Confirm your delivery details below. To edit them, go back to the Delivery step.
+        </p>
       </div>
 
       {/* Delivery Mode Display */}
@@ -171,116 +191,102 @@ export function Step4Review() {
         </div>
       </div>
 
-      {/* Delivery Address Form */}
-      <div className="bg-white rounded-md border-2 border-bdr p-6 space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
-          Delivery Address
-        </p>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            type="text"
-            placeholder="Recipient Name *"
-            value={formData.recipientName}
-            onChange={(e) => handleAddressChange('recipientName', e.target.value)}
-            className="rounded-md"
-            required
-          />
-          <Input
-            type="text"
-            placeholder="Company Name"
-            value={formData.companyName}
-            onChange={(e) => handleAddressChange('companyName', e.target.value)}
-            className="rounded-md"
-          />
-        </div>
-
-        <Input
-          type="text"
-          placeholder="Address Line 1 *"
-          value={formData.address1}
-          onChange={(e) => handleAddressChange('address1', e.target.value)}
-          className="rounded-md"
-          required
-        />
-
-        <Input
-          type="text"
-          placeholder="Address Line 2 (Optional)"
-          value={formData.address2}
-          onChange={(e) => handleAddressChange('address2', e.target.value)}
-          className="rounded-md"
-        />
-
-        <div className="grid grid-cols-3 gap-2">
-          <Input
-            type="text"
-            placeholder="City *"
-            value={formData.city}
-            onChange={(e) => handleAddressChange('city', e.target.value)}
-            className="rounded-md"
-            required
-          />
-          <select
-            value={formData.state}
-            onChange={(e) => handleAddressChange('state', e.target.value)}
-            className="rounded-md border-2 border-bdr px-3 py-2 bg-white text-sm text-ink"
-            required
-          >
-            <option value="">State *</option>
-            {INDIAN_STATES.map((state) => (
-              <option key={state} value={state}>
-                {state}
-              </option>
-            ))}
-          </select>
-          <Input
-            type="text"
-            placeholder="Pincode *"
-            value={formData.pincode}
-            maxLength={6}
-            onChange={(e) => {
-              const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-              handleAddressChange('pincode', val);
-            }}
-            className="rounded-md"
-            required
-          />
-        </div>
-      </div>
-
-      {/* Preferred Delivery Date */}
-      <div className="bg-white rounded-md border-2 border-bdr p-6 space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-4">
-          Preferred Delivery Date
-        </p>
-
-        <div className="flex items-start gap-4">
-          <div className="flex-1">
-            <Input
-              type="date"
-              value={delivDate || ''}
-              onChange={(e) => handleDateChange(e.target.value)}
-              min={today}
-              className="rounded-md"
-            />
-            <p className="text-xs text-ink-3 mt-2">Select your preferred delivery date</p>
+      {/* Delivery Address — read-only summary (single location) */}
+      {deliveryMode === 'single' && (
+        <div className="bg-white rounded-md border-2 border-bdr p-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+              Delivery Address
+            </p>
+            <button
+              onClick={() => setCurrentStep(3)}
+              className="text-xs font-semibold text-em hover:underline"
+            >
+              Edit
+            </button>
           </div>
 
-          {confidence && (
-            <div className="flex flex-col items-end">
-              <div className={`text-xs font-semibold ${confidence.color} mb-1`}>
-                {confidence.label}
+          {deliveryComplete ? (
+            <div className="flex items-start gap-3">
+              <MapPin className="h-5 w-5 text-ink-3 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-ink leading-relaxed">
+                <p className="font-semibold">{address?.name}</p>
+                {address?.company && <p className="text-ink-2">{address.company}</p>}
+                <p className="text-ink-2">{address?.address1}</p>
+                {address?.address2 && <p className="text-ink-2">{address.address2}</p>}
+                <p className="text-ink-2">
+                  {address?.city}, {address?.state} {address?.pincode}
+                </p>
+                {address?.phone && <p className="text-ink-2 mt-1">📞 {address.phone}</p>}
               </div>
-              <div className={`w-12 h-2 rounded-full ${
-                confidence.level === 'tight' ? 'bg-red-200' :
-                confidence.level === 'moderate' ? 'bg-amber-200' :
-                'bg-green-200'
-              }`} />
             </div>
+          ) : hasPartialAddress ? (
+            <div className="text-sm text-amber-700">
+              <p className="font-semibold">Address is incomplete.</p>
+              <p className="mt-1 text-xs">
+                Still needed: {missingAddressFields.join(', ')}. Tap “Edit” to fix it.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-amber-700">
+              No delivery address yet. Go back to the Delivery step to add one.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Recipients summary (individual delivery) */}
+      {deliveryMode === 'individual' && (
+        <div className="bg-white rounded-md border-2 border-bdr p-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Recipients</p>
+            <button
+              onClick={() => setCurrentStep(3)}
+              className="text-xs font-semibold text-em hover:underline"
+            >
+              Edit
+            </button>
+          </div>
+          <div className="flex items-center gap-3 text-sm text-ink">
+            <Users className="h-5 w-5 text-ink-3" />
+            {csvRecipientCount > 0 ? (
+              <span className="font-semibold">{csvRecipientCount} recipients uploaded</span>
+            ) : (
+              <span className="text-amber-700">
+                No recipients uploaded yet. Go back to the Delivery step to add them.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Preferred Delivery Date — read-only */}
+      <div className="bg-white rounded-md border-2 border-bdr p-6">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+            Estimated Delivery
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-sm text-ink">
+          <CalendarDays className="h-5 w-5 text-ink-3" />
+          {formattedDate ? (
+            <span className="font-semibold">{formattedDate}</span>
+          ) : (
+            <span className="text-ink-3">Calculated from product lead times</span>
           )}
         </div>
       </div>
+
+      {/* Incomplete notice */}
+      {!deliveryComplete && (
+        <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
+          <p className="text-xs text-amber-800">
+            {deliveryMode === 'single'
+              ? `Please complete your delivery address before placing the order — still needed: ${missingAddressFields.join(', ')}.`
+              : 'Please upload your recipients list in the Delivery step before placing the order.'}
+          </p>
+        </div>
+      )}
 
       {/* Navigation Buttons */}
       <div className="flex items-center justify-between gap-4 pt-4">
@@ -294,7 +300,7 @@ export function Step4Review() {
         </Button>
         <Button
           onClick={handleProceedToCheckout}
-          disabled={loading || !formData.recipientName || !formData.address1 || !formData.city || !formData.state || !formData.pincode}
+          disabled={loading || !deliveryComplete}
           variant="em"
           className="gap-2 rounded-md"
         >

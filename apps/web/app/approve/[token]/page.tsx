@@ -21,14 +21,14 @@ interface ApprovalData {
     id: string;
     orderNumber: string;
     grandTotal: number;
-    deliveryDate: string;
+    deliveryDate: string | null;
     items: Array<{
       product: { name: string; slug: string };
       quantity: number;
       unitPrice: number;
     }>;
-    company: { name: string };
-    placedBy: { name: string };
+    company: { name: string } | null;
+    placedBy: { name: string } | null;
   };
 }
 
@@ -160,11 +160,11 @@ export default function ApprovePage({ params }: PageProps) {
           className="bg-white rounded-md border-2 border-err p-8 max-w-md w-full text-center"
         >
           <AlertCircle className="w-16 h-16 text-err mx-auto mb-4" />
-          <h1 className="text-2xl font-black text-ink mb-2">Oops!</h1>
+          <h1 className="text-2xl font-normal text-ink mb-2">Oops!</h1>
           <p className="text-ink-2 mb-6">{error}</p>
           <a
             href="/"
-            className="inline-block px-6 py-2 rounded-2xl bg-em text-white font-bold hover:bg-em-700 transition"
+            className="inline-block px-6 py-2 rounded-2xl bg-em text-white font-normal hover:bg-em-700 transition"
           >
             Back to Home
           </a>
@@ -187,7 +187,7 @@ export default function ApprovePage({ params }: PageProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-black text-ink">Design Approval</h1>
+              <h1 className="text-3xl font-normal text-ink">Design Approval</h1>
               <p className="text-sm text-ink-2 mt-1">
                 Order {approval.order.orderNumber} • Revision {approval.revision}
               </p>
@@ -195,7 +195,7 @@ export default function ApprovePage({ params }: PageProps) {
             {isApproved && (
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-50 border-2 border-em-200">
                 <CheckCircle className="w-5 h-5 text-em" />
-                <span className="font-semibold text-em text-sm">Approved</span>
+                <span className="font-normal text-em text-sm">Approved</span>
               </div>
             )}
           </div>
@@ -211,7 +211,7 @@ export default function ApprovePage({ params }: PageProps) {
             className="mb-6 p-4 rounded-md bg-emerald-50 border-2 border-em-200 flex gap-3"
           >
             <CheckCircle className="w-5 h-5 text-em flex-shrink-0 mt-0.5" />
-            <p className="text-em text-sm font-semibold">{successMessage}</p>
+            <p className="text-em text-sm font-normal">{successMessage}</p>
           </motion.div>
         )}
 
@@ -252,33 +252,37 @@ export default function ApprovePage({ params }: PageProps) {
               transition={{ delay: 0.2 }}
               className="bg-sky-50 rounded-md border-2 border-sky-200 p-4"
             >
-              <h3 className="text-sm font-bold text-sky-700 mb-3">Order Summary</h3>
+              <h3 className="text-sm font-normal text-sky-700 mb-3">Order Summary</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-ink-2">Order #</span>
-                  <span className="font-semibold text-ink">{approval.order.orderNumber}</span>
+                  <span className="font-normal text-ink">{approval.order.orderNumber}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-2">Company</span>
-                  <span className="font-semibold text-ink text-right">{approval.order.company.name}</span>
+                  <span className="font-normal text-ink text-right">
+                    {approval.order.company?.name || approval.order.placedBy?.name || '—'}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-ink-2">Quantity</span>
-                  <span className="font-semibold text-ink">
+                  <span className="font-normal text-ink">
                     {approval.order.items.reduce((sum, item) => sum + item.quantity, 0)} items
                   </span>
                 </div>
                 <div className="border-t border-sky-200 pt-2 mt-2 flex justify-between">
                   <span className="text-ink-2">Total Amount</span>
-                  <span className="text-xl font-black text-ink">
+                  <span className="text-xl font-normal text-ink">
                     {formatRupees(approval.order.grandTotal)}
                   </span>
                 </div>
-                <div className="border-t border-sky-200 pt-2 mt-2">
-                  <span className="text-xs text-ink-3">
-                    Delivery by {new Date(approval.order.deliveryDate).toLocaleDateString('en-IN')}
-                  </span>
-                </div>
+                {approval.order.deliveryDate && (
+                  <div className="border-t border-sky-200 pt-2 mt-2">
+                    <span className="text-xs text-ink-3">
+                      Delivery by {new Date(approval.order.deliveryDate).toLocaleDateString('en-IN')}
+                    </span>
+                  </div>
+                )}
               </div>
             </motion.div>
 
@@ -292,7 +296,7 @@ export default function ApprovePage({ params }: PageProps) {
               >
                 {/* Approve Button */}
                 <div className="bg-emerald-50 rounded-md border-2 border-em-200 p-4 space-y-3">
-                  <h3 className="text-sm font-bold text-em-700">Approve Artwork</h3>
+                  <h3 className="text-sm font-normal text-em-700">Approve Artwork</h3>
                   <label className="flex items-start gap-3 cursor-pointer group">
                     <input
                       type="checkbox"
@@ -307,7 +311,7 @@ export default function ApprovePage({ params }: PageProps) {
                   <Button
                     onClick={handleApprove}
                     disabled={!confirmChecked || submitting}
-                    className="w-full bg-em hover:bg-em-700 text-white font-bold rounded-2xl py-3 disabled:opacity-50"
+                    className="w-full bg-em hover:bg-em-700 text-white font-normal rounded-2xl py-3 disabled:opacity-50"
                   >
                     {submitting ? 'Approving...' : 'Approve & Proceed'}
                   </Button>
@@ -315,7 +319,7 @@ export default function ApprovePage({ params }: PageProps) {
 
                 {/* Revision Button */}
                 <div className="bg-rose-50 rounded-md border-2 border-rose-200 p-4 space-y-3">
-                  <h3 className="text-sm font-bold text-rose-700">Request Changes</h3>
+                  <h3 className="text-sm font-normal text-rose-700">Request Changes</h3>
                   <p className="text-xs text-ink-3">
                     Need adjustments? Let our team know what changes you'd like.
                   </p>
@@ -323,7 +327,7 @@ export default function ApprovePage({ params }: PageProps) {
                     <Button
                       onClick={() => setShowRevisionForm(true)}
                       variant="outline"
-                      className="w-full border-rose-300 text-rose-700 hover:bg-rose-100 rounded-2xl font-bold"
+                      className="w-full border-rose-300 text-rose-700 hover:bg-rose-100 rounded-2xl font-normal"
                     >
                       Request Revision
                     </Button>
@@ -340,7 +344,7 @@ export default function ApprovePage({ params }: PageProps) {
                         <Button
                           onClick={handleRevisionSubmit}
                           disabled={!revisionNotes.trim() || submitting}
-                          className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-2xl py-2 disabled:opacity-50"
+                          className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-normal rounded-2xl py-2 disabled:opacity-50"
                         >
                           {submitting ? 'Sending...' : 'Send Notes'}
                         </Button>
@@ -350,7 +354,7 @@ export default function ApprovePage({ params }: PageProps) {
                             setRevisionNotes('');
                           }}
                           variant="outline"
-                          className="flex-1 border-bdr rounded-2xl font-bold"
+                          className="flex-1 border-bdr rounded-2xl font-normal"
                         >
                           Cancel
                         </Button>
@@ -372,7 +376,7 @@ export default function ApprovePage({ params }: PageProps) {
                 <div className="flex gap-3">
                   <CheckCircle className="w-5 h-5 text-em flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-bold text-em-700">Already Approved</p>
+                    <p className="text-sm font-normal text-em-700">Already Approved</p>
                     <p className="text-xs text-ink-2 mt-1">
                       This artwork was approved on{' '}
                       {new Date(approval.approvedAt!).toLocaleDateString('en-IN')}

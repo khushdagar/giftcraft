@@ -68,7 +68,7 @@ export default function AddonsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Add-ons</h1>
+          <h1 className="text-3xl font-normal">Add-ons</h1>
           <p className="text-gray-600 mt-1">Manage thank-you cards, ribbons, and other add-ons</p>
         </div>
         <Link href="/admin/addons/new" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
@@ -91,11 +91,11 @@ export default function AddonsPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Price</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Order</th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">Status</th>
-                <th className="px-6 py-3 text-right text-sm font-semibold">Actions</th>
+                <th className="px-6 py-3 text-left text-sm font-normal">Name</th>
+                <th className="px-6 py-3 text-left text-sm font-normal">Price</th>
+                <th className="px-6 py-3 text-left text-sm font-normal">Order</th>
+                <th className="px-6 py-3 text-left text-sm font-normal">Status</th>
+                <th className="px-6 py-3 text-right text-sm font-normal">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -108,11 +108,11 @@ export default function AddonsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="font-semibold">₹{addon.price}</span>
+                    <span className="font-normal">₹{addon.price}</span>
                   </td>
                   <td className="px-6 py-4 text-sm">{addon.sortOrder}</td>
                   <td className="px-6 py-4">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${addon.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-normal ${addon.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                       {addon.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>

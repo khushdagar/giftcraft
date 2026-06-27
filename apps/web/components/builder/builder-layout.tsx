@@ -13,10 +13,29 @@ const STEPS = [
 ];
 
 export function BuilderLayout({ children }: { children: ReactNode }) {
-  const { currentStep, setCurrentStep, products } = useBuilderStore();
+  const { currentStep, setCurrentStep, products, deliveryMode, address, csvRecipientCount } =
+    useBuilderStore();
+
+  // Step 3 (Delivery) must be complete before leaving it:
+  //  · single delivery  → a fully valid address (incl. 6-digit pincode)
+  //  · individual       → at least one recipient uploaded
+  const step3Valid =
+    deliveryMode === 'individual'
+      ? csvRecipientCount > 0
+      : !!(
+          address?.name?.trim() &&
+          address?.address1?.trim() &&
+          address?.city?.trim() &&
+          address?.state &&
+          /^\d{6}$/.test(address?.pincode || '') &&
+          address?.phone?.trim()
+        );
+
+  // Block moving forward out of Step 3 until it's valid.
+  const blockedAtStep3 = currentStep === 3 && !step3Valid;
 
   const canGoBack = currentStep > 1;
-  const canGoForward = currentStep < 4 && products.length > 0;
+  const canGoForward = currentStep < 4 && products.length > 0 && !blockedAtStep3;
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -29,7 +48,12 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
               <div key={step.id} className="flex items-center gap-4">
                 {/* Step Circle */}
                 <button
-                  onClick={() => setCurrentStep(step.id as 1 | 2 | 3 | 4)}
+                  onClick={() => {
+                    // Allow going back/to current freely, but don't let users
+                    // jump forward past an incomplete Delivery step.
+                    if (step.id > currentStep && blockedAtStep3) return;
+                    setCurrentStep(step.id as 1 | 2 | 3 | 4);
+                  }}
                   className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-sm transition cursor-pointer ${
                     currentStep === step.id
                       ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
@@ -100,6 +124,13 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
             disabled={!canGoForward}
             variant="em"
             className="gap-2 rounded-md"
+            title={
+              blockedAtStep3
+                ? deliveryMode === 'individual'
+                  ? 'Upload your recipients list to continue'
+                  : 'Complete the delivery address (incl. 6-digit pincode) to continue'
+                : undefined
+            }
           >
             {currentStep === 4 ? 'Place Order' : 'Continue'}
             {currentStep !== 4 && <ChevronRight className="h-4 w-4" />}

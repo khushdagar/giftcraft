@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
-import { INDIAN_STATES, DELIVERY_RATES } from '@/lib/constants';
+import { INDIAN_STATES } from '@/lib/constants';
+import { computeOrderShipping, perPackWeightKg, perPackVolumetricKg } from '@/lib/shipping';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -95,7 +96,16 @@ export function Step3Delivery() {
   const [formAddress, setFormAddress] = useState(
     address || { name: '', company: '', address1: '', address2: '', city: '', state: '', pincode: '', phone: '' }
   );
-  const [addressError, setAddressError] = useState<string | null>(null);
+
+  // Persist the address to the store on every change so it survives step
+  // navigation / reload and flows into the quote — no manual "Save" needed.
+  const updateAddress = (patch: Partial<typeof formAddress>) => {
+    setFormAddress((prev) => {
+      const next = { ...prev, ...patch };
+      setAddress(next);
+      return next;
+    });
+  };
 
   // Calculate tier pricing from products
   const allTiers: PriceTier[] = [];
@@ -132,51 +142,73 @@ export function Step3Delivery() {
     setPackQuantity(Math.max(min, newQty));
   };
 
-  // Delivery date helper
-  const today = new Date().toISOString().split('T')[0];
-  const maxLeadTimeDays = Math.max(...products.map((p) => p.leadTimeDays || 14));
-  // Allow selection up to 90 days in the future (production window + buffer)
-  const allowedDeliveryDays = Math.max(maxLeadTimeDays, 90);
-  const maxDeliveryDate = new Date();
-  maxDeliveryDate.setDate(maxDeliveryDate.getDate() + allowedDeliveryDays);
-  const maxDeliveryDateStr = maxDeliveryDate.toISOString().split('T')[0];
+  // Estimated delivery — auto-calculated, not chosen by the customer:
+  //   max product (vendor) lead time + packaging buffer + shipping ETA.
+  // The shipping leg uses the resolved zone's REAL ETA (etaMin/etaMax by pincode)
+  // once a pincode is entered; before that it falls back to a default range.
+  const PACKAGING_DAYS = 4;
+  const DEFAULT_SHIPPING_MIN = 4;
+  const DEFAULT_SHIPPING_MAX = 7;
+  const maxLeadTimeDays = products.length
+    ? Math.max(...products.map((p) => p.leadTimeDays || 14))
+    : 14;
+  const shippingMinDays = shippingZone?.etaMinDays ?? DEFAULT_SHIPPING_MIN;
+  const shippingMaxDays = shippingZone?.etaMaxDays ?? DEFAULT_SHIPPING_MAX;
+  const totalDaysMin = maxLeadTimeDays + PACKAGING_DAYS + shippingMinDays;
+  const totalDaysMax = maxLeadTimeDays + PACKAGING_DAYS + shippingMaxDays;
 
-  // Confidence indicator for delivery date
-  const deliveryConfidence = useMemo(() => {
-    if (!delivDate) return null;
-    const selectedDate = new Date(delivDate);
-    const daysUntil = Math.ceil((selectedDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    // Minimum 3 weeks (21 days) needed for: 1-2 days mockup creation + 1-2 days approval + production time
-    if (daysUntil < 21) return 'impossible'; // too soon (less than 3 weeks)
-    if (daysUntil >= maxLeadTimeDays + 14) return 'high'; // plenty of time (2+ weeks buffer after production)
-    if (daysUntil >= maxLeadTimeDays + 7) return 'medium'; // within range (1+ week buffer)
-    return 'low'; // risky but possible (21+ days but tight on production window)
-  }, [delivDate, maxLeadTimeDays]);
+  const { minDate, maxDate } = useMemo(() => {
+    const min = new Date();
+    min.setDate(min.getDate() + totalDaysMin);
+    const max = new Date();
+    max.setDate(max.getDate() + totalDaysMax);
+    return { minDate: min, maxDate: max };
+  }, [totalDaysMin, totalDaysMax]);
 
-  // Validate address form
-  const isAddressValid = useMemo(() => {
-    if (deliveryMode !== 'single') return true;
-    return (
-      formAddress.name.trim() &&
-      formAddress.address1.trim() &&
-      formAddress.city.trim() &&
-      formAddress.state &&
-      formAddress.pincode.trim() &&
-      /^\d{6}$/.test(formAddress.pincode)
-    );
-  }, [formAddress, deliveryMode]);
+  // Date window. Commit the conservative (latest) date to the order.
+  const committedDeliveryStr = maxDate.toISOString().split('T')[0];
+  const fmtDate = (d: Date) =>
+    d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+  const formattedEstimate =
+    totalDaysMin === totalDaysMax
+      ? fmtDate(maxDate)
+      : `${fmtDate(minDate)} – ${fmtDate(maxDate)}`;
 
-  const handleEstimateShipping = async () => {
-    if (!pincodeInput || !/^\d{6}$/.test(pincodeInput)) {
-      setShippingError('Please enter a valid 6-digit pincode');
-      return;
+  // Persist the committed estimate into the store so it flows into the quote/order
+  useEffect(() => {
+    if (committedDeliveryStr && delivDate !== committedDeliveryStr) {
+      setDelivDate(committedDeliveryStr);
     }
+  }, [committedDeliveryStr, delivDate, setDelivDate]);
 
+  const runEstimate = async (pin: string) => {
     setLoadingShipping(true);
     setShippingError(null);
 
     try {
-      const res = await fetch(`/api/shipping/estimate?pincode=${pincodeInput}`);
+      const totalWeightKg = perPackWeightKg(
+        products.map((p) => ({ weightG: p.weightG, quantity: 1 })),
+      ) * packQuantity;
+      // Volumetric weight (L×W×H/5000) — couriers bill the greater of this and
+      // dead weight, so send it too or bulky-but-light packs are undercharged.
+      const totalVolumetricKg = perPackVolumetricKg(
+        products.map((p) => ({
+          dimensionL: p.dimensionL,
+          dimensionW: p.dimensionW,
+          dimensionH: p.dimensionH,
+          quantity: 1,
+        })),
+      ) * packQuantity;
+      const subtotal = products.reduce((s, p) => s + (Number(p.sellPrice) || 0), 0) * packQuantity;
+      const params = new URLSearchParams({
+        pincode: pin,
+        weightKg: String(totalWeightKg),
+        volumetricKg: String(totalVolumetricKg),
+        packQuantity: String(packQuantity),
+        subtotal: String(subtotal),
+        mode: deliveryMode,
+      });
+      const res = await fetch(`/api/shipping/estimate?${params.toString()}`);
       const data = await res.json();
 
       if (!res.ok) {
@@ -186,7 +218,7 @@ export function Step3Delivery() {
       }
 
       setShippingZone(data);
-      setPincode(pincodeInput);
+      setPincode(pin);
     } catch (err) {
       setShippingError('Failed to estimate shipping. Please try again.');
       setShippingZone(null);
@@ -194,6 +226,35 @@ export function Step3Delivery() {
       setLoadingShipping(false);
     }
   };
+
+  const handleEstimateShipping = () => {
+    if (!pincodeInput || !/^\d{6}$/.test(pincodeInput)) {
+      setShippingError('Please enter a valid 6-digit pincode');
+      return;
+    }
+    runEstimate(pincodeInput);
+  };
+
+  // Re-quote the live courier rate when the delivery mode changes after a
+  // pincode has already been checked (single vs individual ship differently).
+  useEffect(() => {
+    if (pincode && /^\d{6}$/.test(pincode)) {
+      runEstimate(pincode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryMode]);
+
+  // Auto-fetch the live courier rate from the delivery ADDRESS pincode (single
+  // delivery) so the charge reflects the customer's real address without a
+  // separate "Check" step. Runs once per valid 6-digit pincode.
+  useEffect(() => {
+    if (deliveryMode !== 'single') return;
+    const pin = formAddress.pincode;
+    if (/^\d{6}$/.test(pin) && pin !== pincode && !loadingShipping) {
+      runEstimate(pin);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formAddress.pincode, deliveryMode]);
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -244,9 +305,54 @@ export function Step3Delivery() {
     reader.readAsText(file);
   };
 
-  // Delivery rate per pack based on mode
-  const deliveryRatePerPack = deliveryMode === 'single' ? DELIVERY_RATES.single : DELIVERY_RATES.individual;
-  const totalDeliveryCharge = deliveryRatePerPack * packQuantity;
+  // Shipping charge: prefer the quoted cost from the estimate API (Shiprocket
+  // real-time courier rate, or zone fallback). Recompute locally only as a
+  // safety net before a pincode has been checked.
+  // Billable per-pack weight = greater of dead weight and volumetric weight,
+  // matching how the courier (and the estimate API) actually charges.
+  const perPackKg = Math.max(
+    perPackWeightKg(products.map((p) => ({ weightG: p.weightG, quantity: 1 }))),
+    perPackVolumetricKg(
+      products.map((p) => ({
+        dimensionL: p.dimensionL,
+        dimensionW: p.dimensionW,
+        dimensionH: p.dimensionH,
+        quantity: 1,
+      })),
+    ),
+  );
+  const localCalc = computeOrderShipping({
+    products: products.map((p) => ({
+      weightG: p.weightG,
+      quantity: 1,
+      sellPrice: p.sellPrice,
+      dimensionL: p.dimensionL,
+      dimensionW: p.dimensionW,
+      dimensionH: p.dimensionH,
+    })),
+    zone: shippingZone,
+    packQuantity,
+    deliveryMode,
+  });
+  const totalDeliveryCharge = shippingZone?.shippingCost ?? localCalc.shippingCost;
+  const deliveryRatePerPack = shippingZone?.perPackCost ?? localCalc.perPackCost;
+  // The delivery charge is only known once a pincode has been resolved into a
+  // real courier/zone rate. Until then we show no amount (no default fallback).
+  const hasRate = !!shippingZone;
+  const courierName = shippingZone?.courierName ?? null;
+
+  // Live address validation (single-location delivery). Mirrors the Step 4 gate
+  // so any problem — e.g. a 5-digit pincode — is shown here, not silently failed.
+  const pincodeInvalid =
+    formAddress.pincode.length > 0 && !/^\d{6}$/.test(formAddress.pincode);
+  const addressMissing: string[] = [];
+  if (!formAddress.name.trim()) addressMissing.push('Name');
+  if (!formAddress.address1.trim()) addressMissing.push('Address Line 1');
+  if (!formAddress.city.trim()) addressMissing.push('City');
+  if (!formAddress.state) addressMissing.push('State');
+  if (!/^\d{6}$/.test(formAddress.pincode)) addressMissing.push('a 6-digit Pincode');
+  if (!formAddress.phone.trim()) addressMissing.push('Phone');
+  const addressComplete = addressMissing.length === 0;
 
   return (
     <div className="space-y-8">
@@ -275,7 +381,7 @@ export function Step3Delivery() {
               Single Location
             </p>
             <p className={`text-xs mt-1 ${deliveryMode === 'single' ? 'text-em-600' : 'text-ink-3'}`}>
-              Deliver all {packQuantity} packs to one address · ₹{DELIVERY_RATES.single}/pack
+              Deliver all {packQuantity} packs to one address · one consolidated shipment
             </p>
           </button>
 
@@ -292,7 +398,7 @@ export function Step3Delivery() {
               Individual Delivery
             </p>
             <p className={`text-xs mt-1 ${deliveryMode === 'individual' ? 'text-em-600' : 'text-ink-3'}`}>
-              Deliver to multiple recipients · ₹{DELIVERY_RATES.individual}/pack
+              Deliver to multiple recipients · each pack ships separately
             </p>
           </button>
         </div>
@@ -332,26 +438,7 @@ export function Step3Delivery() {
           {shippingError && <p className="text-xs text-red-600">{shippingError}</p>}
 
           {shippingZone && (
-            <div className="rounded-md bg-sky-50 border border-sky-200 p-3 space-y-2">
-              <div>
-                <p className="text-xs text-sky-700 font-semibold">Delivery Zone</p>
-                <p className="text-sm font-semibold text-sky-900 mt-1">{shippingZone.zoneName}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-sky-600">Shipping</p>
-                  <p className="text-lg font-black text-sky-900 mt-1 tabnum">
-                    {formatRupees(shippingZone.flatRate)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-sky-600">Delivery in</p>
-                  <p className="text-lg font-black text-sky-900 mt-1">
-                    {shippingZone.etaMinDays}–{shippingZone.etaMaxDays} days
-                  </p>
-                </div>
-              </div>
-            </div>
+            <p className="text-xs text-em">✓ Delivery available to this pincode.</p>
           )}
         </div>
       </div>
@@ -367,13 +454,13 @@ export function Step3Delivery() {
               <Input
                 placeholder="Name *"
                 value={formAddress.name}
-                onChange={(e) => setFormAddress({ ...formAddress, name: e.target.value })}
+                onChange={(e) => updateAddress({ name: e.target.value })}
                 className="rounded-md border-2"
               />
               <Input
                 placeholder="Company (optional)"
                 value={formAddress.company}
-                onChange={(e) => setFormAddress({ ...formAddress, company: e.target.value })}
+                onChange={(e) => updateAddress({ company: e.target.value })}
                 className="rounded-md border-2"
               />
             </div>
@@ -381,14 +468,14 @@ export function Step3Delivery() {
             <Input
               placeholder="Address Line 1 *"
               value={formAddress.address1}
-              onChange={(e) => setFormAddress({ ...formAddress, address1: e.target.value })}
+              onChange={(e) => updateAddress({ address1: e.target.value })}
               className="rounded-md border-2"
             />
 
             <Input
               placeholder="Address Line 2 (optional)"
               value={formAddress.address2}
-              onChange={(e) => setFormAddress({ ...formAddress, address2: e.target.value })}
+              onChange={(e) => updateAddress({ address2: e.target.value })}
               className="rounded-md border-2"
             />
 
@@ -396,12 +483,12 @@ export function Step3Delivery() {
               <Input
                 placeholder="City *"
                 value={formAddress.city}
-                onChange={(e) => setFormAddress({ ...formAddress, city: e.target.value })}
+                onChange={(e) => updateAddress({ city: e.target.value })}
                 className="rounded-md border-2"
               />
               <select
                 value={formAddress.state}
-                onChange={(e) => setFormAddress({ ...formAddress, state: e.target.value })}
+                onChange={(e) => updateAddress({ state: e.target.value })}
                 className="rounded-md border-2 border-bdr px-3 py-2 bg-white"
               >
                 <option value="">Select State *</option>
@@ -414,55 +501,69 @@ export function Step3Delivery() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                placeholder="Pincode (6 digits) *"
-                value={formAddress.pincode}
-                maxLength={6}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                  setFormAddress({ ...formAddress, pincode: val });
-                }}
-                className="rounded-md border-2"
-              />
+              <div>
+                <Input
+                  placeholder="Pincode (6 digits) *"
+                  value={formAddress.pincode}
+                  maxLength={6}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    updateAddress({ pincode: val });
+                  }}
+                  className={`rounded-md border-2 ${pincodeInvalid ? 'border-red-400' : ''}`}
+                />
+                {pincodeInvalid && (
+                  <p className="mt-1 text-xs text-red-600">
+                    Pincode must be exactly 6 digits.
+                  </p>
+                )}
+              </div>
               <Input
                 placeholder="Phone *"
                 value={formAddress.phone}
-                onChange={(e) => setFormAddress({ ...formAddress, phone: e.target.value })}
+                onChange={(e) => updateAddress({ phone: e.target.value })}
                 className="rounded-md border-2"
               />
             </div>
 
-            {addressError && <p className="text-xs text-red-600">{addressError}</p>}
-
-            <Button
-              onClick={() => {
-                if (isAddressValid) {
-                  setAddress(formAddress);
-                  setAddressError(null);
-                } else {
-                  setAddressError('Please fill all required fields correctly');
-                }
-              }}
-              variant="em"
-              className="w-full rounded-md"
-            >
-              Save Address
-            </Button>
+            {/* Live status so the customer always knows if the address is usable */}
+            {addressComplete ? (
+              <p className="flex items-center gap-1.5 text-xs font-medium text-em-700">
+                <CheckCircle className="h-3.5 w-3.5" /> Address complete — saved automatically.
+              </p>
+            ) : (
+              <p className="text-xs text-amber-700">
+                Still needed to continue: {addressMissing.join(', ')}.
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {/* Delivery Charge Note */}
+      {/* Delivery Charge — only shown once a pincode resolves to a live rate */}
       <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
         <p className="text-xs font-semibold text-amber-700 mb-1">Delivery Charge</p>
-        <p className="text-sm font-black text-amber-900 tabnum">
-          {formatRupees(totalDeliveryCharge)} ({deliveryMode === 'single' ? DELIVERY_RATES.single : DELIVERY_RATES.individual}/pack × {packQuantity})
-        </p>
-        <p className="text-xs text-amber-600 mt-1">
-          {deliveryMode === 'single'
-            ? 'All packs delivered to single location'
-            : 'Individual delivery to multiple recipients'}
-        </p>
+        {hasRate ? (
+          <>
+            <p className="text-sm font-black text-amber-900 tabnum">
+              {formatRupees(totalDeliveryCharge)}
+              <span className="font-medium text-amber-700">
+                {' '}({(perPackKg * packQuantity).toFixed(2)} kg{courierName ? ` · via ${courierName}` : ''})
+              </span>
+            </p>
+            <p className="text-xs text-amber-600 mt-1">
+              {deliveryMode === 'single'
+                ? `All ${packQuantity} packs delivered to a single location.`
+                : `Each pack ships separately to a different recipient (≈${formatRupees(deliveryRatePerPack)}/pack).`}
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-amber-700">
+            {loadingShipping
+              ? 'Calculating delivery charge…'
+              : 'Enter your delivery pincode to see the courier charge.'}
+          </p>
+        )}
       </div>
 
       {/* Section D: Individual Recipients CSV Upload */}
@@ -521,75 +622,19 @@ export function Step3Delivery() {
         </div>
       )}
 
-      {/* Delivery Date & Confidence Indicator */}
+      {/* Estimated Delivery Date — auto-calculated from lead times */}
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
-          Preferred Delivery Date
+          Estimated Delivery
         </p>
-        <div className="rounded-md border-2 border-bdr bg-white p-4 space-y-3">
-          <Input
-            type="date"
-            value={delivDate || ''}
-            onChange={(e) => setDelivDate(e.target.value)}
-            min={today}
-            max={maxDeliveryDateStr}
-            className="rounded-md border-2"
-          />
-
-          {delivDate && (
-            <div
-              className={`rounded-md p-3 flex items-start gap-3 border-2 ${
-                deliveryConfidence === 'high'
-                  ? 'bg-green-50 border-green-200'
-                  : deliveryConfidence === 'medium'
-                  ? 'bg-yellow-50 border-yellow-200'
-                  : deliveryConfidence === 'impossible'
-                  ? 'bg-red-100 border-red-400'
-                  : 'bg-red-50 border-red-200'
-              }`}
-            >
-              {deliveryConfidence === 'impossible' && (
-                <>
-                  <AlertCircle className="h-4 w-4 text-red-700 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-red-700">❌ Not possible</p>
-                    <p className="text-xs text-red-600 mt-1">Too tight! Choose a date at least 2-3 weeks away</p>
-                  </div>
-                </>
-              )}
-              {deliveryConfidence === 'high' && (
-                <>
-                  <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-green-700">✓ High confidence</p>
-                    <p className="text-xs text-green-600 mt-1">Plenty of time for production & delivery</p>
-                  </div>
-                </>
-              )}
-              {deliveryConfidence === 'medium' && (
-                <>
-                  <AlertCircle className="h-4 w-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-yellow-700">⚠️ Doable but tight</p>
-                    <p className="text-xs text-yellow-600 mt-1">Within production timeline, limited buffer</p>
-                  </div>
-                </>
-              )}
-              {deliveryConfidence === 'low' && (
-                <>
-                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-red-700">🔴 Risky deadline</p>
-                    <p className="text-xs text-red-600 mt-1">May require expedited production (additional cost)</p>
-                  </div>
-                </>
-              )}
+        <div className="rounded-md border-2 border-bdr bg-white p-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="h-5 w-5 text-em flex-shrink-0" />
+            <div>
+              <p className="text-xs text-ink-3">Your estimated delivery date</p>
+              <p className="text-base font-black text-ink mt-0.5">{formattedEstimate}</p>
             </div>
-          )}
-
-          <p className="text-xs text-ink-3">
-            Production window: {maxLeadTimeDays} days max
-          </p>
+          </div>
         </div>
       </div>
 

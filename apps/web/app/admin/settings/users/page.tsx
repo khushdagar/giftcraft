@@ -51,7 +51,7 @@ export default async function AdminUsersPage() {
   return (
     <div className="max-w-[1100px] space-y-4">
       <div>
-        <h1 className="text-[22px] font-semibold font-display">Users & Roles</h1>
+        <h1 className="text-[22px] font-normal font-display">Users & Roles</h1>
         <p className="text-[13px] text-ink-3">
           Promote clients to company admins, onboard vendors, or change permissions here.
           Role changes take effect on the user&apos;s next request — no re-login required.
@@ -59,7 +59,7 @@ export default async function AdminUsersPage() {
       </div>
 
       <div className="rounded-md bg-white shadow-card overflow-hidden">
-        <div className="grid grid-cols-12 gap-3 border-b border-bdr bg-canvas px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-ink-3">
+        <div className="grid grid-cols-12 gap-3 border-b border-bdr bg-canvas px-4 py-2.5 text-[10px] font-normal uppercase tracking-wider text-ink-3">
           <div className="col-span-4">User</div>
           <div className="col-span-3">Company</div>
           <div className="col-span-3">Role</div>
@@ -125,7 +125,7 @@ export default async function AdminUsersPage() {
                 </span>
                 <button
                   type="submit"
-                  className="rounded-md bg-em px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-em-600 disabled:opacity-40"
+                  className="rounded-md bg-em px-2.5 py-1 text-[11px] font-normal text-white hover:bg-em-600 disabled:opacity-40"
                   disabled={u.id === session.user.id}
                 >
                   Save
@@ -137,7 +137,7 @@ export default async function AdminUsersPage() {
       </div>
 
       <div className="rounded-md border border-gold/20 bg-gold-50 p-4 text-[12px] text-gold-700">
-        <p className="font-semibold">Tip</p>
+        <p className="font-normal">Tip</p>
         <p className="mt-0.5">
           To onboard a new company admin: ask them to sign in with Google once (this creates
           their user row), then assign their company here and switch their role to

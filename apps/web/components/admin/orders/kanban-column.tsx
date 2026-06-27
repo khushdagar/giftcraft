@@ -76,12 +76,12 @@ export function KanbanColumn({
       <div className={`${colors?.bg} border-2 ${colors?.border} rounded-md p-3 mb-3`}>
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <h3 className="text-sm font-bold text-ink truncate">{label}</h3>
+            <h3 className="text-sm font-normal text-ink truncate">{label}</h3>
             <p className="text-xs text-ink-2 mt-0.5">
               {STAGE_DESCRIPTIONS[status] || status}
             </p>
           </div>
-          <div className={`ml-2 ${colors?.badge} rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap`}>
+          <div className={`ml-2 ${colors?.badge} rounded-full px-2.5 py-1 text-xs font-normal whitespace-nowrap`}>
             {orders.length}
           </div>
         </div>

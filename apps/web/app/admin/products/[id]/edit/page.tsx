@@ -22,6 +22,7 @@ export default async function EditProductPage({ params }: { params: { id: string
       categories: { include: { category: true } },
       occasions: { include: { occasion: true } },
       variants: { orderBy: { sortOrder: 'asc' } },
+      vendors: { include: { vendor: true } },
     },
   });
 
@@ -35,7 +36,7 @@ export default async function EditProductPage({ params }: { params: { id: string
     <div className="min-h-screen bg-white">
       <div className="border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-8 py-8">
-          <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
+          <h1 className="text-2xl font-normal text-gray-900">Edit Product</h1>
           <p className="text-sm text-gray-500 mt-1">{product.name}</p>
         </div>
       </div>

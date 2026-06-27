@@ -37,7 +37,7 @@ export function DisputeStatusUpdater({
       const validation = UpdateSchema.safeParse(payload);
 
       if (!validation.success) {
-        setError(validation.error.errors[0].message);
+        setError(validation.error.errors[0]?.message || 'Invalid input');
         setIsLoading(false);
         return;
       }
@@ -67,7 +67,7 @@ export function DisputeStatusUpdater({
   return (
     <form onSubmit={handleSubmit} className="rounded-md border-2 border-bdr bg-white p-5 space-y-4">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">Update Status</p>
+        <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">Update Status</p>
 
         <select
           value={status}
@@ -83,7 +83,7 @@ export function DisputeStatusUpdater({
 
       {(status === 'resolved' || status === 'closed') && (
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">
+          <label className="block text-xs font-normal uppercase tracking-wider text-ink-3 mb-2">
             Resolution Note
           </label>
           <textarea
@@ -107,7 +107,7 @@ export function DisputeStatusUpdater({
 
       {success && (
         <div className="rounded-md bg-emerald-50 border-2 border-emerald-200 p-3">
-          <p className="text-xs text-emerald-700 font-semibold">Dispute updated successfully</p>
+          <p className="text-xs text-emerald-700 font-normal">Dispute updated successfully</p>
         </div>
       )}
 

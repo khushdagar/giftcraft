@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 import { Button } from "@/components/ui/button";
+import { CredentialsLoginForm } from "@/components/auth/credentials-login-form";
 
 export const metadata = { title: "Sign in" };
 
@@ -81,8 +82,28 @@ export default async function LoginPage({
                 Sign in to GiftCraft
               </h2>
               <p className="mt-3 text-sm text-ink-2">
-                Continue with your Google account to manage your gifting.
+                Sign in with your email & password, or continue with Google.
               </p>
+
+              {/* Email + password sign-in */}
+              <CredentialsLoginForm callbackUrl={callbackUrl} />
+
+              <p className="mt-4 text-center text-sm text-ink-2">
+                New to GiftCraft?{" "}
+                <Link
+                  href={`/register${searchParams.from ? `?from=${searchParams.from}` : ""}`}
+                  className="font-normal text-em underline-offset-2 hover:underline"
+                >
+                  Create an account
+                </Link>
+              </p>
+
+              {/* Divider */}
+              <div className="my-6 flex items-center gap-3">
+                <span className="h-px flex-1 bg-bdr" />
+                <span className="text-xs uppercase tracking-wider text-ink-3">or</span>
+                <span className="h-px flex-1 bg-bdr" />
+              </div>
 
               {/* Google button — fires a server action into NextAuth */}
               <form
@@ -90,13 +111,12 @@ export default async function LoginPage({
                   "use server";
                   await signIn("google", { redirectTo: callbackUrl });
                 }}
-                className="mt-8"
               >
                 <Button
                   type="submit"
                   variant="outline"
                   size="xl"
-                  className="w-full border-bdr-2 bg-white font-bold text-ink hover:-translate-y-0.5 hover:border-em hover:shadow-hover"
+                  className="w-full border-bdr-2 bg-white font-normal text-ink hover:-translate-y-0.5 hover:border-em hover:shadow-hover"
                 >
                   <GoogleIcon />
                   Continue with Google
@@ -117,7 +137,7 @@ export default async function LoginPage({
 
             <p className="mt-6 text-center text-xs text-ink-3">
               Need vendor access?{" "}
-              <a href="mailto:hello@giftcraft.in" className="font-semibold text-em hover:underline">
+              <a href="mailto:hello@giftcraft.in" className="font-normal text-em hover:underline">
                 Contact us →
               </a>
             </p>

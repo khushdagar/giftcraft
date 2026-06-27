@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
             id: true,
             name: true,
             slug: true,
-            image: true,
+            images: { take: 1 },
           },
         },
         user: {

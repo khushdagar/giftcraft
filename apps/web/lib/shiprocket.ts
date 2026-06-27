@@ -1,6 +1,36 @@
 // Shiprocket API integration with module-level token cache
 // Token caching strategy: 23.5h expiry (stays under 24h API limit)
 
+/**
+ * Map a Shiprocket shipment status (e.g. "OUT FOR DELIVERY", "DELIVERED") to a
+ * GiftCraft OrderStatus. Returns null for unknown/unmapped statuses.
+ * Shared by the webhook route and the manual "refresh tracking" action.
+ */
+export function mapShiprocketStatus(raw: string): string | null {
+  const key = raw.trim().toUpperCase().replace(/[\s-]+/g, '_');
+  const statusMap: Record<string, string> = {
+    PICKUP_SCHEDULED: 'packed',
+    PICKUP_GENERATED: 'packed',
+    READY_TO_DISPATCH: 'packed',
+    PICKED_UP: 'shipped',
+    SHIPPED: 'shipped',
+    IN_TRANSIT: 'in_transit',
+    OUT_FOR_DELIVERY: 'in_transit',
+    DELIVERED: 'delivered',
+    CANCELLED: 'cancelled',
+    CANCELED: 'cancelled',
+    RTO_INITIATED: 'cancelled',
+    RTO_DELIVERED: 'refunded',
+    RETURN_INITIATED: 'cancelled',
+    RETURN_DELIVERED: 'refunded',
+    LOST: 'cancelled',
+    LOST_IN_TRANSIT: 'cancelled',
+    DAMAGED: 'cancelled',
+    DAMAGED_IN_TRANSIT: 'cancelled',
+  };
+  return statusMap[key] ?? null;
+}
+
 interface CachedToken {
   value: string;
   expiresAt: number;
@@ -51,7 +81,7 @@ export async function getShiprocketToken(): Promise<string> {
 interface ShipmentPayload {
   order_id: string;
   order_date: string;
-  pickup_location_id: number;
+  pickup_location: string;
   billing_address_name: string;
   billing_address_phone: string;
   billing_address_email: string;
@@ -181,4 +211,72 @@ export async function trackShipment(awbCode: string): Promise<TrackingInfo[]> {
   }
 
   return data.data?.tracking_data || [];
+}
+
+interface ServiceabilityResponse {
+  data?: {
+    available_courier_companies?: Array<{
+      courier_name: string;
+      rate: number;
+      freight_charge?: number;
+      estimated_delivery_days?: string;
+      etd?: string;
+    }>;
+  };
+}
+
+export interface ShiprocketRate {
+  rate: number;
+  courierName: string;
+  etdDays: number | null;
+}
+
+/**
+ * Real-time shipping rate from Shiprocket's courier serviceability API.
+ * Returns the cheapest available courier for the parcel, or null if the route
+ * is unserviceable or the call fails (caller falls back to zone pricing).
+ */
+export async function getShiprocketRate(params: {
+  pickupPostcode: string;
+  deliveryPostcode: string;
+  weightKg: number;
+  cod?: boolean;
+}): Promise<ShiprocketRate | null> {
+  try {
+    if (!SHIPROCKET_EMAIL || !SHIPROCKET_PASSWORD) return null;
+    const token = await getShiprocketToken();
+
+    const query = new URLSearchParams({
+      pickup_postcode: params.pickupPostcode,
+      delivery_postcode: params.deliveryPostcode,
+      weight: String(Math.max(params.weightKg, 0.5)), // Shiprocket needs a non-zero weight
+      cod: params.cod ? '1' : '0',
+    });
+
+    const response = await fetch(
+      `${SHIPROCKET_BASE_URL}/courier/serviceability/?${query.toString()}`,
+      { method: 'GET', headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as ServiceabilityResponse;
+    const couriers = data.data?.available_courier_companies ?? [];
+    if (couriers.length === 0) return null;
+
+    // Cheapest courier wins.
+    const cheapest = couriers.reduce((a, b) => (Number(b.rate) < Number(a.rate) ? b : a));
+    const etd = cheapest.estimated_delivery_days
+      ? parseInt(cheapest.estimated_delivery_days, 10)
+      : NaN;
+
+    return {
+      rate: Number(cheapest.rate),
+      courierName: cheapest.courier_name,
+      etdDays: Number.isNaN(etd) ? null : etd,
+    };
+  } catch (error) {
+    console.error('Shiprocket rate lookup failed:', error);
+    return null;
+  }
 }

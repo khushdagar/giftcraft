@@ -69,10 +69,10 @@ export default function BuildYourBoxPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+          <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
             NEW FEATURE
           </p>
-          <h1 className="text-4xl sm:text-5xl font-black mt-2 text-ink">
+          <h1 className="text-4xl sm:text-5xl font-normal mt-2 text-ink">
             Build Your Box
           </h1>
           <p className="text-base text-ink-2 mt-3 max-w-2xl">
@@ -99,7 +99,7 @@ export default function BuildYourBoxPage() {
                   transition={{ delay: 0.2 }}
                   className="bg-blue-50 rounded-md border-2 border-blue-200 p-4 space-y-2"
                 >
-                  <h3 className="text-sm font-bold text-blue-700">💡 Pro Tips</h3>
+                  <h3 className="text-sm font-normal text-blue-700">💡 Pro Tips</h3>
                   <ul className="text-xs text-blue-700 space-y-1">
                     <li>• Mix and match products</li>
                     <li>• Add personalization</li>
@@ -120,7 +120,7 @@ export default function BuildYourBoxPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-amber-50 rounded-md border-2 border-amber-200 p-6"
               >
-                <h2 className="text-lg font-bold text-amber-800 mb-4">Set Your Budget</h2>
+                <h2 className="text-lg font-normal text-amber-800 mb-4">Set Your Budget</h2>
                 <p className="text-sm text-amber-700 mb-4">
                   No budget set yet. Add a budget parameter to get started:
                 </p>
@@ -129,7 +129,7 @@ export default function BuildYourBoxPage() {
                 </p>
                 <Link
                   href="/builder"
-                  className="inline-block px-6 py-2 bg-navy-800 hover:bg-navy-900 text-white font-bold rounded-2xl transition"
+                  className="inline-block px-6 py-2 bg-navy-800 hover:bg-navy-900 text-white font-normal rounded-2xl transition"
                 >
                   Go to Regular Builder
                 </Link>
@@ -145,10 +145,10 @@ export default function BuildYourBoxPage() {
               >
                 {/* Header */}
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+                  <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
                     STEP 01
                   </p>
-                  <h2 className="text-3xl font-black mt-2 text-ink">
+                  <h2 className="text-3xl font-normal mt-2 text-ink">
                     Choose Products
                   </h2>
                   <p className="text-base text-ink-2 mt-2">
@@ -164,10 +164,10 @@ export default function BuildYourBoxPage() {
                     transition={{ delay: 0.1 }}
                     className="bg-emerald-50 rounded-md border-2 border-em-200 p-4"
                   >
-                    <p className="text-xs text-em-700 uppercase font-semibold mb-2">
+                    <p className="text-xs text-em-700 uppercase font-normal mb-2">
                       Your Budget
                     </p>
-                    <p className="text-2xl font-black text-em">₹{budget}</p>
+                    <p className="text-2xl font-normal text-em">₹{budget}</p>
                   </motion.div>
 
                   <motion.div
@@ -180,10 +180,10 @@ export default function BuildYourBoxPage() {
                         : 'bg-sky-50 border-sky-200'
                     }`}
                   >
-                    <p className={`text-xs uppercase font-semibold mb-2 ${isBudgetExceeded ? 'text-rose-700' : 'text-sky-700'}`}>
+                    <p className={`text-xs uppercase font-normal mb-2 ${isBudgetExceeded ? 'text-rose-700' : 'text-sky-700'}`}>
                       {isBudgetExceeded ? '⚠️ Over Budget' : '✓ Within Budget'}
                     </p>
-                    <p className={`text-2xl font-black ${isBudgetExceeded ? 'text-rose-700' : 'text-sky-700'}`}>
+                    <p className={`text-2xl font-normal ${isBudgetExceeded ? 'text-rose-700' : 'text-sky-700'}`}>
                       ₹{totalPrice}
                     </p>
                   </motion.div>
@@ -196,7 +196,7 @@ export default function BuildYourBoxPage() {
                     animate={{ opacity: 1 }}
                     className="bg-indigo-50 rounded-md border-2 border-indigo-200 p-4"
                   >
-                    <p className="text-sm text-indigo-700 font-semibold">
+                    <p className="text-sm text-indigo-700 font-normal">
                       📁 Category filter applied: {categoryId}
                     </p>
                   </motion.div>
@@ -209,13 +209,13 @@ export default function BuildYourBoxPage() {
                   transition={{ delay: 0.3 }}
                   className="bg-gradient-to-r from-navy-50 to-sky-50 rounded-md border-2 border-navy-200 p-8 text-center"
                 >
-                  <h3 className="text-lg font-bold text-navy-800 mb-3">Ready to Build?</h3>
+                  <h3 className="text-lg font-normal text-navy-800 mb-3">Ready to Build?</h3>
                   <p className="text-sm text-navy-700 mb-6">
                     Use the builder to select products within your budget. The budget meter will guide you!
                   </p>
                   <Link
                     href={`/builder${categoryId ? `?category=${categoryId}` : ''}`}
-                    className="inline-block px-8 py-4 bg-navy-800 hover:bg-navy-900 text-white font-bold rounded-2xl transition transform hover:-translate-y-1"
+                    className="inline-block px-8 py-4 bg-navy-800 hover:bg-navy-900 text-white font-normal rounded-2xl transition transform hover:-translate-y-1"
                   >
                     Open Builder
                   </Link>
@@ -236,7 +236,7 @@ export default function BuildYourBoxPage() {
                       transition={{ delay: 0.4 + idx * 0.05 }}
                       className="bg-white rounded-md border-2 border-bdr p-4"
                     >
-                      <p className="font-bold text-ink text-sm">{feature.title}</p>
+                      <p className="font-normal text-ink text-sm">{feature.title}</p>
                       <p className="text-xs text-ink-2 mt-1">{feature.desc}</p>
                     </motion.div>
                   ))}

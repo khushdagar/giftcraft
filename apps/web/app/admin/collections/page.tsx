@@ -26,10 +26,10 @@ export default async function AdminCollectionsPage() {
       <div className="mb-8 border-b border-bdr pb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-ink">Collections</h1>
+            <h1 className="text-3xl font-normal tracking-tight text-ink">Collections</h1>
             <p className="mt-1 text-sm text-ink-2">{collections.length} collections</p>
           </div>
-          <Button asChild className="rounded-2xl bg-em px-6 py-2 font-bold hover:bg-em-600">
+          <Button asChild className="rounded-2xl bg-em px-6 py-2 font-normal hover:bg-em-600">
             <Link href="/admin/collections/new">+ New Collection</Link>
           </Button>
         </div>
@@ -39,16 +39,16 @@ export default async function AdminCollectionsPage() {
         <table className="w-full">
           <thead className="bg-elevated border-b border-bdr">
             <tr>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">
+              <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">
                 Name
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">
+              <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">
                 Products
               </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-ink-2 uppercase">
+              <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">
                 Status
               </th>
-              <th className="px-6 py-4 text-right text-xs font-semibold text-ink-2 uppercase">
+              <th className="px-6 py-4 text-right text-xs font-normal text-ink-2 uppercase">
                 Actions
               </th>
             </tr>

@@ -53,7 +53,7 @@ export default function NewAddonPage() {
     <div className="max-w-2xl">
       <div className="mb-6">
         <Link href="/admin/addons" className="text-blue-600 hover:underline">← Back to Add-ons</Link>
-        <h1 className="text-3xl font-bold mt-4">Add New Add-on</h1>
+        <h1 className="text-3xl font-normal mt-4">Add New Add-on</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="bg-white rounded-md border p-6 space-y-6">

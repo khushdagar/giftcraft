@@ -73,7 +73,7 @@ export default async function CollectionsPage() {
           {/* Header */}
           <div>
             <p className="overline text-ink-3">Curated for You</p>
-            <h1 className="mt-2 font-display text-3xl sm:text-4xl font-black italic text-ink">
+            <h1 className="mt-2 font-display text-3xl sm:text-4xl font-normal italic text-ink">
               Gift <span className="text-em">Collections.</span>
             </h1>
             <p className="mt-2 text-sm text-ink-2 max-w-md">
@@ -117,14 +117,14 @@ export default async function CollectionsPage() {
                   <div className="absolute inset-0 flex flex-col justify-between p-4">
                     {/* Top: Product count badge (optional) */}
                     <div className="flex justify-end">
-                      <div className="bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-semibold text-ink">
+                      <div className="bg-white/90 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-normal text-ink">
                         {collection.products.length} items
                       </div>
                     </div>
 
                     {/* Bottom: Name and description */}
                     <div>
-                      <h3 className="font-display text-xl sm:text-2xl font-black text-white leading-tight">
+                      <h3 className="font-display text-xl sm:text-2xl font-normal text-white leading-tight">
                         {collection.name}
                       </h3>
                       {collection.description && (
@@ -132,7 +132,7 @@ export default async function CollectionsPage() {
                           {collection.description}
                         </p>
                       )}
-                      <p className="mt-3 text-xs font-semibold text-white/70">
+                      <p className="mt-3 text-xs font-normal text-white/70">
                         View collection →
                       </p>
                     </div>

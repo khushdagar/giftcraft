@@ -30,7 +30,7 @@ try {
 
 /**
  * Shiprocket Tracker Worker
- * Runs every 6 hours to sync tracking data for shipped orders
+ * Runs every hour to sync tracking data for shipped orders
  * - Fetches all orders with status 'shipped' or 'in_transit'
  * - Calls Shiprocket API for tracking updates
  * - Updates ShipmentTracking table
@@ -128,19 +128,19 @@ export async function initShiprocketTracker() {
       return false;
     }
 
-    // Schedule recurring job: every 6 hours
+    // Schedule recurring job: every hour
     await queue.add(
       'sync-shipments',
       {},
       {
         repeat: {
-          pattern: '0 */6 * * *', // Every 6 hours
+          pattern: '0 * * * *', // Every hour (top of the hour)
         },
         jobId: 'shiprocket-tracker-recurring', // Prevent duplicates
       }
     );
 
-    console.log('🔧 Shiprocket Tracker: Recurring job scheduled (every 6 hours)');
+    console.log('🔧 Shiprocket Tracker: Recurring job scheduled (every hour)');
     return true;
   } catch (error) {
     console.error('❌ Failed to initialize Shiprocket Tracker:', error);

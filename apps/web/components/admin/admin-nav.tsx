@@ -1,8 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Image as ImageIcon, AlertCircle, Zap, Box, Gift, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Image as ImageIcon, AlertCircle, Zap, Box, Gift, Sparkles, Mail } from 'lucide-react';
 
 const NAV = [
   { section: "Overview", items: [
@@ -10,17 +11,17 @@ const NAV = [
   ]},
   { section: "Commerce", items: [
     { href: "/admin/products", icon: Package, label: "Products" },
-    { href: "/admin/orders", icon: ShoppingBag, label: "Orders", badge: "3" },
-    { href: "/admin/packaging", icon: Box, label: "Packaging" },
-    { href: "/admin/addons", icon: Gift, label: "Add-ons" },
+    { href: "/admin/orders", icon: ShoppingBag, label: "Orders" },
     { href: "/admin/goc", icon: Sparkles, label: "GOC Campaigns" },
     { href: "/admin/samples", icon: Box, label: "Samples" },
     { href: "/admin/disputes", icon: AlertCircle, label: "Disputes" },
+    { href: "/admin/enquiries", icon: Mail, label: "Enquiries" },
     { href: "/admin/clients", icon: Users, label: "Clients" },
     { href: "/admin/vendors", icon: Truck, label: "Vendors" },
   ]},
   { section: "Content", items: [
     { href: "/admin/categories", icon: Tag, label: "Categories" },
+    { href: "/admin/occasions", icon: Gift, label: "Occasions" },
     { href: "/admin/collections", icon: ImageIcon, label: "Collections" },
   ]},
   { section: "Insight", items: [
@@ -35,17 +36,43 @@ const NAV = [
 
 export function AdminNav() {
   const pathname = usePathname();
+  const [ordersCount, setOrdersCount] = useState(0);
+
+  // Live count of active orders for the Orders badge (polls every 60s).
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const res = await fetch('/api/admin/notifications');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) setOrdersCount(data.navOrdersCount || 0);
+      } catch {
+        /* ignore */
+      }
+    };
+    load();
+    const interval = setInterval(load, 60000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+
+  const badgeFor = (href: string): string | null =>
+    href === '/admin/orders' && ordersCount > 0 ? String(ordersCount) : null;
 
   return (
     <>
       {NAV.map((section) => (
         <div key={section.section} className="pt-4">
-          <p className="px-5 pb-2 text-xs font-semibold uppercase tracking-[0.08em] text-white">{section.section}</p>
+          <p className="px-5 pb-2 text-xs font-normal uppercase tracking-[0.08em] text-white">{section.section}</p>
           {section.items.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
+            const badge = badgeFor(item.href);
             return (
               <Link
                 key={item.href}
@@ -58,13 +85,13 @@ export function AdminNav() {
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                  <span className={`rounded-md px-2 py-1 text-xs font-bold leading-none ${
+                {badge && (
+                  <span className={`rounded-md px-2 py-1 text-xs font-normal leading-none ${
                     active
                       ? 'bg-err text-white'
                       : 'bg-err text-inv'
                   }`}>
-                    {item.badge}
+                    {badge}
                   </span>
                 )}
               </Link>

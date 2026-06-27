@@ -142,12 +142,12 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
       {/* Quick Info Cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="border border-bdr rounded-lg p-4">
-          <p className="text-xs font-semibold text-ink-2 uppercase mb-2">Performance Score</p>
+          <p className="text-xs font-normal text-ink-2 uppercase mb-2">Performance Score</p>
           <div className="flex items-center gap-3">
             {vendor.score ? (
-              <div className="text-3xl font-black text-ink">{Number(vendor.score).toFixed(1)}</div>
+              <div className="text-3xl font-normal text-ink">{Number(vendor.score).toFixed(1)}</div>
             ) : (
-              <div className="text-2xl font-black text-ink-2">—</div>
+              <div className="text-2xl font-normal text-ink-2">—</div>
             )}
             <Button
               onClick={handleScoreSave}
@@ -172,8 +172,8 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
         </div>
 
         <div className="border border-bdr rounded-lg p-4">
-          <p className="text-xs font-semibold text-ink-2 uppercase mb-2">Price Confirmation</p>
-          <p className={`font-semibold ${showPriceWarning ? 'text-err' : 'text-em-700'}`}>
+          <p className="text-xs font-normal text-ink-2 uppercase mb-2">Price Confirmation</p>
+          <p className={`font-normal ${showPriceWarning ? 'text-err' : 'text-em-700'}`}>
             {showPriceWarning ? 'Expired' : daysUntilPriceExpiry !== null ? `${daysUntilPriceExpiry} days` : 'Not confirmed'}
           </p>
           <Button
@@ -187,7 +187,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
         </div>
 
         <div className="border border-bdr rounded-lg p-4">
-          <p className="text-xs font-semibold text-ink-2 uppercase mb-2">Created</p>
+          <p className="text-xs font-normal text-ink-2 uppercase mb-2">Created</p>
           <p className="text-sm text-ink">{vendor.createdAt.toLocaleDateString('en-IN')}</p>
         </div>
       </div>
@@ -195,7 +195,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
       {/* Details Section */}
       <div className="border border-bdr rounded-lg p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-ink">Vendor Details</h3>
+          <h3 className="text-lg font-normal text-ink">Vendor Details</h3>
           {!editing && (
             <Button
               onClick={() => setEditing(true)}
@@ -212,7 +212,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-ink mb-2">Contact Name</label>
+                <label className="block text-sm font-normal text-ink mb-2">Contact Name</label>
                 <Input
                   name="contactName"
                   value={formData.contactName}
@@ -220,7 +220,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-ink mb-2">Email</label>
+                <label className="block text-sm font-normal text-ink mb-2">Email</label>
                 <Input
                   type="email"
                   name="email"
@@ -232,7 +232,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-ink mb-2">Phone</label>
+                <label className="block text-sm font-normal text-ink mb-2">Phone</label>
                 <Input
                   name="phone"
                   value={formData.phone}
@@ -240,7 +240,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-ink mb-2">GST</label>
+                <label className="block text-sm font-normal text-ink mb-2">GST</label>
                 <Input
                   name="gst"
                   value={formData.gst}
@@ -251,7 +251,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-ink mb-2">City</label>
+                <label className="block text-sm font-normal text-ink mb-2">City</label>
                 <Input
                   name="city"
                   value={formData.city}
@@ -259,7 +259,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-ink mb-2">State</label>
+                <label className="block text-sm font-normal text-ink mb-2">State</label>
                 <Input
                   name="state"
                   value={formData.state}
@@ -270,7 +270,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-ink mb-2">Address</label>
+              <label className="block text-sm font-normal text-ink mb-2">Address</label>
               <Textarea
                 name="address"
                 value={formData.address}
@@ -280,7 +280,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-ink mb-2">Payment Terms</label>
+              <label className="block text-sm font-normal text-ink mb-2">Payment Terms</label>
               <Input
                 name="paymentTerms"
                 value={formData.paymentTerms}
@@ -289,7 +289,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-ink mb-2">Notes</label>
+              <label className="block text-sm font-normal text-ink mb-2">Notes</label>
               <Textarea
                 name="notes"
                 value={formData.notes}
@@ -302,7 +302,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
               <Button
                 onClick={handleSave}
                 disabled={loading}
-                className="bg-em px-6 font-bold rounded-2xl"
+                className="bg-em px-6 font-normal rounded-2xl"
               >
                 {loading ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -318,35 +318,35 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
         ) : (
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <p className="text-xs font-semibold text-ink-2 uppercase mb-1">Contact Name</p>
+              <p className="text-xs font-normal text-ink-2 uppercase mb-1">Contact Name</p>
               <p className="text-sm text-ink">{vendor.contactName}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-ink-2 uppercase mb-1">Email</p>
+              <p className="text-xs font-normal text-ink-2 uppercase mb-1">Email</p>
               <p className="text-sm text-ink">{vendor.email}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-ink-2 uppercase mb-1">Phone</p>
+              <p className="text-xs font-normal text-ink-2 uppercase mb-1">Phone</p>
               <p className="text-sm text-ink">{vendor.phone}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-ink-2 uppercase mb-1">GST</p>
+              <p className="text-xs font-normal text-ink-2 uppercase mb-1">GST</p>
               <p className="text-sm text-ink">{vendor.gst || '—'}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-ink-2 uppercase mb-1">City, State</p>
+              <p className="text-xs font-normal text-ink-2 uppercase mb-1">City, State</p>
               <p className="text-sm text-ink">{vendor.city}, {vendor.state}</p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-ink-2 uppercase mb-1">Address</p>
+              <p className="text-xs font-normal text-ink-2 uppercase mb-1">Address</p>
               <p className="text-sm text-ink">{vendor.address || '—'}</p>
             </div>
             <div className="col-span-2">
-              <p className="text-xs font-semibold text-ink-2 uppercase mb-1">Payment Terms</p>
+              <p className="text-xs font-normal text-ink-2 uppercase mb-1">Payment Terms</p>
               <p className="text-sm text-ink">{vendor.paymentTerms || '—'}</p>
             </div>
             <div className="col-span-2">
-              <p className="text-xs font-semibold text-ink-2 uppercase mb-1">Notes</p>
+              <p className="text-xs font-normal text-ink-2 uppercase mb-1">Notes</p>
               <p className="text-sm text-ink whitespace-pre-wrap">{vendor.notes || '—'}</p>
             </div>
           </div>
