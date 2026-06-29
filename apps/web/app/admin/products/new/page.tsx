@@ -10,10 +10,8 @@ export default async function NewProductPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white py-12">
-      <div className="max-w-7xl mx-auto px-6">
+    <div className="min-h-screen">
         <ProductForm mode="create" />
-      </div>
     </div>
   );
 }

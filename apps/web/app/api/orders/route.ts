@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Decimal } from '@prisma/client/runtime/library';
 import { priceQuotePayload, advanceAmount } from '@/lib/quote-pricing';
 import { verifyRazorpaySignature } from '@/lib/razorpay';
-import { sendPaymentSuccessEmail } from '@/lib/email';
+import { sendPaymentSuccessEmail, sendOrderConfirmationEmail } from '@/lib/email';
+import { renderInvoiceBuffer } from '@/lib/invoice';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -172,24 +173,80 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ Order created:', order.id, order.orderNumber, paidAt ? '(paid)' : '(mockup)');
 
-    // Payment confirmation email (best-effort — never block the order on email).
-    if (paidAt) {
-      const email = billingJson?.email;
-      if (email) {
-        try {
+    // Order email (best-effort — never block the order on email). The paid path
+    // sends a payment receipt; the no-payment "mockup" path sends a plain order
+    // confirmation so the customer always gets an email when they order. Both
+    // include the full price breakdown and a proforma-invoice PDF attachment.
+    const email = billingJson?.email || session.user.email;
+    if (email) {
+      const customerName = billingJson?.name || billingJson?.companyName || 'there';
+
+      // Full price breakdown — same line items the customer saw at checkout.
+      const amounts = {
+        subtotal: Number(pricing.subtotal || 0),
+        packaging: Number(pricing.packaging || 0),
+        addons: Number(pricing.addons || 0),
+        shipping: Number(pricing.shipping || 0),
+        cgst: cgstAmount,
+        sgst: sgstAmount,
+        igst: igstAmount,
+        razorpayFee: Number(pricing.razorpayFee || 0),
+        grandTotal: Number(pricing.grandTotal || 0),
+      };
+
+      // Re-fetch with items+product to build the invoice PDF and the email line
+      // items reliably (product names come from the DB, not the quote payload).
+      const fullOrder = await prisma.order.findUnique({
+        where: { id: order.id },
+        include: { items: { include: { product: { select: { name: true } } } } },
+      });
+
+      // Generate the proforma invoice PDF as an attachment (best-effort).
+      let attachments: { filename: string; content: Buffer }[] | undefined;
+      try {
+        if (fullOrder) {
+          const pdf = await renderInvoiceBuffer(fullOrder);
+          attachments = [{ filename: `proforma-invoice-${order.orderNumber}.pdf`, content: pdf }];
+        }
+      } catch (e) {
+        console.error('Invoice PDF generation failed (non-blocking):', e);
+      }
+
+      const emailItems = (fullOrder?.items || []).map((it) => ({
+        name: it.product?.name || 'Product',
+        unitPrice: Number(it.unitPrice),
+        quantity: it.quantity,
+      }));
+
+      try {
+        if (paidAt) {
           await sendPaymentSuccessEmail({
             customerEmail: email,
-            customerName: billingJson?.name || billingJson?.companyName || 'there',
+            customerName,
             orderNumber: order.orderNumber,
             orderId: order.id,
             amountPaid,
             paymentId: razorpayPaymentId,
             isAdvance: paymentType !== 'full',
             grandTotal: Number(pricing.grandTotal || 0),
+            amounts,
+            packQuantity: packQty,
+            attachments,
           });
-        } catch (e) {
-          console.error('Payment email failed (non-blocking):', e);
+        } else {
+          await sendOrderConfirmationEmail({
+            customerEmail: email,
+            customerName,
+            orderNumber: order.orderNumber,
+            orderId: order.id,
+            packQuantity: packQty,
+            amounts,
+            items: emailItems,
+            attachments,
+          });
         }
+      } catch (e) {
+        console.error('Order email failed (non-blocking):', e);
       }
     }
 

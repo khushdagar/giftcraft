@@ -124,6 +124,7 @@ const CreateProductSchema = z.object({
   ecoCertification: z.string().nullable().optional(),
   sampleAvailable: z.boolean().default(false),
   recipientTags: z.array(z.string()).nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
   isFeatured: z.boolean().default(false),
   hsnCode: z.string().nullable().optional(),
   hsnId: z.string().nullable().optional(), // legacy: an HsnCode id
@@ -243,6 +244,7 @@ export async function POST(request: NextRequest) {
         ecoCertification: data.ecoCertification,
         sampleAvailable: data.sampleAvailable,
         ...(data.recipientTags?.length && { recipientTags: data.recipientTags }),
+        ...(data.tags?.length && { tags: data.tags }),
         isFeatured: data.isFeatured,
 
         // Create price tiers

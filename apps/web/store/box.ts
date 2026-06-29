@@ -8,6 +8,7 @@ export interface BoxProduct {
   slug: string;
   quantity: number;
   sellPrice: number;
+  moq?: number;
   brand?: string;
   printingTechnique?: string;
   hsnCode?: string;

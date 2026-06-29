@@ -19,6 +19,8 @@ interface OccasionFormProps {
     description: string | null;
     sortOrder: number;
     isActive: boolean;
+    isCollection?: boolean;
+    tags?: string[];
   };
 }
 
@@ -43,6 +45,7 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [tagInput, setTagInput] = useState('');
   const [formData, setFormData] = useState({
     name: occasion?.name || '',
     slug: occasion?.slug || '',
@@ -51,7 +54,22 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
     description: occasion?.description || '',
     sortOrder: occasion?.sortOrder || 0,
     isActive: occasion?.isActive ?? true,
+    isCollection: occasion?.isCollection ?? false,
+    tags: occasion?.tags || ([] as string[]),
   });
+
+  const addTag = () => {
+    const val = tagInput.trim().toLowerCase();
+    if (!val) return;
+    if (!formData.tags.includes(val)) {
+      setFormData((prev) => ({ ...prev, tags: [...prev.tags, val] }));
+    }
+    setTagInput('');
+  };
+
+  const removeTag = (tag: string) => {
+    setFormData((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }));
+  };
 
   const generateSlug = (name: string) => {
     return name
@@ -266,6 +284,67 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
           <label htmlFor="isActive" className="text-sm font-normal text-ink cursor-pointer flex-1">
             Active (visible to customers)
           </label>
+        </div>
+
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-50 border-2 border-amber-200">
+          <input
+            type="checkbox"
+            id="isCollection"
+            checked={formData.isCollection}
+            onChange={(e) => setFormData({ ...formData, isCollection: e.target.checked })}
+            className="w-5 h-5 rounded cursor-pointer accent-amber-500"
+          />
+          <label htmlFor="isCollection" className="text-sm font-normal text-ink cursor-pointer flex-1">
+            Curated Collection (shows in homepage "Curated collections", not as an occasion tile)
+          </label>
+        </div>
+      </div>
+
+      {/* Tags — drive tag-based product membership */}
+      <div className="bg-white rounded-lg border-2 border-bdr p-6 space-y-4">
+        <h2 className="text-lg font-normal text-ink">Product Tags</h2>
+        <p className="text-xs text-ink-2 -mt-2">
+          Any product whose tags include one of these is automatically pulled in — no manual linking needed.
+          For collections use e.g. <code>budget-friendly</code>, <code>premium-executive</code>, <code>eco-friendly</code>.
+        </p>
+
+        {formData.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {formData.tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-em-50 border border-em-200 text-sm text-ink"
+              >
+                {tag}
+                <button type="button" onClick={() => removeTag(tag)} className="text-ink-2 hover:text-red-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Input
+            type="text"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addTag();
+              }
+            }}
+            placeholder="e.g., budget-friendly"
+            className="rounded-lg"
+          />
+          <button
+            type="button"
+            onClick={addTag}
+            className="px-4 py-2 border-2 border-bdr hover:border-slate-300 text-ink font-normal rounded-lg transition-colors whitespace-nowrap"
+          >
+            Add Tag
+          </button>
         </div>
       </div>
 

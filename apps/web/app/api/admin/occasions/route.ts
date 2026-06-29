@@ -32,6 +32,8 @@ const CreateOccasionSchema = z.object({
   description: z.string().optional().nullable(),
   sortOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),
+  isCollection: z.boolean().default(false),
+  tags: z.array(z.string()).default([]),
 });
 
 export async function POST(request: NextRequest) {
@@ -62,6 +64,8 @@ export async function POST(request: NextRequest) {
         description: data.description,
         sortOrder: data.sortOrder,
         isActive: data.isActive,
+        isCollection: data.isCollection,
+        tags: data.tags,
       },
     });
 

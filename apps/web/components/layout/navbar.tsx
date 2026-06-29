@@ -74,7 +74,6 @@ export function Navbar() {
         <ul className="hidden items-center gap-7 lg:flex">
           <li><Link href="/" className="text-sm font-medium text-ink-2 hover:text-ink">Home</Link></li>
           <li><Link href="/catalog" className="text-sm font-medium text-ink-2 hover:text-ink">Products</Link></li>
-          <li><Link href="/catalog?view=packs" className="text-sm font-medium text-ink-2 hover:text-ink">Packs</Link></li>
 
           {/* Occasions dropdown — hover-triggered */}
           <li className="group relative py-4">
@@ -180,7 +179,7 @@ export function Navbar() {
               >✕</button>
             </div>
             {[
-              ["/", "Home"], ["/catalog", "Products"], ["/catalog?view=packs", "Packs"],
+              ["/", "Home"], ["/catalog", "Products"],
               ["/pricing", "Pricing"], ["/planner", "Budget Planner"], ["/blog", "Blog"], ["/contact", "Contact"],
               ["/dashboard", "Dashboard"],
             ].map(([href, label]) => (

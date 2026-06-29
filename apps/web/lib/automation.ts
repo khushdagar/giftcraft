@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { AutomationTrigger, AutomationAction } from '@prisma/client';
+import { sendCustomEmail } from '@/lib/email';
 
 export interface AutomationContext {
   orderId?: string;
@@ -58,11 +59,20 @@ async function executeAction(
   }
 }
 
+// Replace {{token}} placeholders in automation copy with values from the
+// trigger context (e.g. {{orderNumber}}, {{customerEmail}}).
+function interpolate(text: string, context: AutomationContext): string {
+  return (text || '').replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => {
+    const value = context[key];
+    return value === undefined || value === null ? '' : String(value);
+  });
+}
+
 async function sendEmailAction(
   config: Record<string, any>,
   context: AutomationContext
 ) {
-  const { recipientEmail, subject, template } = config;
+  const { recipientEmail, subject, template, body } = config;
 
   const email = recipientEmail === 'customer' ? context.customerEmail : recipientEmail;
 
@@ -71,10 +81,31 @@ async function sendEmailAction(
     return;
   }
 
-  console.log(`Sending email to ${email}: ${subject}`);
+  const resolvedSubject = interpolate(subject || 'Update from GiftCraft', context);
+  // `template`/`body` is free-form copy entered by an admin; render line breaks.
+  const copy = interpolate(body || template || '', context);
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;">
+      ${copy
+        .split(/\n{2,}/)
+        .map((p) => `<p style="font-size:15px;line-height:1.6;color:#3F3F46;">${p.replace(/\n/g, '<br/>')}</p>`)
+        .join('')}
+      <p style="font-size:13px;color:#A1A1AA;margin-top:24px;">— The GiftCraft Team</p>
+    </div>
+  `;
 
-  // TODO: Integrate with SendGrid when email service is set up
-  // For now, just log the action
+  // Recipient is the customer ⇒ honour their order-status opt-out; an explicit
+  // admin/internal address is uncategorised and always sends.
+  const category = recipientEmail === 'customer' ? 'orderStatus' : undefined;
+
+  const result = await sendCustomEmail({ to: email, subject: resolvedSubject, html, category });
+  if (result.success) {
+    console.log(`Automation email sent to ${email}: ${resolvedSubject}`);
+  } else if ((result as any).skipped) {
+    console.log(`Automation email skipped (opt-out) for ${email}`);
+  } else {
+    console.error(`Automation email failed for ${email}`);
+  }
 }
 
 async function sendWhatsAppAction(

@@ -276,6 +276,7 @@ model Product {
   ecoCertification  String?  // e.g. "GOTS", "FSC", "GRS", "rPET"
   sampleAvailable   Boolean  @default(false)
   recipientTags     String[] @default([])   // e.g. "All staff", "Senior, VIP Clients"
+  tags              String[] @default([])   // Free-form tags — drive tag-based occasions/collections (e.g. "budget-friendly", "eco-friendly")
   isFeatured        Boolean  @default(false)
   sortOrder         Int      @default(0)
   metaTitle         String?
@@ -288,7 +289,6 @@ model Product {
   occasions         ProductOccasion[]
   hsn               ProductHsn?
   vendors           ProductVendor[]
-  collectionLinks   CollectionProduct[]
   orderItems        OrderItem[]
   auditLogs         PriceAuditLog[]
   gocOptions        GocOption[]
@@ -679,27 +679,6 @@ model ShippingZone {
   isActive   Boolean  @default(true)
 }
 
-model Collection {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  heroImage   String?
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
-  products    CollectionProduct[]
-}
-
-model CollectionProduct {
-  collectionId String
-  productId    String
-  sortOrder    Int        @default(0)
-  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@id([collectionId, productId])
-}
-
 model HomepageBanner {
   id        String   @id @default(cuid())
   title     String
@@ -723,15 +702,20 @@ model Testimonial {
 }
 
 model OccasionConfig {
-  id         String   @id @default(cuid())
-  name       String
-  slug       String   @unique
-  icon       String?
-  gradient   String?
-  description String?
-  sortOrder  Int      @default(0)
-  isActive   Boolean  @default(true)
-  products   ProductOccasion[]
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  icon         String?
+  gradient     String?
+  description  String?
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  // When true, this entry is a curated "Collection" (homepage Curated Collections
+  // section) rather than a "Shop by Occasion" tile. Hidden from occasion tiles/filters.
+  isCollection Boolean  @default(false)
+  // Products whose `tags` overlap these are auto-included — no manual linking needed.
+  tags         String[] @default([])
+  products     ProductOccasion[]
 }
 
 model Coupon {

@@ -25,20 +25,8 @@ async function cleanupDemoProducts() {
   console.log('🗑️  Cleaning up demo products...\n')
 
   try {
-    // Delete collections (which also cascade deletes CollectionProducts)
-    console.log('📦 Deleting collections...')
-    const collectionsDeleted = await prisma.collection.deleteMany({
-      where: {
-        slug: {
-          in: [
-            'professional-starter-pack',
-            'womens-professional-collection',
-            'complete-team-kit',
-          ],
-        },
-      },
-    })
-    console.log(`   ✅ Deleted ${collectionsDeleted.count} collection(s)\n`)
+    // (Standalone Collections were removed — collections are now tag-driven
+    // OccasionConfig rows. Nothing to delete here.)
 
     // Delete products (which cascades: PriceTiers, ProductImages, ProductHsn, etc.)
     console.log('👕 Deleting products...')
@@ -76,7 +64,6 @@ async function cleanupDemoProducts() {
     console.log('════════════════════════════════════════════════════════\n')
     console.log('✅ DEMO PRODUCTS CLEANED UP SUCCESSFULLY!\n')
     console.log('📊 Summary of deleted records:')
-    console.log(`   Collections: ${collectionsDeleted.count}`)
     console.log(`   Products: ${productsDeleted.count}`)
     console.log(`   Categories: ${categoriesDeleted.count}`)
     console.log(`   HSN Codes: ${hsnDeleted.count}\n`)

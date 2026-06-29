@@ -41,6 +41,7 @@ interface Occasion {
   id: string;
   name: string;
   slug?: string;
+  isCollection?: boolean;
 }
 
 // Mapping of printing techniques to badges
@@ -64,7 +65,6 @@ export function CatalogClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const addProduct = useBuilderStore((state) => state.addProduct);
-  const [view, setView] = useState<'products' | 'packs'>('products');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('featured');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -173,11 +173,13 @@ export function CatalogClient() {
     return [...tags].sort();
   }, [products]);
 
-  // Only show occasions that at least one product is tagged with.
+  // Only show occasions that at least one product is tagged with. Curated
+  // collections (isCollection) are hidden from the sidebar — they're surfaced via
+  // the homepage section and can still be applied through the ?occasion= URL param.
   const usedOccasions = useMemo(() => {
     const ids = new Set<string>();
     products.forEach(p => p.occasionIds?.forEach(id => ids.add(id)));
-    return occasions.filter(o => ids.has(o.id));
+    return occasions.filter(o => ids.has(o.id) && !o.isCollection);
   }, [occasions, products]);
 
   // Only show categories that actually have products — a category with zero

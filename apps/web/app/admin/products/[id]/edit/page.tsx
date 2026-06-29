@@ -33,15 +33,13 @@ export default async function EditProductPage({ params }: { params: { id: string
   const serialized = serializeProduct(product);
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-8 py-8">
+    <div className="min-h-screen">
+      <div className="border-b border-gray-200 pb-4">
           <h1 className="text-2xl font-normal text-gray-900">Edit Product</h1>
           <p className="text-sm text-gray-500 mt-1">{product.name}</p>
-        </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-8 py-8">
+      <div className="py-12">
         <ProductForm mode="edit" initialData={serialized} />
       </div>
     </div>

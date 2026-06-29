@@ -11,7 +11,7 @@ interface StepRecipientsProps {
 
 const PRESETS = [25, 50, 100, 250, 500, 1000];
 const MIN = 1;
-const MAX = 10000;
+const MAX = 1000;
 
 export function StepRecipients({ selected, onSubmit, onBack }: StepRecipientsProps) {
   const [count, setCount] = useState(selected.count);
@@ -68,14 +68,14 @@ export function StepRecipients({ selected, onSubmit, onBack }: StepRecipientsPro
           type="range"
           min={MIN}
           max={MAX}
+          step={1}
           value={count}
           onChange={(e) => setCount(parseInt(e.target.value))}
-          className="w-full h-2 bg-recessed rounded-lg appearance-none cursor-pointer accent-em"
+          className="slider-em w-full"
         />
         <div className="flex justify-between text-xs text-ink-2 mt-2">
           <span>{MIN}</span>
-          <span>2,500</span>
-          <span>5,000</span>
+          <span>500</span>
           <span>{MAX.toLocaleString()}</span>
         </div>
 

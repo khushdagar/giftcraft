@@ -25,6 +25,19 @@ export async function GET(request: NextRequest) {
     // surface in the customer catalog — exclude any product in those categories.
     const hiddenCategoryIds = await getHiddenCategoryIds();
 
+    // Tag-driven occasions/collections: a product belongs to an occasion either
+    // via the explicit join (ProductOccasion) OR when its tags overlap the
+    // occasion's tags. Resolve the requested occasion's tags so the filter below
+    // can match tag-based members (curated collections have no join rows).
+    let occasionTagMatch: string[] = [];
+    if (occasionId) {
+      const occ = await prisma.occasionConfig.findUnique({
+        where: { id: occasionId },
+        select: { tags: true },
+      });
+      occasionTagMatch = occ?.tags ?? [];
+    }
+
     // Build where clause
     const where: Prisma.ProductWhereInput = {
       status: 'active',
@@ -46,11 +59,12 @@ export async function GET(request: NextRequest) {
         },
       }),
       ...(occasionId && {
-        occasions: {
-          some: {
-            occasionId,
-          },
-        },
+        OR: [
+          { occasions: { some: { occasionId } } },
+          ...(occasionTagMatch.length > 0
+            ? [{ tags: { hasSome: occasionTagMatch } }]
+            : []),
+        ],
       }),
       ...(brand && { brand }),
       ...(eco && { isEcoCertified: true }),
@@ -116,8 +130,28 @@ export async function GET(request: NextRequest) {
       prisma.product.count({ where }),
     ]);
 
-    // Serialize products
-    const serialized = products.map(serializeProduct);
+    // Serialize products, then fold tag-driven occasions/collections into each
+    // product's occasionIds so the (client-side) catalog filter can match them
+    // without separate plumbing. Curated collections have no join rows — they
+    // are matched purely by tag overlap here.
+    const taggedOccasions = await prisma.occasionConfig.findMany({
+      where: { isActive: true, NOT: { tags: { isEmpty: true } } },
+      select: { id: true, tags: true },
+    });
+    const serialized = products.map((p) => {
+      const s = serializeProduct(p);
+      if (taggedOccasions.length > 0 && (s.tags?.length ?? 0) > 0) {
+        const matched = taggedOccasions
+          .filter((o) => o.tags.some((t) => s.tags!.includes(t)))
+          .map((o) => o.id);
+        if (matched.length > 0) {
+          s.occasionIds = Array.from(
+            new Set([...(s.occasionIds ?? []), ...matched])
+          );
+        }
+      }
+      return s;
+    });
 
     return NextResponse.json({
       products: serialized,

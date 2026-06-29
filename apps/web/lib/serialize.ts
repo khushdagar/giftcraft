@@ -41,7 +41,7 @@ export interface SerializedAddon extends Omit<Addon, 'price'> {
 export interface SerializedShippingZone extends ShippingZone {}
 
 export interface SerializedProduct
-  extends Omit<Product, 'priceTiers' | 'hsn' | 'auditLogs' | 'brand' | 'dimensionL' | 'dimensionW' | 'dimensionH'> {
+  extends Omit<Product, 'priceTiers' | 'hsn' | 'auditLogs' | 'brand' | 'tags' | 'dimensionL' | 'dimensionW' | 'dimensionH'> {
   brand?: string | null;
   priceTiers?: SerializedPriceTier[];
   images?: ProductImage[];
@@ -50,6 +50,7 @@ export interface SerializedProduct
   occasions?: any[];
   categoryIds?: string[];
   occasionIds?: string[];
+  tags?: string[];
   vendors?: any[];
   variants?: ProductVariant[];
   lengthCm?: number | null;

@@ -28,9 +28,10 @@ interface Product {
 interface StepProps {
   allProducts: Product[];
   categories: Array<{ id: string; name: string }>;
+  presetIds?: string[];
 }
 
-export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
+export function Step1ChooseProducts({ allProducts, categories, presetIds }: StepProps) {
   const {
     products: selected,
     addProduct,
@@ -45,6 +46,9 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const reduceMotion = useReducedMotion();
+  // When arriving from the Budget Planner, start by showing only the recommended
+  // picks; the user can switch to the full catalogue.
+  const [showPresetOnly, setShowPresetOnly] = useState((presetIds?.length ?? 0) > 0);
 
   // Calculate tier pricing
   const allTiers: Array<{ tier: number; minQty: number; maxQty: number | null; sellPrice: number }> = [];
@@ -62,7 +66,10 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
   const filteredProducts = useMemo(() => {
     let result = allProducts;
 
-    if (selectedCategory) {
+    if (showPresetOnly && presetIds && presetIds.length > 0) {
+      const set = new Set(presetIds);
+      result = result.filter((p) => set.has(p.id));
+    } else if (selectedCategory) {
       result = result.filter((p) =>
         p.categories?.some((c) => c.categoryId === selectedCategory)
       );
@@ -78,7 +85,7 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
     }
 
     return result;
-  }, [allProducts, selectedCategory, searchQuery]);
+  }, [allProducts, selectedCategory, searchQuery, showPresetOnly, presetIds]);
 
   const productsSubtotal = getProductsSubtotal();
   // Price of one gift pack (one of each selected product)
@@ -106,6 +113,22 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
             }).
           </p>
 
+          {/* Budget Planner picks banner */}
+          {showPresetOnly && presetIds && presetIds.length > 0 && (
+            <div className="mb-5 flex items-center justify-between gap-3 rounded-md border-2 border-em-200 bg-em-50 px-4 py-3">
+              <p className="text-sm text-em-700">
+                Showing your <span className="font-bold">{presetIds.length}</span> budget-matched picks from the planner.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowPresetOnly(false)}
+                className="text-sm font-semibold text-em-700 underline whitespace-nowrap"
+              >
+                Show all products
+              </button>
+            </div>
+          )}
+
           {/* Search Input */}
           <div className="relative mb-4">
             <Input
@@ -118,7 +141,8 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-3" />
           </div>
 
-          {/* Category Pills (horizontal) */}
+          {/* Category Pills (horizontal) — hidden while showing planner picks */}
+          {!showPresetOnly && (
           <div className="overflow-x-auto pb-2 mb-5">
             <div className="flex gap-2 min-w-max">
               <button
@@ -146,6 +170,7 @@ export function Step1ChooseProducts({ allProducts, categories }: StepProps) {
               ))}
             </div>
           </div>
+          )}
 
           {/* Product Grid */}
           <div>

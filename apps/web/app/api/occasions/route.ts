@@ -44,8 +44,36 @@ function convertTailwindGradient(tailwindGradient: string): string {
  */
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url || "http://localhost:3000");
+    const wantCollections = searchParams.get("collections") === "true";
+
+    // Curated Collections (homepage section). These are tag-driven occasion
+    // entries flagged isCollection — always surfaced (the section shows fixed
+    // cards). Products are pulled in by tag match elsewhere (catalog/builder).
+    if (wantCollections) {
+      const collections = await prisma.occasionConfig.findMany({
+        where: { isActive: true, isCollection: true },
+        orderBy: { sortOrder: "asc" },
+      });
+      return NextResponse.json(
+        collections.map((c) => ({
+          id: c.id,
+          slug: c.slug,
+          name: c.name,
+          description: c.description || "",
+          icon: c.icon || "🎁",
+          tags: c.tags,
+          bg:
+            c.gradient && c.gradient.includes("from-") && c.gradient.includes("to-")
+              ? convertTailwindGradient(c.gradient)
+              : c.gradient || "linear-gradient(135deg, #999999 0%, #666666 100%)",
+        }))
+      );
+    }
+
+    // "Shop by Occasion" tiles/filters never include curated collections.
     const occasions = await prisma.occasionConfig.findMany({
-      where: { isActive: true },
+      where: { isActive: true, isCollection: false },
       orderBy: { sortOrder: "asc" },
     });
 

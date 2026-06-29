@@ -5,7 +5,7 @@ import { useReducedMotion } from 'framer-motion';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
 import { INDIAN_STATES } from '@/lib/constants';
-import { computeOrderShipping, perPackWeightKg, perPackVolumetricKg } from '@/lib/shipping';
+import { computeOrderShipping, perPackWeightKg, perPackVolumetricKg, ASSEMBLY_QC_DAYS } from '@/lib/shipping';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -146,7 +146,7 @@ export function Step3Delivery() {
   //   max product (vendor) lead time + packaging buffer + shipping ETA.
   // The shipping leg uses the resolved zone's REAL ETA (etaMin/etaMax by pincode)
   // once a pincode is entered; before that it falls back to a default range.
-  const PACKAGING_DAYS = 4;
+  const PACKAGING_DAYS = ASSEMBLY_QC_DAYS;
   const DEFAULT_SHIPPING_MIN = 4;
   const DEFAULT_SHIPPING_MAX = 7;
   const maxLeadTimeDays = products.length

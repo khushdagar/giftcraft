@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { formatRupees } from '@/lib/utils';
@@ -37,9 +38,19 @@ interface StepResultsProps {
 const bgColors = ['bg-em-50', 'bg-gold-50', 'bg-[#F5F3FF]', 'bg-[#EEF2FF]', 'bg-[#FFF1F2]', 'bg-[#F0F9FF]'];
 
 export function StepResults({ formData, onBack }: StepResultsProps) {
+  const router = useRouter();
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Carry the budget-matched picks + chosen quantity into the builder so it opens
+  // showing exactly these recommendations (not the whole catalogue).
+  const startBuilding = () => {
+    const ids = recommendations.map((r) => r.id).join(',');
+    const params = new URLSearchParams({ qty: String(formData.recipientCount) });
+    if (ids) params.set('preset', ids);
+    router.push(`/builder?${params.toString()}`);
+  };
 
   useEffect(() => {
     let active = true;
@@ -177,11 +188,13 @@ export function StepResults({ formData, onBack }: StepResultsProps) {
 
       {/* Buttons */}
       <div className="flex gap-3 pt-6">
-        <Link href="/builder" className="flex-1">
-          <Button className="w-full rounded-2xl bg-em px-6 py-3 font-normal hover:bg-em-600">
-            Start Building
-          </Button>
-        </Link>
+        <Button
+          onClick={startBuilding}
+          disabled={recommendations.length === 0}
+          className="flex-1 rounded-2xl bg-em px-6 py-3 font-normal hover:bg-em-600 disabled:opacity-50"
+        >
+          Start Building
+        </Button>
         <Button
           onClick={onBack}
           variant="outline"

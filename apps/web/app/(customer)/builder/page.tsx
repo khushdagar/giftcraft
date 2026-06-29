@@ -10,8 +10,10 @@ async function getBuilderData() {
     const [productsRes, filtersRes, packagingRes, addonsRes] = await Promise.all([
       fetch(`${baseUrl}/api/products?limit=100`, { next: { revalidate: 3600 } }),
       fetch(`${baseUrl}/api/catalog/filters`, { next: { revalidate: 3600 } }),
-      fetch(`${baseUrl}/api/packaging`, { next: { revalidate: 3600 } }),
-      fetch(`${baseUrl}/api/addons`, { next: { revalidate: 3600 } }),
+      // Packaging/addons drive live pricing + box suggestion and change with admin
+      // edits — keep them fresh (short revalidate) so dimension/price updates apply.
+      fetch(`${baseUrl}/api/packaging`, { next: { revalidate: 60 } }),
+      fetch(`${baseUrl}/api/addons`, { next: { revalidate: 60 } }),
     ]);
 
     if (!productsRes.ok || !filtersRes.ok || !packagingRes.ok || !addonsRes.ok) {

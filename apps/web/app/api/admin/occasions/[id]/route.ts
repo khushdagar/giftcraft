@@ -11,6 +11,8 @@ const UpdateOccasionSchema = z.object({
   description: z.string().optional().nullable(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
+  isCollection: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
@@ -74,6 +76,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ...(data.description !== undefined && { description: data.description }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.isCollection !== undefined && { isCollection: data.isCollection }),
+        ...(data.tags !== undefined && { tags: data.tags }),
       },
     });
 

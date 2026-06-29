@@ -9,7 +9,7 @@ import { Upload, X, FileIcon, Lightbulb, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { suggestPackaging } from '@/lib/packaging-calculator';
+import { recommendPackaging } from '@/lib/packaging-calculator';
 
 interface Packaging {
   id: string;
@@ -138,21 +138,24 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
     new Set(selectedProducts.map((p) => p.printingTechnique).filter(Boolean))
   ) as string[];
 
-  // Calculate packaging suggestion based on product dimensions
-  const suggestedPackaging = useMemo(() => {
+  // Calculate packaging recommendation from the products' real dimensions.
+  const recommendation = useMemo(() => {
     if (selectedProducts.length === 0) return null;
 
-    const productsForCalculation = selectedProducts.map(p => ({
+    const productsForCalculation = selectedProducts.map((p) => ({
       id: p.id,
       name: p.name,
-      lengthCm: (p as any).dimensionL,
-      widthCm: (p as any).dimensionW,
-      heightCm: (p as any).dimensionH,
+      lengthCm: (p as any).dimensionL ?? (p as any).lengthCm,
+      widthCm: (p as any).dimensionW ?? (p as any).widthCm,
+      heightCm: (p as any).dimensionH ?? (p as any).heightCm,
       quantity: p.quantity || 1,
     }));
 
-    return suggestPackaging(productsForCalculation, packagingOptions);
+    return recommendPackaging(productsForCalculation, packagingOptions);
   }, [selectedProducts, packagingOptions]);
+
+  const suggestedPackaging = recommendation?.box ?? null;
+  const recommendationFits = recommendation?.fits ?? false;
 
   // Number(...) guards against Decimal-as-string values, which would make `+`
   // concatenate instead of add.
@@ -318,17 +321,25 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
           <p className="text-xs text-ink-2">Drag to browse • Choose the perfect box for your {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''}</p>
         </div>
 
-        {/* Packaging Suggestion */}
-        {suggestedPackaging && selectedProducts.length > 0 && packaging?.id !== suggestedPackaging.id && (
+        {/* Packaging Suggestion — sized from the products' real dimensions */}
+        {selectedProducts.length > 0 && suggestedPackaging && packaging?.id !== suggestedPackaging.id && (
           <div className="rounded-md bg-amber-50 border-2 border-amber-200 p-4 flex gap-3">
             <div className="flex-shrink-0 pt-0.5">
               <Lightbulb className="h-5 w-5 text-amber-600" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-amber-900">Perfect Match Found!</p>
+              <p className="font-semibold text-sm text-amber-900">
+                {recommendationFits ? 'Best-fit box for your items' : 'Closest box for your items'}
+              </p>
               <p className="text-sm text-amber-800 mt-1">
-                We recommend the <span className="font-bold">{suggestedPackaging.name}</span> for your products.
-                Your {selectedProducts.length} item{selectedProducts.length !== 1 ? 's' : ''} will fit perfectly!
+                Based on the size of your {selectedProducts.length} item{selectedProducts.length !== 1 ? 's' : ''}, we
+                suggest the <span className="font-bold">{suggestedPackaging.name}</span>
+                {suggestedPackaging.lengthCm && suggestedPackaging.widthCm && suggestedPackaging.heightCm
+                  ? ` (${suggestedPackaging.lengthCm}×${suggestedPackaging.widthCm}×${suggestedPackaging.heightCm} cm)`
+                  : ''}
+                {recommendationFits
+                  ? ' — the smallest box that fits.'
+                  : ' — the largest box we stock. For bigger items our team will confirm a custom box.'}
               </p>
               <button
                 onClick={() => setPackaging(suggestedPackaging as any)}
@@ -336,6 +347,22 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
               >
                 Select this packaging →
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* No dimensioned box fits the pack — be honest rather than guess */}
+        {selectedProducts.length > 0 && !suggestedPackaging && (
+          <div className="rounded-md bg-sky-50 border-2 border-sky-200 p-4 flex gap-3">
+            <div className="flex-shrink-0 pt-0.5">
+              <Lightbulb className="h-5 w-5 text-sky-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm text-sky-900">We'll size a custom box</p>
+              <p className="text-sm text-sky-800 mt-1">
+                Your {selectedProducts.length} item{selectedProducts.length !== 1 ? 's' : ''} need a larger or custom
+                box. Pick any option below and our team will confirm the perfect fit for your order.
+              </p>
             </div>
           </div>
         )}

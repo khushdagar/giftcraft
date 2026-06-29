@@ -30,6 +30,34 @@ export const SHIPPING_MARKUP = 1.25;
 export const DEFAULT_PRODUCT_WEIGHT_G = 500;
 
 /**
+ * Days spent in-house on assembly, branding application and QC before a finished
+ * order is dispatched. Added on top of the product's vendor lead time and before
+ * the courier transit window. SINGLE source of truth — used by the builder's
+ * delivery estimate and the public pricing page so they never disagree.
+ */
+export const ASSEMBLY_QC_DAYS = 4;
+
+/** Vendor lead time (days) assumed when a product has none saved. */
+export const DEFAULT_LEAD_TIME_DAYS = 14;
+
+/**
+ * End-to-end delivery window (days from order placement):
+ *   vendor lead time + assembly/QC + courier transit (zone ETA).
+ * Used wherever a "your order arrives in X–Y days" estimate is shown.
+ */
+export function deliveryWindowDays(input: {
+  leadTimeDays: number;
+  etaMinDays: number;
+  etaMaxDays: number;
+}): { min: number; max: number } {
+  const lead = input.leadTimeDays > 0 ? input.leadTimeDays : DEFAULT_LEAD_TIME_DAYS;
+  return {
+    min: lead + ASSEMBLY_QC_DAYS + input.etaMinDays,
+    max: lead + ASSEMBLY_QC_DAYS + input.etaMaxDays,
+  };
+}
+
+/**
  * Fallback per-unit box dimensions (cm) when a product has no dimensions saved.
  * A typical small gift item (~20×15×10) so volumetric weight is never ₹0 by
  * accident for a bulky-but-light pack.

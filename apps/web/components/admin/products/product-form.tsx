@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import * as Tabs from '@radix-ui/react-tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +12,7 @@ import { AlertCircle, GripVertical, Plus, Trash2, X } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { toast, useToastStore } from '@/lib/stores/toast-store';
 import { resolveSwatchHex } from '@/lib/color-name';
+import { SearchableMultiSelect } from './searchable-multi-select';
 
 const ProductSchema = z.object({
   name: z.string().min(1, 'Name required'),
@@ -39,6 +39,7 @@ const ProductSchema = z.object({
   ecoCertification: z.string().nullable().optional(),
   sampleAvailable: z.boolean().default(false),
   recipientTags: z.array(z.string()).nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
   categoryIds: z.array(z.string()).nullable().optional(),
   occasionIds: z.array(z.string()).nullable().optional(),
   variants: z.array(
@@ -46,8 +47,10 @@ const ProductSchema = z.object({
       id: z.string().optional(),
       kind: z.string(),
       value: z.string(),
-      hexColor: z.string().optional(),
-      sortOrder: z.number().optional(),
+      // DB stores hexColor as null for non-colour variants — accept null so
+      // loading an existing product never trips form validation.
+      hexColor: z.string().nullable().optional(),
+      sortOrder: z.number().nullable().optional(),
     })
   ).nullable().optional(),
   priceTiers: z.array(
@@ -74,6 +77,16 @@ const RECIPIENT_OPTIONS = [
   'Senior',
   'VIP Clients',
   'Employees (Women)',
+];
+
+// Tag-driven curated collections. A product tagged here is auto-pulled into the
+// matching collection on the homepage / catalog (tags must match the collection
+// occasion's tags). Admins can also type custom tags.
+const COLLECTION_TAG_OPTIONS = [
+  'budget-friendly',
+  'premium-executive',
+  'eco-friendly',
+  'tech-gifts',
 ];
 
 // Per-vendor sourcing status from the product master
@@ -115,7 +128,6 @@ export function ProductForm({
   initialData?: SerializedProduct;
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState('basic');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [priceReason, setPriceReason] = useState('');
@@ -188,13 +200,16 @@ export function ProductForm({
           isEcoCertified: false,
           categoryIds: [],
           occasionIds: [],
+          tags: [],
+          // Standard tier structure (from the product master) — identical for
+          // every new product so admins only edit cost & sell prices.
           priceTiers: [
-            { tier: 1, minQty: 25, maxQty: 49, costPrice: 0, sellPrice: 0 },
-            { tier: 2, minQty: 50, maxQty: 99, costPrice: 0, sellPrice: 0 },
-            { tier: 3, minQty: 100, maxQty: 249, costPrice: 0, sellPrice: 0 },
-            { tier: 4, minQty: 250, maxQty: 499, costPrice: 0, sellPrice: 0 },
-            { tier: 5, minQty: 500, maxQty: 999, costPrice: 0, sellPrice: 0 },
-            { tier: 6, minQty: 1000, maxQty: null, costPrice: 0, sellPrice: 0 },
+            { tier: 1, minQty: 1, maxQty: 24, costPrice: 0, sellPrice: 0 },
+            { tier: 2, minQty: 25, maxQty: 49, costPrice: 0, sellPrice: 0 },
+            { tier: 3, minQty: 50, maxQty: 99, costPrice: 0, sellPrice: 0 },
+            { tier: 4, minQty: 100, maxQty: 249, costPrice: 0, sellPrice: 0 },
+            { tier: 5, minQty: 250, maxQty: 499, costPrice: 0, sellPrice: 0 },
+            { tier: 6, minQty: 500, maxQty: null, costPrice: 0, sellPrice: 0 },
           ],
         },
   });
@@ -238,7 +253,10 @@ export function ProductForm({
         if (occasionsRes.ok) {
           const occasionsData = await occasionsRes.json();
           // /api/admin/occasions returns a bare array of occasion records.
-          setOccasions(Array.isArray(occasionsData) ? occasionsData : occasionsData.occasions || []);
+          // Curated collections are tag-driven — exclude them from the occasion
+          // picker so they're only managed via Collection Tags below.
+          const occList = Array.isArray(occasionsData) ? occasionsData : occasionsData.occasions || [];
+          setOccasions(occList.filter((o: any) => !o.isCollection));
         }
 
         if (vendorsRes.ok) {
@@ -457,39 +475,11 @@ export function ProductForm({
         </div>
       )}
 
-      <Tabs.Root value={tab} onValueChange={setTab} className="space-y-4">
-        {/* Tab list */}
-        <Tabs.List className="flex gap-1 border-b border-gray-200 overflow-x-auto no-scrollbar">
-          {[
-            { id: 'basic', label: 'Basic' },
-            { id: 'tax', label: 'Tax/HSN' },
-            { id: 'categories', label: 'Categories' },
-            { id: 'images', label: 'Images' },
-            { id: 'printing', label: 'Printing' },
-            { id: 'pricing', label: 'Pricing' },
-            { id: 'variants', label: 'Variants' },
-            { id: 'vendor', label: 'Vendor' },
-            { id: 'visibility', label: 'Visibility' },
-            { id: 'analytics', label: 'Analytics' },
-          ].map((t) => (
-            <Tabs.Trigger
-              key={t.id}
-              value={t.id}
-              className={`shrink-0 rounded-md-p px-4 py-2 text-xs font-normal transition ${
-                tab === t.id
-                  ? 'bg-dark text-inv'
-                  : 'text-ink-3 hover:text-ink border-b-2 border-transparent'
-              }`}
-            >
-              {t.label}
-            </Tabs.Trigger>
-          ))}
-        </Tabs.List>
-
-        {/* Tab contents */}
-        <div className="space-y-4">
-          {/* Basic */}
-          <Tabs.Content value="basic" className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+        {/* Main column */}
+        <div className="lg:col-span-2 space-y-5">
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">General</h2>
             <div>
               <label className="block text-sm font-normal text-gray-900 mb-1">Product Name *</label>
               <Input {...form.register('name')} placeholder="e.g. Stainless Steel Flask 500ml" />
@@ -574,10 +564,10 @@ export function ProductForm({
                 </div>
               </div>
             </div>
-          </Tabs.Content>
+          </section>
 
-          {/* Tax/HSN */}
-          <Tabs.Content value="tax" className="space-y-4">
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Tax & HSN</h2>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">
                 Select the HSN code for this product. GST rate will be auto-filled based on the HSN category.
@@ -591,111 +581,10 @@ export function ProductForm({
                 <p className="text-xs text-red-600 mt-1">{form.formState.errors.hsnCode.message}</p>
               )}
             </div>
-          </Tabs.Content>
+          </section>
 
-          {/* Categories & Occasions */}
-          <Tabs.Content value="categories" className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-900">
-                Select categories and occasions for this product.
-              </p>
-            </div>
-
-            {/* Categories */}
-            <div>
-              <label className="block text-sm font-normal text-gray-900 mb-3">Categories</label>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {categories.length === 0 ? (
-                  <p className="text-sm text-gray-500">Loading categories...</p>
-                ) : (
-                  categories.map((cat) => (
-                    <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.watch('categoryIds')?.includes(cat.id) || false}
-                        onChange={(e) => {
-                          const current = form.getValues('categoryIds') || [];
-                          if (e.target.checked) {
-                            form.setValue('categoryIds', [...current, cat.id]);
-                          } else {
-                            form.setValue('categoryIds', current.filter((id) => id !== cat.id));
-                          }
-                        }}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm text-gray-700" style={{ paddingLeft: cat.parentId ? '1.5rem' : '0' }}>
-                        {cat.name}
-                      </span>
-                    </label>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Occasions */}
-            <div>
-              <label className="block text-sm font-normal text-gray-900 mb-3">Occasions</label>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {occasions.length === 0 ? (
-                  <p className="text-sm text-gray-500">Loading occasions...</p>
-                ) : (
-                  occasions.map((occ) => (
-                    <label key={occ.id} className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={form.watch('occasionIds')?.includes(occ.id) || false}
-                        onChange={(e) => {
-                          const current = form.getValues('occasionIds') || [];
-                          if (e.target.checked) {
-                            form.setValue('occasionIds', [...current, occ.id]);
-                          } else {
-                            form.setValue('occasionIds', current.filter((id) => id !== occ.id));
-                          }
-                        }}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm text-gray-700">{occ.icon ? `${occ.icon} ` : ''}{occ.name}</span>
-                    </label>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Recipient Tags */}
-            <div>
-              <label className="block text-sm font-normal text-gray-900 mb-3">Recipient Tags</label>
-              <div className="flex flex-wrap gap-2">
-                {RECIPIENT_OPTIONS.map((tag) => {
-                  const selected = form.watch('recipientTags')?.includes(tag) || false;
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => {
-                        const current = form.getValues('recipientTags') || [];
-                        if (current.includes(tag)) {
-                          form.setValue('recipientTags', current.filter((t) => t !== tag));
-                        } else {
-                          form.setValue('recipientTags', [...current, tag]);
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-full border text-sm transition ${
-                        selected
-                          ? 'bg-dark text-inv border-dark'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-gray-500 mt-2">Who this product is meant for (from the product master)</p>
-            </div>
-          </Tabs.Content>
-
-          {/* Images */}
-          <Tabs.Content value="images" className="space-y-4">
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Images</h2>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">
                 Upload product images. First image will be set as primary.
@@ -907,46 +796,10 @@ export function ProductForm({
                 </div>
               </div>
             )}
-          </Tabs.Content>
+          </section>
 
-          {/* Printing */}
-          <Tabs.Content value="printing" className="space-y-4">
-            <div className="bg-gold-50 border border-gold rounded-lg p-4">
-              <p className="text-sm text-gold-700 font-normal">
-                💡 Printing cost is included in the sellPrice — no separate "Branding Cost" line is shown to customers.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-normal text-gray-900 mb-1">Printing Technique</label>
-              <select
-                {...form.register('printingTechnique')}
-                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-              >
-                <option value="none">None</option>
-                <option value="screen_print">Screen Print</option>
-                <option value="digital_print">Digital Print</option>
-                <option value="embroidery">Embroidery</option>
-                <option value="uv_print">UV Print</option>
-                <option value="laser_engraving">Laser Engraving</option>
-                <option value="emboss">Emboss</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-normal text-gray-900 mb-1">Printing Position</label>
-              <Input {...form.register('printingPosition')} placeholder="e.g. Front Center, Back, Sleeve" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-normal text-gray-900 mb-1">Branding Area</label>
-              <Input {...form.register('brandingArea')} placeholder="e.g. 60×40 mm" />
-              <p className="text-xs text-gray-500 mt-1">Maximum printable area for the logo/branding</p>
-            </div>
-          </Tabs.Content>
-
-          {/* Pricing */}
-          <Tabs.Content value="pricing" className="space-y-4">
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Pricing</h2>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-normal text-gray-900">Price Tiers</h3>
               <button
@@ -1093,10 +946,10 @@ export function ProductForm({
                 <p className="text-xs text-gray-500 mt-1">Required to create price audit log</p>
               </div>
             )}
-          </Tabs.Content>
+          </section>
 
-          {/* Variants */}
-          <Tabs.Content value="variants" className="space-y-4">
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Variants</h2>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900 font-normal">
                 💡 Add product variants like color, size, material, etc. You can add multiple values at once by separating them with commas (e.g., "Small, Medium, Large"). Use the "Custom" type to add any variant type you want (e.g., Brand, Design, Collection).
@@ -1347,10 +1200,220 @@ export function ProductForm({
                 </div>
               </div>
             )}
-          </Tabs.Content>
+          </section>
 
-          {/* Vendor */}
-          <Tabs.Content value="vendor" className="space-y-4">
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Visibility & SEO</h2>
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-2">Status</label>
+              <select
+                {...form.register('status')}
+                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+              >
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="archived">Archived</option>
+                <option value="seasonal">Seasonal</option>
+              </select>
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" {...form.register('isFeatured')} className="rounded" />
+                <span className="text-sm font-normal text-gray-900">Featured Product</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" {...form.register('isEcoCertified')} className="rounded" />
+                <span className="text-sm font-normal text-gray-900">Eco-Certified</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" {...form.register('sampleAvailable')} className="rounded" />
+                <span className="text-sm font-normal text-gray-900">Sample Available</span>
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Eco Certification</label>
+              <Input {...form.register('ecoCertification')} placeholder="e.g. GOTS, FSC, GRS, rPET" />
+              <p className="text-xs text-gray-500 mt-1">Name of the eco certification (if eco-certified)</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Meta Title</label>
+              <Input {...form.register('metaTitle')} placeholder="SEO page title" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Meta Description</label>
+              <textarea
+                {...form.register('metaDescription')}
+                placeholder="SEO description"
+                rows={2}
+                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+              />
+            </div>
+          </section>
+
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Analytics</h2>
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+              <p className="text-gray-600">📊 Analytics coming in Phase 2</p>
+            </div>
+          </section>
+        </div>
+        {/* Side column — organization */}
+        <div className="lg:col-span-1 space-y-5">
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Categories & Occasions</h2>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-900">
+                Select categories and occasions for this product.
+              </p>
+            </div>
+
+            {/* Categories */}
+            <SearchableMultiSelect
+              label="Categories"
+              placeholder={categories.length === 0 ? 'Loading categories…' : 'Search & select categories…'}
+              options={categories.map((c) => ({ id: c.id, label: c.name }))}
+              selected={form.watch('categoryIds') || []}
+              onChange={(next) => form.setValue('categoryIds', next)}
+            />
+
+            {/* Occasions */}
+            <SearchableMultiSelect
+              label="Occasions"
+              placeholder={occasions.length === 0 ? 'Loading occasions…' : 'Search & select occasions…'}
+              options={occasions.map((o) => ({ id: o.id, label: `${o.icon ? o.icon + ' ' : ''}${o.name}` }))}
+              selected={form.watch('occasionIds') || []}
+              onChange={(next) => form.setValue('occasionIds', next)}
+            />
+
+            {/* Recipient Tags */}
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-3">Recipient Tags</label>
+              <div className="flex flex-wrap gap-2">
+                {RECIPIENT_OPTIONS.map((tag) => {
+                  const selected = form.watch('recipientTags')?.includes(tag) || false;
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        const current = form.getValues('recipientTags') || [];
+                        if (current.includes(tag)) {
+                          form.setValue('recipientTags', current.filter((t) => t !== tag));
+                        } else {
+                          form.setValue('recipientTags', [...current, tag]);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-full border text-sm transition ${
+                        selected
+                          ? 'bg-dark text-inv border-dark'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Who this product is meant for (from the product master)</p>
+            </div>
+
+            {/* Collection Tags — drive tag-based curated collections */}
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-3">Collection Tags</label>
+              <div className="flex flex-wrap gap-2">
+                {Array.from(
+                  new Set([
+                    ...COLLECTION_TAG_OPTIONS,
+                    ...((form.watch('tags') as string[] | undefined) || []),
+                  ])
+                ).map((tag) => {
+                  const selected = form.watch('tags')?.includes(tag) || false;
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => {
+                        const current = form.getValues('tags') || [];
+                        if (current.includes(tag)) {
+                          form.setValue('tags', current.filter((t) => t !== tag));
+                        } else {
+                          form.setValue('tags', [...current, tag]);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-full border text-sm transition ${
+                        selected
+                          ? 'bg-dark text-inv border-dark'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+              <input
+                type="text"
+                placeholder="Add a custom tag and press Enter"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = e.currentTarget.value.trim().toLowerCase();
+                    if (!val) return;
+                    const current = form.getValues('tags') || [];
+                    if (!current.includes(val)) form.setValue('tags', [...current, val]);
+                    e.currentTarget.value = '';
+                  }
+                }}
+                className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-400 focus:outline-none"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                Products with a tag matching a Collection (set in Occasions → tags) are pulled in automatically.
+              </p>
+            </div>
+          </section>
+
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Printing & Branding</h2>
+            <div className="bg-gold-50 border border-gold rounded-lg p-4">
+              <p className="text-sm text-gold-700 font-normal">
+                💡 Printing cost is included in the sellPrice — no separate "Branding Cost" line is shown to customers.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Printing Technique</label>
+              <select
+                {...form.register('printingTechnique')}
+                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+              >
+                <option value="none">None</option>
+                <option value="screen_print">Screen Print</option>
+                <option value="digital_print">Digital Print</option>
+                <option value="embroidery">Embroidery</option>
+                <option value="uv_print">UV Print</option>
+                <option value="laser_engraving">Laser Engraving</option>
+                <option value="emboss">Emboss</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Printing Position</label>
+              <Input {...form.register('printingPosition')} placeholder="e.g. Front Center, Back, Sleeve" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Branding Area</label>
+              <Input {...form.register('brandingArea')} placeholder="e.g. 60×40 mm" />
+              <p className="text-xs text-gray-500 mt-1">Maximum printable area for the logo/branding</p>
+            </div>
+          </section>
+
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Vendors & Sourcing</h2>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
               <p className="text-sm text-blue-900">
                 Link this product to its vendor(s) with sourcing details. Mark one as Primary.
@@ -1506,68 +1569,9 @@ export function ProductForm({
                 })}
               </div>
             )}
-          </Tabs.Content>
-
-          {/* Visibility */}
-          <Tabs.Content value="visibility" className="space-y-4">
-            <div>
-              <label className="block text-sm font-normal text-gray-900 mb-2">Status</label>
-              <select
-                {...form.register('status')}
-                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="archived">Archived</option>
-                <option value="seasonal">Seasonal</option>
-              </select>
-            </div>
-
-            <div className="flex flex-wrap gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" {...form.register('isFeatured')} className="rounded" />
-                <span className="text-sm font-normal text-gray-900">Featured Product</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" {...form.register('isEcoCertified')} className="rounded" />
-                <span className="text-sm font-normal text-gray-900">Eco-Certified</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" {...form.register('sampleAvailable')} className="rounded" />
-                <span className="text-sm font-normal text-gray-900">Sample Available</span>
-              </label>
-            </div>
-
-            <div>
-              <label className="block text-sm font-normal text-gray-900 mb-1">Eco Certification</label>
-              <Input {...form.register('ecoCertification')} placeholder="e.g. GOTS, FSC, GRS, rPET" />
-              <p className="text-xs text-gray-500 mt-1">Name of the eco certification (if eco-certified)</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-normal text-gray-900 mb-1">Meta Title</label>
-              <Input {...form.register('metaTitle')} placeholder="SEO page title" />
-            </div>
-
-            <div>
-              <label className="block text-sm font-normal text-gray-900 mb-1">Meta Description</label>
-              <textarea
-                {...form.register('metaDescription')}
-                placeholder="SEO description"
-                rows={2}
-                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-              />
-            </div>
-          </Tabs.Content>
-
-          {/* Analytics */}
-          <Tabs.Content value="analytics" className="space-y-4">
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-              <p className="text-gray-600">📊 Analytics coming in Phase 2</p>
-            </div>
-          </Tabs.Content>
+          </section>
         </div>
-      </Tabs.Root>
+      </div>
 
       {/* Submit buttons */}
       <div className="flex gap-3 pt-6 border-t border-gray-200">

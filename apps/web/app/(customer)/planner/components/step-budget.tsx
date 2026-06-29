@@ -86,7 +86,7 @@ export function StepBudget({ selected, recipientCount, onSubmit, onBack }: StepB
           step={STEP}
           value={budget}
           onChange={(e) => setBudget(parseInt(e.target.value))}
-          className="w-full h-2 bg-recessed rounded-lg appearance-none cursor-pointer accent-em"
+          className="slider-em w-full"
         />
         <div className="flex justify-between text-xs text-ink-2 mt-2">
           <span>₹5,000</span>

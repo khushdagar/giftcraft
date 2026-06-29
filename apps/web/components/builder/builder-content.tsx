@@ -43,9 +43,33 @@ export function BuilderContent({
   packagingOptions,
   addonOptions,
 }: BuilderContentProps) {
-  const { currentStep, products, packQuantity, addProduct, setPackQuantity } = useBuilderStore();
+  const { currentStep, products, packQuantity, addProduct, setPackQuantity, clearAll, setCurrentStep } = useBuilderStore();
   const searchParams = useSearchParams();
   const processedRef = useRef(false);
+  const presetRef = useRef(false);
+
+  // Budget Planner hand-off: /builder?preset=id1,id2&qty=N opens the builder
+  // showing exactly the recommended picks (Step 1 filters to them) at the chosen
+  // quantity, instead of the full catalogue.
+  const presetIds = (searchParams.get('preset') || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  useEffect(() => {
+    if (presetRef.current) return;
+    if (presetIds.length === 0) return;
+    presetRef.current = true;
+
+    const qtyParam = searchParams.get('qty');
+    const qty = qtyParam ? Math.max(1, parseInt(qtyParam, 10) || 1) : 1;
+
+    // Fresh start from the planner — clear any lingering pack, then set quantity.
+    clearAll();
+    setCurrentStep(1);
+    setPackQuantity(qty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
   // Inline notice shown when a product is added at the pack's shared quantity
   // (instead of the quantity the user picked on the product page).
   const [quantityNotice, setQuantityNotice] = useState<string | null>(null);
@@ -136,7 +160,7 @@ export function BuilderContent({
       )}
 
       {currentStep === 1 && (
-        <Step1ChooseProducts allProducts={allProducts} categories={categories} />
+        <Step1ChooseProducts allProducts={allProducts} categories={categories} presetIds={presetIds} />
       )}
       {currentStep === 2 && (
         <Step2Customize

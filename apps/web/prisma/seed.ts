@@ -8,7 +8,7 @@
  *   · 20 HsnCodes
  *   · 10 OccasionConfigs (matches the homepage Bento grid)
  *   · core PlatformSettings
- *   · 4 HomepageBanners, 4 Testimonials, 3 Collections
+ *   · 4 HomepageBanners, 4 Testimonials, 3 tag-driven Collections (OccasionConfig)
  *   · 12 sample products with 6 price tiers each + HSN mapping
  *
  * The SEED_ADMIN_EMAIL env var is informational — the actual promotion to
@@ -181,16 +181,28 @@ async function main() {
     });
   }
 
-  // ── Sample collections ───────────────────────────────────
-  for (const [slug, name, desc] of [
-    ["budget", "Budget-Friendly Under ₹500", "Thoughtful gifts that won't break the bank."],
-    ["premium", "Premium Executive Collection", "Luxury gifts for your most valued relationships."],
-    ["eco", "Eco-Friendly Gifts", "Sustainable choices for conscious companies."],
-  ] as const) {
-    await prisma.collection.upsert({
+  // ── Curated collections (tag-driven occasion entries) ────
+  // Collections are OccasionConfig rows flagged isCollection. Products are pulled
+  // in automatically when their `tags` overlap the collection's `tags`.
+  const collections = [
+    ["budget-friendly",   "Budget-Friendly Under ₹500",   "Thoughtful gifts that won't break the bank.",      ["budget-friendly"],   "from-amber-400 to-orange-400"],
+    ["premium-executive", "Premium Executive Collection", "Luxury gifts for your most valued relationships.",  ["premium-executive"], "from-indigo-400 to-purple-400"],
+    ["eco-friendly",      "Eco-Friendly Gifts",           "Sustainable choices for conscious companies.",      ["eco-friendly"],      "from-green-400 to-emerald-400"],
+    ["tech-gifts",        "Tech Gifts",                   "Smart gadgets that make work and life easier.",     ["tech-gifts"],        "from-sky-400 to-blue-400"],
+  ] as const;
+  for (let i = 0; i < collections.length; i++) {
+    const [slug, name, description, tags, gradient] = collections[i]!;
+    await prisma.occasionConfig.upsert({
       where: { slug },
-      create: { slug, name, description: desc, isActive: true },
-      update: {},
+      create: {
+        slug, name, description, gradient,
+        icon: "🎁",
+        isCollection: true,
+        isActive: true,
+        sortOrder: i,
+        tags: [...tags],
+      },
+      update: { isCollection: true, tags: [...tags] },
     });
   }
 
@@ -211,6 +223,14 @@ async function main() {
   ] as const;
 
   for (const p of products) {
+    // Derive collection tags from the same rules the backfill script uses:
+    // budget < ₹500, premium ≥ ₹1000, eco = eco-certified.
+    const tags: string[] = [];
+    if (p.basePrice < 500) tags.push("budget-friendly");
+    if (p.basePrice >= 1000) tags.push("premium-executive");
+    if (p.eco) tags.push("eco-friendly");
+    if (/speaker|power\s?bank|charger|earbud|mouse|usb|tech/i.test(p.name)) tags.push("tech-gifts");
+
     const product = await prisma.product.upsert({
       where: { slug: p.slug },
       create: {
@@ -221,8 +241,9 @@ async function main() {
         isEcoCertified: p.eco, isFeatured: p.featured,
         printingTechnique: p.tech,
         leadTimeDays: 10,
+        tags,
       },
-      update: {},
+      update: { tags },
     });
 
     // 6 price tiers with small step-downs

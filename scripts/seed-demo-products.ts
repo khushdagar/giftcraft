@@ -284,75 +284,11 @@ async function seedDemoProducts() {
     console.log('✅ Product 3 created with', product3Tiers.length, 'price tiers\n')
 
     // ═══════════════════════════════════════════════════════════
-    // 4. CREATE SAMPLE PACKS
+    // 4. SAMPLE PACKS — removed
     // ═══════════════════════════════════════════════════════════
-    console.log('📦 Creating sample collection packs...\n')
-
-    // Pack 1: Professional Starter Pack
-    const pack1 = await prisma.collection.create({
-      data: {
-        name: 'Professional Starter Pack',
-        slug: 'professional-starter-pack',
-        description:
-          'Essential corporate gift pack with quality apparel and accessories for your team.',
-        heroImage:
-          'https://cdn.swagupadmin.com/aloha/media/a71c5885-3f82-485e-99d8-454bcc872c9b.PNG',
-        sortOrder: 1,
-        isActive: true,
-        products: {
-          create: [
-            { productId: product1.id, sortOrder: 1 },
-            { productId: product2.id, sortOrder: 2 },
-          ],
-        },
-      },
-    })
-
-    console.log('✅ Pack 1 (Professional Starter) created\n')
-
-    // Pack 2: Women's Professional Collection
-    const pack2 = await prisma.collection.create({
-      data: {
-        name: "Women's Professional Collection",
-        slug: 'womens-professional-collection',
-        description: 'Curated collection of quality apparel for professional women.',
-        heroImage:
-          'https://cdn.swagupadmin.com/aloha/media/8c806ce5-68e4-4778-873f-93d8e7df501e.jpg',
-        sortOrder: 2,
-        isActive: true,
-        products: {
-          create: [
-            { productId: product3.id, sortOrder: 1 },
-            { productId: product1.id, sortOrder: 2 },
-          ],
-        },
-      },
-    })
-
-    console.log('✅ Pack 2 (Women\'s Professional) created\n')
-
-    // Pack 3: Complete Team Kit
-    const pack3 = await prisma.collection.create({
-      data: {
-        name: 'Complete Team Kit',
-        slug: 'complete-team-kit',
-        description:
-          'All-in-one gift package featuring apparel and accessories for your entire team.',
-        heroImage:
-          'https://cdn.swagupadmin.com/aloha/media/13b94025-fbf7-45fd-a329-e84ac9da20c2.png',
-        sortOrder: 3,
-        isActive: true,
-        products: {
-          create: [
-            { productId: product1.id, sortOrder: 1 },
-            { productId: product2.id, sortOrder: 2 },
-            { productId: product3.id, sortOrder: 3 },
-          ],
-        },
-      },
-    })
-
-    console.log('✅ Pack 3 (Complete Team Kit) created\n')
+    // The standalone Collection model was removed. Collections are now
+    // tag-driven OccasionConfig rows (isCollection=true); products join a
+    // collection by carrying a matching tag rather than via a pack table.
 
     // ═══════════════════════════════════════════════════════════
     // SUMMARY
@@ -362,7 +298,6 @@ async function seedDemoProducts() {
     console.log('📊 Summary:')
     console.log('   3 Products created')
     console.log('   20 Price tiers created (for bulk discounts)')
-    console.log('   3 Collections/Packs created')
     console.log('   3 Categories created')
     console.log('   2 HSN codes created\n')
     console.log('🎯 Next steps:')
