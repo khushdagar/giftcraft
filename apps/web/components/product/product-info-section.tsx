@@ -114,12 +114,12 @@ export function ProductInfoSection({
         onQtyChange={setCurrentQty}
       />
 
-      {/* CTAs */}
-      <div className="mt-6 flex gap-3">
+      {/* CTAs — inline (desktop). On mobile these live in a sticky bottom bar below. */}
+      <div className="mt-6 hidden gap-3 lg:flex">
         <Button
           asChild
           disabled={isUnderMinimum}
-          className={`flex-1 rounded-full py-3 text-white text-base font-semibold ${
+          className={`flex-1 whitespace-nowrap rounded-full px-3 py-3 text-white text-sm sm:text-base font-semibold ${
             isUnderMinimum
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-em hover:bg-em/90'
@@ -131,7 +131,7 @@ export function ProductInfoSection({
         <Button
           asChild
           variant="outline"
-          className="rounded-full border border-bdr py-3 text-base font-semibold"
+          className="flex-1 whitespace-nowrap rounded-full border border-bdr px-3 py-3 text-sm sm:text-base font-semibold"
           size="lg"
         >
           <Link href="/catalog">Get Quick Quote</Link>
@@ -144,6 +144,32 @@ export function ProductInfoSection({
       {/* Addons */}
       <div className="mt-8">
         <AddonsSelector productId={product.id} />
+      </div>
+
+      {/* Sticky CTA bar — mobile only. Stays visible while scrolling the
+          product page so the primary actions are always one tap away. */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 flex gap-2.5 border-t border-bdr bg-white/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
+        <Button
+          asChild
+          disabled={isUnderMinimum}
+          className={`flex-1 whitespace-nowrap rounded-full px-3 py-3 text-sm font-semibold text-white ${
+            isUnderMinimum ? "bg-gray-400 cursor-not-allowed" : "bg-em hover:bg-em/90"
+          }`}
+          size="lg"
+        >
+          <Link href={`/builder?product=${product.id}&qty=${currentQty}`}>Add to Gift Builder</Link>
+        </Button>
+        <Button
+          asChild
+          variant="outline"
+          className="flex-1 whitespace-nowrap rounded-full border border-bdr bg-white px-3 py-3 text-sm font-semibold"
+          size="lg"
+        >
+          <Link href="/catalog">Get Quick Quote</Link>
+        </Button>
       </div>
     </div>
   );

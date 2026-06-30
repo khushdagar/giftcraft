@@ -52,8 +52,8 @@ export function QuantityModal() {
   const isValid = recipientType && localQty >= moq;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="rounded-md bg-white p-8 shadow-2xl max-w-md w-full mx-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 p-4">
+      <div className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-md bg-white p-6 shadow-2xl sm:p-8">
         {/* Header */}
         <p className="text-center font-black text-3xl text-ink mb-8">
           How many gift packs?

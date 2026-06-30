@@ -339,7 +339,7 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
       <div className="space-y-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">Select Your Packaging</p>
-          <p className="text-xs text-ink-2">Drag to browse • Choose the perfect box for your {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-ink-2">Swipe to browse • Choose the perfect box for your {selectedProducts.length} product{selectedProducts.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* Packaging Suggestion — sized from the products' real dimensions */}
@@ -389,14 +389,8 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
         )}
 
         {packagingOptions.length > 0 && (
-          <div className="overflow-hidden">
-            <motion.div
-              drag="x"
-              dragElastic={0.2}
-              dragTransition={{ power: 0.2 }}
-              className="flex gap-3 cursor-grab active:cursor-grabbing"
-              style={{ width: 'fit-content' }}
-            >
+          <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
+            <div className="flex w-max gap-3">
               {packagingOptions.map((pkg) => {
                 const isSelected = packaging?.id === pkg.id;
                 const isIncluded = pkg.price === 0;
@@ -467,7 +461,7 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
                   </motion.button>
                 );
               })}
-            </motion.div>
+            </div>
           </div>
         )}
 

@@ -149,8 +149,8 @@ export default async function AdminOrdersPage(props: {
           <p className="text-ink-3">No orders found</p>
         </div>
       ) : (
-        <div className="rounded-md border-2 border-bdr bg-white overflow-hidden">
-          <table className="w-full">
+        <div className="rounded-md border-2 border-bdr bg-white overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-bdr bg-elevated/50">
                 <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">

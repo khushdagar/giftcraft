@@ -62,8 +62,8 @@ export default async function AdminDisputesPage() {
         </div>
       </div>
 
-      <div className="border border-bdr rounded-lg overflow-hidden">
-        <table className="w-full">
+      <div className="border border-bdr rounded-lg overflow-x-auto">
+        <table className="w-full min-w-[640px]">
           <thead className="bg-elevated border-b border-bdr">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Order</th>

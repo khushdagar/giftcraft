@@ -261,6 +261,12 @@ model Product {
   sku               String   @unique
   descriptionShort  String?
   descriptionLong   String?  @db.Text
+  // Product-detail tab content (shown on the public product page tabs)
+  specifications    String?  @db.Text
+  designArtwork     String?  @db.Text
+  shippingDelivery  String?  @db.Text
+  samplesInfo       String?  @db.Text
+  packagingAddons   String?  @db.Text
   material          String?
   dimensionL        Float?
   dimensionW        Float?

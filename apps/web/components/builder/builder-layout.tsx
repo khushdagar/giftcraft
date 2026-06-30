@@ -38,14 +38,15 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
   const canGoForward = currentStep < 4 && products.length > 0 && !blockedAtStep3;
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen overflow-x-clip bg-canvas">
       {/* Step Indicator */}
       <div className="border-b border-bdr bg-white sticky top-0 z-40">
-        <div className="container-gc-w py-6">
-          {/* Step Progress - Horizontal with lines */}
-          <div className="flex items-center justify-center gap-4 mb-8">
+        <div className="container-gc-w py-4 sm:py-6">
+          {/* Step Progress - Horizontal with lines. Compact on mobile so it
+              never overflows the viewport (labels move below the row). */}
+          <div className="flex items-center justify-center gap-2 sm:gap-4 sm:mb-8">
             {STEPS.map((step, idx) => (
-              <div key={step.id} className="flex items-center gap-4">
+              <div key={step.id} className="flex items-center gap-2 sm:gap-4">
                 {/* Step Circle */}
                 <button
                   onClick={() => {
@@ -54,7 +55,7 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
                     if (step.id > currentStep && blockedAtStep3) return;
                     setCurrentStep(step.id as 1 | 2 | 3 | 4);
                   }}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-sm transition cursor-pointer ${
+                  className={`flex h-9 w-9 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full font-black text-sm transition cursor-pointer ${
                     currentStep === step.id
                       ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
                       : currentStep > step.id
@@ -69,8 +70,8 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
                   )}
                 </button>
 
-                {/* Step Label */}
-                <div className="min-w-max">
+                {/* Step Label — hidden on mobile (shown as a single line below) */}
+                <div className="hidden sm:block min-w-max">
                   <p className={`text-xs font-semibold transition ${
                     currentStep >= step.id ? 'text-emerald-700' : 'text-gray-500'
                   }`}>
@@ -80,13 +81,18 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
 
                 {/* Connecting Line - only if not last step */}
                 {idx < STEPS.length - 1 && (
-                  <div className={`w-12 h-1 transition ${
+                  <div className={`h-1 w-6 sm:w-12 transition ${
                     currentStep > step.id ? 'bg-emerald-600' : 'bg-gray-200'
                   }`} />
                 )}
               </div>
             ))}
           </div>
+
+          {/* Mobile-only current step label */}
+          <p className="mt-3 text-center text-sm font-semibold text-emerald-700 sm:hidden">
+            Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1]?.label}
+          </p>
         </div>
       </div>
 

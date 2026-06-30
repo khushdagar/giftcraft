@@ -190,8 +190,8 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
       )}
 
       {/* Table */}
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <table className="w-full">
+      <div className="border border-gray-200 rounded-lg overflow-x-auto">
+        <table className="w-full min-w-[820px]">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-4 py-3 text-left w-4">

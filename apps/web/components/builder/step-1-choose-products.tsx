@@ -103,7 +103,7 @@ export function Step1ChooseProducts({ allProducts, categories, presetIds }: Step
       {/* Main Layout: Builder Panel (left, 1.4fr) + Gift Pack (right, 1fr) */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] gap-6 items-start">
         {/* LEFT: Builder Panel (white card with header, search, pills, grid) */}
-        <div className="min-w-0 bg-white rounded-2xl border-2 border-bdr p-5 md:p-7 shadow-sm">
+        <div className="min-w-0 bg-white rounded-2xl p-2 md:p-7 py-4 shadow-sm">
           {/* Header */}
           <p className="overline text-ink-3">STEP 01</p>
           <h2 className="text-3xl md:text-4xl font-black tracking-tight mt-1 leading-none">Choose the craft.</h2>

@@ -129,9 +129,9 @@ export function TrendingProducts() {
                         ) : (
                           <span className="text-6xl">📦</span>
                         )}
-                        {p.priceTiers?.[0]?.minQty && (
+                        {(p.moq ?? p.priceTiers?.[0]?.minQty) && (
                           <span className="absolute top-4 left-4 text-xs font-bold bg-[#FBF5E9] text-[#886528] px-2 py-1 rounded-full">
-                            Min {p.priceTiers[0].minQty}
+                            Min {p.moq ?? p.priceTiers[0].minQty}
                           </span>
                         )}
                         {p.isEcoCertified && (

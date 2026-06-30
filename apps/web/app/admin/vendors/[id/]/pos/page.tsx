@@ -55,8 +55,8 @@ export default async function AdminVendorPOsPage({
           <p className="text-ink-2">No POs assigned to this vendor</p>
         </div>
       ) : (
-        <div className="rounded-md border-2 border-bdr overflow-hidden">
-          <table className="w-full">
+        <div className="rounded-md border-2 border-bdr overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50 border-b-2 border-bdr">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Order</th>

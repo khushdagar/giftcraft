@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useRef, useEffect, useCallback } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 
 interface SerializedProduct {
@@ -16,21 +17,77 @@ interface SerializedProduct {
 }
 
 export function RelatedProducts({ products }: { products: SerializedProduct[] }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pausedRef = useRef(false);
+  const reduceMotion = useReducedMotion();
+
+  // Scroll roughly one viewport of cards in the given direction.
+  const scrollByCards = useCallback(
+    (dir: 1 | -1) => {
+      const el = scrollRef.current;
+      if (!el) return;
+      el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: reduceMotion ? 'auto' : 'smooth' });
+    },
+    [reduceMotion]
+  );
+
+  // Auto-advance every few seconds; loop back to the start at the end. Pauses
+  // while the user is hovering/touching, and disabled for reduced-motion users.
+  useEffect(() => {
+    if (reduceMotion || products.length <= 1) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const id = setInterval(() => {
+      if (pausedRef.current) return;
+      const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 8;
+      if (atEnd) {
+        el.scrollTo({ left: 0, behavior: 'smooth' });
+      } else {
+        el.scrollBy({ left: el.clientWidth * 0.8, behavior: 'smooth' });
+      }
+    }, 3500);
+
+    return () => clearInterval(id);
+  }, [reduceMotion, products.length]);
 
   if (!products.length) return null;
+
+  const pause = () => { pausedRef.current = true; };
+  const resume = () => { pausedRef.current = false; };
 
   return (
     <div className="border-t border-bdr bg-white py-12">
       <div className="container-gc-w">
-        <p className="overline mb-6 text-ink-3">YOU MAY ALSO LIKE</p>
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <p className="overline text-ink-3">YOU MAY ALSO LIKE</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => scrollByCards(-1)}
+              aria-label="Previous products"
+              className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-bdr text-ink-2 transition hover:border-em hover:text-em"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollByCards(1)}
+              aria-label="Next products"
+              className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-bdr text-ink-2 transition hover:border-em hover:text-em"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
 
-        <motion.div
-          ref={containerRef}
-          className="flex gap-4 overflow-x-auto no-scrollbar"
-          drag="x"
-          dragElastic={0.2}
-          dragConstraints={containerRef}
+        <div
+          ref={scrollRef}
+          onMouseEnter={pause}
+          onMouseLeave={resume}
+          onTouchStart={pause}
+          onTouchEnd={resume}
+          className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth"
         >
           {products.map((product) => {
             const price = product.priceTiers?.[0]?.sellPrice || 0;
@@ -38,7 +95,7 @@ export function RelatedProducts({ products }: { products: SerializedProduct[] })
               <Link
                 key={product.id}
                 href={`/products/${product.slug}`}
-                className="flex-shrink-0 w-64 block group"
+                className="group block w-44 flex-shrink-0 snap-start sm:w-64"
               >
                 <div className="rounded-md overflow-hidden shadow-card hover:shadow-hover transition-shadow">
                   {/* Image */}
@@ -67,7 +124,7 @@ export function RelatedProducts({ products }: { products: SerializedProduct[] })
               </Link>
             );
           })}
-        </motion.div>
+        </div>
       </div>
     </div>
   );

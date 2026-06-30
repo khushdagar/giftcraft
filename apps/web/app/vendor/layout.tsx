@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import Link from 'next/link';
 import { signOut } from '@/auth';
 import { Package, DollarSign, User, LogOut } from 'lucide-react';
+import { VendorMobileNav } from '@/components/vendor/vendor-mobile-nav';
 
 export const metadata = {
   title: 'Vendor Portal - GiftCraft',
@@ -29,8 +30,8 @@ export default async function VendorLayout({
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="w-64 bg-white border-r-2 border-bdr flex flex-col">
+      {/* Sidebar — desktop only */}
+      <div className="hidden w-64 shrink-0 bg-white border-r-2 border-bdr lg:flex flex-col">
         {/* Logo */}
         <Link href="/vendor/dashboard" className="px-6 py-6 border-b-2 border-bdr">
           <p className="text-lg font-normal text-ink">GiftCraft</p>
@@ -80,8 +81,9 @@ export default async function VendorLayout({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1">
-        <div className="max-w-5xl mx-auto p-8">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <VendorMobileNav userName={session.user.name} />
+        <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">{children}</div>
       </div>
     </div>
   );

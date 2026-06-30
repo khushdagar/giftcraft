@@ -5,6 +5,7 @@ import { auth, signOut } from "@/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { NotificationBell } from "@/components/admin/notification-bell";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -40,17 +41,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </form>
       </aside>
 
-      <div className="flex flex-col">
+      <div className="flex min-w-0 flex-col">
         {/* Topbar */}
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-gray-200 bg-white px-6">
+        <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-gray-200 bg-white px-4 sm:px-6">
+          <AdminMobileNav
+            userName={session.user.name}
+            userRole={session.user.role}
+            userImage={session.user.image}
+          />
           <div className="relative max-w-lg flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input placeholder="Search orders, products, clients..." className="h-9 border-gray-200 bg-gray-50 pl-10 text-sm text-gray-700 placeholder:text-gray-500 focus:bg-white" />
+            <Input placeholder="Search..." className="h-9 border-gray-200 bg-gray-50 pl-10 text-sm text-gray-700 placeholder:text-gray-500 focus:bg-white" />
           </div>
           <NotificationBell />
         </header>
 
-        <main className="min-h-[calc(100vh-64px)] bg-gray-50 p-6 lg:p-8">{children}</main>
+        <main className="min-h-[calc(100vh-64px)] bg-gray-50 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

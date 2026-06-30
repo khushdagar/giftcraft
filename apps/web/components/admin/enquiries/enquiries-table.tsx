@@ -75,7 +75,7 @@ export function EnquiriesTable({ initialData }: { initialData: Enquiry[] }) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">
-      <table className="w-full">
+      <table className="w-full min-w-[820px]">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
             {['Company / Contact', 'Reach', 'Product', 'Qty', 'Message', 'Received', 'Status', ''].map((h) => (

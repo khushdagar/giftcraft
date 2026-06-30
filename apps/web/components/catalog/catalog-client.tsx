@@ -568,9 +568,9 @@ export function CatalogClient() {
                           {p.printingTechnique && <p className="text-[10px] uppercase tracking-widest mt-1" style={{ color: '#9B9B93' }}>{TECH_BADGES[p.printingTechnique] || p.printingTechnique}</p>}
                         </div>
                       </Link>
-                      <div className="flex gap-2 px-3.5 pb-3.5">
-                        <button onClick={handleAddToPack} className="flex-1 h-8 bg-emerald-700 text-white text-xs font-semibold rounded-full hover:bg-emerald-800 transition">Add to Pack</button>
-                        <Link href={`/products/${p.slug}`} className="flex-1 h-8 border-2 border-emerald-700 text-emerald-700 text-xs font-semibold rounded-full hover:bg-emerald-50 transition flex items-center justify-center">View Details</Link>
+                      <div className="flex flex-col gap-2 px-3.5 pb-3.5 sm:flex-row">
+                        <button onClick={handleAddToPack} className="w-full sm:flex-1 h-9 sm:h-8 bg-emerald-700 text-white text-xs font-semibold rounded-full hover:bg-emerald-800 transition whitespace-nowrap">Add to Pack</button>
+                        <Link href={`/products/${p.slug}`} className="w-full sm:flex-1 h-9 sm:h-8 border-2 border-emerald-700 text-emerald-700 text-xs font-semibold rounded-full hover:bg-emerald-50 transition flex items-center justify-center whitespace-nowrap">View Details</Link>
                       </div>
                     </div>
                   );

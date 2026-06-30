@@ -221,8 +221,8 @@ export default function TaxesSettingsPage() {
         ) : codes.length === 0 ? (
           <p className="text-ink-2">No HSN codes configured yet.</p>
         ) : (
-          <div className="bg-white border border-bdr rounded-md overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white border border-bdr rounded-md overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead className="bg-elevated border-b border-bdr">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">HSN Code</th>

@@ -35,7 +35,7 @@ export function ShopByOccasion() {
           Find the perfect gift for every moment that matters.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {isLoading ? (
             Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="rounded-2xl aspect-[3/2] bg-[#E8E8E3] animate-pulse" />

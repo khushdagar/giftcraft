@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LayoutDashboard, Package, FileText, FolderOpen, Building2, Settings, LogOut, AlertCircle, Bell } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { DashboardMobileNav } from "@/components/dashboard/dashboard-mobile-nav";
 
 const NAV = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
@@ -54,8 +55,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </button>
         </form>
       </aside>
-      <div className="flex flex-col">
-        <main className="flex-1 p-6 lg:p-10">{children}</main>
+      <div className="flex min-w-0 flex-col">
+        <DashboardMobileNav
+          userName={session.user.name}
+          userRole={session.user.role}
+          userImage={session.user.image}
+        />
+        <main className="flex-1 p-4 sm:p-6 lg:p-10">{children}</main>
       </div>
     </div>
   );

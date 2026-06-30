@@ -22,6 +22,11 @@ const ProductSchema = z.object({
   sku: z.string().min(1, 'SKU required'),
   descriptionShort: z.string().nullable().optional(),
   descriptionLong: z.string().nullable().optional(),
+  specifications: z.string().nullable().optional(),
+  designArtwork: z.string().nullable().optional(),
+  shippingDelivery: z.string().nullable().optional(),
+  samplesInfo: z.string().nullable().optional(),
+  packagingAddons: z.string().nullable().optional(),
   material: z.string().nullable().optional(),
   dimensions: z.string().nullable().optional(),
   weightG: z.number().nullable().optional(),
@@ -521,9 +526,66 @@ export function ProductForm({
                 rows={4}
                 className="w-full border border-gray-300 rounded-lg p-2 text-sm"
               />
+              <p className="text-xs text-gray-500 mt-1">Shown under the &ldquo;Product Description&rdquo; tab.</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            {/* Product detail tabs — each maps to a tab on the public product page.
+                Leave blank to hide that tab's content. */}
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-sm font-semibold text-gray-900 mb-1">Product Detail Tabs</p>
+              <p className="text-xs text-gray-500 mb-3">
+                Fills the tabs on the public product page. Any tab left blank shows &ldquo;No information available&rdquo;.
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Specifications</label>
+                  <textarea
+                    {...form.register('specifications')}
+                    placeholder="e.g. Material, capacity, finish, certifications…"
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Design &amp; Artwork</label>
+                  <textarea
+                    {...form.register('designArtwork')}
+                    placeholder="Branding methods, print area, artwork file requirements…"
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Shipping &amp; Delivery</label>
+                  <textarea
+                    {...form.register('shippingDelivery')}
+                    placeholder="Lead times, dispatch info, delivery coverage…"
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Samples</label>
+                  <textarea
+                    {...form.register('samplesInfo')}
+                    placeholder="Sample availability, cost, turnaround…"
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Packaging &amp; Add-ons</label>
+                  <textarea
+                    {...form.register('packagingAddons')}
+                    placeholder="Packaging options, gift boxes, add-on items…"
+                    rows={3}
+                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
                 <label className="block text-sm font-normal text-gray-900 mb-1">Weight (g)</label>
                 <Input type="number" {...form.register('weightG', { valueAsNumber: true })} />

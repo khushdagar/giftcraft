@@ -87,8 +87,8 @@ export default function PackagingPage() {
           </Link>
         </div>
       ) : (
-        <div className="bg-white rounded-md border">
-          <table className="w-full">
+        <div className="bg-white rounded-md border overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-normal">Name</th>

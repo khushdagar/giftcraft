@@ -83,8 +83,8 @@ export default async function VendorPaymentsPage() {
       </div>
 
       {/* Payments Table */}
-      <div className="rounded-md border-2 border-bdr overflow-hidden">
-        <table className="w-full">
+      <div className="rounded-md border-2 border-bdr overflow-x-auto">
+        <table className="w-full min-w-[640px]">
           <thead className="bg-gray-50 border-b-2 border-bdr">
             <tr>
               <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Invoice</th>

@@ -76,7 +76,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const moq = (product as any).moq || product.priceTiers?.[0]?.minQty || 25;
 
   return (
-    <div className="bg-canvas">
+    <div className="bg-canvas pb-24 lg:pb-0">
       {/* Breadcrumb */}
       <div className="container-gc-w pt-6">
         <p className="text-xs text-ink-3">
@@ -121,6 +121,11 @@ export default async function ProductPage({ params }: { params: { slug: string }
       <div className="container-gc-w">
         <ProductTabs
           description={product.descriptionLong || undefined}
+          specifications={product.specifications || undefined}
+          designArtwork={product.designArtwork || undefined}
+          shippingDelivery={product.shippingDelivery || undefined}
+          samples={product.samplesInfo || undefined}
+          packagingAddons={product.packagingAddons || undefined}
         />
       </div>
 

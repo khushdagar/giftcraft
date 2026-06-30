@@ -69,8 +69,8 @@ export default async function VendorPOListPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-md border-2 border-bdr overflow-hidden">
-          <table className="w-full">
+        <div className="rounded-md border-2 border-bdr overflow-x-auto">
+          <table className="w-full min-w-[820px]">
             <thead className="bg-gray-50 border-b-2 border-bdr">
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">

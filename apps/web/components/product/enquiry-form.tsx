@@ -73,8 +73,8 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="w-full max-w-2xl rounded-md bg-white shadow-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/30 p-4">
+      <div className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-md bg-white shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-bdr px-6 py-4">
           <h2 className="text-xl font-semibold text-ink">Get a Quick Quote</h2>

@@ -343,8 +343,8 @@ export default function ShippingSettingsPage() {
         ) : zones.length === 0 ? (
           <p className="text-ink-2">No shipping zones configured yet.</p>
         ) : (
-          <div className="bg-white border border-bdr rounded-md overflow-hidden">
-            <table className="w-full">
+          <div className="bg-white border border-bdr rounded-md overflow-x-auto">
+            <table className="w-full min-w-[820px]">
               <thead className="bg-elevated border-b border-bdr">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-normal text-ink uppercase">Zone Name</th>
