@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { formatRupees } from '@/lib/utils';
-import { AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, ExternalLink, FileText } from 'lucide-react';
+import { isImageUrl } from '@/lib/mockup-url';
 
 interface ApprovalData {
   id: string;
@@ -224,15 +225,36 @@ export default function ApprovePage({ params }: PageProps) {
               transition={{ delay: 0.1 }}
               className="bg-white rounded-md border-2 border-bdr overflow-hidden"
             >
-              <div className="relative w-full bg-gray-50 aspect-square">
-                <Image
-                  src={approval.fileUrl}
-                  alt="Design mockup"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
+              {isImageUrl(approval.fileUrl) ? (
+                <div className="relative w-full bg-gray-50 aspect-square">
+                  <Image
+                    src={approval.fileUrl}
+                    alt="Design mockup"
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                </div>
+              ) : (
+                // Shared file link (Google Drive, Dropbox…) — not a direct image.
+                <a
+                  href={approval.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center justify-center gap-3 w-full bg-gray-50 aspect-square p-8 text-center hover:bg-gray-100 transition"
+                >
+                  <div className="h-16 w-16 rounded-full bg-sky-100 flex items-center justify-center">
+                    <FileText className="h-8 w-8 text-sky-600" />
+                  </div>
+                  <p className="text-lg font-bold text-ink">View your design mockup</p>
+                  <p className="text-sm text-ink-3 max-w-xs break-words">
+                    Your designer shared the mockup as a file link. Click to open it.
+                  </p>
+                  <span className="inline-flex items-center gap-2 rounded-2xl bg-em px-5 py-2.5 text-sm font-bold text-white">
+                    <ExternalLink className="h-4 w-4" /> Open mockup
+                  </span>
+                </a>
+              )}
               <div className="p-4 bg-gray-50 border-t border-bdr">
                 <p className="text-xs text-ink-3">
                   Created {new Date(approval.createdAt).toLocaleDateString('en-IN')} •

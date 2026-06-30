@@ -213,22 +213,30 @@ export default async function AdminOrderDetailPage({
                     </div>
                   </div>
                 )}
-                {order.brandingNotes && (
-                  <div>
-                    <p className="text-ink-3 text-xs mb-1">Special Branding Instructions</p>
+                <div>
+                  <p className="text-ink-3 text-xs mb-1">Special Branding Instructions</p>
+                  {order.brandingNotes ? (
                     <p className="text-ink whitespace-pre-wrap rounded-md border border-bdr bg-elevated/50 p-3">
                       {order.brandingNotes}
                     </p>
-                  </div>
-                )}
-                {order.cardMessage && (
-                  <div>
-                    <p className="text-ink-3 text-xs mb-1">Thank-You Card Message</p>
+                  ) : (
+                    <p className="text-ink-3 italic rounded-md border border-dashed border-bdr bg-elevated/30 p-3">
+                      No special instructions provided.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-ink-3 text-xs mb-1">Thank-You Card Message</p>
+                  {order.cardMessage ? (
                     <p className="text-ink whitespace-pre-wrap rounded-md border border-bdr bg-elevated/50 p-3">
                       {order.cardMessage}
                     </p>
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-ink-3 italic rounded-md border border-dashed border-bdr bg-elevated/30 p-3">
+                      No thank-you message added.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}

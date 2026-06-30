@@ -3,7 +3,8 @@ import { auth } from '@/auth';
 import { formatRupees } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { ChevronLeft, FileDown } from 'lucide-react';
+import { ChevronLeft, FileDown, Link as LinkIcon } from 'lucide-react';
+import { isImageUrl } from '@/lib/mockup-url';
 import { PayBalanceButton } from './components/pay-balance-button';
 
 function getStatusLabel(status: string): string {
@@ -158,12 +159,19 @@ export default async function OrderDetailPage({
                   </p>
                   <div className="flex flex-col sm:flex-row gap-4">
                     {approval.fileUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={approval.fileUrl}
-                        alt={`Mockup v${approval.revision}`}
-                        className="h-28 w-28 flex-shrink-0 rounded-md border-2 border-gold/30 object-cover bg-white"
-                      />
+                      isImageUrl(approval.fileUrl) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={approval.fileUrl}
+                          alt={`Mockup v${approval.revision}`}
+                          className="h-28 w-28 flex-shrink-0 rounded-md border-2 border-gold/30 object-cover bg-white"
+                        />
+                      ) : (
+                        <div className="h-28 w-28 flex-shrink-0 rounded-md border-2 border-gold/30 bg-white flex flex-col items-center justify-center gap-1 text-center px-2">
+                          <LinkIcon className="h-6 w-6 text-sky-600" />
+                          <span className="text-[10px] text-ink-3">File link</span>
+                        </div>
+                      )
                     )}
                     <div className="flex-1">
                       <p className="text-sm text-ink-2 mb-3">

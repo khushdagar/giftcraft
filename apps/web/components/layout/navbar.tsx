@@ -199,6 +199,29 @@ export function Navbar() {
             >
               Get a Quote
             </Link>
+
+            {/* Account / sign out — mobile */}
+            {session?.user ? (
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  signOut({ callbackUrl: "/" });
+                }}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-md-p border-2 border-bdr py-4 text-base font-semibold text-ink hover:border-em hover:text-em"
+              >
+                <LogOut className="h-5 w-5" /> Sign out
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  signIn("google");
+                }}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-md-p border-2 border-bdr py-4 text-base font-semibold text-ink hover:border-em hover:text-em"
+              >
+                <UserIcon className="h-5 w-5" /> Sign in
+              </button>
+            )}
           </div>
         </>
       )}
