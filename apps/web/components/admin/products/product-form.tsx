@@ -13,6 +13,7 @@ import { formatRupees } from '@/lib/utils';
 import { toast, useToastStore } from '@/lib/stores/toast-store';
 import { resolveSwatchHex } from '@/lib/color-name';
 import { SearchableMultiSelect } from './searchable-multi-select';
+import { SearchableSelect } from './searchable-select';
 
 const ProductSchema = z.object({
   name: z.string().min(1, 'Name required'),
@@ -87,14 +88,6 @@ const COLLECTION_TAG_OPTIONS = [
   'premium-executive',
   'eco-friendly',
   'tech-gifts',
-];
-
-// Per-vendor sourcing status from the product master
-const SOURCING_OPTIONS = [
-  { value: 'ok', label: 'OK' },
-  { value: 'to_approach', label: 'To Approach' },
-  { value: 'onboarding', label: 'Onboarding' },
-  { value: 'onboarded', label: 'Onboarded' },
 ];
 
 interface VendorOption {
@@ -1416,7 +1409,7 @@ export function ProductForm({
             <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Vendors & Sourcing</h2>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
               <p className="text-sm text-blue-900">
-                Link this product to its vendor(s) with sourcing details. Mark one as Primary.
+                Link this product to its vendor(s). Mark one as Primary.
               </p>
               <button
                 type="button"
@@ -1470,84 +1463,15 @@ export function ProductForm({
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                         <div>
                           <label className="block text-xs font-normal text-gray-700 mb-1">Vendor *</label>
-                          <select
+                          <SearchableSelect
+                            options={vendorOptions.map((v) => ({ id: v.id, label: v.name }))}
                             value={link.vendorId}
-                            onChange={(e) => update({ vendorId: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                          >
-                            <option value="">Select vendor…</option>
-                            {vendorOptions.map((v) => (
-                              <option key={v.id} value={v.id}>{v.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-normal text-gray-700 mb-1">Sourcing Status</label>
-                          <select
-                            value={link.sourcingStatus}
-                            onChange={(e) => update({ sourcingStatus: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                          >
-                            <option value="">—</option>
-                            {SOURCING_OPTIONS.map((s) => (
-                              <option key={s.value} value={s.value}>{s.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div>
-                          <label className="block text-xs font-normal text-gray-700 mb-1">Vendor SKU</label>
-                          <Input
-                            value={link.vendorSku}
-                            onChange={(e) => update({ vendorSku: e.target.value })}
-                            placeholder="SKU"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-normal text-gray-700 mb-1">Vendor Cost ₹</label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={link.costPrice ?? ''}
-                            onChange={(e) =>
-                              update({ costPrice: e.target.value === '' ? null : Number(e.target.value) })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-normal text-gray-700 mb-1">Vendor MOQ</label>
-                          <Input
-                            type="number"
-                            value={link.vendorMoq ?? ''}
-                            onChange={(e) =>
-                              update({ vendorMoq: e.target.value === '' ? null : Number(e.target.value) })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-normal text-gray-700 mb-1">Vendor Lead (days)</label>
-                          <Input
-                            type="number"
-                            value={link.vendorLeadDays ?? ''}
-                            onChange={(e) =>
-                              update({ vendorLeadDays: e.target.value === '' ? null : Number(e.target.value) })
-                            }
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 items-end">
-                        <div>
-                          <label className="block text-xs font-normal text-gray-700 mb-1">Last Price Confirmed</label>
-                          <Input
-                            type="date"
-                            value={link.lastPriceConfirmedAt}
-                            onChange={(e) => update({ lastPriceConfirmedAt: e.target.value })}
+                            onChange={(id) => update({ vendorId: id })}
+                            placeholder="Select vendor…"
+                            emptyText="No vendors yet"
                           />
                         </div>
                         <label className="flex items-center gap-2 cursor-pointer pb-2">

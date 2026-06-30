@@ -206,8 +206,8 @@ function ConfirmationContent() {
 
             <div className="space-y-3 mb-4">
               {order.items.map((p) => (
-                <div key={p.id} className="flex items-center justify-between pb-3 border-b border-[#E8E8E3] last:border-0 last:pb-0">
-                  <div className="flex items-center gap-3">
+                <div key={p.id} className="flex items-center justify-between gap-3 pb-3 border-b border-[#E8E8E3] last:border-0 last:pb-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     {p.image ? (
                       <img
                         src={p.image}
@@ -217,10 +217,15 @@ function ConfirmationContent() {
                     ) : (
                       <span className="text-xl">🎁</span>
                     )}
-                    <span className="font-medium text-sm">{p.name}</span>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{p.name}</p>
+                      <p className="text-xs text-[#6B6B63] tabular-nums">
+                        {formatRupees(p.unitPrice)} × {quantity}
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-sm text-[#6B6B63] tabular-nums">
-                    {formatRupees(p.unitPrice)} × {quantity}
+                  <span className="text-sm font-semibold tabular-nums flex-shrink-0">
+                    {formatRupees(p.unitPrice * quantity)}
                   </span>
                 </div>
               ))}
