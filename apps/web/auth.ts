@@ -20,6 +20,10 @@ import { prisma } from "@/lib/prisma";
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  // NextAuth v5 only trusts Vercel's host by default. On Digital Ocean App
+  // Platform (behind their proxy) the host must be trusted explicitly, otherwise
+  // every sign-in throws UntrustedHost and redirects to /api/auth/error.
+  trustHost: true,
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     Google({
