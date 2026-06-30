@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { PricingBlock } from './pricing-block';
 import { ColorSelector } from './color-selector';
@@ -30,6 +30,16 @@ export function ProductInfoSection({
 }: ProductInfoSectionProps) {
   const [currentQty, setCurrentQty] = useState(moq);
   const isUnderMinimum = currentQty < moq;
+
+  // Mobile sticky CTA bar: hidden on load, slides in once the user has scrolled
+  // past ~20% of the viewport height.
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowStickyBar(window.scrollY > window.innerHeight * 0.2);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
     <div>
@@ -114,8 +124,9 @@ export function ProductInfoSection({
         onQtyChange={setCurrentQty}
       />
 
-      {/* CTAs — inline (desktop). On mobile these live in a sticky bottom bar below. */}
-      <div className="mt-6 hidden gap-3 lg:flex">
+      {/* CTAs — inline, shown on all sizes. On mobile these ALSO appear in the
+          sticky bottom bar below (so they're visible in both places). */}
+      <div className="mt-6 flex gap-3">
         <Button
           asChild
           disabled={isUnderMinimum}
@@ -149,7 +160,9 @@ export function ProductInfoSection({
       {/* Sticky CTA bar — mobile only. Stays visible while scrolling the
           product page so the primary actions are always one tap away. */}
       <div
-        className="fixed inset-x-0 bottom-0 z-40 flex gap-2.5 border-t border-bdr bg-white/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden"
+        className={`fixed inset-x-0 bottom-0 z-40 flex gap-2.5 border-t border-bdr bg-white/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur transition-transform duration-300 lg:hidden ${
+          showStickyBar ? "translate-y-0" : "translate-y-full"
+        }`}
         style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
       >
         <Button
