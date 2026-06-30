@@ -6,8 +6,12 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check if authjs session cookie exists
-  const sessionCookie = request.cookies.get("authjs.session-token")?.value;
+  // Check if authjs session cookie exists.
+  // On HTTPS (production) NextAuth v5 prefixes the cookie with "__Secure-";
+  // on HTTP (localhost) it does not. Check both so the gate works in both envs.
+  const sessionCookie =
+    request.cookies.get("authjs.session-token")?.value ??
+    request.cookies.get("__Secure-authjs.session-token")?.value;
 
   // /admin/* — must have session cookie
   if (pathname.startsWith("/admin")) {

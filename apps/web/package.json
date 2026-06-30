@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "make-admin": "tsx prisma/make-admin.ts",
     "db:backfill-tags": "tsx prisma/backfill-collection-tags.ts",
     "db:backfill-packaging-dims": "tsx prisma/backfill-packaging-dims.ts",
     "db:studio": "prisma studio",

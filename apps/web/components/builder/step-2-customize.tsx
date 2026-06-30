@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useMemo } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { useBuilderStore } from '@/store/builder';
@@ -68,6 +69,7 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
   } = useBuilderStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [needsLogin, setNeedsLogin] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   // "Your Saved Logos" — previously uploaded logos from the brand asset library.
@@ -105,11 +107,18 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
 
     // Upload to Digital Ocean Spaces + save to the brand asset library.
     setLogoError(null);
+    setNeedsLogin(false);
     setUploading(true);
     try {
       const body = new FormData();
       body.append('file', file);
       const res = await fetch('/api/brand-assets', { method: 'POST', body });
+      // Not signed in — surface a login link instead of a dead-end error.
+      if (res.status === 401) {
+        setNeedsLogin(true);
+        setLogoError('Please sign in to upload your logo.');
+        return;
+      }
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Upload failed');
@@ -238,7 +247,19 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
               </div>
             </div>
           )}
-          {logoError && <p className="text-xs text-red-600 mt-2">{logoError}</p>}
+          {logoError && (
+            <div className="mt-2">
+              <p className="text-xs text-red-600">{logoError}</p>
+              {needsLogin && (
+                <Link
+                  href="/login?from=/builder"
+                  className="mt-2 inline-flex items-center gap-1 rounded-md-p bg-em px-3 py-1.5 text-xs font-semibold text-inv hover:opacity-90 transition"
+                >
+                  Sign in to continue →
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Your Saved Logos — reuse a logo from the brand asset library (SOW §3.4.3) */}

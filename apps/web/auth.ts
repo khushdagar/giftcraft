@@ -5,24 +5,9 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
-/**
- * Central NextAuth v5 instance.
- *
- * - Adapter: Prisma → stores Account, User, VerificationToken rows.
- * - Providers:
- *     • Google OAuth — primary social login.
- *     • Credentials — email + password login for users who registered via the
- *       /register page. Passwords are stored as bcrypt hashes on User.passwordHash.
- * - Session strategy: "jwt". The Credentials provider does NOT support the
- *   database session strategy in NextAuth v5, so the whole app uses JWT sessions.
- *   Role / companyId are still re-read from PostgreSQL on every session lookup
- *   (in the `session` callback) so role changes take effect immediately.
- */
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  // NextAuth v5 only trusts Vercel's host by default. On Digital Ocean App
-  // Platform (behind their proxy) the host must be trusted explicitly, otherwise
-  // every sign-in throws UntrustedHost and redirects to /api/auth/error.
+ 
   trustHost: true,
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
@@ -86,12 +71,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   events: {
-    /**
-     * First-login promotion: if the newly created user's email matches the
-     * SEED_ADMIN_EMAIL env var, promote them to super_admin automatically.
-     * Fires when the Prisma adapter creates a user (Google OAuth first login).
-     * Email/password registration applies the same rule in /api/auth/register.
-     */
     async createUser({ user }) {
       const seedEmail = process.env.SEED_ADMIN_EMAIL?.toLowerCase();
       if (seedEmail && user.email?.toLowerCase() === seedEmail) {
