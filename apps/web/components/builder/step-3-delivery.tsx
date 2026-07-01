@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useReducedMotion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
 import { INDIAN_STATES } from '@/lib/constants';
@@ -104,6 +105,46 @@ export function Step3Delivery() {
       const next = { ...prev, ...patch };
       setAddress(next);
       return next;
+    });
+  };
+
+  // "Use a saved address" — the signed-in user's address book (SavedAddress).
+  // Silently empty for guests (401) so guest checkout is unaffected.
+  interface SavedAddress {
+    id: string;
+    label: string | null;
+    contactName: string;
+    company: string | null;
+    addressLine1: string;
+    addressLine2: string | null;
+    city: string;
+    state: string;
+    pincode: string;
+    phone: string | null;
+    isDefault: boolean;
+  }
+  const { data: savedAddresses = [] } = useQuery({
+    queryKey: ['saved-addresses'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard/addresses');
+      if (!res.ok) return [] as SavedAddress[];
+      const data = await res.json();
+      return (data.data || []) as SavedAddress[];
+    },
+  });
+
+  const applySavedAddress = (id: string) => {
+    const saved = savedAddresses.find((a) => a.id === id);
+    if (!saved) return;
+    updateAddress({
+      name: saved.contactName,
+      company: saved.company || '',
+      address1: saved.addressLine1,
+      address2: saved.addressLine2 || '',
+      city: saved.city,
+      state: saved.state,
+      pincode: saved.pincode,
+      phone: saved.phone || '',
     });
   };
 
@@ -450,6 +491,29 @@ export function Step3Delivery() {
             Delivery Address
           </p>
           <div className="rounded-md border-2 border-bdr bg-white p-4 space-y-4">
+            {/* Use a saved address (signed-in users) — pick to auto-fill below */}
+            {savedAddresses.length > 0 && (
+              <div className="rounded-md bg-em-50 border border-em-200 p-3">
+                <label className="text-xs font-semibold uppercase tracking-wider text-em-700">
+                  Use a saved address
+                </label>
+                <select
+                  defaultValue=""
+                  onChange={(e) => e.target.value && applySavedAddress(e.target.value)}
+                  className="mt-2 w-full rounded-md border-2 border-em-200 px-3 py-2 bg-white text-sm"
+                >
+                  <option value="">Select a saved address…</option>
+                  {savedAddresses.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {(a.label ? `${a.label} — ` : '') +
+                        `${a.contactName}, ${a.city} ${a.pincode}`}
+                      {a.isDefault ? ' (Default)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 placeholder="Name *"

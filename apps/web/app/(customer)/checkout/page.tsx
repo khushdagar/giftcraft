@@ -130,6 +130,32 @@ function CheckoutContent() {
 
   const payload: QuotePayload | null = quote?.payload ?? null;
 
+  // Saved company details (signed-in users) — pre-fill billing GST/PAN/name so
+  // corporate buyers don't re-key them. Silently empty for guests.
+  const { data: companyResp } = useQuery({
+    queryKey: ['checkout-company'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard/company');
+      if (!res.ok) return null;
+      return res.json() as Promise<{ success: boolean; data: any }>;
+    },
+  });
+
+  useEffect(() => {
+    const c = companyResp?.data;
+    if (!c) return;
+    setBillingData((prev) => ({
+      ...prev,
+      companyName: prev.companyName || c.name || '',
+      gstin: prev.gstin || c.gstin || '',
+      pan: prev.pan || c.pan || '',
+      address1: prev.address1 || c.addressLine || '',
+      city: prev.city || c.city || '',
+      state: prev.state && prev.state !== 'Delhi' ? prev.state : c.state || prev.state,
+      pincode: prev.pincode || c.pincode || '',
+    }));
+  }, [companyResp]);
+
   // Pre-fill billing/contact from the delivery details captured in the builder.
   useEffect(() => {
     if (!payload?.address) return;

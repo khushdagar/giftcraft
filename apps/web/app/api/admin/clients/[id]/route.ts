@@ -33,21 +33,6 @@ export async function GET(
             role: true,
           },
         },
-        orders: {
-          where: {
-            status: {
-              in: ['confirmed', 'completed', 'shipped', 'cancelled'],
-            },
-          },
-          select: {
-            id: true,
-            orderNumber: true,
-            grandTotal: true,
-            status: true,
-            createdAt: true,
-          },
-          orderBy: { createdAt: 'desc' },
-        },
       },
     });
 
@@ -58,7 +43,47 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(client);
+    // Orders aren't linked to a company directly, so attribute them via the
+    // placer's companyId (or a directly-set order.companyId, if present).
+    const PLACED_STATUSES = [
+      'confirmed',
+      'mockup_pending',
+      'mockup_approved',
+      'production',
+      'quality_check',
+      'packed',
+      'shipped',
+      'in_transit',
+      'delivered',
+      'completed',
+      'cancelled',
+      'refunded',
+    ];
+    const orderRows = await prisma.order.findMany({
+      where: {
+        status: { in: PLACED_STATUSES as any },
+        OR: [{ companyId: params.id }, { placedBy: { companyId: params.id } }],
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        grandTotal: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Map to the shape the client detail page expects (totalAmount: number).
+    const orders = orderRows.map((o) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      totalAmount: Number(o.grandTotal),
+      status: o.status,
+      createdAt: o.createdAt,
+    }));
+
+    return NextResponse.json({ ...client, orders });
   } catch (error) {
     console.error('GET /api/admin/clients/[id]:', error);
     return NextResponse.json(

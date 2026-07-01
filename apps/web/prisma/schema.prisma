@@ -200,6 +200,7 @@ model User {
   consentLogs       ConsentLog[]
   gocCampaigns      GocCampaign[]          @relation("CampaignCreatedBy")
   sampleOrders      SampleOrder[]
+  savedAddresses    SavedAddress[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -248,6 +249,28 @@ model BrandAsset {
   createdAt  DateTime @default(now())
 
   @@index([companyId])
+}
+
+// Reusable delivery/shipping addresses saved to a user's account so they can be
+// picked in the gift builder / checkout instead of re-typing on every order.
+model SavedAddress {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label        String?  // e.g. "Head Office", "Warehouse"
+  contactName  String
+  company      String?
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  pincode      String
+  phone        String?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // ═══════════════════════════════════════════════════════════

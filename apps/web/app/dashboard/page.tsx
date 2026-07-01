@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { Package, FileText, Clock, TrendingUp } from "lucide-react";
+import { Package, FileText, Clock, TrendingUp, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRupees } from "@/lib/utils";
@@ -164,11 +164,18 @@ export default async function DashboardPage() {
   const mockupAlert = mockupPendingOrders[0];
 
   return (
-    <div className="max-w-6xl space-y-8">
-      <div>
-        <p className="overline text-ink-3">Dashboard</p>
-        <h1 className="mt-1 text-3xl sm:text-4xl font-normal">Welcome back, <span className="italic text-em">{firstName}.</span></h1>
-        <p className="mt-1 text-sm text-ink-2">Here&apos;s what&apos;s happening with your gifting.</p>
+    <div className="max-w-full space-y-8">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p className="overline text-ink-3">Dashboard</p>
+          <h1 className="mt-1 text-3xl sm:text-4xl font-normal">Welcome back, <span className="italic text-em">{firstName}.</span></h1>
+          <p className="mt-1 text-sm text-ink-2">Here&apos;s what&apos;s happening with your gifting.</p>
+        </div>
+        <Button asChild variant="em" className="rounded-2xl">
+          <Link href="/builder" className="flex items-center gap-2">
+            <Plus className="h-4 w-4" /> New Order
+          </Link>
+        </Button>
       </div>
 
       {/* KPIs */}

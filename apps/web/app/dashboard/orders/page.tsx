@@ -72,7 +72,7 @@ export default function OrdersPage() {
     : orders;
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="max-w-full space-y-6">
       <div className="flex items-end justify-between">
         <div>
           <p className="overline text-ink-3">Orders</p>

@@ -3,7 +3,7 @@ import { auth } from '@/auth';
 import { formatRupees } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { ChevronLeft, FileDown, Link as LinkIcon } from 'lucide-react';
+import { ChevronLeft, FileDown, Link as LinkIcon, Check, X } from 'lucide-react';
 import { isImageUrl } from '@/lib/mockup-url';
 import { PayBalanceButton } from './components/pay-balance-button';
 
@@ -33,6 +33,48 @@ function getStatusVariant(status: string): "em" | "gold" | "grey" {
   if (status === "delivered" || status === "completed") return "grey";
   return "em";
 }
+
+// The customer-facing order lifecycle, in order. Every milestone is always
+// rendered on the order timeline; completed ones are solid green, the rest are
+// dimmed until the order advances to them.
+const MILESTONES: { key: string; label: string }[] = [
+  { key: "confirmed", label: "Confirmed" },
+  { key: "mockup_pending", label: "Mockup Review" },
+  { key: "mockup_approved", label: "Approved" },
+  { key: "production", label: "In Production" },
+  { key: "quality_check", label: "Quality Check" },
+  { key: "packed", label: "Packed" },
+  { key: "shipped", label: "Shipped" },
+  { key: "in_transit", label: "In Transit" },
+  { key: "delivered", label: "Delivered" },
+  { key: "completed", label: "Completed" },
+];
+
+// Maps any raw OrderStatus to its position in MILESTONES (-1 = before the
+// tracker starts). Derived/parallel states collapse onto the nearest milestone.
+const STATUS_TO_MILESTONE: Record<string, number> = {
+  draft: -1,
+  quote_sent: -1,
+  confirmed: 0,
+  mockup_pending: 1,
+  mockup_approved: 2,
+  payment_pending: 2,
+  production: 3,
+  quality_check: 4,
+  packed: 5,
+  shipped: 6,
+  in_transit: 7,
+  delivered: 8,
+  completed: 9,
+};
+
+// Always render order timestamps in India Standard Time, regardless of the
+// server's timezone, so customers see IST rather than UTC/server-local time.
+const IST_TZ = "Asia/Kolkata";
+const fmtISTDate = (d: Date | string) =>
+  new Date(d).toLocaleDateString("en-IN", { timeZone: IST_TZ });
+const fmtISTTime = (d: Date | string) =>
+  new Date(d).toLocaleTimeString("en-IN", { timeZone: IST_TZ, hour12: true });
 
 export default async function OrderDetailPage({
   params,
@@ -83,6 +125,37 @@ export default async function OrderDetailPage({
 
   const billingJson = order.billingJson as any;
 
+  // ── Build the full lifecycle tracker ──────────────────────────────────
+  // Cancelled/refunded orders stop the happy path and get a red terminal node.
+  const isTerminated = order.status === "cancelled" || order.status === "refunded";
+
+  // Earliest real event per milestone → gives each completed stage a timestamp.
+  const timelineEvents = [...order.timeline].sort(
+    (a: any, b: any) => +new Date(a.createdAt) - +new Date(b.createdAt)
+  );
+  const eventByMilestone = new Map<number, any>();
+  for (const e of timelineEvents) {
+    const mi = STATUS_TO_MILESTONE[e.status];
+    if (mi != null && mi >= 0 && !eventByMilestone.has(mi)) eventByMilestone.set(mi, e);
+  }
+
+  // How far the order has progressed. For terminated orders, use the furthest
+  // milestone actually reached (the current status isn't on the happy path).
+  let currentMilestone = STATUS_TO_MILESTONE[order.status] ?? -1;
+  if (isTerminated) {
+    currentMilestone = timelineEvents.reduce(
+      (max: number, e: any) => Math.max(max, STATUS_TO_MILESTONE[e.status] ?? -1),
+      -1
+    );
+  }
+
+  const visibleMilestones = isTerminated
+    ? MILESTONES.slice(0, currentMilestone + 1)
+    : MILESTONES;
+  const terminalEvent = isTerminated
+    ? [...timelineEvents].reverse().find((e: any) => e.status === order.status)
+    : null;
+
   return (
     <div className="max-w-4xl space-y-6">
       {/* Back Button */}
@@ -97,7 +170,7 @@ export default async function OrderDetailPage({
           <p className="overline text-ink-3">Order Details</p>
           <h1 className="mt-1 text-3xl font-normal">#{order.orderNumber}</h1>
           <p className="mt-1 text-sm text-ink-3">
-            Created {new Date(order.createdAt).toLocaleDateString('en-IN')}
+            Created {fmtISTDate(order.createdAt)}
           </p>
         </div>
         {(() => {
@@ -218,7 +291,7 @@ export default async function OrderDetailPage({
                   <p className="text-sm text-ink-2">
                     You approved the artwork (v{approval.revision})
                     {approval.approvedAt
-                      ? ` on ${new Date(approval.approvedAt).toLocaleDateString('en-IN')}`
+                      ? ` on ${fmtISTDate(approval.approvedAt)}`
                       : ''}
                     . Your order is moving into production.
                   </p>
@@ -274,31 +347,95 @@ export default async function OrderDetailPage({
             )}
           </div>
 
-          {/* Timeline */}
-          {order.timeline.length > 0 && (
-            <div className="rounded-md border-2 border-gray-200 bg-white p-5">
-              <p className="text-xs font-normal uppercase tracking-wider text-gray-600 mb-4">
-                Timeline
-              </p>
-              <div className="space-y-4">
-                {order.timeline.map((event : any) => (
-                  <div key={event.id} className="flex gap-4">
-                    <div className="flex flex-col items-center pt-1">
-                      <div className="h-3 w-3 rounded-full bg-em"></div>
+          {/* Timeline — full lifecycle tracker. Completed stages are solid
+              green with a check + timestamp; upcoming stages are dimmed until
+              the order advances to them. */}
+          <div className="rounded-md border-2 border-gray-200 bg-white p-5">
+            <p className="text-xs font-normal uppercase tracking-wider text-gray-600 mb-4">
+              Timeline
+            </p>
+            <div>
+              {visibleMilestones.map((m, i) => {
+                const done = i <= currentMilestone;
+                const isCurrent = i === currentMilestone && !isTerminated;
+                const event = eventByMilestone.get(i);
+                // The connecting line and last-row spacing only close off when
+                // this is truly the final node (no terminal node follows).
+                const isLastNode =
+                  i === visibleMilestones.length - 1 && !isTerminated;
+                return (
+                  <div key={m.key} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`flex h-6 w-6 items-center justify-center rounded-full ${
+                          done ? 'bg-em text-white' : 'border-2 border-gray-300 bg-white'
+                        } ${isCurrent ? 'ring-4 ring-em-100' : ''}`}
+                      >
+                        {done && <Check className="h-3.5 w-3.5" />}
+                      </div>
+                      {!isLastNode && (
+                        <div
+                          className={`w-0.5 flex-1 ${
+                            i < currentMilestone ? 'bg-em' : 'bg-gray-200'
+                          }`}
+                        />
+                      )}
                     </div>
-                    <div className="flex-1 pb-4">
-                      <p className="font-medium text-sm">{getStatusLabel(event.status)}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(event.createdAt).toLocaleDateString('en-IN')} at{' '}
-                        {new Date(event.createdAt).toLocaleTimeString('en-IN')}
+                    <div className={`flex-1 pb-6 ${done ? '' : 'opacity-40'}`}>
+                      <p className="font-medium text-sm flex items-center gap-2">
+                        {m.label}
+                        {isCurrent && (
+                          <span className="rounded-full bg-em-50 text-em-700 px-2 py-0.5 text-[10px] font-normal uppercase tracking-wider">
+                            Current
+                          </span>
+                        )}
                       </p>
-                      {event.note && <p className="text-xs text-gray-600 mt-1">{event.note}</p>}
+                      {event ? (
+                        <>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {fmtISTDate(event.createdAt)} at {fmtISTTime(event.createdAt)} IST
+                          </p>
+                          {event.note && (
+                            <p className="text-xs text-gray-600 mt-1">{event.note}</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-1">
+                          {done ? 'Completed' : 'Pending'}
+                        </p>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
+                );
+              })}
+
+              {/* Terminal node for cancelled / refunded orders */}
+              {isTerminated && (
+                <div className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white">
+                      <X className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm text-red-700">
+                      {getStatusLabel(order.status)}
+                    </p>
+                    {terminalEvent && (
+                      <>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {fmtISTDate(terminalEvent.createdAt)} at {fmtISTTime(terminalEvent.createdAt)} IST
+                        </p>
+                        {terminalEvent.note && (
+                          <p className="text-xs text-gray-600 mt-1">{terminalEvent.note}</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Sidebar */}
