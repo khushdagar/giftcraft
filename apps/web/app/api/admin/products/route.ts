@@ -154,6 +154,7 @@ const CreateProductSchema = z.object({
       kind: z.string(),
       value: z.string(),
       hexColor: z.string().nullable().optional(),
+      imageUrl: z.string().nullable().optional(),
       sortOrder: z.number().optional(),
     })
   ).nullable().optional(),
@@ -304,6 +305,7 @@ export async function POST(request: NextRequest) {
                 kind: variant.kind,
                 value: variant.value,
                 hexColor: variant.hexColor || null,
+                imageUrl: variant.imageUrl || null,
                 sortOrder: idx,
               })),
             },

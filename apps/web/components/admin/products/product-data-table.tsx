@@ -230,7 +230,12 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-sm font-medium text-gray-900">{product.name}</p>
+                    <Link
+                      href={`/admin/products/${product.id}/edit`}
+                      className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline"
+                    >
+                      {product.name}
+                    </Link>
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-sm text-gray-600 font-mono">{product.sku}</p>

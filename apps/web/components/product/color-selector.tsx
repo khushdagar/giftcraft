@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useProductGallery } from '@/store/product-gallery';
 
 interface ColorOption {
   name: string;
   hex: string;
+  imageUrl?: string;
 }
 
 interface ColorSelectorProps {
@@ -22,9 +24,12 @@ const DEFAULT_COLORS: ColorOption[] = [
 
 export function ColorSelector({ options = DEFAULT_COLORS, onSelect, isDynamic = true }: ColorSelectorProps) {
   const [selected, setSelected] = useState<ColorOption>((options && options.length > 0 ? options[0] : DEFAULT_COLORS[0])!);
+  const setVariantImageUrl = useProductGallery((s) => s.setVariantImageUrl);
 
   const handleSelect = (color: ColorOption) => {
     setSelected(color);
+    // Swap the gallery's main image to this colour's image (or clear it).
+    setVariantImageUrl(color.imageUrl || null);
     onSelect?.(color);
   };
 
@@ -45,19 +50,25 @@ export function ColorSelector({ options = DEFAULT_COLORS, onSelect, isDynamic = 
         Colour: <span className="font-semibold">{selected.name}</span>
         {/* {isDynamic && <span className="ml-2 text-xs text-ink-3">(Dynamic)</span>} */}
       </p>
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         {options.map((color) => (
           <button
             key={color.name}
             onClick={() => handleSelect(color)}
-            className={`h-10 w-10 rounded-full transition ${
+            className={`h-10 w-10 overflow-hidden rounded-full border transition ${
               selected.name === color.name
                 ? 'border-ink ring-2 ring-ink ring-offset-2'
                 : 'border-bdr hover:border-ink'
             }`}
-            style={{ backgroundColor: color.hex }}
+            style={color.imageUrl ? undefined : { backgroundColor: color.hex }}
             title={color.name}
-          />
+          >
+            {color.imageUrl && (
+              // Show the variant image as the swatch when one was uploaded.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={color.imageUrl} alt={color.name} className="h-full w-full object-cover" />
+            )}
+          </button>
         ))}
       </div>
     </div>

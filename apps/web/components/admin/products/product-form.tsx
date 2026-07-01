@@ -132,11 +132,13 @@ export function ProductForm({
   // Drag-to-reorder state for the price-tier rows.
   const [dragTierIdx, setDragTierIdx] = useState<number | null>(null);
   const [dragOverTierIdx, setDragOverTierIdx] = useState<number | null>(null);
-  const [images, setImages] = useState<Array<{ id?: string; url: string; isPrimary: boolean; file?: File }>>([]);
+  const [images, setImages] = useState<Array<{ id?: string; url: string; isPrimary: boolean; altText?: string; file?: File }>>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
+  // Index of the image opened in the zoom lightbox (null = closed).
+  const [zoomIdx, setZoomIdx] = useState<number | null>(null);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; parentId?: string | null }>>([]);
   const [occasions, setOccasions] = useState<Array<{ id: string; name: string; icon?: string }>>([]);
-  const [variants, setVariants] = useState<Array<{ id?: string; kind: string; value: string; hexColor?: string; sortOrder: number }>>([]);
+  const [variants, setVariants] = useState<Array<{ id?: string; kind: string; value: string; hexColor?: string; imageUrl?: string; sortOrder: number }>>([]);
   const [newVariant, setNewVariant] = useState({ kind: 'color', value: '', hexColor: '', customKind: '' });
   const [vendorOptions, setVendorOptions] = useState<VendorOption[]>([]);
   const [vendorLinks, setVendorLinks] = useState<VendorLink[]>([]);
@@ -152,6 +154,7 @@ export function ProductForm({
           kind: String(v.kind).toLowerCase(),
           value: String(v.value).trim(),
           hexColor: v.hexColor || undefined,
+          imageUrl: v.imageUrl || undefined,
           sortOrder: typeof v.sortOrder === 'number' ? v.sortOrder : 0,
         }));
       console.log('✅ Loaded variants:', validVariants);
@@ -278,10 +281,112 @@ export function ProductForm({
           id: img.id,
           url: img.url,
           isPrimary: img.isPrimary,
+          altText: img.altText || '',
         }))
       );
     }
   }, [mode, initialData]);
+
+  // The single primary image index (first flagged, else the first image).
+  const primaryImageIdx = (() => {
+    const i = images.findIndex((im) => im.isPrimary);
+    return i >= 0 ? i : images.length > 0 ? 0 : -1;
+  })();
+
+  // Mark image #idx as the only primary (locally + in DB when already saved).
+  const handleSetPrimary = async (idx: number) => {
+    const img = images[idx];
+    setImages((prev) => prev.map((p, i) => ({ ...p, isPrimary: i === idx })));
+    if (img?.id && mode === 'edit' && initialData?.id) {
+      try {
+        const res = await fetch(
+          `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
+          { method: 'PUT' }
+        );
+        if (!res.ok) toast.error('Failed to update primary image');
+      } catch (err) {
+        console.error('Error updating primary image:', err);
+      }
+    }
+  };
+
+  // Remove image #idx (from DB when already saved, else just local state).
+  const handleDeleteImage = async (idx: number) => {
+    const img = images[idx];
+    if (img?.id && mode === 'edit' && initialData?.id) {
+      try {
+        toast.info('🗑️ Deleting image...', 0);
+        const res = await fetch(
+          `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
+          { method: 'DELETE' }
+        );
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || 'Delete failed');
+        }
+        setImages((prev) => prev.filter((_, i) => i !== idx));
+        toast.success('✅ Image deleted');
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Delete failed';
+        toast.error(`❌ Error: ${errorMsg}`);
+      }
+    } else {
+      setImages((prev) => prev.filter((_, i) => i !== idx));
+      toast.info('Image removed');
+    }
+    setZoomIdx(null);
+  };
+
+  // Persist an image's alt text (saved images patch the DB; new ones stay local).
+  const handleSaveAlt = async (idx: number, altText: string) => {
+    const img = images[idx];
+    setImages((prev) => prev.map((p, i) => (i === idx ? { ...p, altText } : p)));
+    if (img?.id && mode === 'edit' && initialData?.id) {
+      try {
+        const res = await fetch(
+          `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ altText }),
+          }
+        );
+        if (!res.ok) throw new Error('Save failed');
+        toast.success('✅ Alt text saved', 1500);
+      } catch (err) {
+        toast.error('❌ Failed to save alt text', 2500);
+      }
+    }
+  };
+
+  // Upload an image for a specific variant (e.g. the product shown in that
+  // colour). Stored on the variant and saved with the product on submit.
+  const handleVariantImageUpload = async (idx: number, file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('❌ Image exceeds 5MB limit', 3000);
+      return;
+    }
+    let uploadingToastId: string | null = null;
+    try {
+      uploadingToastId = toast.info('📤 Uploading variant image...', 0);
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('folder', 'variants');
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Upload failed');
+      }
+      const { url } = await res.json();
+      setVariants((prev) => prev.map((v, i) => (i === idx ? { ...v, imageUrl: url } : v)));
+      if (uploadingToastId) useToastStore.getState().removeToast(uploadingToastId);
+      toast.success('✅ Variant image added — Save Changes to persist', 2500);
+    } catch (err) {
+      if (uploadingToastId) useToastStore.getState().removeToast(uploadingToastId);
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      toast.error(`❌ ${msg}`, 3500);
+    }
+  };
 
   // Auto-generate slug from product name
   const nameValue = useWatch({ control: form.control, name: 'name' });
@@ -349,6 +454,8 @@ export function ProductForm({
           } else {
             variant.hexColor = null;
           }
+          // Carry the optional per-variant image through to the API.
+          variant.imageUrl = v.imageUrl ? String(v.imageUrl).trim() : null;
           return variant;
         }) : [],
       };
@@ -436,11 +543,17 @@ export function ProductForm({
 
       toast.success(successMsg, 4000); // 4 seconds visibility
 
-      // Wait a moment before navigating to let toast display
-      setTimeout(() => {
-        router.push('/admin/products');
+      if (mode === 'edit') {
+        // Stay on the edit page after saving — just refresh server data so the
+        // form reflects the saved state. (Previously bounced to the listing.)
         router.refresh();
-      }, 500);
+      } else {
+        // After creating, go to the listing.
+        setTimeout(() => {
+          router.push('/admin/products');
+          router.refresh();
+        }, 500);
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Something went wrong';
       setError(errorMsg);
@@ -452,6 +565,22 @@ export function ProductForm({
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      {/* Sticky action bar — Save is always reachable while scrolling. Sits
+          just below the admin topbar (h-16). */}
+      <div className="sticky top-16 z-30 -mx-4 flex items-center justify-between gap-3 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <p className="text-sm font-medium text-gray-900">
+          {mode === 'create' ? 'New Product' : 'Edit Product'}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
+            Cancel
+          </Button>
+          <Button type="submit" size="sm" disabled={loading}>
+            {loading ? 'Saving...' : mode === 'create' ? 'Create Product' : 'Save Changes'}
+          </Button>
+        </div>
+      </div>
+
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
           <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
@@ -694,6 +823,7 @@ export function ProductForm({
                           id: img.id,
                           url: img.url,
                           isPrimary: img.isPrimary,
+                          altText: img.altText || '',
                         }))
                       );
 
@@ -754,98 +884,42 @@ export function ProductForm({
               </div>
             </label>
 
-            {/* Image List */}
+            {/* Image List — compact thumbnails. Click a thumb to zoom & edit. */}
             {images.length > 0 && (
               <div className="space-y-3">
                 <p className="text-sm font-normal text-gray-900">Uploaded Images ({images.length})</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
                   {images.map((img, idx) => (
                     <div key={idx} className="relative group">
-                      <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 border-2 border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => setZoomIdx(idx)}
+                        className="block aspect-square w-full rounded-lg overflow-hidden bg-gray-100 border border-gray-200 hover:border-blue-500 transition"
+                        title="Click to zoom & edit"
+                      >
                         <img
                           src={img.url}
-                          alt={`Product ${idx + 1}`}
+                          alt={img.altText || `Product ${idx + 1}`}
                           className="w-full h-full object-cover"
                         />
-                      </div>
+                      </button>
 
-                      {/* Primary Badge */}
-                      {img.isPrimary && (
-                        <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded font-normal">
+                      {/* Single Primary badge — only on the actual primary image */}
+                      {idx === primaryImageIdx && (
+                        <div className="absolute top-1 left-1 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded font-medium pointer-events-none">
                           Primary
                         </div>
                       )}
 
-                      {/* Hover Actions */}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition rounded-lg flex items-center justify-center gap-2">
-                        {!img.isPrimary && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              // Update local state
-                              setImages((prev) =>
-                                prev.map((p, i) => ({
-                                  ...p,
-                                  isPrimary: i === idx,
-                                }))
-                              );
-
-                              // If image has ID (saved in DB), update in database
-                              if (img.id && mode === 'edit' && initialData?.id) {
-                                try {
-                                  const res = await fetch(
-                                    `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
-                                    { method: 'PUT' }
-                                  );
-                                  if (!res.ok) {
-                                    toast.error('Failed to update primary image');
-                                  }
-                                } catch (err) {
-                                  console.error('Error updating primary image:', err);
-                                }
-                              }
-                            }}
-                            className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-normal hover:bg-blue-700"
-                          >
-                            Set Primary
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            // If image has ID (saved in DB), delete from database
-                            if (img.id && mode === 'edit' && initialData?.id) {
-                              try {
-                                toast.info('🗑️ Deleting image...', 0);
-
-                                const res = await fetch(
-                                  `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
-                                  { method: 'DELETE' }
-                                );
-
-                                if (!res.ok) {
-                                  const error = await res.json();
-                                  throw new Error(error.error || 'Delete failed');
-                                }
-
-                                // Remove from local state
-                                setImages((prev) => prev.filter((_, i) => i !== idx));
-                                toast.success('✅ Image deleted');
-                              } catch (err) {
-                                const errorMsg = err instanceof Error ? err.message : 'Delete failed';
-                                toast.error(`❌ Error: ${errorMsg}`);
-                              }
-                            } else {
-                              // Not saved yet, just remove from local state
-                              setImages((prev) => prev.filter((_, i) => i !== idx));
-                              toast.info('Image removed');
-                            }
-                          }}
-                          className="bg-red-600 text-white px-2 py-1 rounded text-xs font-normal hover:bg-red-700"
-                        >
-                          Remove
-                        </button>
-                      </div>
+                      {/* Quick remove on hover */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteImage(idx)}
+                        className="absolute top-1 right-1 h-5 w-5 rounded-full bg-red-600 text-white text-xs leading-none opacity-0 group-hover:opacity-100 transition flex items-center justify-center hover:bg-red-700"
+                        title="Remove image"
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -1176,24 +1250,76 @@ export function ProductForm({
             {variants.length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-sm font-normal text-gray-900">Product Variants ({variants.length})</h3>
-                <div className="grid gap-2">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {variants.map((variant, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div key={idx} className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
                       <div className="flex items-center gap-3">
-                        {variant.kind === 'color' && (
-                          <div
-                            className="w-6 h-6 rounded-md border border-gray-300"
-                            style={{ backgroundColor: resolveSwatchHex(variant.value, variant.hexColor) }}
+                        {/* Variant visual — the variant image takes precedence
+                            over the colour swatch. Click to upload. */}
+                        <label className="relative shrink-0 cursor-pointer" title="Upload variant image">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleVariantImageUpload(idx, f);
+                              e.target.value = '';
+                            }}
                           />
-                        )}
+                          {variant.imageUrl ? (
+                            <img
+                              src={variant.imageUrl}
+                              alt={variant.value}
+                              className="w-10 h-10 rounded-md object-cover border border-gray-300"
+                            />
+                          ) : variant.kind === 'color' ? (
+                            <div
+                              className="w-10 h-10 rounded-md border border-gray-300"
+                              style={{ backgroundColor: resolveSwatchHex(variant.value, variant.hexColor) }}
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-md border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-lg leading-none">
+                              +
+                            </div>
+                          )}
+                        </label>
                         <div>
                           <p className="text-xs text-gray-500 font-normal uppercase">{variant.kind}</p>
                           <p className="text-sm font-medium text-gray-900">{variant.value}</p>
+                          <div className="flex items-center gap-2">
+                            <label className="text-[11px] text-blue-600 hover:underline cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) handleVariantImageUpload(idx, f);
+                                  e.target.value = '';
+                                }}
+                              />
+                              {variant.imageUrl ? 'Change image' : 'Add image'}
+                            </label>
+                            {variant.imageUrl && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setVariants(
+                                    variants.map((v, i) => (i === idx ? { ...v, imageUrl: undefined } : v))
+                                  )
+                                }
+                                className="text-[11px] text-red-600 hover:underline"
+                              >
+                                Remove image
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                       {/* Inline colour editor for existing colour variants */}
                       {variant.kind === 'color' && (
-                        <div className="flex items-center gap-2 ml-auto mr-3">
+                        <div className="flex items-center gap-1.5 ml-auto">
                           <input
                             type="color"
                             value={resolveSwatchHex(variant.value, variant.hexColor)}
@@ -1204,7 +1330,7 @@ export function ProductForm({
                                 )
                               )
                             }
-                            className="w-9 h-9 p-1 border border-gray-300 rounded-lg cursor-pointer bg-white"
+                            className="w-8 h-8 p-0.5 border border-gray-300 rounded-lg cursor-pointer bg-white shrink-0"
                             title="Pick colour"
                           />
                           <Input
@@ -1218,7 +1344,7 @@ export function ProductForm({
                                 )
                               )
                             }
-                            className="w-28 text-sm"
+                            className="w-20 text-xs"
                           />
                         </div>
                       )}
@@ -1568,6 +1694,93 @@ export function ProductForm({
           Cancel
         </Button>
       </div>
+
+      {/* Image zoom lightbox — view large + edit alt text + set primary / remove */}
+      {zoomIdx !== null && images[zoomIdx] && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setZoomIdx(null)}
+        >
+          <div
+            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setZoomIdx(null)}
+              className="absolute top-3 right-3 z-10 h-8 w-8 rounded-full bg-gray-900/70 text-white hover:bg-gray-900"
+              title="Close"
+            >
+              ×
+            </button>
+
+            <div className="grid gap-0 md:grid-cols-[1.4fr_1fr]">
+              {/* Zoomed image */}
+              <div className="flex items-center justify-center bg-gray-50 p-4">
+                <img
+                  src={images[zoomIdx].url}
+                  alt={images[zoomIdx].altText || 'Product image'}
+                  className="max-h-[70vh] w-auto max-w-full rounded-lg object-contain"
+                />
+              </div>
+
+              {/* Details + actions */}
+              <div className="space-y-4 p-5">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-semibold text-gray-900">Image details</h3>
+                  {zoomIdx === primaryImageIdx && (
+                    <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-medium">
+                      Primary
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Image name / Alt text</label>
+                  <Input
+                    type="text"
+                    value={images[zoomIdx].altText || ''}
+                    placeholder="Describe this image (used as alt text)"
+                    onChange={(e) =>
+                      setImages((prev) =>
+                        prev.map((p, i) => (i === zoomIdx ? { ...p, altText: e.target.value } : p))
+                      )
+                    }
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Helps SEO &amp; screen readers.</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveAlt(zoomIdx, images[zoomIdx]?.altText || '')}
+                  className="w-full bg-gray-900 text-white text-sm font-medium rounded-lg py-2 hover:bg-gray-800 transition"
+                >
+                  Save alt text
+                </button>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    disabled={zoomIdx === primaryImageIdx}
+                    onClick={() => handleSetPrimary(zoomIdx)}
+                    className="text-sm font-medium rounded-lg py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {zoomIdx === primaryImageIdx ? 'Is Primary' : 'Set Primary'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteImage(zoomIdx)}
+                    className="text-sm font-medium rounded-lg py-2 border border-red-200 text-red-600 hover:bg-red-50 transition"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

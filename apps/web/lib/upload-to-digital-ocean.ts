@@ -33,7 +33,14 @@ function getS3Client(): S3Client {
 
 export async function uploadToDigitalOcean(file: File, folder: string = 'products'): Promise<string> {
   const buffer = await file.arrayBuffer();
-  const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`;
+  // Sanitize the original name so the object key / URL is web-safe (no spaces or
+  // special characters that would produce fragile URLs).
+  const safeName = file.name
+    .normalize('NFKD')
+    .replace(/[^a-zA-Z0-9.\-_]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}-${safeName}`;
 
   const region = process.env.DO_SPACES_REGION || 'sfo3';
   const bucket = process.env.DO_SPACES_BUCKET || 'giftcraft-dev';

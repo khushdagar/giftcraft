@@ -1,16 +1,21 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useBuilderStore } from '@/store/builder';
+import { resolveSwatchHex } from '@/lib/color-name';
 
 export function TrendingProducts() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   const { addProduct, removeProduct, products: cartProducts } = useBuilderStore();
+  // Per-card image override when a colour swatch is hovered/selected.
+  const [variantImg, setVariantImg] = useState<Record<string, string | null>>({});
+  // Which card is currently hovered (to show its second image).
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
   const { data: featuredProducts, isLoading } = useQuery({
     queryKey: ['products', 'featured'],
@@ -111,17 +116,31 @@ export function TrendingProducts() {
               ))
             ) : (
               featuredProducts?.products?.map((p: any) => {
-                const primaryImage = p.images?.[0];
+                const primaryImage = p.images?.find((img: any) => img.isPrimary) || p.images?.[0];
+                const baseUrl = primaryImage?.url;
+                // A second, distinct image to reveal on hover (if the product has one).
+                const secondUrl = p.images?.find((img: any) => img.url !== baseUrl)?.url;
                 const price = p.priceTiers?.[0]?.sellPrice || 0;
                 const inCart = cartProducts.some((pr: any) => pr.id === p.id);
+                const colorVariants = (p.variants || []).filter((v: any) => v.kind === 'color');
+                const override = variantImg[p.id]; // string | null | undefined
+                const displayUrl =
+                  override !== undefined
+                    ? (override || baseUrl)
+                    : (hoveredCard === p.id && secondUrl ? secondUrl : baseUrl);
                 return (
-                  <div key={p.id} className="flex-shrink-0 w-72 bg-white border border-[#E8E8E3] rounded-2xl overflow-hidden hover:shadow-lg transition-shadow">
+                  <div
+                    key={p.id}
+                    onMouseEnter={() => setHoveredCard(p.id)}
+                    onMouseLeave={() => setHoveredCard(null)}
+                    className="flex-shrink-0 w-72 bg-white border border-[#E8E8E3] rounded-2xl overflow-hidden hover:shadow-lg transition-shadow"
+                  >
                     {/* Image + details link to the product page */}
                     <Link href={`/products/${p.slug}`} className="block group">
                       <div className="aspect-square bg-[#F5F5F0] flex items-center justify-center relative overflow-hidden">
-                        {primaryImage?.url ? (
+                        {displayUrl ? (
                           <Image
-                            src={primaryImage.url}
+                            src={displayUrl}
                             alt={p.name}
                             fill
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -148,6 +167,27 @@ export function TrendingProducts() {
                         <p className="text-lg font-bold">₹{Math.round(price).toLocaleString()}</p>
                       </div>
                     </Link>
+
+                    {/* Colour swatches — hover/tap swaps the card image */}
+                    {colorVariants.length > 0 && (
+                      <div className="flex items-center gap-1.5 px-5 pt-3">
+                        {colorVariants.slice(0, 6).map((v: any) => (
+                          <button
+                            key={v.id || v.value}
+                            type="button"
+                            title={v.value}
+                            onMouseEnter={() =>
+                              v.imageUrl && setVariantImg((m) => ({ ...m, [p.id]: v.imageUrl }))
+                            }
+                            onClick={() =>
+                              setVariantImg((m) => ({ ...m, [p.id]: v.imageUrl || null }))
+                            }
+                            className="h-5 w-5 rounded-full border border-[#E8E8E3] transition hover:scale-110"
+                            style={{ backgroundColor: resolveSwatchHex(v.value, v.hexColor) }}
+                          />
+                        ))}
+                      </div>
+                    )}
 
                     <div className="px-5 pb-5 pt-4">
                       <button

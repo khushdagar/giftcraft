@@ -6,11 +6,20 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
 import { toast } from '@/lib/stores/toast-store';
+import { resolveSwatchHex } from '@/lib/color-name';
 
 interface ProductImage {
   id: string;
   url: string;
   isPrimary?: boolean;
+}
+
+interface ColorVariant {
+  id?: string;
+  kind?: string;
+  value: string;
+  hexColor?: string | null;
+  imageUrl?: string | null;
 }
 
 interface Product {
@@ -28,6 +37,7 @@ interface Product {
   priceTiers?: Array<{ sellPrice: number }>;
   categories?: Array<{ categoryId: string; category?: { name: string } }>;
   images?: ProductImage[];
+  variants?: ColorVariant[];
 }
 
 interface Category {
@@ -72,6 +82,10 @@ export function CatalogClient() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [occasions, setOccasions] = useState<Occasion[]>([]);
   const [loading, setLoading] = useState(true);
+  // Per-card image override when a colour swatch is hovered/selected.
+  const [variantImg, setVariantImg] = useState<Record<string, string | null>>({});
+  // Which card is currently hovered (to show its second image).
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
   // Filters
   const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
@@ -542,13 +556,27 @@ export function CatalogClient() {
                     toast.success(`${p.name} added to pack!`, 3000);
                   };
 
+                  const colorVariants = (p.variants || []).filter((v) => (v.kind ?? 'color') === 'color');
+                  const baseUrl = p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url;
+                  // A second, distinct image to reveal on hover (if the product has one).
+                  const secondUrl = p.images?.find(img => img.url !== baseUrl)?.url;
+                  const override = variantImg[p.id]; // string | null | undefined
+                  const displayUrl =
+                    override !== undefined
+                      ? (override || baseUrl)
+                      : (hoveredCard === p.id && secondUrl ? secondUrl : baseUrl);
                   return (
-                    <div key={p.id} className="bg-white rounded-md shadow hover:shadow-lg hover:translate-y-[-4px] transition overflow-hidden flex flex-col">
+                    <div
+                      key={p.id}
+                      onMouseEnter={() => setHoveredCard(p.id)}
+                      onMouseLeave={() => setHoveredCard(null)}
+                      className="bg-white rounded-md shadow hover:shadow-lg hover:translate-y-[-4px] transition overflow-hidden flex flex-col"
+                    >
                       <Link href={`/products/${p.slug}`} className="block cursor-pointer flex-1">
                         <div className="relative aspect-square m-2.5 rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: '#F5F5F0' }}>
-                          {p.images && p.images.length > 0 ? (
+                          {displayUrl ? (
                             <img
-                              src={p.images.find(img => img.isPrimary)?.url || p.images[0]?.url}
+                              src={displayUrl}
                               alt={p.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition"
                             />
@@ -568,6 +596,26 @@ export function CatalogClient() {
                           {p.printingTechnique && <p className="text-[10px] uppercase tracking-widest mt-1" style={{ color: '#9B9B93' }}>{TECH_BADGES[p.printingTechnique] || p.printingTechnique}</p>}
                         </div>
                       </Link>
+                      {/* Colour swatches — hover/tap swaps the card image */}
+                      {colorVariants.length > 0 && (
+                        <div className="flex items-center gap-1.5 px-3.5 pb-2">
+                          {colorVariants.slice(0, 6).map((v) => (
+                            <button
+                              key={v.id || v.value}
+                              type="button"
+                              title={v.value}
+                              onMouseEnter={() =>
+                                v.imageUrl && setVariantImg((m) => ({ ...m, [p.id]: v.imageUrl! }))
+                              }
+                              onClick={() =>
+                                setVariantImg((m) => ({ ...m, [p.id]: v.imageUrl || null }))
+                              }
+                              className="h-4 w-4 rounded-full border border-[#E8E8E3] transition hover:scale-110"
+                              style={{ backgroundColor: resolveSwatchHex(v.value, v.hexColor || undefined) }}
+                            />
+                          ))}
+                        </div>
+                      )}
                       <div className="flex flex-col gap-2 px-3.5 pb-3.5 sm:flex-row">
                         <button onClick={handleAddToPack} className="w-full sm:flex-1 h-9 sm:h-8 bg-emerald-700 text-white text-xs font-semibold rounded-full hover:bg-emerald-800 transition whitespace-nowrap">Add to Pack</button>
                         <Link href={`/products/${p.slug}`} className="w-full sm:flex-1 h-9 sm:h-8 border-2 border-emerald-700 text-emerald-700 text-xs font-semibold rounded-full hover:bg-emerald-50 transition flex items-center justify-center whitespace-nowrap">View Details</Link>

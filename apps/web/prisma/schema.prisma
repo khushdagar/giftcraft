@@ -341,6 +341,7 @@ model ProductVariant {
   kind      String   // "color" | "size" | ...
   value     String
   hexColor  String?
+  imageUrl  String?  // Optional variant image (e.g. product shown in this colour)
   sortOrder Int      @default(0)
 
   @@index([productId])

@@ -38,7 +38,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { kind, value, hexColor, sortOrder } = body;
+    const { kind, value, hexColor, imageUrl, sortOrder } = body;
 
     if (!kind || !value) {
       return NextResponse.json(
@@ -53,6 +53,7 @@ export async function POST(
         kind,
         value,
         hexColor: hexColor || null,
+        imageUrl: imageUrl || null,
         sortOrder: sortOrder || 0,
       },
     });

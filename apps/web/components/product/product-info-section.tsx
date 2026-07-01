@@ -90,6 +90,7 @@ export function ProductInfoSection({
                     // Auto-derive the swatch colour from the variant name when
                     // no hex was saved (e.g. "Navy" -> navy, "White" -> white).
                     hex: resolveSwatchHex(v.value, v.hexColor),
+                    imageUrl: v.imageUrl || undefined,
                   }))
                 : undefined
             }
@@ -152,13 +153,6 @@ export function ProductInfoSection({
       {/* Expert help */}
       <ExpertHelp productName={product.name} productId={product.id} />
 
-      {/* Addons */}
-      <div className="mt-8">
-        <AddonsSelector productId={product.id} />
-      </div>
-
-      {/* Sticky CTA bar — mobile only. Stays visible while scrolling the
-          product page so the primary actions are always one tap away. */}
       <div
         className={`fixed inset-x-0 bottom-0 z-40 flex gap-2.5 border-t border-bdr bg-white/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur transition-transform duration-300 lg:hidden ${
           showStickyBar ? "translate-y-0" : "translate-y-full"

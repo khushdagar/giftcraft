@@ -47,12 +47,13 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         // Upload to Digital Ocean
         const url = await uploadToDigitalOcean(file);
 
-        // Save to database immediately
+        // Save to database immediately. Only the very first image of a product
+        // with no existing images becomes primary — NOT every image in the batch.
         const savedImage = await prisma.productImage.create({
           data: {
             productId: params.id,
             url,
-            isPrimary: product.images.length === 0, // First image is primary if no images exist
+            isPrimary: product.images.length === 0 && uploadedImages.length === 0,
             sortOrder: product.images.length + uploadedImages.length,
             altText: file.name.replace(/\.[^/.]+$/, ''), // Remove extension for alt text
           },
@@ -84,6 +85,101 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     console.error('Error uploading images:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to upload images' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/admin/products/[id]/images?imageId=xxx
+ * Set the given image as the product's primary image (unsets all others).
+ */
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await auth();
+
+    if (!session || session.user.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const url = new URL(request.url);
+    const imageId = url.searchParams.get('imageId');
+
+    if (!imageId) {
+      return NextResponse.json({ error: 'Image ID required' }, { status: 400 });
+    }
+
+    // Verify image belongs to this product
+    const image = await prisma.productImage.findFirst({
+      where: { id: imageId, productId: params.id },
+    });
+
+    if (!image) {
+      return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+    }
+
+    // Exactly one primary: clear all, then set this one.
+    await prisma.$transaction([
+      prisma.productImage.updateMany({
+        where: { productId: params.id },
+        data: { isPrimary: false },
+      }),
+      prisma.productImage.update({
+        where: { id: imageId },
+        data: { isPrimary: true },
+      }),
+    ]);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error setting primary image:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to set primary image' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH /api/admin/products/[id]/images?imageId=xxx
+ * Update an image's alt text.
+ */
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const session = await auth();
+
+    if (!session || session.user.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const url = new URL(request.url);
+    const imageId = url.searchParams.get('imageId');
+
+    if (!imageId) {
+      return NextResponse.json({ error: 'Image ID required' }, { status: 400 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const altText = typeof body.altText === 'string' ? body.altText : '';
+
+    const image = await prisma.productImage.findFirst({
+      where: { id: imageId, productId: params.id },
+    });
+
+    if (!image) {
+      return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+    }
+
+    const updated = await prisma.productImage.update({
+      where: { id: imageId },
+      data: { altText },
+    });
+
+    return NextResponse.json({ success: true, image: updated });
+  } catch (error) {
+    console.error('Error updating image:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to update image' },
       { status: 500 }
     );
   }

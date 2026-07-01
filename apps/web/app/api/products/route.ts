@@ -103,9 +103,15 @@ export async function GET(request: NextRequest) {
           priceTiers: {
             orderBy: { tier: 'asc' },
           },
+          // First few images (ordered) so cards can show a second image on hover.
           images: {
-            where: { isPrimary: true },
-            take: 1,
+            orderBy: { sortOrder: 'asc' },
+            take: 4,
+          },
+          // Colour variants (with optional per-variant image) for card swatches.
+          variants: {
+            where: { kind: 'color' },
+            orderBy: { sortOrder: 'asc' },
           },
           hsn: {
             include: {

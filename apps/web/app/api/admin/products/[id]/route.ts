@@ -62,6 +62,7 @@ const UpdateProductSchema = z.object({
       kind: z.string().min(1, 'Variant kind cannot be empty'),
       value: z.string().min(1, 'Variant value cannot be empty'),
       hexColor: z.string().nullable().optional(),
+      imageUrl: z.string().nullable().optional(),
       sortOrder: z.number().int().optional(),
     })
   ).nullable().optional(),
@@ -295,6 +296,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
               kind: variant.kind,
               value: variant.value,
               hexColor: variant.hexColor || null,
+              imageUrl: variant.imageUrl || null,
               sortOrder: idx,
             })),
           });
