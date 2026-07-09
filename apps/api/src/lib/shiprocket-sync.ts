@@ -1,7 +1,6 @@
-import { PrismaClient, OrderStatus } from '@prisma/client';
+import { OrderStatus } from '@prisma/client';
 import axios from 'axios';
-
-const prisma = new PrismaClient();
+import { prisma } from './prisma';
 
 const SHIPROCKET_API_URL =
   process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external';

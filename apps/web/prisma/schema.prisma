@@ -322,6 +322,17 @@ model Product {
   auditLogs         PriceAuditLog[]
   gocOptions        GocOption[]
   sampleOrders      SampleOrder[]
+  giftPackItems     GiftPackItem[]
+
+  // ── Curated Pack support ──────────────────────────────────────────────────
+  // A pack is a Product (isPack=true) that bundles other products. It gets every
+  // normal product field; its price is derived from its member products' tiers,
+  // so it carries no own PriceTiers. It shows in /packs, not the /catalog grid.
+  isPack            Boolean  @default(false)
+  packCollectionId  String?
+  packCollection    GiftCollection?  @relation("PackCollectionProducts", fields: [packCollectionId], references: [id], onDelete: SetNull)
+  packItems         ProductPackItem[] @relation("PackParent")
+  inPacks           ProductPackItem[] @relation("PackMember")
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -329,6 +340,24 @@ model Product {
   @@index([slug])
   @@index([status])
   @@index([isFeatured])
+  @@index([isPack])
+  @@index([packCollectionId])
+}
+
+// A member product inside a pack-product (self-relation on Product), with the
+// quantity of that product per pack.
+model ProductPackItem {
+  id        String  @id @default(cuid())
+  packId    String
+  pack      Product @relation("PackParent", fields: [packId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation("PackMember", fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int     @default(1)
+  sortOrder Int     @default(0)
+
+  @@unique([packId, productId])
+  @@index([packId])
+  @@index([productId])
 }
 
 model PriceTier {
@@ -379,6 +408,7 @@ model Category {
   parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children  Category[] @relation("CategoryTree")
   products  ProductCategory[]
+  giftPacks GiftPackCategory[]
   sortOrder Int      @default(0)
 
   @@index([parentId])
@@ -746,6 +776,85 @@ model OccasionConfig {
   // Products whose `tags` overlap these are auto-included — no manual linking needed.
   tags         String[] @default([])
   products     ProductOccasion[]
+}
+
+// A curated gift pack — a hand-picked set of specific products (with per-item
+// quantities) sold as one ready-made assortment. Unlike tag-driven Collections
+// (OccasionConfig.isCollection), a pack is an explicit list of SKUs so the
+// admin controls exactly what's inside and in what quantity. Customers browse
+// packs and load them straight into the builder to customise/brand.
+// A Curated Collection groups several curated Packs under one theme
+// (e.g. "Weight Loss Starter Kits" containing "Starter Pack", "Pro Pack").
+// It is the browse/organise unit; the sellable unit is still the GiftPack.
+model GiftCollection {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  image       String?
+  gradient    String?
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  packs       GiftPack[]
+  packProducts Product[] @relation("PackCollectionProducts")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model GiftPack {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  descriptionShort String?
+  description      String?
+  // Optional hero image (DO Spaces URL). When absent, the `gradient` class is
+  // used as the tile background (matching the Curated Packs card design).
+  image       String?
+  gradient    String?
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  // Optional parent collection. Nullable so legacy/standalone packs still work.
+  collectionId String?
+  collection   GiftCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  items       GiftPackItem[]
+  categories  GiftPackCategory[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([isActive])
+  @@index([collectionId])
+}
+
+model GiftPackItem {
+  id        String   @id @default(cuid())
+  packId    String
+  pack      GiftPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  sortOrder Int      @default(0)
+
+  @@unique([packId, productId])
+  @@index([packId])
+  @@index([productId])
+}
+
+// Join: which categories a curated pack belongs to (mirrors ProductCategory).
+// Lets packs be organised/filtered by category like products.
+model GiftPackCategory {
+  packId     String
+  categoryId String
+  pack       GiftPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([packId, categoryId])
+  @@index([categoryId])
 }
 
 model Coupon {

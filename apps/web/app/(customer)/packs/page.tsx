@@ -1,148 +1,100 @@
-import { Button } from '@/components/ui/button';
-import { Zap, Leaf, Star, Gift } from 'lucide-react';
-import Link from 'next/link';
+import { prisma } from '@/lib/prisma';
+import { PacksBrowser } from '@/components/packs/packs-browser';
 
-const CURATED_PACKS = [
-  {
-    id: 'welcome-kit',
-    name: 'Welcome Kit',
-    description: 'The perfect first day for new team members',
-    icon: Gift,
-    bg: 'bg-em-50',
-    borderColor: 'border-em',
-    textColor: 'text-em',
-    products: ['Premium Flask', 'Notebook', 'Pen'],
-    priceRange: '₹800–₹1,200',
-  },
-  {
-    id: 'festival-pack',
-    name: 'Festival Pack',
-    description: 'Celebrate Diwali, Christmas, Holi with premium gifts',
-    icon: Zap,
-    bg: 'bg-gold-50',
-    borderColor: 'border-gold',
-    textColor: 'text-gold-700',
-    products: ['Premium Hamper', 'Branded Mug', 'Eco Packaging'],
-    priceRange: '₹1,500–₹2,500',
-  },
-  {
-    id: 'eco-pack',
-    name: 'Eco Pack',
-    description: 'Sustainable gifting for environmentally conscious brands',
-    icon: Leaf,
-    bg: 'bg-sky-50',
-    borderColor: 'border-sky-200',
-    textColor: 'text-sky-700',
-    products: ['Bamboo Utensils', 'Seed Paper', 'Jute Bag'],
-    priceRange: '₹600–₹1,000',
-  },
-  {
-    id: 'premium-pack',
-    name: 'Premium Pack',
-    description: 'Luxury gifts for VIPs, executives, and key clients',
-    icon: Star,
-    bg: 'bg-[#F5F3FF]',
-    borderColor: 'border-[#EDE9FE]',
-    textColor: 'text-[#8B5CF6]',
-    products: ['Premium Leather Goods', 'Crystal Glass', 'Luxury Packaging'],
-    priceRange: '₹3,000–₹5,000+',
-  },
-];
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Curated Gift Packs | GiftCraft',
-  description: 'Explore our pre-designed gift pack templates. Mix and match, or customize from scratch.',
+  title: 'Curated Packs | GiftCraft',
+  description:
+    'Hand-picked gift assortments curated by our gifting experts. Ready to customise with your branding.',
 };
 
-export default function PacksPage() {
-  return (
-    <div className="min-h-screen bg-canvas py-12 px-4">
-      <div className="container-gc-w max-w-6xl">
-        {/* Header */}
-        <div className="mb-16 text-center">
-          <p className="overline text-ink-3">CURATED PACKS</p>
-          <h1 className="t-title mt-2 text-ink">Pre-Designed Gift Bundles</h1>
-          <p className="text-ink-2 mt-4 text-lg">
-            Start with one of our templates, or use them as inspiration for your own creation.
-          </p>
-        </div>
+function uniqueById(list: { id: string; name: string }[]) {
+  const map = new Map<string, { id: string; name: string }>();
+  for (const item of list) map.set(item.id, item);
+  return Array.from(map.values());
+}
 
-        {/* Packs Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          {CURATED_PACKS.map((pack) => {
-            const Icon = pack.icon;
-            return (
-              <div
-                key={pack.id}
-                className={`rounded-md border-2 ${pack.borderColor} ${pack.bg} p-6 flex flex-col`}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-normal text-ink">{pack.name}</h3>
-                    <p className="text-sm text-ink-2 mt-1">{pack.description}</p>
-                  </div>
-                  <Icon className={`w-6 h-6 ${pack.textColor} flex-shrink-0`} />
-                </div>
+export default async function PacksPage() {
+  const collections = await prisma.giftCollection.findMany({
+    where: { isActive: true },
+    include: {
+      packProducts: {
+        where: { isPack: true, status: 'active' },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+        include: {
+          images: { where: { isPrimary: true }, take: 1 },
+          packItems: {
+            orderBy: { sortOrder: 'asc' },
+            include: {
+              product: {
+                select: {
+                  brand: true,
+                  recipientTags: true,
+                  images: { orderBy: { sortOrder: 'asc' }, take: 1 },
+                  priceTiers: { where: { tier: 1 }, select: { sellPrice: true } },
+                  categories: { select: { category: { select: { id: true, name: true } } } },
+                  occasions: {
+                    select: { occasion: { select: { id: true, name: true, isCollection: true } } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+  });
 
-                {/* Products */}
-                <div className="mb-4 space-y-1">
-                  {pack.products.map((product) => (
-                    <div key={product} className="flex items-center gap-2 text-sm">
-                      <span className={`w-1.5 h-1.5 rounded-full ${pack.textColor} bg-current`}></span>
-                      <span className="text-ink-2">{product}</span>
-                    </div>
-                  ))}
-                </div>
+  const data = collections
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      image: c.image,
+      gradient: c.gradient,
+      packs: c.packProducts.map((pack) => {
+        const members = pack.packItems;
+        const categories = uniqueById(
+          members.flatMap((it) => it.product.categories.map((pc) => pc.category))
+        );
+        const occasions = uniqueById(
+          members
+            .flatMap((it) => it.product.occasions.map((po) => po.occasion))
+            .filter((o) => !o.isCollection)
+            .map((o) => ({ id: o.id, name: o.name }))
+        );
+        const brands = Array.from(
+          new Set(members.map((it) => it.product.brand).filter((b): b is string => Boolean(b)))
+        );
+        const recipients = Array.from(
+          new Set(members.flatMap((it) => it.product.recipientTags).filter(Boolean))
+        );
+        return {
+          id: pack.id,
+          name: pack.name,
+          slug: pack.slug,
+          description: pack.descriptionLong,
+          descriptionShort: pack.descriptionShort,
+          image: pack.images[0]?.url ?? null,
+          gradient: null,
+          productCount: members.length,
+          fromPrice: members.reduce((sum, it) => {
+            const tier1 = it.product.priceTiers[0];
+            return sum + (tier1 ? Number(tier1.sellPrice) : 0) * it.quantity;
+          }, 0),
+          productImages: members.map((it) => it.product.images[0]?.url ?? null),
+          productIds: members.map((it) => it.productId),
+          categories,
+          brands,
+          occasions,
+          recipients,
+        };
+      }),
+    }))
+    .filter((c) => c.packs.length > 0);
 
-                {/* Price & CTA */}
-                <div className="mt-auto pt-4 border-t border-current/20">
-                  <p className="text-sm font-normal text-ink mb-3">{pack.priceRange}</p>
-                  <Button
-                    asChild
-                    variant="em"
-                    className="w-full rounded-md text-sm"
-                  >
-                    <Link href={`/builder?template=${pack.id}`}>Start with This Pack</Link>
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* DIY Section */}
-        <div className="rounded-md border-2 border-indigo-200 bg-[#EEF2FF] p-8 text-center mb-12">
-          <h2 className="text-2xl font-normal text-indigo-900 mb-2">Design Your Own</h2>
-          <p className="text-indigo-800 mb-6">
-            Not seeing what you need? Mix and match from our entire catalog of 500+ products.
-          </p>
-          <Button asChild variant="em" size="lg" className="rounded-md">
-            <Link href="/builder">Build from Scratch</Link>
-          </Button>
-        </div>
-
-        {/* Features */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <div className="text-2xl font-normal text-em mb-2">500+</div>
-            <p className="text-ink-2 text-sm">
-              Products to choose from. All with instant pricing and availability.
-            </p>
-          </div>
-          <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <div className="text-2xl font-normal text-gold-700 mb-2">7–10 days</div>
-            <p className="text-ink-2 text-sm">
-              Quick turnaround. Most orders ship within a week of approval.
-            </p>
-          </div>
-          <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <div className="text-2xl font-normal text-em mb-2">Branded</div>
-            <p className="text-ink-2 text-sm">
-              All products include standard branding. Premium packaging optional.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <PacksBrowser collections={data} />;
 }

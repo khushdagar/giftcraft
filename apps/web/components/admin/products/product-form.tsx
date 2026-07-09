@@ -121,9 +121,13 @@ interface SerializedProduct {
 export function ProductForm({
   mode,
   initialData,
+  isPack = false,
 }: {
   mode: 'create' | 'edit';
   initialData?: SerializedProduct;
+  // When true, this form manages a Curated Pack: adds member-products + collection
+  // fields, derives price tiers from the members, and hides tax/manual pricing.
+  isPack?: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -142,6 +146,33 @@ export function ProductForm({
   const [newVariant, setNewVariant] = useState({ kind: 'color', value: '', hexColor: '', customKind: '' });
   const [vendorOptions, setVendorOptions] = useState<VendorOption[]>([]);
   const [vendorLinks, setVendorLinks] = useState<VendorLink[]>([]);
+
+  // ── Curated pack state ─────────────────────────────────────────────────────
+  interface PackMember {
+    productId: string;
+    name: string;
+    brand?: string | null;
+    imageUrl?: string | null;
+    quantity: number;
+    priceTiers: { minQty: number; maxQty: number | null; sellPrice: number }[];
+    // Physical attributes, used to auto-derive the pack's own weight/dimensions/etc.
+    weightG?: number | null;
+    leadTimeDays?: number | null;
+    moq?: number | null;
+    lengthCm?: number | null;
+    widthCm?: number | null;
+    heightCm?: number | null;
+  }
+  const [packItems, setPackItems] = useState<PackMember[]>(
+    ((initialData as any)?.packItems as PackMember[]) ?? []
+  );
+  const [packCollectionId, setPackCollectionId] = useState<string>(
+    (initialData as any)?.packCollectionId ?? ''
+  );
+  const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
+  const [packSearch, setPackSearch] = useState('');
+  const [packResults, setPackResults] = useState<any[]>([]);
+  const [packSearching, setPackSearching] = useState(false);
 
   // Initialize variants properly from initialData
   useEffect(() => {
@@ -272,6 +303,127 @@ export function ProductForm({
 
     fetchData();
   }, []);
+
+  // ── Curated pack helpers ───────────────────────────────────────────────────
+  // Load collections (for the pack's collection dropdown).
+  useEffect(() => {
+    if (!isPack) return;
+    fetch('/api/admin/gift-collections')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) =>
+        setCollections(
+          Array.isArray(d) ? d.map((c: any) => ({ id: c.id, name: c.name })) : []
+        )
+      )
+      .catch(() => {});
+  }, [isPack]);
+
+  // Auto-fill SKU/slug for packs from the name (SKU is required but irrelevant
+  // for a bundle, so we generate it and hide the field).
+  const watchedName = form.watch('name');
+  useEffect(() => {
+    if (!isPack || mode !== 'create') return;
+    const slugified = (watchedName || '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+    if (slugified) {
+      form.setValue('sku', `PACK-${slugified}`.toUpperCase());
+      if (!form.getValues('slug')) form.setValue('slug', slugified);
+    }
+  }, [watchedName, isPack, mode]);
+
+  const searchMembers = async (q: string) => {
+    setPackSearch(q);
+    if (!q.trim()) {
+      setPackResults([]);
+      return;
+    }
+    setPackSearching(true);
+    try {
+      const res = await fetch(`/api/products?search=${encodeURIComponent(q)}&limit=20`);
+      const data = await res.json();
+      const all = data.products || [];
+      setPackResults(all.filter((p: any) => !packItems.some((it) => it.productId === p.id)));
+    } catch {
+      toast.error('Failed to search products');
+    } finally {
+      setPackSearching(false);
+    }
+  };
+  const addMember = (p: any) => {
+    setPackItems((prev) => [
+      ...prev,
+      {
+        productId: p.id,
+        name: p.name,
+        brand: p.brand,
+        imageUrl: p.images?.[0]?.url ?? null,
+        quantity: 1,
+        priceTiers: (p.priceTiers ?? []).map((t: any) => ({
+          minQty: t.minQty,
+          maxQty: t.maxQty ?? null,
+          sellPrice: Number(t.sellPrice),
+        })),
+        weightG: p.weightG ?? null,
+        leadTimeDays: p.leadTimeDays ?? null,
+        moq: p.moq ?? null,
+        lengthCm: p.lengthCm ?? null,
+        widthCm: p.widthCm ?? null,
+        heightCm: p.heightCm ?? null,
+      },
+    ]);
+    setPackResults((prev) => prev.filter((x) => x.id !== p.id));
+  };
+  const removeMember = (id: string) =>
+    setPackItems((prev) => prev.filter((it) => it.productId !== id));
+  const setMemberQty = (id: string, qty: number) =>
+    setPackItems((prev) =>
+      prev.map((it) => (it.productId === id ? { ...it, quantity: Math.max(1, qty) } : it))
+    );
+
+  // Auto price tiers — summed from each member's own quantity tiers.
+  const priceAtQty = (
+    tiers: { minQty: number; maxQty: number | null; sellPrice: number }[],
+    qty: number
+  ) => {
+    if (!tiers?.length) return 0;
+    const t =
+      tiers.find((t) => qty >= t.minQty && (t.maxQty == null || qty <= t.maxQty)) ?? tiers[0];
+    return t ? Number(t.sellPrice) : 0;
+  };
+  const packBreakpoints = Array.from(
+    new Set(packItems.flatMap((it) => (it.priceTiers ?? []).map((t) => t.minQty)))
+  ).sort((a, b) => a - b);
+  const packTierRows = packBreakpoints.map((qty) => ({
+    qty,
+    price: packItems.reduce((s, it) => s + priceAtQty(it.priceTiers, qty) * it.quantity, 0),
+  }));
+  const packFromPrice = packTierRows[0]?.price ?? 0;
+
+  // Auto-derive the pack's physical attributes from its member products:
+  //  • Weight  = total of (member weight × qty)      — full bundle weight
+  //  • Lead time = the longest member lead time       — ready when slowest is
+  //  • MOQ     = the highest member MOQ
+  //  • Box     = widest L & W, with heights stacked    — a packing estimate
+  useEffect(() => {
+    if (!isPack) return;
+    const num = (v: number | null | undefined) => (typeof v === 'number' && !Number.isNaN(v) ? v : 0);
+    const totalWeight = packItems.reduce((s, it) => s + num(it.weightG) * it.quantity, 0);
+    const maxLead = packItems.reduce((m, it) => Math.max(m, num(it.leadTimeDays)), 0);
+    const maxMoq = packItems.reduce((m, it) => Math.max(m, num(it.moq)), 0);
+    const maxL = packItems.reduce((m, it) => Math.max(m, num(it.lengthCm)), 0);
+    const maxW = packItems.reduce((m, it) => Math.max(m, num(it.widthCm)), 0);
+    const stackedH = packItems.reduce((s, it) => s + num(it.heightCm) * it.quantity, 0);
+    form.setValue('weightG', totalWeight || null);
+    form.setValue('leadTimeDays', maxLead || null);
+    form.setValue('moq', maxMoq || null);
+    form.setValue('lengthCm', maxL || null);
+    form.setValue('widthCm', maxW || null);
+    form.setValue('heightCm', stackedH || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPack, packItems]);
 
   // Load existing images when editing
   useEffect(() => {
@@ -438,9 +590,25 @@ export function ProductForm({
           lastPriceConfirmedAt: v.lastPriceConfirmedAt || null,
         }));
 
+      // Curated pack payload: flag, collection, member products, and no manual
+      // tiers (price is derived from the members).
+      const packPayload = isPack
+        ? {
+            isPack: true,
+            packCollectionId: packCollectionId || null,
+            packItems: packItems.map((it, idx) => ({
+              productId: it.productId,
+              quantity: it.quantity,
+              sortOrder: idx,
+            })),
+            priceTiers: [],
+          }
+        : {};
+
       // Add product data with variants - ensure proper data types
       const dataWithVariants = {
         ...data,
+        ...packPayload,
         vendors: vendorsPayload,
         variants: validVariants.length > 0 ? validVariants.map((v, idx) => {
           const variant: any = {
@@ -548,9 +716,9 @@ export function ProductForm({
         // form reflects the saved state. (Previously bounced to the listing.)
         router.refresh();
       } else {
-        // After creating, go to the listing.
+        // After creating, go to the relevant listing.
         setTimeout(() => {
-          router.push('/admin/products');
+          router.push(isPack ? '/admin/products?view=packs' : '/admin/products');
           router.refresh();
         }, 500);
       }
@@ -569,7 +737,13 @@ export function ProductForm({
           just below the admin topbar (h-16). */}
       <div className="sticky top-16 z-30 -mx-4 flex items-center justify-between gap-3 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <p className="text-sm font-medium text-gray-900">
-          {mode === 'create' ? 'New Product' : 'Edit Product'}
+          {isPack
+            ? mode === 'create'
+              ? 'New Curated Pack'
+              : 'Edit Curated Pack'
+            : mode === 'create'
+            ? 'New Product'
+            : 'Edit Product'}
         </p>
         <div className="flex items-center gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
@@ -620,10 +794,12 @@ export function ProductForm({
                 <label className="block text-sm font-normal text-gray-900 mb-1">Slug</label>
                 <Input {...form.register('slug')} placeholder="auto-generated from name" />
               </div>
-              <div>
-                <label className="block text-sm font-normal text-gray-900 mb-1">SKU *</label>
-                <Input {...form.register('sku')} placeholder="e.g. FLASK-500-SS" />
-              </div>
+              {!isPack && (
+                <div>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">SKU *</label>
+                  <Input {...form.register('sku')} placeholder="e.g. FLASK-500-SS" />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -714,42 +890,179 @@ export function ProductForm({
               </div>
             </div>
 
+            {isPack && (
+              <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                Weight, lead time, MOQ &amp; dimensions below are auto-calculated from the products
+                added to this pack.
+              </p>
+            )}
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
                 <label className="block text-sm font-normal text-gray-900 mb-1">Weight (g)</label>
-                <Input type="number" {...form.register('weightG', { valueAsNumber: true })} />
+                <Input type="number" readOnly={isPack} {...form.register('weightG', { valueAsNumber: true })} />
               </div>
               <div>
                 <label className="block text-sm font-normal text-gray-900 mb-1">Lead Time (days)</label>
-                <Input type="number" {...form.register('leadTimeDays', { valueAsNumber: true })} />
+                <Input type="number" readOnly={isPack} {...form.register('leadTimeDays', { valueAsNumber: true })} />
               </div>
               <div>
                 <label className="block text-sm font-normal text-gray-900 mb-1">MOQ</label>
-                <Input type="number" {...form.register('moq', { valueAsNumber: true })} placeholder="e.g. 25" />
+                <Input type="number" readOnly={isPack} {...form.register('moq', { valueAsNumber: true })} placeholder="e.g. 25" />
                 <p className="text-xs text-gray-500 mt-1">Min. order quantity</p>
               </div>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm font-normal text-blue-900 mb-3">Product Dimensions (cm)</p>
-              <p className="text-xs text-blue-800 mb-3">Required for automatic packaging suggestions</p>
+              <p className="text-xs text-blue-800 mb-3">
+                {isPack
+                  ? 'Auto-estimated from the pack’s products (widest L & W, heights stacked).'
+                  : 'Required for automatic packaging suggestions'}
+              </p>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-normal text-gray-900 mb-1">Length (L)</label>
-                  <Input type="number" step="0.1" min="0" {...form.register('lengthCm', { valueAsNumber: true })} placeholder="cm" />
+                  <Input type="number" step="0.1" min="0" readOnly={isPack} {...form.register('lengthCm', { valueAsNumber: true })} placeholder="cm" />
                 </div>
                 <div>
                   <label className="block text-sm font-normal text-gray-900 mb-1">Width (W)</label>
-                  <Input type="number" step="0.1" min="0" {...form.register('widthCm', { valueAsNumber: true })} placeholder="cm" />
+                  <Input type="number" step="0.1" min="0" readOnly={isPack} {...form.register('widthCm', { valueAsNumber: true })} placeholder="cm" />
                 </div>
                 <div>
                   <label className="block text-sm font-normal text-gray-900 mb-1">Height (H)</label>
-                  <Input type="number" step="0.1" min="0" {...form.register('heightCm', { valueAsNumber: true })} placeholder="cm" />
+                  <Input type="number" step="0.1" min="0" readOnly={isPack} {...form.register('heightCm', { valueAsNumber: true })} placeholder="cm" />
                 </div>
               </div>
             </div>
           </section>
 
+          {isPack && (
+            <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+              <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">
+                Pack Contents
+              </h2>
+
+              <div>
+                <label className="block text-sm font-normal text-gray-900 mb-1">Curated Collection</label>
+                <select
+                  value={packCollectionId}
+                  onChange={(e) => setPackCollectionId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white"
+                >
+                  <option value="">— None (standalone) —</option>
+                  {collections.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  The collection this pack appears under on the storefront.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-normal text-gray-900 mb-1">
+                  Products in this pack
+                </label>
+                <Input
+                  value={packSearch}
+                  onChange={(e) => searchMembers(e.target.value)}
+                  placeholder="Search products to add…"
+                />
+                {packSearch && packSearching && (
+                  <p className="text-xs text-gray-500 mt-2">Searching…</p>
+                )}
+                {packResults.length > 0 && (
+                  <div className="mt-2 border border-gray-200 rounded-lg divide-y max-h-56 overflow-y-auto">
+                    {packResults.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between gap-2 p-2">
+                        <span className="text-sm text-gray-900 truncate">
+                          {p.name}
+                          {p.brand && <span className="text-gray-400"> · {p.brand}</span>}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => addMember(p)}
+                          className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {packItems.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-normal text-gray-700">In this pack ({packItems.length})</p>
+                  {packItems.map((it) => (
+                    <div
+                      key={it.productId}
+                      className="flex items-center gap-2 p-2 rounded-lg border border-gray-200"
+                    >
+                      <span className="flex-1 text-sm text-gray-900 truncate">
+                        {it.name}
+                        {it.brand && <span className="text-gray-400"> · {it.brand}</span>}
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={it.quantity}
+                        onChange={(e) => setMemberQty(it.productId, parseInt(e.target.value) || 1)}
+                        className="w-16 border border-gray-300 rounded p-1 text-sm text-center"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeMember(it.productId)}
+                        className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {packTierRows.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 mb-1">Price by quantity (auto)</p>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Calculated automatically by summing each product&apos;s quantity price tier.
+                    From {formatRupees(packFromPrice)}/pack.
+                  </p>
+                  <div className="rounded-lg border border-gray-200 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left px-3 py-1.5 font-normal text-gray-500">Order quantity</th>
+                          <th className="text-right px-3 py-1.5 font-normal text-gray-500">Price / pack</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {packTierRows.map((r, i) => {
+                          const next = packTierRows[i + 1];
+                          const label = next ? `${r.qty}–${next.qty - 1}` : `${r.qty}+`;
+                          return (
+                            <tr key={r.qty}>
+                              <td className="px-3 py-1.5 text-gray-900">{label} units</td>
+                              <td className="px-3 py-1.5 text-right tabular-nums text-gray-900">
+                                {formatRupees(r.price)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {!isPack && (
           <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
             <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Tax & HSN</h2>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -766,6 +1079,7 @@ export function ProductForm({
               )}
             </div>
           </section>
+          )}
 
           <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
             <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Images</h2>
@@ -927,6 +1241,7 @@ export function ProductForm({
             )}
           </section>
 
+          {!isPack && (
           <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
             <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Pricing</h2>
             <div className="flex items-center justify-between mb-4">
@@ -1076,6 +1391,7 @@ export function ProductForm({
               </div>
             )}
           </section>
+          )}
 
           <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
             <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Variants</h2>

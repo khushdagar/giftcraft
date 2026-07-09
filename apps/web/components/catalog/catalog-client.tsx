@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { Search, ArrowRight } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
 import { toast } from '@/lib/stores/toast-store';
 import { resolveSwatchHex } from '@/lib/color-name';
@@ -71,7 +71,17 @@ function formatPrice(n: number) {
   return '₹' + n.toLocaleString('en-IN');
 }
 
-export function CatalogClient() {
+// When `pack` is passed, the catalog renders scoped to a single curated pack:
+// only that pack's products are shown, the sidebar filters derive from just
+// those products, and the header swaps to the pack's name + a "Customise" CTA.
+export interface CatalogPackContext {
+  name: string;
+  description?: string | null;
+  productIds: string[];
+  builderHref: string;
+}
+
+export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const addProduct = useBuilderStore((state) => state.addProduct);
@@ -147,7 +157,18 @@ export function CatalogClient() {
 
         if (productsRes.ok) {
           const productsData = await productsRes.json();
-          const prods = productsData.products || [];
+          let prods = productsData.products || [];
+
+          // Scoped to a curated pack: keep only the pack's products, in the
+          // order the admin arranged them. Everything downstream (filter facets,
+          // grid, counts) then reflects just this pack.
+          if (pack) {
+            const order = new Map(pack.productIds.map((id, i) => [id, i]));
+            prods = prods
+              .filter((p: Product) => order.has(p.id))
+              .sort((a: Product, b: Product) => (order.get(a.id)! - order.get(b.id)!));
+          }
+
           setProducts(prods);
 
           // Set initial price range based on actual product prices
@@ -332,13 +353,59 @@ export function CatalogClient() {
 
       <div className="py-8 md:py-12" style={{ background: '#FAFAF7' }}>
         <div className="max-w-7xl mx-auto px-4 md:px-10">
-          <p className="text-xs" style={{ color: '#9B9B93' }}><Link href="/" style={{ color: '#1A6B4F' }}>Home</Link> / <span>Products</span></p>
-          <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">
-            The <span className="italic" style={{ color: '#1A6B4F' }}>Catalog.</span>
-          </h1>
-          <p className="mt-2 text-base" style={{ color: '#6B6B63' }}>
-            {products.length}+ products for every occasion.
-          </p>
+          {pack ? (
+            <>
+              <p className="text-xs" style={{ color: '#9B9B93' }}>
+                <Link href="/" style={{ color: '#1A6B4F' }}>Home</Link> /{' '}
+                <Link href="/packs" style={{ color: '#1A6B4F' }}>Curated Packs</Link> /{' '}
+                <span>{pack.name}</span>
+              </p>
+              <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-em-50 px-3 py-1 text-xs font-medium text-em-700 mb-2">
+                    ✨ Curated Pack
+                  </span>
+                  <h1 className="text-4xl md:text-5xl font-serif font-light">
+                    {pack.name}
+                  </h1>
+                  {pack.description && (
+                    <p className="mt-2 text-base" style={{ color: '#6B6B63' }}>
+                      {pack.description}
+                    </p>
+                  )}
+                </div>
+                <Link
+                  href={pack.builderHref}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-em px-6 py-3.5 text-base font-bold text-white transition hover:bg-em-600 hover:-translate-y-0.5 whitespace-nowrap"
+                >
+                  Customise this Pack <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs" style={{ color: '#9B9B93' }}><Link href="/" style={{ color: '#1A6B4F' }}>Home</Link> / <span>Products</span></p>
+              <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">
+                The <span className="italic" style={{ color: '#1A6B4F' }}>Catalog.</span>
+              </h1>
+              <p className="mt-2 text-base" style={{ color: '#6B6B63' }}>
+                {products.length}+ products for every occasion.
+              </p>
+
+              {/* Tabs — mirror the Curated Packs page toggle */}
+              <div className="mt-6 inline-flex gap-1 rounded-full bg-[#EFEFE9] p-1">
+                <span className="px-6 py-2 rounded-full text-sm font-medium bg-white text-ink shadow-card">
+                  All Products
+                </span>
+                <Link
+                  href="/packs"
+                  className="px-6 py-2 rounded-full text-sm font-medium text-[#6B6B63] hover:text-ink transition"
+                >
+                  Curated Packs
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

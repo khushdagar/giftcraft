@@ -97,6 +97,7 @@ export function SavedAddressesManager() {
   });
 
   const deleteMutation = useMutation({
+    
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/dashboard/addresses/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete address');

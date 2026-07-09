@@ -78,6 +78,17 @@ const UpdateProductSchema = z.object({
       lastPriceConfirmedAt: z.string().nullable().optional(),
     })
   ).nullable().optional(),
+
+  // Curated pack fields
+  isPack: z.boolean().nullable().optional(),
+  packCollectionId: z.string().nullable().optional(),
+  packItems: z.array(
+    z.object({
+      productId: z.string().min(1),
+      quantity: z.number().int().min(1).default(1),
+      sortOrder: z.number().int().default(0),
+    })
+  ).nullable().optional(),
 });
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -211,6 +222,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           ...(data.isFeatured != null && { isFeatured: data.isFeatured }),
           ...(data.metaTitle !== undefined && { metaTitle: data.metaTitle }),
           ...(data.metaDescription !== undefined && { metaDescription: data.metaDescription }),
+          ...(data.isPack != null && { isPack: data.isPack }),
+          ...(data.packCollectionId !== undefined && { packCollectionId: data.packCollectionId || null }),
         },
         include: {
           priceTiers: true,
@@ -284,6 +297,27 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           create: { productId: params.id, hsnId: hsnCode.id, gstRate: hsnCode.defaultGstRate },
           update: { hsnId: hsnCode.id, gstRate: hsnCode.defaultGstRate },
         });
+      }
+
+      // Replace pack member products if provided
+      if (data.packItems) {
+        await tx.productPackItem.deleteMany({ where: { packId: params.id } });
+        const seen = new Set<string>();
+        const items = data.packItems.filter((it) => {
+          if (seen.has(it.productId) || it.productId === params.id) return false;
+          seen.add(it.productId);
+          return true;
+        });
+        if (items.length > 0) {
+          await tx.productPackItem.createMany({
+            data: items.map((it, idx) => ({
+              packId: params.id,
+              productId: it.productId,
+              quantity: it.quantity,
+              sortOrder: it.sortOrder ?? idx,
+            })),
+          });
+        }
       }
 
       // Update variants if provided

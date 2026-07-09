@@ -47,6 +47,7 @@ export function BuilderContent({
   const searchParams = useSearchParams();
   const processedRef = useRef(false);
   const presetRef = useRef(false);
+  const packRef = useRef(false);
 
   // Budget Planner hand-off: /builder?preset=id1,id2&qty=N opens the builder
   // showing exactly the recommended picks (Step 1 filters to them) at the chosen
@@ -68,6 +69,56 @@ export function BuilderContent({
     clearAll();
     setCurrentStep(1);
     setPackQuantity(qty);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Curated-pack hand-off: /builder?pack=id1,id2,id3&qty=N loads a ready-made
+  // pack — clears any current pack, sets the quantity, and pre-adds every
+  // product in the pack (priced at that quantity) so the user lands on Step 1
+  // with the assortment already built, ready to brand + customise.
+  const packProductIds = (searchParams.get('pack') || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  useEffect(() => {
+    if (packRef.current) return;
+    if (packProductIds.length === 0) return;
+    packRef.current = true;
+
+    const qtyParam = searchParams.get('qty');
+    const qty = qtyParam ? Math.max(1, parseInt(qtyParam, 10) || 1) : 25;
+
+    clearAll();
+    setCurrentStep(1);
+    setPackQuantity(qty);
+
+    packProductIds.forEach((id) => {
+      const found = allProducts.find((p) => p.id === id);
+      if (!found) return;
+      const tier =
+        found.priceTiers?.find(
+          (t) => qty >= t.minQty && (t.maxQty === null || qty <= t.maxQty)
+        ) || found.priceTiers?.[0];
+      addProduct({
+        id: found.id,
+        name: found.name,
+        slug: found.slug,
+        brand: found.brand,
+        printingTechnique: found.printingTechnique,
+        hsnCode: found.hsnCode,
+        gstRate: found.gstRate,
+        leadTimeDays: found.leadTimeDays,
+        weightG: found.weightG,
+        dimensionL: (found as any).dimensionL ?? (found as any).lengthCm,
+        dimensionW: (found as any).dimensionW ?? (found as any).widthCm,
+        dimensionH: (found as any).dimensionH ?? (found as any).heightCm,
+        quantity: 1, // one unit per pack; qty drives packQuantity (set above)
+        sellPrice: tier?.sellPrice || 0,
+        priceTiers: found.priceTiers,
+        images: found.images,
+      });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
   // Inline notice shown when a product is added at the pack's shared quantity
