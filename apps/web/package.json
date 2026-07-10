@@ -14,7 +14,8 @@
     "db:backfill-tags": "tsx prisma/backfill-collection-tags.ts",
     "db:backfill-packaging-dims": "tsx prisma/backfill-packaging-dims.ts",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:seed-blog": "tsx prisma/seed-blog.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.4.1",
@@ -40,6 +41,12 @@
     "@react-pdf/renderer": "^4.5.1",
     "@tanstack/react-query": "^5.45.0",
     "@tanstack/react-query-devtools": "^5.45.0",
+    "@tiptap/extension-image": "^3.27.3",
+    "@tiptap/extension-link": "^3.27.3",
+    "@tiptap/extension-placeholder": "^3.27.3",
+    "@tiptap/pm": "^3.27.3",
+    "@tiptap/react": "^3.27.3",
+    "@tiptap/starter-kit": "^3.27.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",

@@ -8,6 +8,7 @@ import { Step1ChooseProducts } from './step-1-choose-products';
 import { Step2Customize } from './step-2-customize';
 import { Step3Delivery } from './step-3-delivery';
 import { Step4Review } from './step-4-review';
+import { GiftPackSummary } from './gift-pack-summary';
 
 interface BuilderContentProps {
   allProducts: Array<{
@@ -34,7 +35,13 @@ interface BuilderContentProps {
     imageUrl?: string | null;
     isActive: boolean;
   }>;
-  addonOptions: Array<{ id: string; name: string; price: number }>;
+  addonOptions: Array<{
+    id: string;
+    name: string;
+    price: number;
+    description?: string | null;
+    imageUrl?: string | null;
+  }>;
 }
 
 export function BuilderContent({
@@ -210,18 +217,30 @@ export function BuilderContent({
         </div>
       )}
 
+      {/* Step 1 renders its own two-column layout (catalogue + gift pack). */}
       {currentStep === 1 && (
         <Step1ChooseProducts allProducts={allProducts} categories={categories} presetIds={presetIds} />
       )}
-      {currentStep === 2 && (
-        <Step2Customize
-          packagingOptions={packagingOptions}
-          addonOptions={addonOptions}
-          products={allProducts}
-        />
+
+      {/* Steps 2–4 share the same layout: step content on the left, the running
+          "Your Gift Pack" summary sticky on the right so the user always sees
+          what they're building. */}
+      {currentStep > 1 && (
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] gap-6 items-start">
+          <div className="min-w-0">
+            {currentStep === 2 && (
+              <Step2Customize
+                packagingOptions={packagingOptions}
+                addonOptions={addonOptions}
+                products={allProducts}
+              />
+            )}
+            {currentStep === 3 && <Step3Delivery />}
+            {currentStep === 4 && <Step4Review />}
+          </div>
+          <GiftPackSummary />
+        </div>
       )}
-      {currentStep === 3 && <Step3Delivery />}
-      {currentStep === 4 && <Step4Review />}
     </>
   );
 }

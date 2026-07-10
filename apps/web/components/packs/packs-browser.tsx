@@ -355,7 +355,7 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
             <div className="flex flex-col lg:flex-row gap-6 items-start">
               {/* Filter sidebar */}
               <aside className="w-full lg:w-64 flex-shrink-0">
-                <div className="bg-white rounded-md border-2 border-bdr p-5 lg:sticky lg:top-24">
+                <div className="bg-white rounded-md border-2 border-bdr p-5 lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
                   <h3 className="text-lg font-bold text-ink mb-4">Filters</h3>
 
                   {/* Categories */}

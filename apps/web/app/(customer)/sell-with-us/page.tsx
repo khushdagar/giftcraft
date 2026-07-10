@@ -81,7 +81,7 @@ export default function SellWithUsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12 sm:py-16">
+    <div className="mx-auto max-w-7xl px-4 py-12 sm:py-16">
       {/* Header */}
       <div className="mb-10 text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-3">For Business</p>

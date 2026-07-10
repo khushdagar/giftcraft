@@ -1,17 +1,18 @@
 import Link from "next/link";
 
+// Eco-Friendly and Premium are tag-driven collections (OccasionConfig rows with
+// isCollection), so they filter the catalog through the ?occasion= param that
+// the sidebar already understands — the slugs must match the seeded ones.
 const COL_PRODUCT = [
   ["/catalog", "All Products"],
-  ["/catalog?view=packs", "Curated Packs"],
-  ["/catalog?collection=eco", "Eco-Friendly"],
-  ["/catalog?collection=premium", "Premium"],
+  ["/packs", "Curated Packs"],
+  ["/catalog?occasion=eco-friendly", "Eco-Friendly"],
+  ["/catalog?occasion=premium-executive", "Premium"],
+  ["/pricing", "Pricing"],
 ];
 const COL_COMPANY = [
-  ["/about", "About"],
   ["/blog", "Blog"],
   ["/sell-with-us", "Sell With Us"],
-  ["/careers", "Careers"],
-  ["/press", "Press"],
 ];
 const COL_HELP = [
   ["/faq", "FAQ"],

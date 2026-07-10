@@ -498,14 +498,16 @@ function CheckoutContent() {
       <main className="bg-[#FAFAF7] min-h-screen">
         <section className="py-8 md:py-12 pb-20">
           <div className="cw">
-            <h1 className="text-4xl md:text-5xl font-serif font-normal mb-2 rv">Checkout.</h1>
-            <p className="text-base text-[#6B6B63] mb-8 md:mb-12 rv">
+            <h1 className="text-4xl md:text-5xl font-serif font-normal mb-2">Checkout.</h1>
+            <p className="text-base text-[#000000] mb-8 md:mb-12">
               Review your order, provide billing details, and choose how you'd like to proceed.
             </p>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* items-start keeps the right column its natural height so the pricing
+                panel can stick + scroll on its own instead of stretching. */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
               {/* Left column - Forms */}
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 min-w-0">
                 <OrderSummary
                   products={summaryProducts}
                   packQuantity={packQuantity}
@@ -537,7 +539,7 @@ function CheckoutContent() {
               </div>
 
               {/* Right column - Pricing */}
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 min-w-0">
                 <PricingPanel
                   products={pricingProducts}
                   packagingName={payload.packaging?.name}

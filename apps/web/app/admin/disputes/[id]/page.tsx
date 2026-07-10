@@ -148,7 +148,7 @@ export default async function DisputeDetailPage({ params }: { params: { id: stri
           )}
         </div>
 
-        <div className="lg:sticky lg:top-20 lg:h-fit space-y-4">
+        <div className="lg:sticky lg:top-20 lg:h-fit space-y-4 lg:max-h-[calc(100vh-100px)] lg:overflow-y-auto lg:pr-1">
           <DisputeStatusUpdater disputeId={dispute.id} currentStatus={dispute.status} orderNumber={dispute.order.orderNumber} />
           <div className="rounded-md border-2 border-bdr bg-white p-5">
             <DisputeTimeline currentStatus={dispute.status} createdAt={dispute.createdAt} resolvedAt={dispute.resolvedAt} />

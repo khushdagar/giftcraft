@@ -87,6 +87,13 @@ export function Step3Delivery() {
     setDelivDate,
   } = useBuilderStore();
 
+  // Individual Delivery is switched off for now. A persisted store from before
+  // it was hidden could still say 'individual', which would strand the user on a
+  // mode with no visible option — force everyone back to single-location.
+  useEffect(() => {
+    if (deliveryMode !== 'single') setDeliveryMode('single');
+  }, [deliveryMode, setDeliveryMode]);
+
   const [pincodeInput, setPincodeInput] = useState(pincode || '');
   const [loadingShipping, setLoadingShipping] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
@@ -403,13 +410,16 @@ export function Step3Delivery() {
         <h2 className="text-3xl font-black mt-1">Delivery Details</h2>
       </div>
 
-      {/* Section B: Delivery Mode Selection */}
+      {/* Section B: Delivery Mode Selection — hidden while Individual Delivery is
+          disabled. With only one mode left there's nothing to choose: every order
+          is single-location (forced in the effect above). Restore this block, its
+          `sm:grid-cols-2` grid, and the Individual Delivery button when it ships.
+
       <div className="space-y-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
           Delivery Method
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Single Location */}
           <button
             onClick={() => setDeliveryMode('single')}
             className={`rounded-md border-2 p-4 text-left transition ${
@@ -426,7 +436,6 @@ export function Step3Delivery() {
             </p>
           </button>
 
-          {/* Individual Delivery */}
           <button
             onClick={() => setDeliveryMode('individual')}
             className={`rounded-md border-2 p-4 text-left transition ${
@@ -444,6 +453,7 @@ export function Step3Delivery() {
           </button>
         </div>
       </div>
+      */}
 
       {/* Section C: Pincode Estimator */}
       <div className="space-y-3">
@@ -700,14 +710,6 @@ export function Step3Delivery() {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Info */}
-      <div className="rounded-md bg-blue-50 border border-blue-200 p-4">
-        <p className="text-xs font-semibold text-blue-900 mb-1">ℹ️ What's Next?</p>
-        <p className="text-xs text-blue-800 leading-relaxed">
-          In the final step, you'll review your complete order with itemized pricing and place your order.
-        </p>
       </div>
     </div>
   );

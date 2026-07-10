@@ -111,7 +111,7 @@ export function PackBundle({ pack }: PackBundleProps) {
 
       {/* Checkout summary with quantity selector */}
       <div className="lg:col-span-1">
-        <div className="rounded-md border-2 border-bdr bg-white p-6 lg:sticky lg:top-24">
+        <div className="rounded-md border-2 border-bdr bg-white p-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
           <h2 className="text-lg font-medium text-ink">Pack summary</h2>
 
           {/* Quantity selector */}

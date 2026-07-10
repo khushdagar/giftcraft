@@ -30,7 +30,7 @@ interface PricingPanelProps {
 // Human label for the HSN-grouped GST lines (per SOW: one line per HSN group,
 // plus a separate shipping GST line).
 function gstLineLabel(hsnCode: string, gstRate: number): string {
-  if (hsnCode === '9965') return 'GST @ 18% on shipping';
+  if (hsnCode === '996812') return 'GST @ 18% on shipping';
   if (hsnCode === '4819') return 'GST @ 18% on packaging & add-ons';
   return `GST @ ${gstRate}% on products`;
 }
@@ -47,15 +47,20 @@ export function PricingPanel({
 }: PricingPanelProps) {
   const [gstOpen, setGstOpen] = useState(false);
 
-  // GST detail lines (shipping is GST-inclusive from Shiprocket, so it has no
-  // separate GST line). Combined GST is shown as a single collapsible row.
+  // GST detail lines, one per HSN group (products, packaging & add-ons, and
+  // shipping under HSN 996812). Combined GST is a single collapsible row.
   const gstLines = pricing.hsnBreakdown.filter(
-    (line) => line.hsnCode !== '9965' && line.cgst + line.sgst + line.igst > 0
+    (line) => line.cgst + line.sgst + line.igst > 0
   );
   const gstTotal = pricing.cgst + pricing.sgst + pricing.igst;
 
+  // Shipping's courier rate is GST-inclusive. `gstTotal` above already contains
+  // the tax hidden inside it, so this line must show the TAXABLE value — showing
+  // the inclusive amount would count that tax twice down the column.
+  const shippingTaxable = pricing.shippingTaxable ?? pricing.shipping;
+
   return (
-    <div className="sticky top-20 space-y-4">
+    <div className="space-y-4 lg:sticky lg:top-20 lg:max-h-[calc(100vh-100px)] lg:overflow-y-auto lg:pr-1">
       <div className="bg-white/72 backdrop-blur-xl border border-[#D2D2D7]/30 rounded-2xl shadow-lg p-5 md:p-7">
         <h3 className="text-base font-semibold mb-4">Price Breakdown</h3>
 
@@ -104,32 +109,37 @@ export function PricingPanel({
             </div>
           )}
 
-          {/* Shipping — Shiprocket rate is already GST-inclusive */}
+          {/* Shipping — taxable value; its GST is disclosed in the GST line below */}
           <div className="flex justify-between text-[#6B6B63]">
-            <span className="text-xs">Shipping (incl. GST)</span>
-            <span className="font-medium tabular-nums text-xs">{formatRupees(pricing.shipping)}</span>
+            <span className="text-xs">
+              Shipping
+              <br />
+              <span className="text-[10px] italic">HSN 996812 · GST shown below</span>
+            </span>
+            <span className="font-medium tabular-nums text-xs">{formatRupees(shippingTaxable)}</span>
           </div>
 
           {/* GST — single line, collapsible. Click to view the calculation. */}
           {gstTotal > 0 && (
-            <div className="rounded-lg bg-[#F5F5F0] mt-1 overflow-hidden">
+            <div className="mt-1 overflow-hidden">
               <button
                 type="button"
                 onClick={() => setGstOpen((o) => !o)}
-                className="w-full flex justify-between items-center px-3 py-2 text-xs text-[#1A1A18]"
+                className="w-full flex justify-between items-center text-xs text-[#1A1A18]"
                 aria-expanded={gstOpen}
               >
                 <span className="flex items-center gap-1 font-medium">
+                  
+                  GST
                   <ChevronDown
                     className={`h-3.5 w-3.5 transition-transform ${gstOpen ? '' : '-rotate-90'}`}
                   />
-                  GST
                 </span>
                 <span className="font-semibold tabular-nums">{formatRupees(gstTotal)}</span>
               </button>
 
               {gstOpen && (
-                <div className="px-3 pb-2.5 pt-2 space-y-1.5 border-t border-[#E4E4DF]">
+                <div className=" pb-2.5 pt-2 space-y-1.5">
                   {gstLines.map((line, i) => {
                     const amount = line.cgst + line.sgst + line.igst;
                     return (

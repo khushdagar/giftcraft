@@ -10,6 +10,7 @@ export interface InvoiceOrder {
   createdAt: Date;
   paidAt: Date | null;
   billingJson: any;
+  packQuantity: number;
   subtotal: any;
   packagingAmount: any;
   addonsAmount: any;
@@ -78,6 +79,7 @@ export function buildInvoiceData(order: InvoiceOrder): InvoiceData {
       unitPrice: Number(it.unitPrice),
       taxableValue: Number(it.totalPrice),
     })),
+    packQuantity: order.packQuantity,
     amounts: {
       subtotal: Number(order.subtotal),
       packaging: Number(order.packagingAmount),

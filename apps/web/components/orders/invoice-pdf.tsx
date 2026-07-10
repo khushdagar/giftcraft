@@ -55,11 +55,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     backgroundColor: '#FAFAFA',
   },
-  cName: { flex: 2.4, paddingHorizontal: 6, fontSize: 9 },
-  cHsn: { flex: 1, paddingHorizontal: 6, fontSize: 9 },
-  cQty: { flex: 0.7, paddingHorizontal: 6, fontSize: 9, textAlign: 'center' },
-  cRate: { flex: 1, paddingHorizontal: 6, fontSize: 9, textAlign: 'right' },
-  cAmt: { flex: 1.1, paddingHorizontal: 6, fontSize: 9, textAlign: 'right' },
+  // Itemised GST table columns
+  cName: { flex: 2.2, paddingHorizontal: 4, fontSize: 8 },
+  cHsn: { fontSize: 7, fontStyle: 'italic', color: '#71717A', marginTop: 1 },
+  cQty: { flex: 0.55, paddingHorizontal: 4, fontSize: 8, textAlign: 'center' },
+  cRate: { flex: 1, paddingHorizontal: 4, fontSize: 8, textAlign: 'right' },
+  cTaxable: { flex: 1.2, paddingHorizontal: 4, fontSize: 8, textAlign: 'right' },
+  cGstRate: { flex: 0.6, paddingHorizontal: 4, fontSize: 8, textAlign: 'center' },
+  cTax: { flex: 1.05, paddingHorizontal: 4, fontSize: 8, textAlign: 'right' },
+  cTotal: { flex: 1.25, paddingHorizontal: 4, fontSize: 8, textAlign: 'right' },
+  cGrandRow: { backgroundColor: '#FAFAFA', borderTop: 1, borderTopColor: '#1A1A18' },
+  cBold: { fontWeight: 'bold' },
   totals: { marginTop: 12, marginLeft: 'auto', width: '55%' },
   row: {
     display: 'flex',
@@ -152,6 +158,8 @@ export interface InvoiceData {
     phone: string | null;
   };
   items: InvoiceItem[];
+  /** Number of gift packs — packaging & add-ons are priced per pack. */
+  packQuantity: number;
   amounts: {
     subtotal: number;
     packaging: number;
@@ -171,57 +179,123 @@ export interface InvoiceData {
   };
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Courier / goods-transport service. The quoted rate is GST-inclusive. */
+const SHIPPING_HSN_CODE = '996812';
+const SHIPPING_GST_RATE = 18;
+/** Packaging & add-ons: cartons/boxes of paper. */
+const PACKAGING_HSN_CODE = '4819';
+const PACKAGING_GST_RATE = 18;
+
+/**
+ * One line of the itemised GST table. `quantity`/`unitPrice` are null for
+ * charges that aren't sold by the unit (shipping), where a "1 × Rs. 2,463.92"
+ * reads as nonsense — those rows show their taxable value directly.
+ */
+interface TaxRow {
+  name: string;
+  hsn: string;
+  quantity: number | null;
+  unitPrice: number | null;   // exclusive of GST
+  taxable: number;
+  gstRate: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  total: number;
+}
+
 export function InvoicePDF({ data }: { data: InvoiceData }) {
-  const { seller, buyer, items, amounts } = data;
+  const { seller, buyer, items, amounts, packQuantity } = data;
   const title = data.isPaid ? 'Tax Invoice' : 'Proforma Invoice';
-  const totalTax = amounts.cgst + amounts.sgst + amounts.igst;
 
-  // ── Build ONE complete price breakdown table ──────────────────────────────
-  // Each taxable row shows Taxable Value / GST % / GST Amount / Line Total, so
-  // the tax is visible inline (no separate tax table) and the rows sum to the
-  // grand total. Shipping is GST-inclusive (Shiprocket) → no separate GST.
-  const round2 = (n: number) => Math.round(n * 100) / 100;
+  // Place of supply: same state → CGST + SGST, different state → IGST.
+  const isIntraState = amounts.igst <= 0;
 
-  interface BreakdownRow {
-    desc: string;
-    taxable?: number;
-    rate?: number;
-    gst?: number;
-    total: number;
-  }
-  const rows: BreakdownRow[] = [];
+  /** Split a GST amount into CGST/SGST (intra-state) or IGST (inter-state). */
+  const splitGst = (gst: number) => {
+    if (!isIntraState) return { cgst: 0, sgst: 0, igst: gst };
+    const cgst = round2(gst / 2);
+    return { cgst, sgst: round2(gst - cgst), igst: 0 };
+  };
 
-  // Products grouped by HSN + rate.
-  const productGroups = new Map<string, { hsn: string; rate: number; taxable: number }>();
+  /**
+   * A taxable row where `taxable` EXCLUDES GST — tax is added on top.
+   * Pass quantity = null for charges that aren't sold by the unit.
+   */
+  const exclusiveRow = (
+    name: string,
+    hsn: string,
+    quantity: number | null,
+    taxable: number,
+    gstRate: number
+  ): TaxRow => {
+    const gst = round2((taxable * gstRate) / 100);
+    return {
+      name,
+      hsn,
+      quantity,
+      unitPrice: quantity && quantity > 0 ? round2(taxable / quantity) : null,
+      taxable: round2(taxable),
+      gstRate,
+      ...splitGst(gst),
+      total: round2(taxable + gst),
+    };
+  };
+
+  const rows: TaxRow[] = [];
+
+  // 1. Products — one row each, HSN printed under the name.
   for (const it of items) {
-    const rate = it.gstRate ?? 18;
-    const hsn = it.hsnCode || '—';
-    const key = `${hsn}|${rate}`;
-    const prev = productGroups.get(key) || { hsn, rate, taxable: 0 };
-    prev.taxable = round2(prev.taxable + it.taxableValue);
-    productGroups.set(key, prev);
+    rows.push(
+      exclusiveRow(it.name, it.hsnCode || '—', it.quantity, it.taxableValue, it.gstRate ?? 18)
+    );
   }
-  for (const g of productGroups.values()) {
-    const gst = round2((g.taxable * g.rate) / 100);
-    rows.push({ desc: `Products — HSN ${g.hsn}`, taxable: g.taxable, rate: g.rate, gst, total: round2(g.taxable + gst) });
-  }
+
+  // 2. Packaging & add-ons — priced per gift pack, so the quantity is the pack
+  //    count and the unit price is the per-pack charge.
   if (amounts.packaging > 0) {
-    const gst = round2(amounts.packaging * 0.18);
-    rows.push({ desc: 'Packaging', taxable: amounts.packaging, rate: 18, gst, total: round2(amounts.packaging + gst) });
+    rows.push(
+      exclusiveRow('Packaging', PACKAGING_HSN_CODE, packQuantity, amounts.packaging, PACKAGING_GST_RATE)
+    );
   }
   if (amounts.addons > 0) {
-    const gst = round2(amounts.addons * 0.18);
-    rows.push({ desc: 'Add-ons', taxable: amounts.addons, rate: 18, gst, total: round2(amounts.addons + gst) });
+    rows.push(
+      exclusiveRow('Add-ons', PACKAGING_HSN_CODE, packQuantity, amounts.addons, PACKAGING_GST_RATE)
+    );
   }
-  if (amounts.discount > 0) {
-    rows.push({ desc: 'Discount', total: -amounts.discount });
-  }
+
+  // 3. Shipping — a single freight charge, not a unit-priced product, so it
+  //    carries no Qty / Unit Price. The courier rate is GST-INCLUSIVE, so
+  //    reverse-calculate: taxable = amount / 1.18, gst = taxable * 0.18.
   if (amounts.shipping > 0) {
-    rows.push({ desc: 'Shipping (incl. GST)', total: amounts.shipping });
+    const taxable = round2(amounts.shipping / (1 + SHIPPING_GST_RATE / 100));
+    const gst = round2(amounts.shipping - taxable);
+    rows.push({
+      name: 'Shipping',
+      hsn: SHIPPING_HSN_CODE,
+      quantity: null,
+      unitPrice: null,
+      taxable,
+      gstRate: SHIPPING_GST_RATE,
+      ...splitGst(gst),
+      total: round2(amounts.shipping),
+    });
   }
-  if (amounts.razorpayFee > 0) {
-    rows.push({ desc: 'Payment Gateway Fee', total: amounts.razorpayFee });
-  }
+
+  // Grand total across every column except GST % (a rate can't be summed).
+  const sum = (pick: (r: TaxRow) => number) => round2(rows.reduce((s, r) => s + pick(r), 0));
+  const totals = {
+    quantity: rows.reduce((s, r) => s + (r.quantity ?? 0), 0),
+    unitPrice: sum((r) => r.unitPrice ?? 0),
+    taxable: sum((r) => r.taxable),
+    cgst: sum((r) => r.cgst),
+    sgst: sum((r) => r.sgst),
+    igst: sum((r) => r.igst),
+    total: sum((r) => r.total),
+  };
+  const totalTax = round2(totals.cgst + totals.sgst + totals.igst);
 
   // Payment (10% advance / full). A partly-paid order keeps a pending balance.
   const amountPaid = data.payment?.amountPaid ?? 0;
@@ -262,93 +336,119 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
           </View>
         </View>
 
-        {/* Items */}
+        {/* Itemised GST table — one row per item, tax shown inline */}
         <View style={styles.section}>
           <View style={styles.table}>
             <View style={[styles.tableRow, styles.tableRowHeader]}>
               <Text style={styles.cName}>Item</Text>
-              <Text style={styles.cHsn}>HSN</Text>
               <Text style={styles.cQty}>Qty</Text>
-              <Text style={styles.cRate}>Rate</Text>
-              <Text style={styles.cAmt}>Taxable Value</Text>
-            </View>
-            {items.map((it, i) => (
-              <View key={i} style={styles.tableRow}>
-                <Text style={styles.cName}>{it.name}</Text>
-                <Text style={styles.cHsn}>{it.hsnCode || '—'}</Text>
-                <Text style={styles.cQty}>{it.quantity}</Text>
-                <Text style={styles.cRate}>{inr(it.unitPrice)}</Text>
-                <Text style={styles.cAmt}>{inr(it.taxableValue)}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Complete Price Breakdown — one table, taxes shown inline per row */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Price Breakdown</Text>
-          <View style={styles.table}>
-            <View style={[styles.tableRow, styles.tableRowHeader]}>
-              <Text style={styles.pbDesc}>Particulars</Text>
-              <Text style={styles.pbTaxable}>Taxable Value</Text>
-              <Text style={styles.pbRate}>GST %</Text>
-              <Text style={styles.pbGst}>GST Amount</Text>
-              <Text style={styles.pbTotal}>Total</Text>
+              <Text style={styles.cRate}>Unit Price</Text>
+              <Text style={styles.cTaxable}>Taxable Value</Text>
+              <Text style={styles.cGstRate}>GST %</Text>
+              {isIntraState ? (
+                <>
+                  <Text style={styles.cTax}>CGST</Text>
+                  <Text style={styles.cTax}>SGST</Text>
+                </>
+              ) : (
+                <Text style={styles.cTax}>IGST</Text>
+              )}
+              <Text style={styles.cTotal}>Total</Text>
             </View>
 
             {rows.map((r, i) => (
               <View key={i} style={styles.tableRow}>
-                <Text style={styles.pbDesc}>{r.desc}</Text>
-                <Text style={styles.pbTaxable}>{r.taxable != null ? inr(r.taxable) : '—'}</Text>
-                <Text style={styles.pbRate}>{r.rate != null ? `${r.rate}%` : '—'}</Text>
-                <Text style={styles.pbGst}>{r.gst != null ? inr(r.gst) : '—'}</Text>
-                <Text style={styles.pbTotal}>{inr(r.total)}</Text>
+                <View style={styles.cName}>
+                  <Text>{r.name}</Text>
+                  <Text style={styles.cHsn}>HSN {r.hsn}</Text>
+                </View>
+                <Text style={styles.cQty}>{r.quantity ?? '—'}</Text>
+                <Text style={styles.cRate}>{r.unitPrice != null ? inr(r.unitPrice) : '—'}</Text>
+                <Text style={styles.cTaxable}>{inr(r.taxable)}</Text>
+                <Text style={styles.cGstRate}>{r.gstRate}%</Text>
+                {isIntraState ? (
+                  <>
+                    <Text style={styles.cTax}>{inr(r.cgst)}</Text>
+                    <Text style={styles.cTax}>{inr(r.sgst)}</Text>
+                  </>
+                ) : (
+                  <Text style={styles.cTax}>{inr(r.igst)}</Text>
+                )}
+                <Text style={styles.cTotal}>{inr(r.total)}</Text>
               </View>
             ))}
 
-            {/* Total GST summary row */}
-            {totalTax > 0 && (
-              <View style={styles.tableRow}>
-                <Text style={styles.pbDesc}>Total GST</Text>
-                <Text style={styles.pbTaxable} />
-                <Text style={styles.pbRate} />
-                <Text style={styles.pbGst}>{inr(totalTax)}</Text>
-                <Text style={styles.pbTotal} />
+            {/* Grand total — every column summed except GST % */}
+            <View style={[styles.tableRow, styles.cGrandRow]}>
+              <View style={styles.cName}>
+                <Text style={styles.cBold}>Grand Total</Text>
+              </View>
+              <Text style={[styles.cQty, styles.cBold]}>{totals.quantity}</Text>
+              <Text style={[styles.cRate, styles.cBold]}>{inr(totals.unitPrice)}</Text>
+              <Text style={[styles.cTaxable, styles.cBold]}>{inr(totals.taxable)}</Text>
+              <Text style={styles.cGstRate}>—</Text>
+              {isIntraState ? (
+                <>
+                  <Text style={[styles.cTax, styles.cBold]}>{inr(totals.cgst)}</Text>
+                  <Text style={[styles.cTax, styles.cBold]}>{inr(totals.sgst)}</Text>
+                </>
+              ) : (
+                <Text style={[styles.cTax, styles.cBold]}>{inr(totals.igst)}</Text>
+              )}
+              <Text style={[styles.cTotal, styles.cBold]}>{inr(totals.total)}</Text>
+            </View>
+          </View>
+
+          <Text style={{ fontSize: 8, color: '#71717A', marginTop: 4 }}>
+            Shipping (HSN {SHIPPING_HSN_CODE}) is quoted inclusive of GST. Its taxable value is
+            reverse-calculated as amount ÷ 1.{SHIPPING_GST_RATE}, and the GST shown is the tax
+            already contained in that amount.
+          </Text>
+        </View>
+
+        {/* Amount payable — discount, gateway fee and payments sit outside the
+            taxable item table so the tax columns stay auditable. */}
+        <View style={styles.section}>
+          <View style={styles.totals}>
+            <View style={styles.row}>
+              <Text>Taxable Value</Text>
+              <Text>{inr(totals.taxable)}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text>Total GST</Text>
+              <Text>{inr(totalTax)}</Text>
+            </View>
+            {amounts.discount > 0 && (
+              <View style={styles.row}>
+                <Text>Discount</Text>
+                <Text>- {inr(amounts.discount)}</Text>
               </View>
             )}
-
-            {/* Grand total */}
-            <View style={[styles.tableRow, styles.pbGrandRow]}>
-              <Text style={styles.pbDesc}>Grand Total</Text>
-              <Text style={styles.pbTaxable} />
-              <Text style={styles.pbRate} />
-              <Text style={styles.pbGst} />
-              <Text style={styles.pbTotal}>{inr(amounts.grandTotal)}</Text>
+            {amounts.razorpayFee > 0 && (
+              <View style={styles.row}>
+                <Text>Payment Gateway Fee</Text>
+                <Text>{inr(amounts.razorpayFee)}</Text>
+              </View>
+            )}
+            <View style={[styles.row, styles.grandRow]}>
+              <Text style={styles.grandText}>Amount Payable</Text>
+              <Text style={styles.grandText}>{inr(amounts.grandTotal)}</Text>
             </View>
 
             {/* Advance paid + pending balance (price-lock path) */}
             {amountPaid > 0 && (
               <>
-                <View style={styles.tableRow}>
-                  <Text style={styles.pbDesc}>{isAdvance ? 'Advance Paid (10%)' : 'Amount Paid'}</Text>
-                  <Text style={styles.pbTaxable} />
-                  <Text style={styles.pbRate} />
-                  <Text style={styles.pbGst} />
-                  <Text style={styles.pbTotal}>- {inr(amountPaid)}</Text>
+                <View style={styles.row}>
+                  <Text>{isAdvance ? 'Advance Paid (10%)' : 'Amount Paid'}</Text>
+                  <Text>- {inr(amountPaid)}</Text>
                 </View>
-                <View style={[styles.tableRow, styles.pbGrandRow]}>
-                  <Text style={styles.pbDesc}>Balance Pending</Text>
-                  <Text style={styles.pbTaxable} />
-                  <Text style={styles.pbRate} />
-                  <Text style={styles.pbGst} />
-                  <Text style={styles.pbTotal}>{inr(balanceDue)}</Text>
+                <View style={[styles.row, styles.grandRow]}>
+                  <Text style={styles.grandText}>Balance Pending</Text>
+                  <Text style={styles.grandText}>{inr(balanceDue)}</Text>
                 </View>
               </>
             )}
           </View>
-          <Text style={{ fontSize: 8, color: '#71717A', marginTop: 4 }}>
-            Shipping is charged inclusive of GST, so it carries no separate GST line.
-          </Text>
         </View>
 
         {!data.isPaid && (
