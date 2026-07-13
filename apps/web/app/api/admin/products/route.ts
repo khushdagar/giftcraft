@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where: {
+          isPack: false,
           ...(search && {
             name: {
               contains: search,
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.product.count({
         where: {
+          isPack: false,
           ...(search && {
             name: {
               contains: search,
@@ -159,6 +161,18 @@ const CreateProductSchema = z.object({
     })
   ).nullable().optional(),
   vendors: z.array(VendorLinkSchema).nullable().optional(),
+
+  // Curated pack fields. When isPack, HSN/price-tiers are not required — the
+  // pack's price derives from its member products.
+  isPack: z.boolean().optional().default(false),
+  packCollectionId: z.string().nullable().optional(),
+  packItems: z.array(
+    z.object({
+      productId: z.string().min(1),
+      quantity: z.number().int().min(1).default(1),
+      sortOrder: z.number().int().default(0),
+    })
+  ).nullable().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -221,7 +235,8 @@ export async function POST(request: NextRequest) {
     } else if (data.hsnId) {
       hsn = await prisma.hsnCode.findUnique({ where: { id: data.hsnId } });
     }
-    if (!hsn) {
+    // Packs bundle other products and aren't taxed themselves, so HSN is optional.
+    if (!hsn && !data.isPack) {
       return NextResponse.json({ error: "HSN code is required" }, { status: 400 });
     }
 
@@ -258,7 +273,22 @@ export async function POST(request: NextRequest) {
         ...(data.tags?.length && { tags: data.tags }),
         isFeatured: data.isFeatured,
 
-        // Create price tiers
+        // Curated pack: flag, parent collection, and member products.
+        isPack: data.isPack ?? false,
+        packCollectionId: data.packCollectionId || null,
+        ...(data.isPack && data.packItems?.length && {
+          packItems: {
+            createMany: {
+              data: data.packItems.map((it, idx) => ({
+                productId: it.productId,
+                quantity: it.quantity,
+                sortOrder: it.sortOrder ?? idx,
+              })),
+            },
+          },
+        }),
+
+        // Create price tiers (packs derive price from members, so usually none)
         priceTiers: {
           createMany: {
             data: (data.priceTiers ?? []).map((tier) => ({
@@ -270,15 +300,17 @@ export async function POST(request: NextRequest) {
             })),
           },
         },
-        
-        // Link HSN
-        hsn: {
-          create: {
-            hsnId: hsn.id,
-            gstRate: hsn.defaultGstRate,
+
+        // Link HSN (skipped for packs, which aren't taxed themselves)
+        ...(hsn && {
+          hsn: {
+            create: {
+              hsnId: hsn.id,
+              gstRate: hsn.defaultGstRate,
+            },
           },
-        },
-        
+        }),
+
         // Link categories
         ...(data.categoryIds?.length && {
           categories: {

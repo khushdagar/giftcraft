@@ -58,11 +58,13 @@ export interface PricingBreakdown {
   itemsSubtotal: number;       // products + packaging + add-ons — the SOW "Subtotal (before shipping, GST)" display line
   packaging: number;
   addons: number;
-  shipping: number;
+  shipping: number;            // what the customer pays for shipping — GST-INCLUSIVE
+  shippingTaxable: number;     // shipping / 1.18 — the taxable value under HSN 996812
+  shippingGst: number;         // shipping − shippingTaxable — the GST already inside the courier rate
   discount: number;
-  cgst: number;
-  sgst: number;
-  igst: number;
+  cgst: number;                // includes the CGST half of shippingGst
+  sgst: number;                // includes the SGST half of shippingGst
+  igst: number;                // includes shippingGst when inter-state
   razorpayFee: number;
   grandTotal: number;
   perPack: number;

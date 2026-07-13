@@ -13,8 +13,12 @@ const STEPS = [
 ];
 
 export function BuilderLayout({ children }: { children: ReactNode }) {
-  const { currentStep, setCurrentStep, products, deliveryMode, address, csvRecipientCount } =
+  const { currentStep, setCurrentStep, products, packaging, deliveryMode, address, csvRecipientCount } =
     useBuilderStore();
+
+  // Step 2 (Customize) — a pack has to ship in *something*, so packaging is required.
+  const step2Valid = !!packaging;
+  const blockedAtStep2 = currentStep === 2 && !step2Valid;
 
   // Step 3 (Delivery) must be complete before leaving it:
   //  · single delivery  → a fully valid address (incl. 6-digit pincode)
@@ -35,7 +39,8 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
   const blockedAtStep3 = currentStep === 3 && !step3Valid;
 
   const canGoBack = currentStep > 1;
-  const canGoForward = currentStep < 4 && products.length > 0 && !blockedAtStep3;
+  const canGoForward =
+    currentStep < 4 && products.length > 0 && !blockedAtStep2 && !blockedAtStep3;
 
   return (
     <div className="min-h-screen overflow-x-clip bg-canvas">
@@ -51,8 +56,8 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
                 <button
                   onClick={() => {
                     // Allow going back/to current freely, but don't let users
-                    // jump forward past an incomplete Delivery step.
-                    if (step.id > currentStep && blockedAtStep3) return;
+                    // jump forward past an incomplete Customize or Delivery step.
+                    if (step.id > currentStep && (blockedAtStep2 || blockedAtStep3)) return;
                     setCurrentStep(step.id as 1 | 2 | 3 | 4);
                   }}
                   className={`flex h-9 w-9 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full font-black text-sm transition cursor-pointer ${
@@ -131,7 +136,9 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
             variant="em"
             className="gap-2 rounded-md"
             title={
-              blockedAtStep3
+              blockedAtStep2
+                ? 'Select a packaging option to continue'
+                : blockedAtStep3
                 ? deliveryMode === 'individual'
                   ? 'Upload your recipients list to continue'
                   : 'Complete the delivery address (incl. 6-digit pincode) to continue'

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { Search, ArrowRight } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
 import { toast } from '@/lib/stores/toast-store';
 import { resolveSwatchHex } from '@/lib/color-name';
@@ -71,7 +71,17 @@ function formatPrice(n: number) {
   return '₹' + n.toLocaleString('en-IN');
 }
 
-export function CatalogClient() {
+// When `pack` is passed, the catalog renders scoped to a single curated pack:
+// only that pack's products are shown, the sidebar filters derive from just
+// those products, and the header swaps to the pack's name + a "Customise" CTA.
+export interface CatalogPackContext {
+  name: string;
+  description?: string | null;
+  productIds: string[];
+  builderHref: string;
+}
+
+export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const addProduct = useBuilderStore((state) => state.addProduct);
@@ -147,7 +157,18 @@ export function CatalogClient() {
 
         if (productsRes.ok) {
           const productsData = await productsRes.json();
-          const prods = productsData.products || [];
+          let prods = productsData.products || [];
+
+          // Scoped to a curated pack: keep only the pack's products, in the
+          // order the admin arranged them. Everything downstream (filter facets,
+          // grid, counts) then reflects just this pack.
+          if (pack) {
+            const order = new Map(pack.productIds.map((id, i) => [id, i]));
+            prods = prods
+              .filter((p: Product) => order.has(p.id))
+              .sort((a: Product, b: Product) => (order.get(a.id)! - order.get(b.id)!));
+          }
+
           setProducts(prods);
 
           // Set initial price range based on actual product prices
@@ -175,35 +196,13 @@ export function CatalogClient() {
     fetchData();
   }, []);
 
-  // Get unique brands from products
-  const brands = useMemo(() => {
-    return [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
-  }, [products]);
-
-  // Recipient tags actually present on products (so the filter matches real data).
-  const recipientTags = useMemo(() => {
-    const tags = new Set<string>();
-    products.forEach(p => p.recipientTags?.forEach(t => t && tags.add(t)));
-    return [...tags].sort();
-  }, [products]);
-
-  // Only show occasions that at least one product is tagged with. Curated
-  // collections (isCollection) are hidden from the sidebar — they're surfaced via
-  // the homepage section and can still be applied through the ?occasion= URL param.
-  const usedOccasions = useMemo(() => {
-    const ids = new Set<string>();
-    products.forEach(p => p.occasionIds?.forEach(id => ids.add(id)));
-    return occasions.filter(o => ids.has(o.id) && !o.isCollection);
-  }, [occasions, products]);
-
-  // Only show categories that actually have products — a category with zero
-  // products everywhere (e.g. an empty "Gift Cards") just clutters the filter
-  // bar with a permanent (0) and can never narrow results.
-  const usedCategories = useMemo(() => {
-    const ids = new Set<string>();
-    products.forEach(p => p.categories?.forEach(c => ids.add(c.categoryId)));
-    return categories.filter(c => ids.has(c.id));
-  }, [categories, products]);
+  // Curated collections (isCollection) are hidden from the sidebar — they're
+  // surfaced via the homepage section and can still be applied through the
+  // ?occasion= URL param.
+  const sidebarOccasions = useMemo(
+    () => occasions.filter(o => !o.isCollection),
+    [occasions]
+  );
 
   // Get price range from products
   const priceRange = useMemo(() => {
@@ -216,58 +215,54 @@ export function CatalogClient() {
     };
   }, [products]);
 
+  // One predicate per filter, so a facet's option counts can be computed against
+  // every OTHER active filter while ignoring its own. Counting against the fully
+  // filtered list instead would zero out every unselected option in a facet the
+  // moment you tick one of them, making multi-select impossible.
+  const predicates = useMemo(() => ({
+    search: (p: Product) => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        !!p.brand?.toLowerCase().includes(q) ||
+        !!p.categories?.some(c => c.category?.name.toLowerCase().includes(q))
+      );
+    },
+    cats: (p: Product) =>
+      selectedCats.size === 0 || !!p.categories?.some(c => selectedCats.has(c.categoryId)),
+    brands: (p: Product) => selectedBrands.size === 0 || selectedBrands.has(p.brand || ''),
+    occasions: (p: Product) =>
+      selectedOccasions.size === 0 || !!p.occasionIds?.some(id => selectedOccasions.has(id)),
+    recipients: (p: Product) =>
+      selectedRecipients.size === 0 || !!p.recipientTags?.some(t => selectedRecipients.has(t)),
+    eco: (p: Product) => !ecoOnly || !!p.isEcoCertified,
+    branding: (p: Product) => !brandingOnly || !!p.printingTechnique,
+    price: (p: Product) => {
+      if (priceMin === null || priceMax === null) return true;
+      const price = p.priceTiers?.[0]?.sellPrice || 0;
+      return price >= priceMin && price <= priceMax;
+    },
+  }), [search, selectedCats, selectedBrands, selectedOccasions, selectedRecipients, ecoOnly, brandingOnly, priceMin, priceMax]);
+
+  type FacetKey = keyof typeof predicates;
+
+  /** Products matching every filter except `skip` — the base for that facet's counts. */
+  const productsExcept = useMemo(() => {
+    const cache = new Map<FacetKey | '', Product[]>();
+    return (skip?: FacetKey) => {
+      const key = skip ?? '';
+      if (!cache.has(key)) {
+        const checks = (Object.keys(predicates) as FacetKey[]).filter(k => k !== skip);
+        cache.set(key, products.filter(p => checks.every(k => predicates[k](p))));
+      }
+      return cache.get(key)!;
+    };
+  }, [products, predicates]);
+
   // Filter products
   const filtered = useMemo(() => {
-    let result = products.filter(p => {
-      // Search filter
-      if (search) {
-        const searchLower = search.toLowerCase();
-        if (
-          !p.name.toLowerCase().includes(searchLower) &&
-          !p.brand?.toLowerCase().includes(searchLower) &&
-          !p.categories?.some(c => c.category?.name.toLowerCase().includes(searchLower))
-        ) {
-          return false;
-        }
-      }
-
-      // Category filter
-      if (selectedCats.size > 0) {
-        const hasCategory = p.categories?.some(c => selectedCats.has(c.categoryId));
-        if (!hasCategory) return false;
-      }
-
-      // Brand filter
-      if (selectedBrands.size > 0 && !selectedBrands.has(p.brand || '')) {
-        return false;
-      }
-
-      // Occasion filter (product matches if tagged with any selected occasion)
-      if (selectedOccasions.size > 0) {
-        const hasOccasion = p.occasionIds?.some(id => selectedOccasions.has(id));
-        if (!hasOccasion) return false;
-      }
-
-      // Recipient type filter (match any selected recipient tag)
-      if (selectedRecipients.size > 0) {
-        const hasRecipient = p.recipientTags?.some(t => selectedRecipients.has(t));
-        if (!hasRecipient) return false;
-      }
-
-      // Eco filter
-      if (ecoOnly && !p.isEcoCertified) return false;
-
-      // Branding filter
-      if (brandingOnly && !p.printingTechnique) return false;
-
-      // Price filter (only apply if both min and max are set)
-      if (priceMin !== null && priceMax !== null) {
-        const price = p.priceTiers?.[0]?.sellPrice || 0;
-        if (price < priceMin || price > priceMax) return false;
-      }
-
-      return true;
-    });
+    const result = [...productsExcept()];
 
     // Sort
     if (sort === 'price_asc') result.sort((a, b) => (a.priceTiers?.[0]?.sellPrice || 0) - (b.priceTiers?.[0]?.sellPrice || 0));
@@ -275,7 +270,56 @@ export function CatalogClient() {
     else if (sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name));
 
     return result;
-  }, [products, search, sort, selectedCats, selectedBrands, selectedOccasions, selectedRecipients, ecoOnly, brandingOnly, priceMin, priceMax]);
+  }, [productsExcept, sort]);
+
+  // ── Facet options ─────────────────────────────────────────────────────────
+  // Each option carries a live count and only survives if that count is > 0 —
+  // a filter that can't narrow anything is noise. An option the user has already
+  // ticked always stays visible, otherwise they'd have no way to untick it.
+  const categoryFacets = useMemo(() => {
+    const base = productsExcept('cats');
+    return categories
+      .map(c => ({
+        ...c,
+        count: base.filter(p => p.categories?.some(x => x.categoryId === c.id)).length,
+      }))
+      .filter(c => c.count > 0 || selectedCats.has(c.id));
+  }, [categories, productsExcept, selectedCats]);
+
+  const brandFacets = useMemo(() => {
+    const base = productsExcept('brands');
+    const names = [...new Set(products.map(p => p.brand).filter((b): b is string => !!b))].sort();
+    return names
+      .map(name => ({ name, count: base.filter(p => p.brand === name).length }))
+      .filter(b => b.count > 0 || selectedBrands.has(b.name));
+  }, [products, productsExcept, selectedBrands]);
+
+  const occasionFacets = useMemo(() => {
+    const base = productsExcept('occasions');
+    return sidebarOccasions
+      .map(o => ({ ...o, count: base.filter(p => p.occasionIds?.includes(o.id)).length }))
+      .filter(o => o.count > 0 || selectedOccasions.has(o.id));
+  }, [sidebarOccasions, productsExcept, selectedOccasions]);
+
+  const recipientFacets = useMemo(() => {
+    const base = productsExcept('recipients');
+    const tags = new Set<string>();
+    products.forEach(p => p.recipientTags?.forEach(t => t && tags.add(t)));
+    return [...tags]
+      .sort()
+      .map(tag => ({ tag, count: base.filter(p => p.recipientTags?.includes(tag)).length }))
+      .filter(r => r.count > 0 || selectedRecipients.has(r.tag));
+  }, [products, productsExcept, selectedRecipients]);
+
+  // Toggles: hide when nothing in the current result set could match.
+  const ecoCount = useMemo(
+    () => productsExcept('eco').filter(p => p.isEcoCertified).length,
+    [productsExcept]
+  );
+  const brandingCount = useMemo(
+    () => productsExcept('branding').filter(p => p.printingTechnique).length,
+    [productsExcept]
+  );
 
   const handleCatChange = (catId: string) => {
     const newCats = new Set(selectedCats);
@@ -332,13 +376,59 @@ export function CatalogClient() {
 
       <div className="py-8 md:py-12" style={{ background: '#FAFAF7' }}>
         <div className="max-w-7xl mx-auto px-4 md:px-10">
-          <p className="text-xs" style={{ color: '#9B9B93' }}><Link href="/" style={{ color: '#1A6B4F' }}>Home</Link> / <span>Products</span></p>
-          <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">
-            The <span className="italic" style={{ color: '#1A6B4F' }}>Catalog.</span>
-          </h1>
-          <p className="mt-2 text-base" style={{ color: '#6B6B63' }}>
-            {products.length}+ products for every occasion.
-          </p>
+          {pack ? (
+            <>
+              <p className="text-xs" style={{ color: '#9B9B93' }}>
+                <Link href="/" style={{ color: '#1A6B4F' }}>Home</Link> /{' '}
+                <Link href="/packs" style={{ color: '#1A6B4F' }}>Curated Packs</Link> /{' '}
+                <span>{pack.name}</span>
+              </p>
+              <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-em-50 px-3 py-1 text-xs font-medium text-em-700 mb-2">
+                    ✨ Curated Pack
+                  </span>
+                  <h1 className="text-4xl md:text-5xl font-serif font-light">
+                    {pack.name}
+                  </h1>
+                  {pack.description && (
+                    <p className="mt-2 text-base" style={{ color: '#6B6B63' }}>
+                      {pack.description}
+                    </p>
+                  )}
+                </div>
+                <Link
+                  href={pack.builderHref}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-em px-6 py-3.5 text-base font-bold text-white transition hover:bg-em-600 hover:-translate-y-0.5 whitespace-nowrap"
+                >
+                  Customise this Pack <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs" style={{ color: '#9B9B93' }}><Link href="/" style={{ color: '#1A6B4F' }}>Home</Link> / <span>Products</span></p>
+              <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">
+                The <span className="italic" style={{ color: '#1A6B4F' }}>Catalog.</span>
+              </h1>
+              <p className="mt-2 text-base" style={{ color: '#6B6B63' }}>
+                {products.length}+ products for every occasion.
+              </p>
+
+              {/* Tabs — mirror the Curated Packs page toggle */}
+              <div className="mt-6 inline-flex gap-1 rounded-full bg-[#EFEFE9] p-1">
+                <span className="px-6 py-2 rounded-full text-sm font-medium bg-white text-ink shadow-card">
+                  All Products
+                </span>
+                <Link
+                  href="/packs"
+                  className="px-6 py-2 rounded-full text-sm font-medium text-[#6B6B63] hover:text-ink transition"
+                >
+                  Curated Packs
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -401,22 +491,22 @@ export function CatalogClient() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
           <div className={`lg:col-span-1 ${sidebarOpen ? 'fixed inset-0 z-40 bg-black/30 lg:bg-transparent lg:static' : 'hidden lg:block'}`} onClick={() => setSidebarOpen(false)}>
-            <div className={`bg-white rounded-2xl shadow p-5 ${sidebarOpen ? 'fixed bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl' : ''}`} onClick={(e) => e.stopPropagation()}>
+            <div className={`bg-white rounded-2xl shadow p-5 lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto ${sidebarOpen ? 'fixed bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl' : ''}`} onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4 lg:mb-0">
                 <h3 className="font-serif text-lg">Filters</h3>
                 <button className="lg:hidden text-2xl" onClick={() => setSidebarOpen(false)}>✕</button>
               </div>
 
               {/* Categories */}
-              {usedCategories.length > 0 && (
+              {categoryFacets.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Categories</h4>
                   <div className="space-y-2">
-                    {usedCategories.map(cat => (
+                    {categoryFacets.map(cat => (
                       <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
                         <input type="checkbox" checked={selectedCats.has(cat.id)} onChange={() => handleCatChange(cat.id)} style={{ accentColor: '#1A6B4F' }} />
                         {cat.name}
-                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({filtered.filter(p => p.categories?.some(c => c.categoryId === cat.id)).length})</span>
+                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({cat.count})</span>
                       </label>
                     ))}
                   </div>
@@ -439,15 +529,15 @@ export function CatalogClient() {
               </div>
 
               {/* Brands */}
-              {brands.length > 0 && (
+              {brandFacets.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Brand</h4>
                   <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {brands.filter((b): b is string => !!b).map(brand => (
-                      <label key={brand} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
-                        <input type="checkbox" checked={selectedBrands.has(brand)} onChange={() => handleBrandChange(brand)} style={{ accentColor: '#1A6B4F' }} />
-                        {brand}
-                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({filtered.filter(p => p.brand === brand).length})</span>
+                    {brandFacets.map(({ name, count }) => (
+                      <label key={name} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
+                        <input type="checkbox" checked={selectedBrands.has(name)} onChange={() => handleBrandChange(name)} style={{ accentColor: '#1A6B4F' }} />
+                        {name}
+                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({count})</span>
                       </label>
                     ))}
                   </div>
@@ -455,15 +545,15 @@ export function CatalogClient() {
               )}
 
               {/* Occasion */}
-              {usedOccasions.length > 0 && (
+              {occasionFacets.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Occasion</h4>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {usedOccasions.map(occ => (
+                    {occasionFacets.map(occ => (
                       <label key={occ.id} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
                         <input type="checkbox" checked={selectedOccasions.has(occ.id)} onChange={() => toggleSetValue(setSelectedOccasions, occ.id)} style={{ accentColor: '#1A6B4F' }} />
                         {occ.name}
-                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({filtered.filter(p => p.occasionIds?.includes(occ.id)).length})</span>
+                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({occ.count})</span>
                       </label>
                     ))}
                   </div>
@@ -471,15 +561,15 @@ export function CatalogClient() {
               )}
 
               {/* Recipient Type */}
-              {recipientTags.length > 0 && (
+              {recipientFacets.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Recipient Type</h4>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {recipientTags.map(tag => (
+                    {recipientFacets.map(({ tag, count }) => (
                       <label key={tag} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
                         <input type="checkbox" checked={selectedRecipients.has(tag)} onChange={() => toggleSetValue(setSelectedRecipients, tag)} style={{ accentColor: '#1A6B4F' }} />
                         {tag}
-                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({filtered.filter(p => p.recipientTags?.includes(tag)).length})</span>
+                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({count})</span>
                       </label>
                     ))}
                   </div>
@@ -487,22 +577,26 @@ export function CatalogClient() {
               )}
 
               {/* Eco Toggle */}
-              <div className="mb-4 pb-3 border-b flex justify-between items-center">
-                <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">🍃 Eco-Friendly Only</label>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={ecoOnly} onChange={(e) => setEcoOnly(e.target.checked)} className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
-                </label>
-              </div>
+              {(ecoCount > 0 || ecoOnly) && (
+                <div className="mb-4 pb-3 border-b flex justify-between items-center">
+                  <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">🍃 Eco-Friendly Only <span className="text-xs" style={{ color: '#9B9B93' }}>({ecoCount})</span></label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={ecoOnly} onChange={(e) => setEcoOnly(e.target.checked)} className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
+                  </label>
+                </div>
+              )}
 
               {/* Branding Toggle */}
-              <div className="flex justify-between items-center">
-                <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">🎨 Branding Available</label>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={brandingOnly} onChange={(e) => setBrandingOnly(e.target.checked)} className="sr-only peer" />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
-                </label>
-              </div>
+              {(brandingCount > 0 || brandingOnly) && (
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">🎨 Branding Available <span className="text-xs" style={{ color: '#9B9B93' }}>({brandingCount})</span></label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" checked={brandingOnly} onChange={(e) => setBrandingOnly(e.target.checked)} className="sr-only peer" />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
+                  </label>
+                </div>
+              )}
 
               {sidebarOpen && (
                 <div className="flex gap-2 mt-6">
@@ -628,12 +722,6 @@ export function CatalogClient() {
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer style={{ background: '#1A1A18', color: '#FAFAF7' }} className="py-8 text-center text-xs">
-        <p className="font-serif mb-2" style={{ color: 'rgba(26,107,79,.6)' }}>GiftCraft</p>
-        <p style={{ color: 'rgba(250,250,247,.25)' }}>© 2026 Arts Shala. All Rights Reserved. Made with ♥ in Delhi</p>
-      </footer>
     </div>
   );
 }

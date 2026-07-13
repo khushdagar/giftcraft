@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { ArrowRight, Sparkles } from "lucide-react";
 
 export function PromotionsSection() {
   return (
@@ -12,7 +12,10 @@ export function PromotionsSection() {
 
       {/* Animated background shapes */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-float" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+      <div
+        className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-float"
+        style={{ animationDelay: "2s" }}
+      />
 
       {/* Content */}
       <div className="relative z-10 container-gc">
@@ -30,7 +33,9 @@ export function PromotionsSection() {
             className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full mb-8 border border-white/30"
           >
             <Sparkles className="w-5 h-5 text-white" />
-            <span className="text-white font-normal uppercase tracking-wider text-sm">Limited Time Offer</span>
+            <span className="text-white font-normal uppercase tracking-wider text-sm">
+              Limited Time Offer
+            </span>
           </motion.div>
 
           {/* Main Heading */}
@@ -52,7 +57,8 @@ export function PromotionsSection() {
             transition={{ delay: 0.3 }}
             className="text-2xl text-white/95 mb-12 font-normal leading-relaxed max-w-2xl mx-auto"
           >
-            Minimum ₹5,000 • Free Customization • Fast Delivery • Quality Guaranteed
+            Minimum ₹5,000 • Free Customization • Fast Delivery • Quality
+            Guaranteed
           </motion.p>
 
           {/* Offer Highlights */}
@@ -63,11 +69,14 @@ export function PromotionsSection() {
             className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-12 max-w-2xl mx-auto"
           >
             {[
-              { label: 'Screen Print', icon: '🖨️' },
-              { label: 'Embroidery', icon: '✨' },
-              { label: 'Express Shipping', icon: '⚡' },
+              { label: "Screen Print", icon: "🖨️" },
+              { label: "Embroidery", icon: "✨" },
+              { label: "Express Shipping", icon: "⚡" },
             ].map((offer, idx) => (
-              <div key={idx} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4">
+              <div
+                key={idx}
+                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4"
+              >
                 <p className="text-3xl mb-2">{offer.icon}</p>
                 <p className="text-white font-normal text-sm">{offer.label}</p>
               </div>

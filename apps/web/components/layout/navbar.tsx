@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
@@ -29,12 +30,24 @@ const FALLBACK_OCCASIONS: NavOccasion[] = [
 ];
 
 export function Navbar() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [occasions, setOccasions] = useState<NavOccasion[]>(FALLBACK_OCCASIONS);
   const products = useBuilderStore((state) => state.products);
-  const productCount = products.length;
+
+  // The builder store is persisted to localStorage, which only exists on the
+  // client. Rendering its count before hydration would mismatch the server HTML
+  // and make the cart badge pop in and out — wait until we're mounted.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const productCount = mounted ? products.length : 0;
+
+  // Until the session resolves we know neither "signed in" nor "signed out".
+  // Rendering either one would flip to the other a moment later — that's the
+  // flicker. Hold a same-sized placeholder instead.
+  const authLoading = status === "loading";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -92,7 +105,6 @@ export function Navbar() {
             </div>
           </li>
 
-          <li><Link href="/pricing" className="text-sm font-medium text-ink-2 hover:text-ink">Pricing</Link></li>
           <li><Link href="/planner" className="text-sm font-medium text-ink-2 hover:text-ink">Budget Planner</Link></li>
           <li><Link href="/box" className="text-sm font-medium text-ink-2 hover:text-ink">Build Your Box</Link></li>
           <li><Link href="/blog" className="text-sm font-medium text-ink-2 hover:text-ink">Blog</Link></li>
@@ -104,7 +116,16 @@ export function Navbar() {
             Build a Gift
           </Link>
 
-          {session?.user ? (
+          {authLoading ? (
+            // Same 36px footprint as both real states, so nothing shifts when it resolves.
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-full"
+              aria-busy="true"
+              aria-label="Checking sign-in status"
+            >
+              <div className="h-8 w-8 animate-pulse rounded-full bg-elevated" />
+            </div>
+          ) : session?.user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-elevated" aria-label={`Account menu for ${session.user?.name}`}>
@@ -138,13 +159,16 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <button
-              onClick={() => signIn("google")}
+            // Route through the real /login page (which handles Google + the
+            // callback URL) rather than firing signIn() straight from the nav —
+            // that skipped the page and lost the "return here afterwards" target.
+            <Link
+              href={`/login?from=${encodeURIComponent(pathname || "/")}`}
               className="flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink"
               aria-label="Sign in"
             >
               <UserIcon className="h-5 w-5" />
-            </button>
+            </Link>
           )}
 
           <Link href="/builder" className="relative flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink" aria-label="Gift Pack">
@@ -200,8 +224,15 @@ export function Navbar() {
               Get a Quote
             </Link>
 
-            {/* Account / sign out — mobile */}
-            {session?.user ? (
+            {/* Account / sign out — mobile. Holds a placeholder while the session
+                resolves so the label never flips from "Sign in" to "Sign out". */}
+            {authLoading ? (
+              <div
+                className="mt-3 h-[60px] w-full animate-pulse rounded-md-p bg-elevated"
+                aria-busy="true"
+                aria-label="Checking sign-in status"
+              />
+            ) : session?.user ? (
               <button
                 onClick={() => {
                   setMobileOpen(false);
@@ -212,15 +243,13 @@ export function Navbar() {
                 <LogOut className="h-5 w-5" /> Sign out
               </button>
             ) : (
-              <button
-                onClick={() => {
-                  setMobileOpen(false);
-                  signIn("google");
-                }}
+              <Link
+                href={`/login?from=${encodeURIComponent(pathname || "/")}`}
+                onClick={() => setMobileOpen(false)}
                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-md-p border-2 border-bdr py-4 text-base font-semibold text-ink hover:border-em hover:text-em"
               >
                 <UserIcon className="h-5 w-5" /> Sign in
-              </button>
+              </Link>
             )}
           </div>
         </>

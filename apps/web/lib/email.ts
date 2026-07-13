@@ -204,7 +204,11 @@ function priceBreakdownCard(
   if (amounts.packaging > 0) rows += row('Packaging', inr(amounts.packaging));
   if (amounts.addons > 0) rows += row('Add-ons', inr(amounts.addons));
   rows += row('Subtotal (before shipping, GST)', inr(itemsSubtotal), true);
-  rows += row('Shipping (incl. GST)', amounts.shipping > 0 ? inr(amounts.shipping) : 'FREE');
+  // The courier rate is GST-inclusive and `gst` already carries the tax hidden
+  // inside it, so list shipping at its taxable value (amount ÷ 1.18) — showing
+  // the inclusive amount would count the same rupees twice down the column.
+  const shippingTaxable = Math.round((amounts.shipping / 1.18) * 100) / 100;
+  rows += row('Shipping (HSN 996812)', amounts.shipping > 0 ? inr(shippingTaxable) : 'FREE');
   if (gst > 0) rows += row('GST', inr(gst));
   if (amounts.razorpayFee > 0)
     rows += row('Payment Processing Fee (Razorpay 2%)', inr(amounts.razorpayFee));

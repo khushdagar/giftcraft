@@ -46,9 +46,6 @@ export default async function OrderTrackPage({
   const currentStepIndex = STATUS_STEPS.findIndex((s) =>
     s.keys.includes(order.status),
   );
-  const estimatedDelivery = new Date(order.createdAt);
-  estimatedDelivery.setDate(estimatedDelivery.getDate() + 7);
-
   return (
     <div className="min-h-screen bg-canvas py-8 px-4">
       <div className="container-gc-w max-w-2xl">
@@ -100,49 +97,6 @@ export default async function OrderTrackPage({
           </div>
         </div>
 
-        {/* Order Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Items */}
-          <div className="rounded-md border-2 border-bdr bg-white p-5">
-            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-4">
-              Items
-            </p>
-            <div className="space-y-2">
-              {order.items.map((item: any) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span className="text-ink">{item.productName}</span>
-                  <span className="text-ink-2">×{item.quantity}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Delivery Details */}
-          <div className="rounded-md border-2 border-bdr bg-white p-5">
-            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-4">
-              Delivery
-            </p>
-            {order.billingJson && (
-              <div className="space-y-2 text-sm">
-                <div>
-                  <p className="text-ink-3 text-xs">To</p>
-                  <p className="text-ink font-normal">
-                    {(order.billingJson as any).companyName}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-ink-3 text-xs">Estimated Delivery</p>
-                  <p className="text-ink font-normal">
-                    {estimatedDelivery.toLocaleDateString("en-IN")}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   );

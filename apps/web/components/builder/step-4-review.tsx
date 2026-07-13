@@ -169,7 +169,9 @@ export function Step4Review() {
         </p>
       </div>
 
-      {/* Delivery Mode Display */}
+      {/* Delivery Mode Display — hidden while Individual Delivery is disabled, since
+          every order is single-location. Restore alongside the mode picker in Step 3.
+
       <div className="rounded-md bg-em-50 border-2 border-em-200 p-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-3">
           Delivery Mode
@@ -190,6 +192,7 @@ export function Step4Review() {
           </div>
         </div>
       </div>
+      */}
 
       {/* Delivery Address — read-only summary (single location) */}
       {deliveryMode === 'single' && (

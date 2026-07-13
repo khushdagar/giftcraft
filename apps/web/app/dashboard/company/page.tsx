@@ -1,9 +1,9 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { Button } from '@/components/ui/button';
+import { CompanyDetailsForm } from './company-details-form';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function CompanyPage() {
   const session = await auth();
@@ -30,74 +30,73 @@ export default async function CompanyPage() {
     },
   });
 
-  if (!company) {
-    return (
-      <div className="rounded-md border-2 border-bdr bg-gray-50 p-12 text-center">
-        <p className="text-ink-2">You are not associated with any company</p>
-      </div>
-    );
-  }
+  // Per SOW §3.7.3, every customer has a Company Profile they can view/edit. If
+  // the account isn't linked to one yet (self-serve signups don't create it),
+  // we show the same form empty so the user can set it up — saving creates the
+  // company and links their account.
+  const isNew = !company;
 
   return (
     <div>
       <div className="mb-8 border-b border-bdr pb-8">
-        <h1 className="text-3xl font-normal tracking-tight text-ink">Company Information</h1>
-        <p className="mt-1 text-sm text-ink-2">View and manage your company details</p>
+        <h1 className="text-3xl font-normal tracking-tight text-ink">
+          {isNew ? 'Set Up Your Company' : 'Company Information'}
+        </h1>
+        <p className="mt-1 text-sm text-ink-2">
+          {isNew
+            ? 'Add your company details to speed up every future checkout.'
+            : 'These details are saved and reused automatically at checkout.'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Company Info */}
-        <div className="rounded-md border-2 border-bdr p-6">
-          <h2 className="font-normal text-ink mb-4">Company Details</h2>
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Company Name</p>
-              <p className="text-lg font-normal text-ink mt-1">{company.name}</p>
-            </div>
-            {company.gstin && (
-              <div>
-                <p className="text-xs font-normal uppercase tracking-wider text-ink-3">GSTIN</p>
-                <p className="text-sm text-ink mt-1">{company.gstin}</p>
-              </div>
-            )}
-            {company.phone && (
-              <div>
-                <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Phone</p>
-                <p className="text-sm text-ink mt-1">{company.phone}</p>
-              </div>
-            )}
-            {company.website && (
-              <div>
-                <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Website</p>
-                <p className="text-sm text-ink mt-1">{company.website}</p>
-              </div>
-            )}
-            <div>
-              <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Member Since</p>
-              <p className="text-sm text-ink mt-1">
-                {new Date(company.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Company Info — editable (create or update) */}
+        <CompanyDetailsForm
+          canEdit
+          isNew={isNew}
+          initial={{
+            name: company?.name ?? '',
+            gstin: company?.gstin ?? '',
+            pan: company?.pan ?? '',
+            addressLine: company?.addressLine ?? '',
+            city: company?.city ?? '',
+            state: company?.state ?? '',
+            pincode: company?.pincode ?? '',
+            phone: company?.phone ?? '',
+            website: company?.website ?? '',
+          }}
+        />
 
-        {/* Team Members */}
-        <div className="rounded-md border-2 border-bdr p-6">
-          <h2 className="font-normal text-ink mb-4">Team Members ({company.users.length})</h2>
-          <div className="space-y-3">
-            {company.users.map((user) => (
-              <div key={user.id} className="flex items-start justify-between border-b border-bdr pb-3 last:border-0">
-                <div>
-                  <p className="font-normal text-ink text-sm">{user.name}</p>
-                  <p className="text-xs text-ink-2">{user.email}</p>
+        {/* Team Members — only once a company exists */}
+        {company ? (
+          <div className="rounded-md border-2 border-bdr bg-white p-6">
+            <h2 className="font-normal text-ink mb-4">
+              Team Members ({company.users.length})
+            </h2>
+            <div className="space-y-3">
+              {company.users.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-start justify-between border-b border-bdr pb-3 last:border-0"
+                >
+                  <div>
+                    <p className="font-normal text-ink text-sm">{user.name}</p>
+                    <p className="text-xs text-ink-2">{user.email}</p>
+                  </div>
+                  <span className="text-xs font-normal bg-em-50 text-em-700 px-2 py-1 rounded">
+                    {user.role}
+                  </span>
                 </div>
-                <span className="text-xs font-normal bg-em-50 text-em-700 px-2 py-1 rounded">
-                  {user.role}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="rounded-md border-2 border-dashed border-bdr p-6 flex items-center justify-center">
+            <p className="text-sm text-ink-3 text-center">
+              Your team members will appear here once your company is set up.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

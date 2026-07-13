@@ -184,37 +184,39 @@ model User {
   emailVerified DateTime?
   image         String?
   phone         String?
-  passwordHash  String?   // Set when the user registers with email/password; null for OAuth-only users
+  passwordHash  String? // Set when the user registers with email/password; null for OAuth-only users
   role          UserRole  @default(company_member)
   companyId     String?
 
-  accounts      Account[]
-  sessions      Session[]
-  company       Company?  @relation(fields: [companyId], references: [id])
+  accounts Account[]
+  sessions Session[]
+  company  Company?  @relation(fields: [companyId], references: [id])
 
-  ordersPlaced      Order[]                @relation("OrderPlacedBy")
-  quotesCreated     Quote[]                @relation("QuoteCreatedBy")
-  disputesSubmitted DisputeTicket[]        @relation("DisputesSubmitted")
-  vendorCommLogs    VendorCommunication[]  @relation("VendorCommLogs")
+  ordersPlaced      Order[]                 @relation("OrderPlacedBy")
+  quotesCreated     Quote[]                 @relation("QuoteCreatedBy")
+  disputesSubmitted DisputeTicket[]         @relation("DisputesSubmitted")
+  vendorCommLogs    VendorCommunication[]   @relation("VendorCommLogs")
   notificationPref  NotificationPreference?
   consentLogs       ConsentLog[]
-  gocCampaigns      GocCampaign[]          @relation("CampaignCreatedBy")
+  gocCampaigns      GocCampaign[]           @relation("CampaignCreatedBy")
   sampleOrders      SampleOrder[]
+  savedAddresses    SavedAddress[]
+  blogPosts         BlogPost[]              @relation("BlogPostAuthor")
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([companyId])
   @@index([role])
 }
 
 model Company {
-  id          String       @id @default(cuid())
+  id          String      @id @default(cuid())
   name        String
-  slug        String       @unique
+  slug        String      @unique
   gstin       String?
   pan         String?
-  tier        CompanyTier  @default(standard)
+  tier        CompanyTier @default(standard)
   addressLine String?
   city        String?
   state       String?
@@ -224,14 +226,14 @@ model Company {
   website     String?
   logoUrl     String?
 
-  users          User[]
-  orders         Order[]
-  quotes         Quote[]
-  brandAssets    BrandAsset[]
-  gocCampaigns   GocCampaign[]
+  users        User[]
+  orders       Order[]
+  quotes       Quote[]
+  brandAssets  BrandAsset[]
+  gocCampaigns GocCampaign[]
 
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([slug])
 }
@@ -250,113 +252,165 @@ model BrandAsset {
   @@index([companyId])
 }
 
+// Reusable delivery/shipping addresses saved to a user's account so they can be
+// picked in the gift builder / checkout instead of re-typing on every order.
+model SavedAddress {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label        String? // e.g. "Head Office", "Warehouse"
+  contactName  String
+  company      String?
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  pincode      String
+  phone        String?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
 // ═══════════════════════════════════════════════════════════
 //   CATALOG — Products, Categories, Occasions, HSN
 // ═══════════════════════════════════════════════════════════
 model Product {
-  id                String   @id @default(cuid())
+  id                String            @id @default(cuid())
   name              String
-  slug              String   @unique
+  slug              String            @unique
   brand             String?
-  sku               String   @unique
+  sku               String            @unique
   descriptionShort  String?
-  descriptionLong   String?  @db.Text
+  descriptionLong   String?           @db.Text
   // Product-detail tab content (shown on the public product page tabs)
-  specifications    String?  @db.Text
-  designArtwork     String?  @db.Text
-  shippingDelivery  String?  @db.Text
-  samplesInfo       String?  @db.Text
-  packagingAddons   String?  @db.Text
+  specifications    String?           @db.Text
+  designArtwork     String?           @db.Text
+  shippingDelivery  String?           @db.Text
+  samplesInfo       String?           @db.Text
+  packagingAddons   String?           @db.Text
   material          String?
   dimensionL        Float?
   dimensionW        Float?
   dimensionH        Float?
   weightG           Float?
-  moq               Int      @default(25)   // Minimum order quantity per product (from product master)
-  leadTimeDays      Int      @default(10)
-  status            ProductStatus @default(draft)
+  moq               Int               @default(25) // Minimum order quantity per product (from product master)
+  leadTimeDays      Int               @default(10)
+  status            ProductStatus     @default(draft)
   printingTechnique PrintingTechnique @default(none)
   printingPosition  String?
-  brandingArea      String?  // e.g. "60×40 mm" — printable area
-  isEcoCertified    Boolean  @default(false)
-  ecoCertification  String?  // e.g. "GOTS", "FSC", "GRS", "rPET"
-  sampleAvailable   Boolean  @default(false)
-  recipientTags     String[] @default([])   // e.g. "All staff", "Senior, VIP Clients"
-  tags              String[] @default([])   // Free-form tags — drive tag-based occasions/collections (e.g. "budget-friendly", "eco-friendly")
-  isFeatured        Boolean  @default(false)
-  sortOrder         Int      @default(0)
+  brandingArea      String? // e.g. "60×40 mm" — printable area
+  isEcoCertified    Boolean           @default(false)
+  ecoCertification  String? // e.g. "GOTS", "FSC", "GRS", "rPET"
+  sampleAvailable   Boolean           @default(false)
+  recipientTags     String[]          @default([]) // e.g. "All staff", "Senior, VIP Clients"
+  tags              String[]          @default([]) // Free-form tags — drive tag-based occasions/collections (e.g. "budget-friendly", "eco-friendly")
+  isFeatured        Boolean           @default(false)
+  sortOrder         Int               @default(0)
   metaTitle         String?
   metaDescription   String?
 
-  priceTiers        PriceTier[]
-  images            ProductImage[]
-  variants          ProductVariant[]
-  categories        ProductCategory[]
-  occasions         ProductOccasion[]
-  hsn               ProductHsn?
-  vendors           ProductVendor[]
-  orderItems        OrderItem[]
-  auditLogs         PriceAuditLog[]
-  gocOptions        GocOption[]
-  sampleOrders      SampleOrder[]
+  priceTiers    PriceTier[]
+  images        ProductImage[]
+  variants      ProductVariant[]
+  categories    ProductCategory[]
+  occasions     ProductOccasion[]
+  hsn           ProductHsn?
+  vendors       ProductVendor[]
+  orderItems    OrderItem[]
+  auditLogs     PriceAuditLog[]
+  gocOptions    GocOption[]
+  sampleOrders  SampleOrder[]
+  giftPackItems GiftPackItem[]
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  // ── Curated Pack support ──────────────────────────────────────────────────
+  // A pack is a Product (isPack=true) that bundles other products. It gets every
+  // normal product field; its price is derived from its member products' tiers,
+  // so it carries no own PriceTiers. It shows in /packs, not the /catalog grid.
+  isPack           Boolean           @default(false)
+  packCollectionId String?
+  packCollection   GiftCollection?   @relation("PackCollectionProducts", fields: [packCollectionId], references: [id], onDelete: SetNull)
+  packItems        ProductPackItem[] @relation("PackParent")
+  inPacks          ProductPackItem[] @relation("PackMember")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([slug])
   @@index([status])
   @@index([isFeatured])
+  @@index([isPack])
+  @@index([packCollectionId])
+}
+
+// A member product inside a pack-product (self-relation on Product), with the
+// quantity of that product per pack.
+model ProductPackItem {
+  id        String  @id @default(cuid())
+  packId    String
+  pack      Product @relation("PackParent", fields: [packId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation("PackMember", fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int     @default(1)
+  sortOrder Int     @default(0)
+
+  @@unique([packId, productId])
+  @@index([packId])
+  @@index([productId])
 }
 
 model PriceTier {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  tier      Int      // 1..6
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tier      Int // 1..6
   minQty    Int
   maxQty    Int?
-  costPrice Decimal  @db.Decimal(10, 2)
-  sellPrice Decimal  @db.Decimal(10, 2)
+  costPrice Decimal @db.Decimal(10, 2)
+  sellPrice Decimal @db.Decimal(10, 2)
 
   @@unique([productId, tier])
   @@index([productId])
 }
 
 model ProductImage {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   url       String
   altText   String?
-  isPrimary Boolean  @default(false)
-  sortOrder Int      @default(0)
+  isPrimary Boolean @default(false)
+  sortOrder Int     @default(0)
 
   @@index([productId])
 }
 
 model ProductVariant {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  kind      String   // "color" | "size" | ...
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  kind      String // "color" | "size" | ...
   value     String
   hexColor  String?
-  imageUrl  String?  // Optional variant image (e.g. product shown in this colour)
-  sortOrder Int      @default(0)
+  imageUrl  String? // Optional variant image (e.g. product shown in this colour)
+  sortOrder Int     @default(0)
 
   @@index([productId])
 }
 
 model Category {
-  id        String   @id @default(cuid())
+  id        String             @id @default(cuid())
   name      String
-  slug      String   @unique
-  imageUrl  String?  // Category cover image (from Unsplash or custom)
+  slug      String             @unique
+  imageUrl  String? // Category cover image (from Unsplash or custom)
   parentId  String?
-  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
-  children  Category[] @relation("CategoryTree")
+  parent    Category?          @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[]         @relation("CategoryTree")
   products  ProductCategory[]
-  sortOrder Int      @default(0)
+  giftPacks GiftPackCategory[]
+  sortOrder Int                @default(0)
 
   @@index([parentId])
 }
@@ -373,26 +427,26 @@ model ProductCategory {
 model ProductOccasion {
   productId  String
   occasionId String
-  product    Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   occasion   OccasionConfig @relation(fields: [occasionId], references: [id], onDelete: Cascade)
 
   @@id([productId, occasionId])
 }
 
 model HsnCode {
-  id              String   @id @default(cuid())
-  code            String   @unique
-  description     String
-  defaultGstRate  Decimal  @db.Decimal(5, 2)
-  products        ProductHsn[]
+  id             String       @id @default(cuid())
+  code           String       @unique
+  description    String
+  defaultGstRate Decimal      @db.Decimal(5, 2)
+  products       ProductHsn[]
 }
 
 model ProductHsn {
-  productId String   @id
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String  @id
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   hsnId     String
-  hsn       HsnCode  @relation(fields: [hsnId], references: [id])
-  gstRate   Decimal  @db.Decimal(5, 2)
+  hsn       HsnCode @relation(fields: [hsnId], references: [id])
+  gstRate   Decimal @db.Decimal(5, 2)
 
   @@index([hsnId])
 }
@@ -401,80 +455,80 @@ model ProductHsn {
 //   PACKAGING & ADD-ONS
 // ═══════════════════════════════════════════════════════════
 model Packaging {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
-  slug        String   @unique
+  slug        String  @unique
   description String?
-  price       Decimal  @db.Decimal(10, 2)
+  price       Decimal @db.Decimal(10, 2)
   imageUrl    String?
   lengthCm    Float?
   widthCm     Float?
   heightCm    Float?
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
 }
 
 model Addon {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
-  slug        String   @unique
+  slug        String  @unique
   description String?
-  price       Decimal  @db.Decimal(10, 2)
+  price       Decimal @db.Decimal(10, 2)
   imageUrl    String?
   lengthCm    Float?
   widthCm     Float?
   heightCm    Float?
-  sortOrder   Int      @default(0)
-  isActive    Boolean  @default(true)
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
 }
 
 // ═══════════════════════════════════════════════════════════
 //   VENDORS
 // ═══════════════════════════════════════════════════════════
 model Vendor {
-  id               String    @id @default(cuid())
-  code             String?   @unique  // Vendor code e.g. "V001"
-  name             String
-  slug             String    @unique
-  type             String?   // e.g. "Packaging - Boxes", "Brand - Drinkware", "Manufacturer - Apparel"
-  productsServices String?   @db.Text // What the vendor supplies
-  contactName      String?
-  email            String?
-  phone            String?
-  whatsapp         String?
-  city             String?
-  state            String?
-  address          String?   @db.Text
-  gst              String?
-  paymentTerms     String?
-  avgLeadDays      Int?      // Average lead time (days)
-  minOrderQty      Int?      // Minimum order quantity
-  qualityRating    Int?      // Manual 1-5 rating
-  reliabilityRating Int?     // Manual 1-5 rating
-  lastUsedAt       DateTime?
-  creditDays       Int?
+  id                  String    @id @default(cuid())
+  code                String?   @unique // Vendor code e.g. "V001"
+  name                String
+  slug                String    @unique
+  type                String? // e.g. "Packaging - Boxes", "Brand - Drinkware", "Manufacturer - Apparel"
+  productsServices    String?   @db.Text // What the vendor supplies
+  contactName         String?
+  email               String?
+  phone               String?
+  whatsapp            String?
+  city                String?
+  state               String?
+  address             String?   @db.Text
+  gst                 String?
+  paymentTerms        String?
+  avgLeadDays         Int? // Average lead time (days)
+  minOrderQty         Int? // Minimum order quantity
+  qualityRating       Int? // Manual 1-5 rating
+  reliabilityRating   Int? // Manual 1-5 rating
+  lastUsedAt          DateTime?
+  creditDays          Int?
   // Onboarding checklist (from vendor master)
-  onboardingStatus String    @default("pending") // pending | to_approach | onboarding | onboarded
-  gstKycReceived   Boolean   @default(false)
-  bankDetailsReceived Boolean @default(false)
-  agreementSigned  Boolean   @default(false)
-  samplesReceived  Boolean   @default(false)
-  onboardedAt      DateTime?
-  source           String    @default("admin") // admin | self_registration
-  isActive         Boolean   @default(true) // Active vendors are usable for sourcing/POs
-  notes            String?   @db.Text
-  score            Decimal?  @db.Decimal(5, 2)
-  priceConfirmedAt DateTime?
+  onboardingStatus    String    @default("pending") // pending | to_approach | onboarding | onboarded
+  gstKycReceived      Boolean   @default(false)
+  bankDetailsReceived Boolean   @default(false)
+  agreementSigned     Boolean   @default(false)
+  samplesReceived     Boolean   @default(false)
+  onboardedAt         DateTime?
+  source              String    @default("admin") // admin | self_registration
+  isActive            Boolean   @default(true) // Active vendors are usable for sourcing/POs
+  notes               String?   @db.Text
+  score               Decimal?  @db.Decimal(5, 2)
+  priceConfirmedAt    DateTime?
 
-  products         ProductVendor[]
-  payments         VendorPayment[]
-  communications   VendorCommunication[]
-  pos              VendorPO[] @relation("VendorPos")
-  vendorScore      VendorScore? @relation("VendorScore")
-  paymentDetails   VendorPaymentDetails? @relation("PaymentDetails")
+  products       ProductVendor[]
+  payments       VendorPayment[]
+  communications VendorCommunication[]
+  pos            VendorPO[]            @relation("VendorPos")
+  vendorScore    VendorScore?          @relation("VendorScore")
+  paymentDetails VendorPaymentDetails? @relation("PaymentDetails")
 
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([slug])
 }
@@ -487,10 +541,10 @@ model ProductVendor {
   vendor               Vendor    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   costPrice            Decimal?  @db.Decimal(10, 2)
   isPrimary            Boolean   @default(false)
-  vendorSku            String?   // Vendor's own SKU for this product
-  vendorMoq            Int?      // Vendor minimum order quantity
-  vendorLeadDays       Int?      // Vendor lead time in days
-  sourcingStatus       String?   // e.g. "ok", "to_approach", "onboarding", "onboarded"
+  vendorSku            String? // Vendor's own SKU for this product
+  vendorMoq            Int? // Vendor minimum order quantity
+  vendorLeadDays       Int? // Vendor lead time in days
+  sourcingStatus       String? // e.g. "ok", "to_approach", "onboarding", "onboarded"
   lastPriceConfirmedAt DateTime? // When this vendor's price was last confirmed
 
   @@unique([productId, vendorId])
@@ -500,70 +554,70 @@ model ProductVendor {
 //   ORDERS
 // ═══════════════════════════════════════════════════════════
 model Order {
-  id              String   @id @default(cuid())
-  orderNumber     String   @unique
-  companyId       String?
-  company         Company? @relation(fields: [companyId], references: [id])
-  placedById      String?
-  placedBy        User?    @relation("OrderPlacedBy", fields: [placedById], references: [id])
+  id          String   @id @default(cuid())
+  orderNumber String   @unique
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id])
+  placedById  String?
+  placedBy    User?    @relation("OrderPlacedBy", fields: [placedById], references: [id])
 
-  status          OrderStatus @default(draft)
-  packQuantity    Int
-  deliveryMode    String   // single | individual
-  deliveryDate    DateTime?
+  status       OrderStatus @default(draft)
+  packQuantity Int
+  deliveryMode String // single | individual
+  deliveryDate DateTime?
 
   // Addresses (denormalised for historical record)
-  billingJson     Json?
-  shippingJson    Json?
+  billingJson  Json?
+  shippingJson Json?
 
   // Money
-  subtotal        Decimal  @db.Decimal(10, 2)
-  packagingAmount Decimal  @db.Decimal(10, 2) @default(0)
-  addonsAmount    Decimal  @db.Decimal(10, 2) @default(0)
-  shippingAmount  Decimal  @db.Decimal(10, 2) @default(0)
-  discountAmount  Decimal  @db.Decimal(10, 2) @default(0)
-  cgstAmount      Decimal  @db.Decimal(10, 2) @default(0)
-  sgstAmount      Decimal  @db.Decimal(10, 2) @default(0)
-  igstAmount      Decimal  @db.Decimal(10, 2) @default(0)
-  razorpayFee     Decimal  @db.Decimal(10, 2) @default(0)
-  grandTotal      Decimal  @db.Decimal(10, 2)
+  subtotal        Decimal @db.Decimal(10, 2)
+  packagingAmount Decimal @default(0) @db.Decimal(10, 2)
+  addonsAmount    Decimal @default(0) @db.Decimal(10, 2)
+  shippingAmount  Decimal @default(0) @db.Decimal(10, 2)
+  discountAmount  Decimal @default(0) @db.Decimal(10, 2)
+  cgstAmount      Decimal @default(0) @db.Decimal(10, 2)
+  sgstAmount      Decimal @default(0) @db.Decimal(10, 2)
+  igstAmount      Decimal @default(0) @db.Decimal(10, 2)
+  razorpayFee     Decimal @default(0) @db.Decimal(10, 2)
+  grandTotal      Decimal @db.Decimal(10, 2)
 
   // Branding
-  logoUrl         String?
-  brandingNotes   String?  @db.Text
-  cardMessage     String?  @db.Text
+  logoUrl       String?
+  brandingNotes String? @db.Text
+  cardMessage   String? @db.Text
 
   // Razorpay
-  razorpayOrderId String?
+  razorpayOrderId   String?
   razorpayPaymentId String?
-  paidAt          DateTime?
+  paidAt            DateTime?
 
   // Shiprocket
   shiprocketOrderId String?
-  awbCode          String?
-  courierName      String?
-  trackingUrl      String?
+  awbCode           String?
+  courierName       String?
+  trackingUrl       String?
 
   // GST & Modifications
-  gstBillType     String?  @default("B2C")
+  gstBillType String? @default("B2C")
 
-  items           OrderItem[]
-  addons          OrderAddon[]
-  recipients      OrderRecipient[]
-  timeline        OrderTimeline[]
-  mockups         GeneratedMockup[]
-  slaLogs         OrderSlaLog[]
+  items            OrderItem[]
+  addons           OrderAddon[]
+  recipients       OrderRecipient[]
+  timeline         OrderTimeline[]
+  mockups          GeneratedMockup[]
+  slaLogs          OrderSlaLog[]
   artworkApprovals ArtworkApproval[]
-  disputes        DisputeTicket[]
-  einvoice        GstEinvoice?
-  modifications   OrderModification[]
-  shipmentTracking ShipmentTracking? @relation("OrderShipments")
-  vendorPos       VendorPO[] @relation("OrderPos")
+  disputes         DisputeTicket[]
+  einvoice         GstEinvoice?
+  modifications    OrderModification[]
+  shipmentTracking ShipmentTracking?   @relation("OrderShipments")
+  vendorPos        VendorPO[]          @relation("OrderPos")
 
-  revisionCount   Int @default(0)
+  revisionCount Int @default(0)
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([companyId])
   @@index([status])
@@ -571,57 +625,57 @@ model Order {
 }
 
 model OrderItem {
-  id          String   @id @default(cuid())
-  orderId     String
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product  @relation(fields: [productId], references: [id])
-  quantity    Int
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  totalPrice  Decimal  @db.Decimal(10, 2)
-  hsnCode     String?
-  gstRate     Decimal? @db.Decimal(5, 2)
+  id                String             @id @default(cuid())
+  orderId           String
+  order             Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product            @relation(fields: [productId], references: [id])
+  quantity          Int
+  unitPrice         Decimal            @db.Decimal(10, 2)
+  totalPrice        Decimal            @db.Decimal(10, 2)
+  hsnCode           String?
+  gstRate           Decimal?           @db.Decimal(5, 2)
   printingTechnique PrintingTechnique?
 
   @@index([orderId])
 }
 
 model OrderAddon {
-  id       String   @id @default(cuid())
-  orderId  String
-  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  addonId  String
-  name     String
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  addonId   String
+  name      String
   unitPrice Decimal @db.Decimal(10, 2)
-  quantity Int
-  total    Decimal  @db.Decimal(10, 2)
+  quantity  Int
+  total     Decimal @db.Decimal(10, 2)
 
   @@index([orderId])
 }
 
 model OrderRecipient {
-  id        String   @id @default(cuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  name      String
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name        String
   addressLine String
-  city      String
-  state     String
-  stateCode String
-  pincode   String
-  phone     String?
+  city        String
+  state       String
+  stateCode   String
+  pincode     String
+  phone       String?
 
   @@index([orderId])
 }
 
 model OrderTimeline {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   orderId   String
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
   status    OrderStatus
   note      String?
   actorId   String?
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
 
   @@index([orderId])
 }
@@ -637,29 +691,29 @@ model Quote {
   createdById String?
   createdBy   User?    @relation("QuoteCreatedBy", fields: [createdById], references: [id])
 
-  status      QuoteStatus @default(active)
-  payload     Json        // snapshot of builder state + pricing
-  expiresAt   DateTime
+  status    QuoteStatus @default(active)
+  payload   Json // snapshot of builder state + pricing
+  expiresAt DateTime
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([companyId])
   @@index([shareToken])
 }
 
 model PriceAuditLog {
-  id         String   @id @default(cuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id])
-  tier       Int
-  oldCost    Decimal? @db.Decimal(10, 2)
-  newCost    Decimal? @db.Decimal(10, 2)
-  oldSell    Decimal? @db.Decimal(10, 2)
-  newSell    Decimal? @db.Decimal(10, 2)
-  changedBy  String?
-  reason     String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  tier      Int
+  oldCost   Decimal? @db.Decimal(10, 2)
+  newCost   Decimal? @db.Decimal(10, 2)
+  oldSell   Decimal? @db.Decimal(10, 2)
+  newSell   Decimal? @db.Decimal(10, 2)
+  changedBy String?
+  reason    String?
+  createdAt DateTime @default(now())
 
   @@index([productId])
 }
@@ -668,74 +722,153 @@ model PriceAuditLog {
 //   SHIPPING, CONTENT, SETTINGS
 // ═══════════════════════════════════════════════════════════
 model ShippingZone {
-  id         String   @id @default(cuid())
-  name       String
-  states     String[] // list of state codes covered
+  id     String   @id @default(cuid())
+  name   String
+  states String[] // list of state codes covered
 
   // Weight-based rate model (SOW §Shipping Zones: "rate per kg per zone").
   ratePerKg              Decimal  @default(0) @db.Decimal(10, 2) // ₹ per kg of parcel weight
   minCharge              Decimal  @default(0) @db.Decimal(10, 2) // minimum shipping charge per shipment
-  freeShippingThreshold  Decimal? @db.Decimal(10, 2)            // order subtotal ≥ this ⇒ free (null = never)
-  individualSurchargePct Decimal  @default(0) @db.Decimal(5, 2)  // extra % for individual delivery
+  freeShippingThreshold  Decimal? @db.Decimal(10, 2) // order subtotal ≥ this ⇒ free (null = never)
+  individualSurchargePct Decimal  @default(0) @db.Decimal(5, 2) // extra % for individual delivery
 
   // Legacy flat rate — kept for back-compat/fallback when ratePerKg is unset.
-  flatRate   Decimal  @db.Decimal(10, 2)
+  flatRate Decimal @db.Decimal(10, 2)
 
   etaMinDays Int
   etaMaxDays Int
-  isActive   Boolean  @default(true)
+  isActive   Boolean @default(true)
 }
 
 model HomepageBanner {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   title     String
   subtitle  String?
   imageUrl  String?
   ctaLabel  String?
   ctaUrl    String?
-  sortOrder Int      @default(0)
-  isActive  Boolean  @default(true)
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
 }
 
 model Testimonial {
-  id        String   @id @default(cuid())
-  quote     String   @db.Text
-  authorName String
-  authorRole String?
+  id          String  @id @default(cuid())
+  quote       String  @db.Text
+  authorName  String
+  authorRole  String?
   companyName String?
-  avatarUrl String?
-  isActive  Boolean  @default(true)
-  sortOrder Int      @default(0)
+  avatarUrl   String?
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
 }
 
 model OccasionConfig {
-  id           String   @id @default(cuid())
+  id           String            @id @default(cuid())
   name         String
-  slug         String   @unique
+  slug         String            @unique
   icon         String?
   gradient     String?
   description  String?
-  sortOrder    Int      @default(0)
-  isActive     Boolean  @default(true)
+  sortOrder    Int               @default(0)
+  isActive     Boolean           @default(true)
   // When true, this entry is a curated "Collection" (homepage Curated Collections
   // section) rather than a "Shop by Occasion" tile. Hidden from occasion tiles/filters.
-  isCollection Boolean  @default(false)
+  isCollection Boolean           @default(false)
   // Products whose `tags` overlap these are auto-included — no manual linking needed.
-  tags         String[] @default([])
+  tags         String[]          @default([])
   products     ProductOccasion[]
 }
 
+// A curated gift pack — a hand-picked set of specific products (with per-item
+// quantities) sold as one ready-made assortment. Unlike tag-driven Collections
+// (OccasionConfig.isCollection), a pack is an explicit list of SKUs so the
+// admin controls exactly what's inside and in what quantity. Customers browse
+// packs and load them straight into the builder to customise/brand.
+// A Curated Collection groups several curated Packs under one theme
+// (e.g. "Weight Loss Starter Kits" containing "Starter Pack", "Pro Pack").
+// It is the browse/organise unit; the sellable unit is still the GiftPack.
+model GiftCollection {
+  id           String     @id @default(cuid())
+  name         String
+  slug         String     @unique
+  description  String?
+  image        String?
+  gradient     String?
+  isActive     Boolean    @default(true)
+  isFeatured   Boolean    @default(false)
+  sortOrder    Int        @default(0)
+  packs        GiftPack[]
+  packProducts Product[]  @relation("PackCollectionProducts")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model GiftPack {
+  id               String             @id @default(cuid())
+  name             String
+  slug             String             @unique
+  descriptionShort String?
+  description      String?
+  // Optional hero image (DO Spaces URL). When absent, the `gradient` class is
+  // used as the tile background (matching the Curated Packs card design).
+  image            String?
+  gradient         String?
+  isActive         Boolean            @default(true)
+  isFeatured       Boolean            @default(false)
+  sortOrder        Int                @default(0)
+  // Optional parent collection. Nullable so legacy/standalone packs still work.
+  collectionId     String?
+  collection       GiftCollection?    @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  items            GiftPackItem[]
+  categories       GiftPackCategory[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([slug])
+  @@index([isActive])
+  @@index([collectionId])
+}
+
+model GiftPackItem {
+  id        String   @id @default(cuid())
+  packId    String
+  pack      GiftPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  sortOrder Int      @default(0)
+
+  @@unique([packId, productId])
+  @@index([packId])
+  @@index([productId])
+}
+
+// Join: which categories a curated pack belongs to (mirrors ProductCategory).
+// Lets packs be organised/filtered by category like products.
+model GiftPackCategory {
+  packId     String
+  categoryId String
+  pack       GiftPack @relation(fields: [packId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([packId, categoryId])
+  @@index([categoryId])
+}
+
 model Coupon {
-  id          String   @id @default(cuid())
-  code        String   @unique
+  id          String    @id @default(cuid())
+  code        String    @unique
   description String?
-  percentOff  Decimal? @db.Decimal(5, 2)
-  flatOff     Decimal? @db.Decimal(10, 2)
-  minOrder    Decimal? @db.Decimal(10, 2)
+  percentOff  Decimal?  @db.Decimal(5, 2)
+  flatOff     Decimal?  @db.Decimal(10, 2)
+  minOrder    Decimal?  @db.Decimal(10, 2)
   expiresAt   DateTime?
-  isActive    Boolean  @default(true)
+  isActive    Boolean   @default(true)
   usageLimit  Int?
-  usedCount   Int      @default(0)
+  usedCount   Int       @default(0)
 }
 
 model PlatformSetting {
@@ -772,17 +905,17 @@ model GocCampaign {
   description String?
   heroImage   String?
   status      GocCampaignStatus @default(draft)
-  claimLimit  Int?              // null = unlimited
+  claimLimit  Int? // null = unlimited
   expiresAt   DateTime?
   companyId   String?
   createdById String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  company     Company?          @relation(fields: [companyId], references: [id])
-  createdBy   User?             @relation("CampaignCreatedBy", fields: [createdById], references: [id])
-  options     GocOption[]
-  claims      GocClaim[]
+  company   Company?    @relation(fields: [companyId], references: [id])
+  createdBy User?       @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  options   GocOption[]
+  claims    GocClaim[]
 
   @@index([companyId])
   @@index([slug])
@@ -790,36 +923,36 @@ model GocCampaign {
 }
 
 model GocOption {
-  id         String      @id @default(cuid())
+  id         String   @id @default(cuid())
   campaignId String
   productId  String
-  sortOrder  Int         @default(0)
-  isActive   Boolean     @default(true)
-  createdAt  DateTime    @default(now())
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
 
-  campaign   GocCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  product    Product     @relation(fields: [productId], references: [id])
-  claims     GocClaim[]
+  campaign GocCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  product  Product     @relation(fields: [productId], references: [id])
+  claims   GocClaim[]
 
   @@index([campaignId])
   @@index([productId])
 }
 
 model GocClaim {
-  id          String      @id @default(cuid())
-  campaignId  String
-  optionId    String?
-  token       String      @unique   // nanoid(16) for unique claim URL
-  claimerName String?
+  id           String    @id @default(cuid())
+  campaignId   String
+  optionId     String?
+  token        String    @unique // nanoid(16) for unique claim URL
+  claimerName  String?
   claimerEmail String?
   claimerPhone String?
-  addressJson Json?
-  status      String      @default("pending")  // pending|submitted|fulfilled
-  claimedAt   DateTime?
-  createdAt   DateTime    @default(now())
+  addressJson  Json?
+  status       String    @default("pending") // pending|submitted|fulfilled
+  claimedAt    DateTime?
+  createdAt    DateTime  @default(now())
 
-  campaign    GocCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  option      GocOption?  @relation(fields: [optionId], references: [id])
+  campaign GocCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  option   GocOption?  @relation(fields: [optionId], references: [id])
 
   @@index([campaignId])
   @@index([token])
@@ -842,66 +975,66 @@ model WalletTransaction {
 }
 
 model DisputeTicket {
-  id               String        @id @default(cuid())
-  orderId          String
-  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  submittedById    String?
-  submittedBy      User?         @relation("DisputesSubmitted", fields: [submittedById], references: [id])
-  subject          String
-  body             String        @db.Text
-  photoUrls        String[]
-  status           DisputeStatus @default(open)
-  resolutionNote   String?       @db.Text
-  resolvedAt       DateTime?
-  windowExpiresAt  DateTime
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  submittedById   String?
+  submittedBy     User?         @relation("DisputesSubmitted", fields: [submittedById], references: [id])
+  subject         String
+  body            String        @db.Text
+  photoUrls       String[]
+  status          DisputeStatus @default(open)
+  resolutionNote  String?       @db.Text
+  resolvedAt      DateTime?
+  windowExpiresAt DateTime
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([orderId])
   @@index([status])
 }
 
 model ArtworkApproval {
-  id             String    @id @default(cuid())
-  orderId        String
-  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  revision       Int       @default(1)
-  fileUrl        String?   // CDN URL from Digital Ocean Spaces
-  token          String    @unique  // nanoid(16) for public approval URL
-  status         String    @default("pending")  // pending | approved | revision_requested
-  revisionNotes  String?   @db.Text
-  expiresAt      DateTime  // 72 hours from creation
-  approvedAt     DateTime?
-  createdAt      DateTime  @default(now())
+  id            String    @id @default(cuid())
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  revision      Int       @default(1)
+  fileUrl       String? // CDN URL from Digital Ocean Spaces
+  token         String    @unique // nanoid(16) for public approval URL
+  status        String    @default("pending") // pending | approved | revision_requested
+  revisionNotes String?   @db.Text
+  expiresAt     DateTime // 72 hours from creation
+  approvedAt    DateTime?
+  createdAt     DateTime  @default(now())
 
   @@index([orderId])
   @@index([token])
 }
 
 model OrderSlaLog {
-  id        String    @id @default(cuid())
-  orderId   String
-  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  stage     String    // matches OrderStatus string value
-  enteredAt DateTime  @default(now())
-  exitedAt  DateTime?
-  slaMinutes Int      // expected SLA for this stage in minutes
-  isBreached Boolean  @default(false)
+  id         String    @id @default(cuid())
+  orderId    String
+  order      Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  stage      String // matches OrderStatus string value
+  enteredAt  DateTime  @default(now())
+  exitedAt   DateTime?
+  slaMinutes Int // expected SLA for this stage in minutes
+  isBreached Boolean   @default(false)
 
   @@index([orderId])
   @@index([isBreached])
 }
 
 model AutomationRule {
-  id          String              @id @default(cuid())
+  id          String            @id @default(cuid())
   name        String
   trigger     AutomationTrigger
   triggerJson Json?
   action      AutomationAction
   actionJson  Json
-  isActive    Boolean             @default(true)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@index([trigger])
   @@index([isActive])
@@ -966,8 +1099,8 @@ model SampleOrder {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  product     Product           @relation(fields: [productId], references: [id])
-  user        User?             @relation(fields: [userId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
 
   @@index([productId])
   @@index([userId])
@@ -1059,26 +1192,26 @@ model VendorCommunication {
 //   SHIPROCKET TRACKING
 // ═══════════════════════════════════════════════════════════
 model ShipmentTracking {
-  id String @id @default(cuid())
+  id      String @id @default(cuid())
   orderId String @unique
-  order Order @relation("OrderShipments", fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order  @relation("OrderShipments", fields: [orderId], references: [id], onDelete: Cascade)
 
   shiprocketShipmentId Int?
-  awbCode String @unique
-  courierName String?
+  awbCode              String  @unique
+  courierName          String?
 
   // Status tracking
-  status String @default("pending")  // pending | picked_up | in_transit | out_for_delivery | delivered | exception
+  status           String   @default("pending") // pending | picked_up | in_transit | out_for_delivery | delivered | exception
   lastStatusUpdate DateTime @updatedAt
 
   // Location history
-  currentLocation String?
+  currentLocation   String?
   estimatedDelivery DateTime?
-  deliveredAt DateTime?
+  deliveredAt       DateTime?
 
   // Metadata
   trackingUrl String
-  createdAt DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([orderId])
   @@index([awbCode])
@@ -1089,33 +1222,33 @@ model ShipmentTracking {
 //   VENDOR PO (Purchase Order)
 // ═══════════════════════════════════════════════════════════
 model VendorPO {
-  id String @id @default(cuid())
+  id       String @id @default(cuid())
   vendorId String
-  vendor Vendor @relation("VendorPos", fields: [vendorId], references: [id], onDelete: Cascade)
-  orderId String
-  order Order @relation("OrderPos", fields: [orderId], references: [id], onDelete: Cascade)
+  vendor   Vendor @relation("VendorPos", fields: [vendorId], references: [id], onDelete: Cascade)
+  orderId  String
+  order    Order  @relation("OrderPos", fields: [orderId], references: [id], onDelete: Cascade)
 
   // Assignment details
   assignedAt DateTime @default(now())
   assignedBy String?
-  deadline DateTime
+  deadline   DateTime
 
   // Status tracking
-  status String @default("pending")  // pending | in_production | qc_complete | ready_to_ship
+  status String @default("pending") // pending | in_production | qc_complete | ready_to_ship
 
   // QC details
-  qcPhotos String[]  // Array of CDN URLs
+  qcPhotos      String[] // Array of CDN URLs
   qcCompletedAt DateTime?
-  qcNotes String? @db.Text
+  qcNotes       String?   @db.Text
 
   // Payment
-  ratePerUnit Decimal @db.Decimal(10, 2)
-  totalAmount Decimal @db.Decimal(10, 2)
+  ratePerUnit    Decimal   @db.Decimal(10, 2)
+  totalAmount    Decimal   @db.Decimal(10, 2)
   paymentDueDate DateTime
-  paidAt DateTime?
+  paidAt         DateTime?
 
   // Communication
-  notes String? @db.Text
+  notes     String?  @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1128,13 +1261,13 @@ model VendorPO {
 //   VENDOR PERFORMANCE SCORING
 // ═══════════════════════════════════════════════════════════
 model VendorScore {
-  id String @id @default(cuid())
+  id       String @id @default(cuid())
   vendorId String @unique
-  vendor Vendor @relation("VendorScore", fields: [vendorId], references: [id], onDelete: Cascade)
+  vendor   Vendor @relation("VendorScore", fields: [vendorId], references: [id], onDelete: Cascade)
 
-  qualityScore Float @default(0)       // 0-100
-  onTimeScore Float @default(0)        // 0-100
-  reliabilityScore Float @default(0)   // 0-100
+  qualityScore     Float @default(0) // 0-100
+  onTimeScore      Float @default(0) // 0-100
+  reliabilityScore Float @default(0) // 0-100
 
   lastUpdated DateTime @updatedAt
 
@@ -1145,16 +1278,16 @@ model VendorScore {
 //   VENDOR PAYMENT DETAILS
 // ═══════════════════════════════════════════════════════════
 model VendorPaymentDetails {
-  id String @id @default(cuid())
+  id       String @id @default(cuid())
   vendorId String @unique
-  vendor Vendor @relation("PaymentDetails", fields: [vendorId], references: [id], onDelete: Cascade)
+  vendor   Vendor @relation("PaymentDetails", fields: [vendorId], references: [id], onDelete: Cascade)
 
-  bankAccountName String?
-  bankAccountNumber String?  // Stored encrypted
-  bankIfscCode String?
-  bankName String?
+  bankAccountName   String?
+  bankAccountNumber String? // Stored encrypted
+  bankIfscCode      String?
+  bankName          String?
 
-  upiId String?
+  upiId     String?
   panNumber String?
 
   createdAt DateTime @default(now())
@@ -1197,4 +1330,76 @@ model Enquiry {
 
   @@index([status])
   @@index([createdAt])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   BLOG — Posts, categories, SEO metadata
+// ═══════════════════════════════════════════════════════════
+
+enum BlogPostStatus {
+  draft
+  published
+  archived
+}
+
+model BlogCategory {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  sortOrder   Int        @default(0)
+  posts       BlogPost[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BlogPost {
+  id      String  @id @default(cuid())
+  title   String
+  slug    String  @unique
+  // Short summary used on the listing cards and as the meta-description fallback.
+  excerpt String? @db.Text
+  // Post body as HTML, produced by the TipTap editor in the admin panel.
+  content String  @db.Text
+
+  coverImageUrl String?
+  coverImageAlt String?
+
+  status      BlogPostStatus @default(draft)
+  // Set the first time a post is published. Also drives the public sort order and
+  // lets a post be scheduled by writing a future date.
+  publishedAt DateTime?
+  isFeatured  Boolean        @default(false)
+
+  // Free-form tags, mirroring how Product tags work.
+  tags       String[]      @default([])
+  categoryId String?
+  category   BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  authorId   String?
+  author     User?   @relation("BlogPostAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  // Denormalised so a deleted admin account doesn't blank out the byline.
+  authorName String?
+
+  // ── SEO ──────────────────────────────────────────────────
+  metaTitle       String?
+  metaDescription String? @db.Text
+  // Absolute URL; set when this post is a republication of a canonical original.
+  canonicalUrl    String?
+  ogImageUrl      String?
+  // Keep the post out of search indexes without unpublishing it.
+  noIndex         Boolean @default(false)
+
+  // Minutes, computed from the content on save.
+  readingMinutes Int @default(1)
+  viewCount      Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+  @@index([status, publishedAt])
+  @@index([categoryId])
+  @@index([isFeatured])
 }

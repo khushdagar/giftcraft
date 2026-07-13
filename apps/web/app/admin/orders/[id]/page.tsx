@@ -280,7 +280,7 @@ export default async function AdminOrderDetailPage({
         </div>
 
         {/* Right Column (Sticky) */}
-        <div className="lg:sticky lg:top-20 lg:h-fit space-y-4">
+        <div className="lg:sticky lg:top-20 lg:h-fit space-y-4 lg:max-h-[calc(100vh-100px)] lg:overflow-y-auto lg:pr-1">
           {/* Payment-pending notice (derived from mockup_approved + balance) */}
           {(() => {
             const amountPaid = Number((order.billingJson as any)?.amountPaid ?? 0);

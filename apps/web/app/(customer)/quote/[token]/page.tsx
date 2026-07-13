@@ -158,7 +158,17 @@ export default async function QuotePage({ params }: { params: { token: string } 
                 <span>Subtotal (before shipping, GST)</span>
                 <span className="font-normal tabnum">{formatRupees(pricing.itemsSubtotal || 0)}</span>
               </div>
-              {/* GST — single combined line (shipping is already GST-inclusive) */}
+              {/* Shipping at its TAXABLE value — the courier rate is GST-inclusive
+                  and the GST inside it is disclosed in the combined GST line below. */}
+              {(pricing.shipping ?? 0) > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span>Shipping (HSN 996812)</span>
+                  <span className="font-normal tabnum">
+                    +{formatRupees(pricing.shippingTaxable ?? pricing.shipping)}
+                  </span>
+                </div>
+              )}
+              {/* GST — single combined line, incl. the GST inside the courier rate */}
               {(pricing.cgst || 0) + (pricing.sgst || 0) + (pricing.igst || 0) > 0 && (
                 <div className="flex items-center justify-between text-sm">
                   <span>GST</span>

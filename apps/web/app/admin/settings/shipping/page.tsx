@@ -191,7 +191,7 @@ export default function ShippingSettingsPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-6xl space-y-6">
+      <div className="max-w-full space-y-6">
         {success && (
           <div className="p-4 rounded-md bg-green-50 border border-green-200">
             <p className="text-sm font-medium text-green-700">✓ Zone saved successfully</p>

@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
     // Build where clause
     const where: Prisma.ProductWhereInput = {
       status: 'active',
+      // Packs are bundles, not catalog SKUs — never list them among products.
+      isPack: false,
       // Combined via AND so it never collides with the `categories` (some) filter below.
       ...(hiddenCategoryIds.length > 0 && {
         AND: [{ categories: { none: { categoryId: { in: hiddenCategoryIds } } } }],

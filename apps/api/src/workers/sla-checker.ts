@@ -1,10 +1,9 @@
 import { Worker, Job } from 'bullmq';
 import Redis from 'ioredis';
-import { PrismaClient } from '@prisma/client';
 import { getSlaCheckerQueue } from '../queue';
+import { prisma } from '../lib/prisma';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const prisma = new PrismaClient();
 
 // Create Redis connection for worker (optional in dev)
 let redis: Redis | null = null;

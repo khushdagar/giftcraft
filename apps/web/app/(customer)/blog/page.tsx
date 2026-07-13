@@ -1,126 +1,213 @@
-'use client';
+import Link from 'next/link';
+import Image from 'next/image';
+import { prisma } from '@/lib/prisma';
+import { formatPostDate, publishedPostWhere } from '@/lib/blog';
+import { Clock } from 'lucide-react';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Mail } from 'lucide-react';
+export const metadata = {
+  title: 'Blog',
+  description:
+    'Trends, tips, and stories on the art of thoughtful corporate gifting — from the GiftCraft team.',
+};
 
-const ARTICLE_TEASERS = [
-  {
-    id: 1,
-    title: 'The Psychology of Corporate Gifting',
-    description: 'Why thoughtful gifts strengthen client relationships and employee loyalty.',
-    gradient: 'from-em-50 to-[#D1FAE5]',
-  },
-  {
-    id: 2,
-    title: 'Sustainable Packaging Trends 2026',
-    description: 'Eco-friendly materials are no longer a premium feature — they are the standard.',
-    gradient: 'from-sky-50 to-indigo-50',
-  },
-  {
-    id: 3,
-    title: 'Festival Gifting Guide: Diwali Edition',
-    description: 'Premium hampers, themed collections, and cultural significance of corporate gifting.',
-    gradient: 'from-gold-50 to-[#FED7AA]',
-  },
-];
+// Short revalidate so a scheduled post appears without a redeploy.
+export const revalidate = 300;
 
-export default function BlogPage() {
-  const [email, setEmail] = useState('');
-  const [subscribed, setSubscribed] = useState(false);
+interface PageProps {
+  searchParams: { category?: string; tag?: string };
+}
 
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubscribed(true);
-    setEmail('');
-    setTimeout(() => setSubscribed(false), 3000);
+export default async function BlogPage({ searchParams }: PageProps) {
+  const { category, tag } = searchParams;
+
+  const where = {
+    ...publishedPostWhere(),
+    ...(category ? { category: { slug: category } } : {}),
+    ...(tag ? { tags: { has: tag } } : {}),
   };
 
+  const [posts, categories] = await Promise.all([
+    prisma.blogPost.findMany({
+      where,
+      include: { category: { select: { name: true, slug: true } } },
+      orderBy: [{ isFeatured: 'desc' }, { publishedAt: 'desc' }],
+    }),
+    prisma.blogCategory.findMany({
+      // Only offer a category filter that can actually return something.
+      where: { posts: { some: publishedPostWhere() } },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    }),
+  ]);
+
+  const [lead, ...rest] = posts;
+  const isFiltered = Boolean(category || tag);
+
   return (
-    <div className="min-h-screen bg-canvas py-12 px-4">
-      <div className="container-gc-w max-w-4xl">
+    <div className="min-h-screen bg-canvas">
+      <div className="container-gc-w px-4 py-12 md:py-16">
         {/* Header */}
-        <div className="mb-16 text-center">
-          <p className="overline text-ink-3">INSIGHTS</p>
-          <h1 className="t-title mt-2 text-ink">The GiftCraft Blog</h1>
-          <p className="text-ink-2 mt-4 text-lg">
+        <div className="mb-10 text-center">
+          <p className="overline text-ink-3">Insights</p>
+          <h1 className="mt-2 text-4xl font-black tracking-tight md:text-5xl">The GiftCraft Blog</h1>
+          <p className="mx-auto mt-4 max-w-xl text-lg text-ink-2">
             Trends, tips, and stories on the art of thoughtful corporate gifting.
           </p>
         </div>
 
-        {/* Newsletter Signup */}
-        <div className="rounded-md border-2 border-em/30 bg-em-50 p-8 mb-12">
-          <div className="flex gap-4 items-center">
-            <Mail className="w-6 h-6 text-em flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="font-normal text-em mb-1">Subscribe to Our Newsletter</h3>
-              <p className="text-sm text-em-700 mb-3">
-                Monthly insights on gifting trends, product launches, and case studies.
-              </p>
-              <form onSubmit={handleSubscribe} className="flex gap-2">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  className="flex-1 px-3 py-2 rounded-md border border-em bg-white text-sm"
-                />
-                <Button type="submit" variant="em" className="rounded-md text-sm">
-                  Subscribe
-                </Button>
-              </form>
-              {subscribed && (
-                <p className="text-xs text-em-700 mt-2">
-                  ✓ Thanks! Check your email for a welcome gift code.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Coming Soon */}
-        <div className="mb-12">
-          <p className="overline text-ink-3 mb-6">Coming Soon</p>
-          <p className="text-ink-2 mb-8">
-            We're building out our content library. In the meantime, here's a sneak peek at what's coming:
-          </p>
-        </div>
-
-        {/* Article Teasers */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {ARTICLE_TEASERS.map((article) => (
-            <div
-              key={article.id}
-              className={`rounded-md border-2 border-bdr overflow-hidden group cursor-pointer bg-gradient-to-br ${article.gradient}`}
+        {/* Category filters */}
+        {categories.length > 0 && (
+          <div className="mb-10 flex flex-wrap items-center justify-center gap-2">
+            <Link
+              href="/blog"
+              className={`rounded-full border-2 px-4 py-1.5 text-xs font-semibold transition ${
+                !category ? 'border-em bg-em text-white' : 'border-bdr text-ink-2 hover:border-em'
+              }`}
             >
-              {/* Placeholder image */}
-              <div className="w-full h-40 bg-gradient-to-br opacity-60 group-hover:opacity-70 transition" />
+              All
+            </Link>
+            {categories.map((c) => (
+              <Link
+                key={c.id}
+                href={`/blog?category=${c.slug}`}
+                className={`rounded-full border-2 px-4 py-1.5 text-xs font-semibold transition ${
+                  category === c.slug ? 'border-em bg-em text-white' : 'border-bdr text-ink-2 hover:border-em'
+                }`}
+              >
+                {c.name}
+              </Link>
+            ))}
+          </div>
+        )}
 
-              {/* Content */}
-              <div className="p-5">
-                <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-2">
-                  Coming
-                </p>
-                <h3 className="font-normal text-ink mb-2 group-hover:text-em transition">
-                  {article.title}
-                </h3>
-                <p className="text-sm text-ink-2 leading-relaxed">{article.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* CTA */}
-        <div className="mt-16 text-center">
-          <p className="text-ink-2 mb-6">
-            Want to share your gifting story? We'd love to feature your company's journey.
+        {tag && (
+          <p className="mb-8 text-center text-sm text-ink-2">
+            Showing posts tagged <span className="font-semibold text-ink">#{tag}</span> ·{' '}
+            <Link href="/blog" className="font-semibold text-em underline">
+              Clear
+            </Link>
           </p>
-          <Button asChild variant="outline" size="lg" className="rounded-md">
-            <a href="mailto:hello@giftcraft.in">Get in Touch</a>
-          </Button>
-        </div>
+        )}
+
+        {posts.length === 0 ? (
+          <div className="rounded-md border-2 border-dashed border-bdr py-24 text-center">
+            <p className="text-lg font-bold text-ink">
+              {isFiltered ? 'No posts here yet' : 'No posts published yet'}
+            </p>
+            <p className="mt-2 text-sm text-ink-2">
+              {isFiltered ? (
+                <>
+                  Try{' '}
+                  <Link href="/blog" className="font-semibold text-em underline">
+                    all posts
+                  </Link>
+                  .
+                </>
+              ) : (
+                'Check back soon — we are writing.'
+              )}
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Lead post — only on the unfiltered index, where "latest" means something */}
+            {lead && !isFiltered && (
+              <Link
+                href={`/blog/${lead.slug}`}
+                className="group mb-12 grid gap-6 overflow-hidden rounded-md border-2 border-bdr bg-white md:grid-cols-2"
+              >
+                <div className="relative aspect-[16/10] overflow-hidden bg-gray-50 md:aspect-auto md:h-full">
+                  {lead.coverImageUrl ? (
+                    <Image
+                      src={lead.coverImageUrl}
+                      alt={lead.coverImageAlt || lead.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-cover transition duration-500 group-hover:scale-105"
+                      priority
+                    />
+                  ) : (
+                    <div className="flex h-full min-h-[240px] items-center justify-center bg-gradient-to-br from-em-50 to-sky-50 text-5xl">
+                      ✍️
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col justify-center p-6 md:p-10">
+                  <p className="overline text-em">
+                    {lead.isFeatured ? 'Featured' : lead.category?.name ?? 'Latest'}
+                  </p>
+                  <h2 className="mt-2 text-2xl font-black leading-tight tracking-tight text-ink transition group-hover:text-em md:text-3xl">
+                    {lead.title}
+                  </h2>
+                  {lead.excerpt && <p className="mt-3 text-base leading-relaxed text-ink-2">{lead.excerpt}</p>}
+                  <PostMeta date={lead.publishedAt!} minutes={lead.readingMinutes} author={lead.authorName} />
+                </div>
+              </Link>
+            )}
+
+            {/* Grid */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {(isFiltered ? posts : rest).map((post) => (
+                <Link
+                  key={post.id}
+                  href={`/blog/${post.slug}`}
+                  className="group flex flex-col overflow-hidden rounded-md border-2 border-bdr bg-white transition hover:-translate-y-1 hover:shadow-lg"
+                >
+                  <div className="relative aspect-[16/10] overflow-hidden bg-gray-50">
+                    {post.coverImageUrl ? (
+                      <Image
+                        src={post.coverImageUrl}
+                        alt={post.coverImageAlt || post.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-em-50 to-sky-50 text-4xl">
+                        ✍️
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    {post.category && (
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-em">
+                        {post.category.name}
+                      </p>
+                    )}
+                    <h3 className="mt-1.5 text-lg font-bold leading-snug tracking-tight text-ink transition group-hover:text-em">
+                      {post.title}
+                    </h3>
+                    {post.excerpt && (
+                      <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-ink-2">{post.excerpt}</p>
+                    )}
+                    <div className="mt-auto">
+                      <PostMeta date={post.publishedAt!} minutes={post.readingMinutes} author={post.authorName} />
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
       </div>
+    </div>
+  );
+}
+
+function PostMeta({ date, minutes, author }: { date: Date; minutes: number; author: string | null }) {
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-3">
+      <time dateTime={new Date(date).toISOString()}>{formatPostDate(date)}</time>
+      <span aria-hidden>·</span>
+      <span className="inline-flex items-center gap-1">
+        <Clock className="h-3 w-3" />
+        {minutes} min read
+      </span>
+      {author && (
+        <>
+          <span aria-hidden>·</span>
+          <span>{author}</span>
+        </>
+      )}
     </div>
   );
 }

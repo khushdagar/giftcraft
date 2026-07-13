@@ -203,7 +203,16 @@ export function QuotePDF({ quoteId, expiresAt, payload, shareToken }: QuotePDFPr
             <Text>₹{(pricing.itemsSubtotal ?? pricing.subtotal).toFixed(2)}</Text>
           </View>
 
-          {/* GST — single combined line (shipping is already GST-inclusive) */}
+          {/* Shipping at its TAXABLE value — the courier rate is GST-inclusive and
+              the GST inside it is disclosed in the combined GST line below. */}
+          {Number(pricing?.shipping || 0) > 0 && (
+            <View style={styles.row}>
+              <Text>Shipping (HSN 996812)</Text>
+              <Text>₹{Number(pricing.shippingTaxable ?? pricing.shipping).toFixed(2)}</Text>
+            </View>
+          )}
+
+          {/* GST — single combined line, incl. the GST inside the courier rate */}
           {(pricing.cgst || 0) + (pricing.sgst || 0) + (pricing.igst || 0) > 0 && (
             <View style={styles.row}>
               <Text>GST</Text>

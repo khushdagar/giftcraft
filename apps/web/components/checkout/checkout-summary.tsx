@@ -77,13 +77,17 @@ export function CheckoutSummary({
           <span className="font-black text-ink tabnum">{formatRupees(pricing.itemsSubtotal)}</span>
         </div>
 
-        {/* Shipping — weight-based (SOW: ₹/kg per zone) */}
+        {/* Shipping — weight-based (SOW: ₹/kg per zone). The courier rate is
+            GST-inclusive, so show the taxable value here; its GST is disclosed in
+            the HSN 996812 line below rather than counted twice. */}
         <div className="flex items-center justify-between pb-4 border-b border-bdr">
           <span className="text-sm text-ink-2">
             Shipping{shippingZone?.zoneName ? ` (${shippingZone.zoneName})` : ''}
           </span>
           <span className="font-black text-ink tabnum">
-            {pricing.shipping > 0 ? `+${formatRupees(pricing.shipping)}` : 'FREE'}
+            {pricing.shipping > 0
+              ? `+${formatRupees(pricing.shippingTaxable ?? pricing.shipping)}`
+              : 'FREE'}
           </span>
         </div>
 

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { formatRupees } from '@/lib/utils';
-import { AlertCircle, CheckCircle, Clock, ExternalLink, FileText } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle, Clock, ExternalLink, FileText } from 'lucide-react';
 import { isImageUrl } from '@/lib/mockup-url';
 
 interface ApprovalData {
@@ -39,6 +40,7 @@ interface PageProps {
 
 export default function ApprovePage({ params }: PageProps) {
   const { token } = params;
+  const router = useRouter();
   const [approval, setApproval] = useState<ApprovalData | null>(null);
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -181,11 +183,26 @@ export default function ApprovePage({ params }: PageProps) {
   const isExpired = new Date() > new Date(approval.expiresAt);
   const isApproved = approval.status === 'approved';
 
+  // Approval links usually arrive by email, so there may be no previous page in
+  // this tab's history to go back to — fall back to the homepage.
+  const handleBack = () => {
+    if (window.history.length > 1) router.back();
+    else router.push('/');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-emerald-50 to-rose-50">
       {/* Header */}
       <div className="bg-white border-b-2 border-bdr">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <button
+            onClick={handleBack}
+            className="mb-4 inline-flex items-center gap-1.5 rounded-md-p px-3 py-1.5 text-sm font-semibold text-ink-2 transition hover:bg-elevated hover:text-ink"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
+
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-normal text-ink">Design Approval</h1>

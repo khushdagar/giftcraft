@@ -136,37 +136,6 @@ export default function ContactPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 pb-20">
-        {/* Why Choose Us Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          className="grid md:grid-cols-3 gap-6 mb-20"
-        >
-          {reasons.map((reason, idx) => {
-            const Icon = reason.icon;
-            const colorMap: Record<string, { bg: string; text: string; icon: string }> = {
-              amber: { bg: 'bg-amber-50', text: 'text-amber-700', icon: 'text-amber-600' },
-              rose: { bg: 'bg-rose-50', text: 'text-rose-700', icon: 'text-rose-600' },
-              violet: { bg: 'bg-violet-50', text: 'text-violet-700', icon: 'text-violet-600' },
-            };
-            const colors = colorMap[reason.color] ?? { bg: 'bg-amber-50', text: 'text-amber-700', icon: 'text-amber-600' };
-
-            return (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1 }}
-                className={`${colors.bg} rounded-2xl p-6 border-2 border-slate-200 hover:border-slate-300 transition-all hover:shadow-lg`}
-              >
-                <Icon className={`w-8 h-8 ${colors.icon} mb-3`} />
-                <h3 className="font-normal text-lg text-slate-900">{reason.title}</h3>
-                <p className="text-sm text-slate-600 mt-1">{reason.description}</p>
-              </motion.div>
-            );
-          })}
-        </motion.div>
-
         {/* Form and Contact Info Grid */}
         <div className="grid lg:grid-cols-3 gap-8 mb-20">
           {/* Contact Form - Spans 2 columns */}

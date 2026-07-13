@@ -17,6 +17,10 @@
 
 import type { PricingBreakdown, HsnGstLine } from "@giftcraft/types";
 
+/** Courier / goods-transport service. Shipping is quoted GST-inclusive. */
+export const SHIPPING_HSN_CODE = "996812";
+export const SHIPPING_GST_RATE = 18;
+
 export interface ProductForPricing {
   sellPrice: number;
   quantity: number;
@@ -127,15 +131,39 @@ export function computePricing(input: PricingInput): PricingBreakdown {
     totalSgst += packagingAddonsSgst;
     totalIgst += packagingAddonsIgst;
 
-    // NOTE: No GST is added on shipping. The Shiprocket rate is already
-    // GST-inclusive, so charging 18% again here would double-tax shipping.
-    // Shipping flows through preTax as a tax-inclusive pass-through.
+    // Shipping (HSN 996812, 18%). The courier rate is already GST-INCLUSIVE, so
+    // we reverse-calculate rather than adding tax on top:
+    //     taxable = amount / 1.18
+    //     gst     = taxable * 0.18
+    //     taxable + gst === amount   (the customer pays no more than before)
+    // Disclosing the embedded GST is what makes the invoice GST-compliant; the
+    // taxable half feeds preTax and the GST half joins the CGST/SGST/IGST totals.
+    const shippingTaxable = round2(shippingFlat / (1 + SHIPPING_GST_RATE / 100));
+    const shippingGst = round2(shippingFlat - shippingTaxable);
+    const shippingCgst = sameState ? round2(shippingGst / 2) : 0;
+    const shippingSgst = sameState ? round2(shippingGst - shippingCgst) : 0;
+    const shippingIgst = sameState ? 0 : shippingGst;
+
+    if (shippingFlat > 0) {
+      hsnBreakdown.push({
+        hsnCode: SHIPPING_HSN_CODE,
+        gstRate: SHIPPING_GST_RATE,
+        taxableAmount: shippingTaxable,
+        cgst: shippingCgst,
+        sgst: shippingSgst,
+        igst: shippingIgst,
+      });
+
+      totalCgst += shippingCgst;
+      totalSgst += shippingSgst;
+      totalIgst += shippingIgst;
+    }
 
     const packaging = round2(packagingTotal);
     const addons = round2(addonsTotal);
     const preTax = Math.max(
       0,
-      productsSubtotal + packaging + addons + shippingFlat - discount
+      productsSubtotal + packaging + addons + shippingTaxable - discount
     );
 
     const gstTotal = totalCgst + totalSgst + totalIgst;
@@ -153,10 +181,12 @@ export function computePricing(input: PricingInput): PricingBreakdown {
       packaging,
       addons,
       shipping: round2(shippingFlat),
+      shippingTaxable,
+      shippingGst,
       discount: round2(discount),
-      cgst: totalCgst,
-      sgst: totalSgst,
-      igst: totalIgst,
+      cgst: round2(totalCgst),
+      sgst: round2(totalSgst),
+      igst: round2(totalIgst),
       razorpayFee,
       grandTotal,
       perPack,
@@ -196,6 +226,10 @@ export function computePricing(input: PricingInput): PricingBreakdown {
       packaging: round2(packaging),
       addons: round2(addons),
       shipping: round2(shippingFlat),
+      // Legacy path taxes preTax as one blob, so shipping has no separate
+      // taxable/GST split to report.
+      shippingTaxable: round2(shippingFlat),
+      shippingGst: 0,
       discount: round2(discount),
       cgst,
       sgst,

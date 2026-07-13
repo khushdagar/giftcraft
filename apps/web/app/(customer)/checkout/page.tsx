@@ -130,6 +130,32 @@ function CheckoutContent() {
 
   const payload: QuotePayload | null = quote?.payload ?? null;
 
+  // Saved company details (signed-in users) — pre-fill billing GST/PAN/name so
+  // corporate buyers don't re-key them. Silently empty for guests.
+  const { data: companyResp } = useQuery({
+    queryKey: ['checkout-company'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard/company');
+      if (!res.ok) return null;
+      return res.json() as Promise<{ success: boolean; data: any }>;
+    },
+  });
+
+  useEffect(() => {
+    const c = companyResp?.data;
+    if (!c) return;
+    setBillingData((prev) => ({
+      ...prev,
+      companyName: prev.companyName || c.name || '',
+      gstin: prev.gstin || c.gstin || '',
+      pan: prev.pan || c.pan || '',
+      address1: prev.address1 || c.addressLine || '',
+      city: prev.city || c.city || '',
+      state: prev.state && prev.state !== 'Delhi' ? prev.state : c.state || prev.state,
+      pincode: prev.pincode || c.pincode || '',
+    }));
+  }, [companyResp]);
+
   // Pre-fill billing/contact from the delivery details captured in the builder.
   useEffect(() => {
     if (!payload?.address) return;
@@ -472,14 +498,16 @@ function CheckoutContent() {
       <main className="bg-[#FAFAF7] min-h-screen">
         <section className="py-8 md:py-12 pb-20">
           <div className="cw">
-            <h1 className="text-4xl md:text-5xl font-serif font-normal mb-2 rv">Checkout.</h1>
-            <p className="text-base text-[#6B6B63] mb-8 md:mb-12 rv">
+            <h1 className="text-4xl md:text-5xl font-serif font-normal mb-2">Checkout.</h1>
+            <p className="text-base text-[#000000] mb-8 md:mb-12">
               Review your order, provide billing details, and choose how you'd like to proceed.
             </p>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* items-start keeps the right column its natural height so the pricing
+                panel can stick + scroll on its own instead of stretching. */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
               {/* Left column - Forms */}
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 min-w-0">
                 <OrderSummary
                   products={summaryProducts}
                   packQuantity={packQuantity}
@@ -511,7 +539,7 @@ function CheckoutContent() {
               </div>
 
               {/* Right column - Pricing */}
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 min-w-0">
                 <PricingPanel
                   products={pricingProducts}
                   packagingName={payload.packaging?.name}

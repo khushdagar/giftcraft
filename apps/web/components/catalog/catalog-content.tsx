@@ -77,7 +77,7 @@ export function CatalogContent({
       {/* Main content */}
       <div className="container-gc-w py-8 grid gap-6 lg:grid-cols-[280px_1fr]">
         {/* Sidebar filters (desktop) */}
-        <aside className="hidden lg:block space-y-6">
+        <aside className="hidden lg:block space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:pr-1">
           {/* Search */}
           <div className="rounded-md border border-bdr shadow-card p-4">
             <p className="overline mb-3">SEARCH</p>

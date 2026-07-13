@@ -18,6 +18,8 @@ interface ProductInfoSectionProps {
   moq: number;
   categoryName: string;
   variants?: any[];
+  isPack?: boolean;
+  packProductIds?: string[];
 }
 
 export function ProductInfoSection({
@@ -27,9 +29,17 @@ export function ProductInfoSection({
   moq,
   categoryName,
   variants,
+  isPack = false,
+  packProductIds = [],
 }: ProductInfoSectionProps) {
   const [currentQty, setCurrentQty] = useState(moq);
   const isUnderMinimum = currentQty < moq;
+
+  // A pack loads all its member products into the builder at once; a normal
+  // product loads just itself.
+  const builderHref = isPack
+    ? `/builder?pack=${encodeURIComponent(packProductIds.join(','))}&qty=${currentQty}`
+    : `/builder?product=${product.id}&qty=${currentQty}`;
 
   // Mobile sticky CTA bar: hidden on load, slides in once the user has scrolled
   // past ~20% of the viewport height.
@@ -67,7 +77,7 @@ export function ProductInfoSection({
       </div>
 
       {/* Customization note */}
-      {product.printingTechnique && product.printingTechnique !== "none" && (
+      {!isPack && product.printingTechnique && product.printingTechnique !== "none" && (
         <p className="mt-4 text-xs italic text-ink-2">
           This product uses <span className="font-semibold">{product.printingTechnique}</span> for logo customisation. Cost included in price.{' '}
           <Link href={`/builder?product=${product.id}`} className="text-em hover:underline">
@@ -76,8 +86,8 @@ export function ProductInfoSection({
         </p>
       )}
 
-      {/* Color selector */}
-      {(() => {
+      {/* Color selector (hidden for packs — colours live on the member products) */}
+      {!isPack && (() => {
         const colorVariants = variants?.filter((v: any) => v.kind === 'color') || [];
         const hasColorVariants = colorVariants.length > 0;
 
@@ -99,8 +109,8 @@ export function ProductInfoSection({
         );
       })()}
 
-      {/* Size selector */}
-      {(() => {
+      {/* Size selector (hidden for packs) */}
+      {!isPack && (() => {
         const sizeVariants = variants?.filter((v: any) => v.kind === 'size') || [];
         return (
           <SizeSelector
@@ -138,7 +148,7 @@ export function ProductInfoSection({
           }`}
           size="lg"
         >
-          <Link href={`/builder?product=${product.id}&qty=${currentQty}`}>Add to Gift Builder</Link>
+          <Link href={builderHref}>Add to Gift Builder</Link>
         </Button>
         <Button
           asChild
@@ -167,7 +177,7 @@ export function ProductInfoSection({
           }`}
           size="lg"
         >
-          <Link href={`/builder?product=${product.id}&qty=${currentQty}`}>Add to Gift Builder</Link>
+          <Link href={builderHref}>Add to Gift Builder</Link>
         </Button>
         <Button
           asChild

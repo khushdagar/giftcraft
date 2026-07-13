@@ -309,25 +309,68 @@ describe("Pricing Engine", () => {
       // Products subtotal: (1000 + 500) * 50 = 75000
       // Packaging: 50 * 50 = 2500
       // Addons: 25 * 50 = 1250
-      // Shipping: 1000
-      // preTax = 75000 + 2500 + 1250 + 1000 = 79750
+      // Shipping: 1000 GST-INCLUSIVE → taxable 847.46, GST 152.54
+      // preTax = 75000 + 2500 + 1250 + 847.46 = 79597.46
 
       // HSN 4820: 1000 * 50 = 50000, GST 12% = 6000, CGST=3000, SGST=3000
       // HSN 6505: 500 * 50 = 25000, GST 18% = 4500, CGST=2250, SGST=2250
       // HSN 4819 (packaging+addons): 3750, GST 18% = 675, CGST=337.5, SGST=337.5
-      // Shipping is GST-inclusive (Shiprocket) — no separate shipping GST line.
-      // Total CGST = 3000 + 2250 + 337.5 = 5587.5
-      // Total SGST = 5587.5
-      // Total GST = 11175
+      // HSN 996812 (shipping): 847.46, GST 18% = 152.54, CGST=76.27, SGST=76.27
+      // Total CGST = 3000 + 2250 + 337.5 + 76.27 = 5663.77
+      // Total SGST = 5663.77
+      // Total GST = 11327.54
 
-      expect(result.hsnBreakdown.length).toBe(3);
-      expect(result.hsnBreakdown.some((l) => l.hsnCode === "9965")).toBe(false);
+      expect(result.hsnBreakdown.length).toBe(4);
       expect(result.hsnBreakdown[0].hsnCode).toBe("4820");
       expect(result.hsnBreakdown[0].gstRate).toBe(12);
       expect(result.hsnBreakdown[1].hsnCode).toBe("6505");
       expect(result.hsnBreakdown[1].gstRate).toBe(18);
       expect(result.cgst).toBe(result.sgst);
       expect(result.igst).toBe(0);
+
+      // Shipping is reverse-calculated under HSN 996812
+      const ship = result.hsnBreakdown.find((l) => l.hsnCode === "996812")!;
+      expect(ship.gstRate).toBe(18);
+      expect(ship.taxableAmount).toBe(847.46);
+      expect(ship.cgst + ship.sgst + ship.igst).toBe(152.54);
+      expect(result.shippingTaxable).toBe(847.46);
+      expect(result.shippingGst).toBe(152.54);
+      // taxable + GST returns the original GST-inclusive courier rate
+      expect(result.shippingTaxable + result.shippingGst).toBe(1000);
+      expect(result.shipping).toBe(1000);
+    });
+
+    it("keeps the grand total unchanged when shipping GST is disclosed", () => {
+      // Reverse-calculating shipping must NOT change what the customer pays:
+      // the taxable half leaves preTax and the GST half joins the tax total.
+      const products: ProductForPricing[] = [
+        { sellPrice: 1000, quantity: 1, hsnCode: "4820", gstRate: 18 },
+      ];
+      const base = {
+        products,
+        packagingPerUnit: 0,
+        addonsPerUnit: 0,
+        packQuantity: 10,
+        sellerStateCode: "DL",
+        buyerStateCode: "DL",
+      };
+
+      const noShip = computePricing({ ...base, shippingFlat: 0 });
+      const withShip = computePricing({ ...base, shippingFlat: 1180 });
+
+      // 1180 inclusive = 1000 taxable + 180 GST
+      expect(withShip.shippingTaxable).toBe(1000);
+      expect(withShip.shippingGst).toBe(180);
+
+      // The order grows by exactly the shipping charge, plus the gateway fee on it.
+      const taxDelta =
+        withShip.cgst + withShip.sgst + withShip.igst - (noShip.cgst + noShip.sgst + noShip.igst);
+      expect(taxDelta).toBe(180);
+
+      const feeDelta = withShip.razorpayFee - noShip.razorpayFee;
+      expect(withShip.grandTotal).toBe(
+        Math.round((noShip.grandTotal + 1180 + feeDelta) * 100) / 100
+      );
     });
 
     it("should compute per-HSN GST for cross-state (IGST)", () => {
