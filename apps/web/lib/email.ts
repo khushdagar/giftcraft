@@ -211,7 +211,7 @@ function priceBreakdownCard(
   rows += row('Shipping (HSN 996812)', amounts.shipping > 0 ? inr(shippingTaxable) : 'FREE');
   if (gst > 0) rows += row('GST', inr(gst));
   if (amounts.razorpayFee > 0)
-    rows += row('Payment Processing Fee (Razorpay 2%)', inr(amounts.razorpayFee));
+    rows += row('Payment Processing Fee (Razorpay 2% + 18% GST)', inr(amounts.razorpayFee));
 
   // Divider before the grand total.
   rows += `<tr><td colspan="2" style="padding:0;"><div style="border-top:2px solid ${COLORS.border};margin:8px 0 2px;"></div></td></tr>`;

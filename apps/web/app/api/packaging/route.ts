@@ -26,23 +26,39 @@ export async function GET() {
         dimensionH: true,
         priceTiers: { orderBy: { tier: 'asc' }, take: 1, select: { sellPrice: true } },
         images: { where: { isPrimary: true }, take: 1, select: { url: true } },
+        // Size variants carry a per-size price (Small/Medium/Large) for the
+        // builder, which auto-picks a size and shows that size's price.
+        variants: {
+          where: { kind: 'size' },
+          orderBy: { sortOrder: 'asc' },
+          select: { value: true, price: true },
+        },
       },
       orderBy: { sortOrder: 'asc' },
     });
 
     return NextResponse.json(
-      products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        price: Number(p.priceTiers[0]?.sellPrice ?? 0),
-        description: p.descriptionShort ?? '',
-        imageUrl: p.images[0]?.url ?? null,
-        lengthCm: p.dimensionL,
-        widthCm: p.dimensionW,
-        heightCm: p.dimensionH,
-        isActive: true,
-      }))
+      products.map((p) => {
+        const basePrice = Number(p.priceTiers[0]?.sellPrice ?? 0);
+        // Map "Small"/"Medium"/"Large" (case-insensitive) → price.
+        const sizePrices: Record<string, number> = {};
+        for (const v of p.variants) {
+          if (v.price != null) sizePrices[v.value.trim().toLowerCase()] = Number(v.price);
+        }
+        return {
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          price: basePrice,
+          sizePrices,
+          description: p.descriptionShort ?? '',
+          imageUrl: p.images[0]?.url ?? null,
+          lengthCm: p.dimensionL,
+          widthCm: p.dimensionW,
+          heightCm: p.dimensionH,
+          isActive: true,
+        };
+      })
     );
   } catch (error) {
     console.error('Error fetching packaging:', error);

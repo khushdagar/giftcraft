@@ -56,6 +56,7 @@ const ProductSchema = z.object({
       // DB stores hexColor as null for non-colour variants — accept null so
       // loading an existing product never trips form validation.
       hexColor: z.string().nullable().optional(),
+      price: z.number().nullable().optional(),
       sortOrder: z.number().nullable().optional(),
     })
   ).nullable().optional(),
@@ -142,8 +143,8 @@ export function ProductForm({
   const [zoomIdx, setZoomIdx] = useState<number | null>(null);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; parentId?: string | null }>>([]);
   const [occasions, setOccasions] = useState<Array<{ id: string; name: string; icon?: string }>>([]);
-  const [variants, setVariants] = useState<Array<{ id?: string; kind: string; value: string; hexColor?: string; imageUrl?: string; sortOrder: number }>>([]);
-  const [newVariant, setNewVariant] = useState({ kind: 'color', value: '', hexColor: '', customKind: '' });
+  const [variants, setVariants] = useState<Array<{ id?: string; kind: string; value: string; hexColor?: string; imageUrl?: string; price?: number; sortOrder: number }>>([]);
+  const [newVariant, setNewVariant] = useState({ kind: 'color', value: '', hexColor: '', customKind: '', price: '' });
   const [vendorOptions, setVendorOptions] = useState<VendorOption[]>([]);
   const [vendorLinks, setVendorLinks] = useState<VendorLink[]>([]);
 
@@ -186,6 +187,7 @@ export function ProductForm({
           value: String(v.value).trim(),
           hexColor: v.hexColor || undefined,
           imageUrl: v.imageUrl || undefined,
+          price: v.price != null ? Number(v.price) : undefined,
           sortOrder: typeof v.sortOrder === 'number' ? v.sortOrder : 0,
         }));
       console.log('✅ Loaded variants:', validVariants);
@@ -624,6 +626,11 @@ export function ProductForm({
           }
           // Carry the optional per-variant image through to the API.
           variant.imageUrl = v.imageUrl ? String(v.imageUrl).trim() : null;
+          // Per-size price (used by packaging designs) — only for size variants.
+          variant.price =
+            v.kind.toLowerCase() === 'size' && v.price != null && !Number.isNaN(Number(v.price))
+              ? Number(v.price)
+              : null;
           return variant;
         }) : [],
       };
@@ -1475,6 +1482,25 @@ export function ProductForm({
                 </div>
               )}
 
+              {/* Size variants can carry a price — used by packaging designs in
+                  the gift builder (Small/Medium/Large each cost differently). */}
+              {newVariant.kind === 'size' && (
+                <div>
+                  <label className="block text-sm font-normal text-gray-900 mb-1">Price (₹) — optional</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="e.g. 180"
+                    value={newVariant.price}
+                    onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Applied to each size added. For packaging boxes this is the per-box price.
+                  </p>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => {
@@ -1517,8 +1543,13 @@ export function ProductForm({
                   }
 
                   // Check for duplicates
-                  const newVariants: Array<{ id?: string; kind: string; value: string; hexColor?: string; sortOrder: number }> = [];
+                  const newVariants: Array<{ id?: string; kind: string; value: string; hexColor?: string; price?: number; sortOrder: number }> = [];
                   const duplicates: string[] = [];
+
+                  const sizePrice =
+                    newVariant.kind === 'size' && newVariant.price !== '' && !Number.isNaN(Number(newVariant.price))
+                      ? Number(newVariant.price)
+                      : undefined;
 
                   values.forEach((value) => {
                     const isDuplicate = variants.some(
@@ -1532,6 +1563,7 @@ export function ProductForm({
                         kind: actualKind,
                         value,
                         hexColor: newVariant.kind === 'color' && newVariant.hexColor ? newVariant.hexColor : undefined,
+                        price: sizePrice,
                         sortOrder: variants.length + newVariants.length,
                       });
                     }
@@ -1543,7 +1575,7 @@ export function ProductForm({
                   }
 
                   setVariants([...variants, ...newVariants]);
-                  setNewVariant({ kind: 'color', value: '', hexColor: '', customKind: '' });
+                  setNewVariant({ kind: 'color', value: '', hexColor: '', customKind: '', price: '' });
 
                   const message =
                     newVariants.length === 1
@@ -1661,6 +1693,31 @@ export function ProductForm({
                               )
                             }
                             className="w-20 text-xs"
+                          />
+                        </div>
+                      )}
+                      {/* Per-size price — used by packaging designs in the builder */}
+                      {variant.kind === 'size' && (
+                        <div className="flex items-center gap-1 ml-auto">
+                          <span className="text-xs text-gray-400">₹</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            placeholder="Price"
+                            value={variant.price ?? ''}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              setVariants(
+                                variants.map((v, i) =>
+                                  i === idx
+                                    ? { ...v, price: raw === '' ? undefined : Number(raw) }
+                                    : v
+                                )
+                              );
+                            }}
+                            className="w-20 text-xs"
+                            title="Price for this size"
                           />
                         </div>
                       )}

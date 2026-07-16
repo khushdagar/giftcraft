@@ -24,7 +24,8 @@ export function StepBudget({ selected, recipientCount, onSubmit, onBack }: StepB
 
   const perUnit = budget / Math.max(1, recipientCount);
   const gst = budget * 0.18;
-  const fee = budget * 0.02;
+  // 2% payment-gateway fee + the 18% GST Razorpay charges on it (≈2.36% effective).
+  const fee = budget * 0.02 * 1.18;
   const total = budget + gst + fee;
 
   // Friendly read on whether the per-gift budget is workable.
@@ -125,7 +126,7 @@ export function StepBudget({ selected, recipientCount, onSubmit, onBack }: StepB
           <span className="font-normal text-ink tabular-nums">+{formatRupees(gst)}</span>
         </div>
         <div className="flex justify-between text-sm">
-          <span className="text-ink-2">Payment Fee (2%)</span>
+          <span className="text-ink-2">Payment Fee (2% + GST)</span>
           <span className="font-normal text-ink tabular-nums">+{formatRupees(fee)}</span>
         </div>
         <div className="border-t border-bdr pt-2 mt-2 flex justify-between">

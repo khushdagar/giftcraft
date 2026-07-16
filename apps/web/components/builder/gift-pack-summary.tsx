@@ -5,7 +5,11 @@ import Image from 'next/image';
 import { X, Plus, Minus } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
-import { BOX_SIZE_THRESHOLDS } from '@/lib/constants';
+import { packagingSizeForCount } from '@/lib/packaging-designs';
+import { computePricing } from '@giftcraft/pricing';
+import { computeOrderShipping } from '@/lib/shipping';
+import { SELLER_STATE_CODE } from '@/lib/constants';
+import { resolveBuyerStateCode } from '@/lib/pincode-to-state';
 
 /**
  * "Your Gift Pack" summary panel — the running snapshot of the pack the user is
@@ -18,23 +22,83 @@ export function GiftPackSummary() {
   const {
     products: selected,
     removeProduct,
-    getProductsSubtotal,
     packQuantity,
     setPackQuantity,
+    packaging,
+    addons,
+    sleeve,
+    shippingZone,
+    coupon,
+    address,
+    pincode,
   } = useBuilderStore();
 
-  const productsSubtotal = getProductsSubtotal();
   // Price of one gift pack (one of each selected product)
   const perPackPrice = selected.reduce((sum, p) => sum + p.sellPrice, 0);
 
-  const boxSize = useMemo(() => {
-    const threshold = BOX_SIZE_THRESHOLDS.find((t) => selected.length <= t.max);
-    return threshold?.label || 'XL';
-  }, [selected.length]);
+  // Full running total — computed with the SAME pricing engine the final Review
+  // step and checkout use (see step-4-review / lib/quote-pricing), so the number
+  // shown here matches to the rupee. GST + payment fee are included so nothing
+  // jumps unexpectedly later; before a delivery address is entered, GST is
+  // estimated intra-state (Delhi) and re-computes once the address is set.
+  const shippingFlat =
+    shippingZone?.shippingCost ??
+    computeOrderShipping({
+      products: selected.map((p) => ({
+        weightG: p.weightG,
+        quantity: 1,
+        sellPrice: p.sellPrice,
+        dimensionL: p.dimensionL,
+        dimensionW: p.dimensionW,
+        dimensionH: p.dimensionH,
+      })),
+      zone: shippingZone,
+      packQuantity,
+      deliveryMode: 'single',
+    }).shippingCost;
+
+  const buyerStateCode =
+    resolveBuyerStateCode(address?.state, address?.pincode || pincode) || SELLER_STATE_CODE;
+
+  const pricing = useMemo(
+    () =>
+      computePricing({
+        products: selected.map((p) => ({
+          sellPrice: p.sellPrice,
+          quantity: 1,
+          hsnCode: p.hsnCode || '4820',
+          gstRate: p.gstRate || 18,
+        })),
+        packagingPerUnit: Number(packaging?.price) || 0,
+        addonsPerUnit: addons.reduce((sum, a) => sum + Number(a.price), 0) + (sleeve ? 60 : 0),
+        packQuantity,
+        shippingFlat,
+        discount: coupon?.discountAmount || 0,
+        sellerStateCode: SELLER_STATE_CODE,
+        buyerStateCode,
+        // 2% payment-processing fee + the 18% GST Razorpay charges on it (≈2.36%
+        // effective), passed through to the customer per CLAUDE.md Rule 2.
+        razorpayFeePct: 2,
+        razorpayFeeGstPct: 18,
+      }),
+    [selected, packaging, addons, sleeve, packQuantity, shippingFlat, coupon, buyerStateCode]
+  );
+
+  // Line-item figures for the breakdown (all × packs, mirroring the engine).
+  const productsTotal = pricing.subtotal;
+  const packagingTotal = pricing.packaging;
+  const addonsTotal = pricing.addons;
+  const shippingTotal = pricing.shipping;
+  const gstTotal = pricing.cgst + pricing.sgst + pricing.igst;
+  const isInterState = pricing.igst > 0;
+  const discountTotal = pricing.discount;
+
+  // Box size is decided by the number of products in the pack (Small/Medium/Large).
+  const boxSize = useMemo(() => packagingSizeForCount(selected.length), [selected.length]);
 
   return (
-    <div className="min-w-0 lg:sticky lg:top-[140px] h-fit lg:max-h-[calc(100vh-160px)] lg:overflow-y-auto lg:pr-1">
-      <div className="rounded-2xl bg-em-50 border-2 border-em-200 p-5 md:p-6 shadow-sm space-y-4">
+    <div className="min-w-0 lg:sticky lg:top-[140px] h-fit lg:max-h-[calc(100vh-230px)] lg:overflow-y-auto lg:pr-1 lg:pb-2">
+      <div className="rounded-2xl bg-em-50 border-2 border-em-200 p-3 md:p-3 shadow-sm space-y-4">
         {/* Title with Count Badge */}
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-black tracking-tight text-ink">Your Gift Pack</h3>
@@ -83,8 +147,8 @@ export function GiftPackSummary() {
               </div>
             </div>
 
-            <div className="rounded-md border-2 border-gray-200 bg-white p-6">
-              <div className="grid grid-cols-3 gap-4">
+            <div className="rounded-md border-2 border-gray-200 bg-white p-3">
+              <div className="grid grid-cols-3 gap-2">
                 {selected.map((product) => (
                   <div
                     key={product.id}
@@ -156,18 +220,125 @@ export function GiftPackSummary() {
               ))}
             </div>
 
-            {/* Subtotal — dark total block */}
-            <div className="rounded-xl bg-dark text-white p-4">
-              <div className="flex items-center justify-between text-[11px] text-white/60">
-                <span>{formatRupees(perPackPrice)} / pack</span>
-                <span>× {packQuantity} units</span>
+            {/* Packaging — shown here (not on the page) once a design is picked */}
+            {packaging && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">Packaging</p>
+                <div className="rounded-md bg-white p-3 flex items-center gap-2 shadow-sm">
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                    <span className="text-lg">📦</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-ink line-clamp-1">{packaging.name}</p>
+                    {packaging.size && (
+                      <p className="text-xs text-gray-500 mt-0.5">Size · {packaging.size}</p>
+                    )}
+                  </div>
+                  <p className="text-xs font-bold text-em flex-shrink-0">+{formatRupees(packaging.price)}</p>
+                </div>
               </div>
-              <p className="text-3xl font-black tabnum mt-1.5">
-                {formatRupees(productsSubtotal * packQuantity)}
-              </p>
-              <p className="text-[11px] text-white/50 mt-1">
-                Total before packaging, shipping &amp; GST
-              </p>
+            )}
+
+            {/* Add-ons — each selected add-on listed like a product row */}
+            {addons.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+                  Add-ons ({addons.length})
+                </p>
+                <div className="space-y-2">
+                  {addons.map((addon) => (
+                    <div
+                      key={addon.id}
+                      className="rounded-md bg-white p-3 flex items-center gap-2 shadow-sm"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                        <span className="text-lg">🎀</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-ink line-clamp-1">{addon.name}</p>
+                      </div>
+                      <p className="text-xs font-bold text-em flex-shrink-0">
+                        {addon.price > 0 ? `+${formatRupees(addon.price)}` : 'Free'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Running total — grows the moment packaging, add-ons or shipping
+                are chosen, so the number never jumps unexpectedly at checkout. */}
+            <div className="rounded-xl bg-dark text-white p-4 space-y-3">
+              {/* Line-item breakdown */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-white/70">
+                  <span>
+                    Products{' '}
+                    <span className="text-white/40">
+                      ({packQuantity} × {formatRupees(perPackPrice)})
+                    </span>
+                  </span>
+                  <span className="tabnum">{formatRupees(productsTotal)}</span>
+                </div>
+
+                {packagingTotal > 0 && (
+                  <div className="flex items-center justify-between text-xs text-white/70">
+                    <span>
+                      Packaging <span className="text-white/40">(× {packQuantity})</span>
+                    </span>
+                    <span className="tabnum">+{formatRupees(packagingTotal)}</span>
+                  </div>
+                )}
+
+                {addonsTotal > 0 && (
+                  <div className="flex items-center justify-between text-xs text-white/70">
+                    <span>
+                      Add-ons <span className="text-white/40">(× {packQuantity})</span>
+                    </span>
+                    <span className="tabnum">+{formatRupees(addonsTotal)}</span>
+                  </div>
+                )}
+
+                {shippingTotal > 0 && (
+                  <div className="flex items-center justify-between text-xs text-white/70">
+                    <span>Shipping</span>
+                    <span className="tabnum">+{formatRupees(shippingTotal)}</span>
+                  </div>
+                )}
+
+                {discountTotal > 0 && (
+                  <div className="flex items-center justify-between text-xs text-emerald-300">
+                    <span>Discount</span>
+                    <span className="tabnum">−{formatRupees(discountTotal)}</span>
+                  </div>
+                )}
+
+                {gstTotal > 0 && (
+                  <div className="flex items-center justify-between text-xs text-white/70">
+                    <span>GST {isInterState ? '(IGST)' : '(CGST + SGST)'}</span>
+                    <span className="tabnum">+{formatRupees(gstTotal)}</span>
+                  </div>
+                )}
+
+                {pricing.razorpayFee > 0 && (
+                  <div className="flex items-center justify-between text-xs text-white/70">
+                    <span>Payment fee (2% + GST)</span>
+                    <span className="tabnum">+{formatRupees(pricing.razorpayFee)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="h-px bg-white/10" />
+
+              {/* Grand total — matches the final Review step & checkout exactly */}
+              <div>
+                <p className="text-3xl font-black tabnum">{formatRupees(pricing.grandTotal)}</p>
+                <p className="text-[11px] text-white/50 mt-1">
+                  {shippingTotal > 0
+                    ? 'Total incl. GST & payment fee'
+                    : 'Incl. GST & fee · shipping added at Delivery'}
+                </p>
+              </div>
             </div>
           </>
         ) : (

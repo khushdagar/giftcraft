@@ -41,6 +41,8 @@ export interface BuilderState {
     id: string;
     name: string;
     price: number;
+    // Auto-picked box size (Small/Medium/Large) for the pack, if any.
+    size?: string;
   } | null;
 
   addons: Array<{
@@ -123,7 +125,7 @@ export interface BuilderState {
   updateProductQuantity: (productId: string, quantity: number) => void;
   reorderProducts: (productIds: string[]) => void;
 
-  setPackaging: (packaging: { id: string; name: string; price: number } | null) => void;
+  setPackaging: (packaging: { id: string; name: string; price: number; size?: string } | null) => void;
 
   addAddon: (addon: { id: string; name: string; price: number }) => void;
   removeAddon: (addonId: string) => void;

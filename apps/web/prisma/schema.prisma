@@ -388,14 +388,17 @@ model ProductImage {
 }
 
 model ProductVariant {
-  id        String  @id @default(cuid())
+  id        String   @id @default(cuid())
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   kind      String // "color" | "size" | ...
   value     String
   hexColor  String?
   imageUrl  String? // Optional variant image (e.g. product shown in this colour)
-  sortOrder Int     @default(0)
+  // Optional per-variant price. Used by packaging designs, where each size
+  // (Small/Medium/Large) variant carries its own price for the gift builder.
+  price     Decimal? @db.Decimal(10, 2)
+  sortOrder Int      @default(0)
 
   @@index([productId])
 }

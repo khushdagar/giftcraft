@@ -31,6 +31,7 @@ interface BuilderContentProps {
     name: string;
     slug: string;
     price: number;
+    sizePrices?: Record<string, number> | null;
     description?: string | null;
     imageUrl?: string | null;
     isActive: boolean;
@@ -55,6 +56,14 @@ export function BuilderContent({
   const processedRef = useRef(false);
   const presetRef = useRef(false);
   const packRef = useRef(false);
+
+  // Moving to a new step should start the user at the TOP of that step, not
+  // wherever they were scrolled to on the previous one.
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [currentStep]);
 
   // Budget Planner hand-off: /builder?preset=id1,id2&qty=N opens the builder
   // showing exactly the recommended picks (Step 1 filters to them) at the chosen

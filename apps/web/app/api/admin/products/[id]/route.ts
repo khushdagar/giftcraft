@@ -63,6 +63,7 @@ const UpdateProductSchema = z.object({
       value: z.string().min(1, 'Variant value cannot be empty'),
       hexColor: z.string().nullable().optional(),
       imageUrl: z.string().nullable().optional(),
+      price: z.number().nonnegative().nullable().optional(),
       sortOrder: z.number().int().optional(),
     })
   ).nullable().optional(),
@@ -331,6 +332,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
               value: variant.value,
               hexColor: variant.hexColor || null,
               imageUrl: variant.imageUrl || null,
+              price: variant.price ?? null,
               sortOrder: idx,
             })),
           });

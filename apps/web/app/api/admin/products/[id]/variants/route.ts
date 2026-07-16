@@ -38,7 +38,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { kind, value, hexColor, imageUrl, sortOrder } = body;
+    const { kind, value, hexColor, imageUrl, price, sortOrder } = body;
 
     if (!kind || !value) {
       return NextResponse.json(
@@ -54,6 +54,7 @@ export async function POST(
         value,
         hexColor: hexColor || null,
         imageUrl: imageUrl || null,
+        price: price ?? null,
         sortOrder: sortOrder || 0,
       },
     });

@@ -270,7 +270,7 @@ function ConfirmationContent() {
                 <div className="flex justify-between text-[#6B6B63]">
                   <span>
                     Payment Processing Fee
-                    <span className="block text-[11px] italic text-[#9B9B93]">Razorpay 2%</span>
+                    <span className="block text-[11px] italic text-[#9B9B93]">Razorpay 2% + 18% GST</span>
                   </span>
                   <span className="tabular-nums">{formatRupees(order.razorpayFee)}</span>
                 </div>
