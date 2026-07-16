@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { pincodeToStateCode } from '@/lib/pincode-to-state';
 import { computeShipping } from '@/lib/shipping';
 import { getShiprocketShippingCost } from '@/lib/shipping-rate';
+import { getShiprocketServiceability } from '@/lib/shiprocket';
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,6 +35,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Real-time courier serviceability is the source of truth for availability.
+    // If Shiprocket explicitly says no courier delivers here, it's unavailable —
+    // regardless of any configured zone. If Shiprocket can't be reached, we fall
+    // back to the zone config below so the app still works in dev/outages.
+    const serviceability = await getShiprocketServiceability({
+      deliveryPostcode: pincode,
+    });
+
+    if (serviceability.status === 'unserviceable') {
+      return NextResponse.json({
+        serviceable: false,
+        reason: 'unserviceable',
+        stateCode,
+      });
+    }
+
     const zone = await prisma.shippingZone.findFirst({
       where: {
         states: { has: stateCode },
@@ -42,10 +59,13 @@ export async function GET(request: NextRequest) {
     });
 
     if (!zone) {
-      return NextResponse.json(
-        { error: 'No shipping zone configured for this area' },
-        { status: 404 }
-      );
+      // Serviceable (or Shiprocket unreachable) but we have no zone to price/ETA
+      // against — treat as not available until a zone is configured.
+      return NextResponse.json({
+        serviceable: false,
+        reason: 'no_zone',
+        stateCode,
+      });
     }
 
     // Weight-based rate config (SOW: ₹/kg per zone). Fall back to the legacy
@@ -98,6 +118,11 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
+      // Real-time courier serviceability confirmed the pincode is deliverable
+      // ('serviceable'), or Shiprocket was unreachable and we fell back to the
+      // configured zone ('zone').
+      serviceable: true,
+      serviceabilitySource: serviceability.status === 'serviceable' ? 'shiprocket' : 'zone',
       zoneName: zone.name,
       stateCode,
       // Weight-based rate config (used for the zone fallback)

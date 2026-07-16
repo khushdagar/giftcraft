@@ -1,10 +1,24 @@
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import { BuilderLayout } from '@/components/builder/builder-layout';
 import { BuilderContent } from '@/components/builder/builder-content';
 import { BuilderReset } from '@/components/builder/builder-reset';
 
+// Server-side self-fetch must target THIS running server, whatever port it's on
+// (dev may land on :3001 if :3000 is taken). Derive the origin from the incoming
+// request host; fall back to the configured public URL when headers are absent.
+function getBaseUrl() {
+  const h = headers();
+  const host = h.get('host');
+  if (host) {
+    const proto = h.get('x-forwarded-proto') || (host.startsWith('localhost') ? 'http' : 'https');
+    return `${proto}://${host}`;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+}
+
 async function getBuilderData() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = getBaseUrl();
 
   try {
     const [productsRes, filtersRes, packagingRes, addonsRes] = await Promise.all([

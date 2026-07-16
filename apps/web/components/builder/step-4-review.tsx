@@ -103,9 +103,10 @@ export function Step4Review() {
       discount: coupon?.discountAmount || 0,
       sellerStateCode: SELLER_STATE_CODE,
       buyerStateCode,
-      // Flat 2% payment-processing fee on the amount (no GST-on-fee added).
+      // 2% payment-processing fee + the 18% GST Razorpay charges on it (≈2.36%
+      // effective), passed through to the customer per CLAUDE.md Rule 2.
       razorpayFeePct: 2,
-      razorpayFeeGstPct: 0,
+      razorpayFeeGstPct: 18,
     });
   }, [products, packQuantity, packaging, addons, sleeve, shippingFlat, coupon, shippingZone, buyerStateCode]);
 

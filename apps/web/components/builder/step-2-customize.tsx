@@ -1,21 +1,24 @@
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
-import { Upload, X, FileIcon, Lightbulb, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import { Upload, X, FileIcon, Loader2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import { recommendPackaging } from '@/lib/packaging-calculator';
+import {
+  packagingSizeForCount,
+  packagingId,
+  priceForSize,
+} from '@/lib/packaging-designs';
 
 interface Packaging {
   id: string;
   name: string;
   price: number;
+  sizePrices?: Record<string, number> | null;
   description?: string | null;
   imageUrl?: string | null;
   lengthCm?: number | null;
@@ -46,14 +49,12 @@ interface StepProps {
 /** Every section on this step is a clean white card. */
 const SECTION = 'rounded-2xl bg-white p-5 md:p-6 shadow-sm';
 
-export function Step2Customize({ packagingOptions, addonOptions, products }: StepProps) {
+export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
   const {
     logo,
     setLogo,
     packaging,
     setPackaging,
-    sleeve,
-    setSleeve,
     addons,
     addAddon,
     removeAddon,
@@ -62,7 +63,6 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
     brandingNotes,
     setBrandingNotes,
     products: selectedProducts,
-    packQuantity,
   } = useBuilderStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
@@ -155,28 +155,31 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
     }
   };
 
-  // Calculate packaging recommendation from the products' real dimensions.
-  const recommendation = useMemo(() => {
-    if (selectedProducts.length === 0) return null;
+  // The customer only picks a box DESIGN. The size (Small/Medium/Large) is
+  // decided automatically from how many products are in the pack, and locked.
+  const autoSize = packagingSizeForCount(selectedProducts.length);
+  // Which design (packaging product) the current selection belongs to.
+  const selectedDesign = packaging
+    ? packagingOptions.find((d) => packaging.id.startsWith(d.id + "-"))
+    : undefined;
 
-    const productsForCalculation = selectedProducts.map((p) => ({
-      id: p.id,
-      name: p.name,
-      lengthCm: (p as any).dimensionL ?? (p as any).lengthCm,
-      widthCm: (p as any).dimensionW ?? (p as any).widthCm,
-      heightCm: (p as any).dimensionH ?? (p as any).heightCm,
-      quantity: p.quantity || 1,
-    }));
-
-    return recommendPackaging(productsForCalculation, packagingOptions);
-  }, [selectedProducts, packagingOptions]);
-
-  const suggestedPackaging = recommendation?.box ?? null;
-
-  // Number(...) guards against Decimal-as-string values, which would make `+`
-  // concatenate instead of add.
-  const addonsTotal = addons.reduce((sum, a) => sum + Number(a.price), 0);
-  const packagingTotal = Number(packaging?.price) || 0;
+  // Keep the selected packaging in sync with the auto size: if the pack grows or
+  // shrinks into a new size band, re-price the chosen design to the new size.
+  // Also clear any stale packaging (e.g. an old box no longer offered) so the
+  // customer picks one of the current designs.
+  useEffect(() => {
+    if (!packaging) return;
+    const design = packagingOptions.find((d) => packaging.id.startsWith(d.id + "-"));
+    if (!design) {
+      setPackaging(null);
+      return;
+    }
+    const id = packagingId(design.id, autoSize);
+    if (packaging.id !== id) {
+      setPackaging({ id, name: design.name, price: priceForSize(design, autoSize), size: autoSize });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSize, packaging?.id, packagingOptions]);
 
   return (
     <div className="space-y-6">
@@ -332,49 +335,41 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
             Select Your Packaging <span className="text-red-500">*</span>
           </p>
-          {!packaging && (
-            <p className="text-xs font-semibold text-red-600">Required to continue</p>
-          )}
+          {/* Auto-picked size — the customer chooses only the design; the size is
+              set from the pack and locked. Shown once, here in the top-right. */}
+          <div className="flex items-center gap-3">
+            {!packaging && (
+              <p className="text-xs font-semibold text-red-600">Required to continue</p>
+            )}
+            <span
+              title={`Box size ${autoSize}, set automatically from your pack`}
+              className="flex-shrink-0 rounded-full bg-sky-600 text-white text-[10px] font-black px-2.5 py-1 tracking-wide"
+            >
+              {autoSize.toUpperCase()}
+            </span>
+          </div>
         </div>
 
-        {/* Packaging Suggestion — sized from the products' real dimensions. It's a
-            hint for picking a box, so it disappears for good once a box is picked. */}
-        {selectedProducts.length > 0 && suggestedPackaging && !packaging && (
-          <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 flex items-center gap-2">
-            <Lightbulb className="h-4 w-4 flex-shrink-0 text-amber-600" />
-            <p className="text-xs text-amber-800">
-              We suggest the <span className="font-semibold">{suggestedPackaging.name}</span>
-            </p>
-            <button
-              onClick={() => setPackaging(suggestedPackaging as any)}
-              className="ml-auto flex-shrink-0 text-xs font-semibold text-amber-700 underline hover:text-amber-900"
-            >
-              Select
-            </button>
-          </div>
-        )}
-
-        {/* No dimensioned box fits the pack — be honest rather than guess */}
-        {selectedProducts.length > 0 && !suggestedPackaging && !packaging && (
-          <div className="rounded-md bg-sky-50 border border-sky-200 px-3 py-2 flex items-center gap-2">
-            <Lightbulb className="h-4 w-4 flex-shrink-0 text-sky-600" />
-            <p className="text-xs text-sky-800">
-              Pick any box — our team will confirm a custom fit for your items.
-            </p>
-          </div>
-        )}
-
-        {packagingOptions.length > 0 && (
+        {packagingOptions.length === 0 ? (
+          <p className="text-sm text-ink-3">No packaging designs available yet.</p>
+        ) : (
           <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
             <div className="flex w-max gap-3">
-              {packagingOptions.map((pkg) => {
-                const isSelected = packaging?.id === pkg.id;
-                const isIncluded = pkg.price === 0;
+              {packagingOptions.map((design) => {
+                const isSelected = selectedDesign?.id === design.id;
+                const price = priceForSize(design, autoSize);
 
                 return (
                   <motion.button
-                    key={pkg.id}
-                    onClick={() => setPackaging(pkg)}
+                    key={design.id}
+                    onClick={() =>
+                      setPackaging({
+                        id: packagingId(design.id, autoSize),
+                        name: design.name,
+                        price,
+                        size: autoSize,
+                      })
+                    }
                     className={`group flex-shrink-0 w-40 rounded-md border-2 overflow-hidden transition-all hover:shadow-lg ${
                       isSelected
                         ? 'border-em bg-em-50 shadow-md'
@@ -385,16 +380,16 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
                   >
                     {/* Image Section */}
                     <div className="relative aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
-                      {pkg.imageUrl ? (
+                      {design.imageUrl ? (
                         <img
-                          src={pkg.imageUrl}
-                          alt={pkg.name}
+                          src={design.imageUrl}
+                          alt={design.name}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
                       ) : (
                         <div className="text-center">
                           <div className="text-5xl mb-2">📦</div>
-                          <p className="text-xs text-gray-500 font-semibold">{pkg.name}</p>
+                          <p className="text-xs text-gray-500 font-semibold">{design.name}</p>
                         </div>
                       )}
 
@@ -406,33 +401,22 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
                           </div>
                         </div>
                       )}
-
-                      {/* Included Badge */}
-                      {isIncluded && (
-                        <div className="absolute top-2 right-2 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold px-2 py-1">
-                          Included
-                        </div>
-                      )}
                     </div>
 
                     {/* Content Section */}
                     <div className="p-3 space-y-2">
                       <div>
-                        <p className="font-bold text-sm text-ink line-clamp-2">{pkg.name}</p>
-                        {pkg.description && (
-                          <p className="text-xs text-ink-3 mt-1 line-clamp-2">{pkg.description}</p>
+                        <p className="font-bold text-sm text-ink line-clamp-2">{design.name}</p>
+                        {design.description && (
+                          <p className="text-xs text-ink-3 mt-1 line-clamp-2">{design.description}</p>
                         )}
                       </div>
 
                       {/* Price */}
-                      {pkg.price > 0 ? (
-                        <div>
-                          <p className="text-xs text-ink-3">Add cost</p>
-                          <p className="text-sm font-black text-em">+{formatRupees(pkg.price)}</p>
-                        </div>
-                      ) : (
-                        <p className="text-xs font-semibold text-emerald-600">Free</p>
-                      )}
+                      <div>
+                        <p className="text-xs text-ink-3">Add cost</p>
+                        <p className="text-sm font-black text-em">+{formatRupees(price)}</p>
+                      </div>
                     </div>
                   </motion.button>
                 );
@@ -539,41 +523,8 @@ export function Step2Customize({ packagingOptions, addonOptions, products }: Ste
           />
         </div>
       )}
-
-      {/* Customization Summary */}
-      {(packaging || sleeve || addons.length > 0) && (
-      <div className="rounded-2xl bg-em-50 border-2 border-em-200 p-5 md:p-6 shadow-sm">
-        <div className="space-y-3">
-          {packaging && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-ink-2">Packaging:</span>
-              <span className="font-semibold text-ink">{packaging.name}</span>
-            </div>
-          )}
-          {sleeve && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-ink-2">Branded Sleeve:</span>
-              <span className="font-semibold text-ink">+{formatRupees(60 * packQuantity)}</span>
-            </div>
-          )}
-          {addons.length > 0 && (
-            <>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-ink-2">Add-ons ({addons.length}):</span>
-                <span className="font-semibold text-ink">{formatRupees(addonsTotal * packQuantity)}</span>
-              </div>
-              <ul className="ml-2 space-y-1">
-                {addons.map((a) => (
-                  <li key={a.id} className="text-xs text-ink-2">
-                    • {a.name}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      </div>
-      )}
+      {/* The packaging + add-ons summary now lives in the "Your Gift Pack" panel
+          on the right (GiftPackSummary), so it's not repeated on the page here. */}
     </div>
   );
 }

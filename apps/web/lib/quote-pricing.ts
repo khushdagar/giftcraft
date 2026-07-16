@@ -75,9 +75,10 @@ export function priceQuotePayload(payload: any, fallbackState?: string): QuotePr
     discount: payload?.discount || 0,
     sellerStateCode: SELLER_STATE_CODE,
     buyerStateCode,
-    // Flat 2% payment-processing fee on the amount (no GST-on-fee added).
+    // 2% payment-processing fee + the 18% GST Razorpay charges on it (≈2.36%
+    // effective), passed through to the customer per CLAUDE.md Rule 2.
     razorpayFeePct: 2,
-    razorpayFeeGstPct: 0,
+    razorpayFeeGstPct: 18,
   });
 
   return { pricing, shippingFlat, buyerStateCode, isInterState, packQty };

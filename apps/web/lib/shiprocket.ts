@@ -231,6 +231,56 @@ export interface ShiprocketRate {
   etdDays: number | null;
 }
 
+const PICKUP_POSTCODE = process.env.SHIPROCKET_PICKUP_PINCODE || '110007';
+
+export type ShiprocketServiceability =
+  // At least one courier serves the pincode.
+  | { status: 'serviceable' }
+  // Shiprocket answered but no courier delivers to this pincode.
+  | { status: 'unserviceable' }
+  // Shiprocket couldn't be reached (no credentials, auth/API failure, network).
+  | { status: 'unavailable' };
+
+/**
+ * Real-time serviceability check: does ANY courier deliver from our pickup
+ * location to the given pincode? This is the source of truth for the
+ * "delivery available" badge. The exact weight barely affects serviceability,
+ * so a nominal 0.5 kg parcel is used purely to satisfy Shiprocket's API.
+ *
+ * Distinguishes a genuine "unserviceable" answer from "couldn't reach
+ * Shiprocket", so callers can fall back to zone config only in the latter case.
+ */
+export async function getShiprocketServiceability(params: {
+  deliveryPostcode: string;
+  pickupPostcode?: string;
+}): Promise<ShiprocketServiceability> {
+  try {
+    if (!SHIPROCKET_EMAIL || !SHIPROCKET_PASSWORD) return { status: 'unavailable' };
+    const token = await getShiprocketToken();
+
+    const query = new URLSearchParams({
+      pickup_postcode: params.pickupPostcode || PICKUP_POSTCODE,
+      delivery_postcode: params.deliveryPostcode,
+      weight: '0.5',
+      cod: '0',
+    });
+
+    const response = await fetch(
+      `${SHIPROCKET_BASE_URL}/courier/serviceability/?${query.toString()}`,
+      { method: 'GET', headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!response.ok) return { status: 'unavailable' };
+
+    const data = (await response.json()) as ServiceabilityResponse;
+    const couriers = data.data?.available_courier_companies ?? [];
+    return couriers.length > 0 ? { status: 'serviceable' } : { status: 'unserviceable' };
+  } catch (error) {
+    console.error('Shiprocket serviceability lookup failed:', error);
+    return { status: 'unavailable' };
+  }
+}
+
 /**
  * Real-time shipping rate from Shiprocket's courier serviceability API.
  * Returns the cheapest available courier for the parcel, or null if the route

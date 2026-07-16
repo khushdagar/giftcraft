@@ -274,9 +274,10 @@ function CheckoutContent() {
       discount: payload.discount || 0,
       sellerStateCode: SELLER_STATE_CODE,
       buyerStateCode,
-      // Flat 2% payment-processing fee on the amount (no GST-on-fee added).
+      // 2% payment-processing fee + the 18% GST Razorpay charges on it (≈2.36%
+      // effective), passed through to the customer per CLAUDE.md Rule 2.
       razorpayFeePct: 2,
-      razorpayFeeGstPct: 0,
+      razorpayFeeGstPct: 18,
     });
   }, [payload, billingData.state]);
 
@@ -503,9 +504,10 @@ function CheckoutContent() {
               Review your order, provide billing details, and choose how you'd like to proceed.
             </p>
 
-            {/* items-start keeps the right column its natural height so the pricing
-                panel can stick + scroll on its own instead of stretching. */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+            {/* The right column stretches to the row height (grid default) so the
+                sticky pricing panel inside it has room to travel — with items-start
+                the column would shrink to the panel's height and sticky wouldn't hold. */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
               {/* Left column - Forms */}
               <div className="lg:col-span-2 min-w-0">
                 <OrderSummary

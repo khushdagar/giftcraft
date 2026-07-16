@@ -121,7 +121,7 @@ export function CheckoutSummary({
           <div className="flex items-center justify-between pb-4 border-b border-bdr">
             <div>
               <p className="text-sm text-ink-2">Payment Processing</p>
-              <p className="text-xs text-ink-3 italic">Razorpay 2%</p>
+              <p className="text-xs text-ink-3 italic">Razorpay 2% + 18% GST</p>
             </div>
             <span className="font-black text-ink tabnum">+{formatRupees(pricing.razorpayFee)}</span>
           </div>

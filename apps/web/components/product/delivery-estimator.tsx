@@ -29,7 +29,16 @@ export function DeliveryEstimator() {
       if (!res.ok) {
         throw new Error('Shipping not available for this pincode');
       }
-      return res.json();
+      const data = await res.json();
+      // Real-time serviceability gate (200 response with serviceable:false).
+      if (data.serviceable === false) {
+        throw new Error(
+          data.reason === 'unserviceable'
+            ? "Couriers don't currently deliver to this pincode."
+            : "Delivery isn't available to this pincode yet."
+        );
+      }
+      return data;
     },
     enabled: !!submitted,
   });
@@ -95,7 +104,9 @@ export function DeliveryEstimator() {
           {error && submitted && (
             <div className="mt-2 flex items-center gap-2 rounded-md bg-red-50 p-2">
               <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-              <p className="text-xs text-red-600">Shipping not available for this pincode</p>
+              <p className="text-xs text-red-600">
+                {(error as Error).message || 'Shipping not available for this pincode'}
+              </p>
             </div>
           )}
         </div>

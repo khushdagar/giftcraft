@@ -4,9 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { useBuilderStore } from '@/store/builder';
-import { formatRupees } from '@/lib/utils';
 import { INDIAN_STATES } from '@/lib/constants';
-import { computeOrderShipping, perPackWeightKg, perPackVolumetricKg, ASSEMBLY_QC_DAYS } from '@/lib/shipping';
+import { perPackWeightKg, perPackVolumetricKg, ASSEMBLY_QC_DAYS } from '@/lib/shipping';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -265,6 +264,17 @@ export function Step3Delivery() {
         return;
       }
 
+      // Real-time serviceability gate: the courier network decides availability.
+      if (data.serviceable === false) {
+        setShippingError(
+          data.reason === 'unserviceable'
+            ? "Sorry, couriers don't currently deliver to this pincode."
+            : "Delivery isn't available to this pincode yet."
+        );
+        setShippingZone(null);
+        return;
+      }
+
       setShippingZone(data);
       setPincode(pin);
     } catch (err) {
@@ -353,41 +363,6 @@ export function Step3Delivery() {
     reader.readAsText(file);
   };
 
-  // Shipping charge: prefer the quoted cost from the estimate API (Shiprocket
-  // real-time courier rate, or zone fallback). Recompute locally only as a
-  // safety net before a pincode has been checked.
-  // Billable per-pack weight = greater of dead weight and volumetric weight,
-  // matching how the courier (and the estimate API) actually charges.
-  const perPackKg = Math.max(
-    perPackWeightKg(products.map((p) => ({ weightG: p.weightG, quantity: 1 }))),
-    perPackVolumetricKg(
-      products.map((p) => ({
-        dimensionL: p.dimensionL,
-        dimensionW: p.dimensionW,
-        dimensionH: p.dimensionH,
-        quantity: 1,
-      })),
-    ),
-  );
-  const localCalc = computeOrderShipping({
-    products: products.map((p) => ({
-      weightG: p.weightG,
-      quantity: 1,
-      sellPrice: p.sellPrice,
-      dimensionL: p.dimensionL,
-      dimensionW: p.dimensionW,
-      dimensionH: p.dimensionH,
-    })),
-    zone: shippingZone,
-    packQuantity,
-    deliveryMode,
-  });
-  const totalDeliveryCharge = shippingZone?.shippingCost ?? localCalc.shippingCost;
-  const deliveryRatePerPack = shippingZone?.perPackCost ?? localCalc.perPackCost;
-  // The delivery charge is only known once a pincode has been resolved into a
-  // real courier/zone rate. Until then we show no amount (no default fallback).
-  const hasRate = !!shippingZone;
-  const courierName = shippingZone?.courierName ?? null;
 
   // Live address validation (single-location delivery). Mirrors the Step 4 gate
   // so any problem — e.g. a 5-digit pincode — is shown here, not silently failed.
@@ -613,32 +588,6 @@ export function Step3Delivery() {
           </div>
         </div>
       )}
-
-      {/* Delivery Charge — only shown once a pincode resolves to a live rate */}
-      <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
-        <p className="text-xs font-semibold text-amber-700 mb-1">Delivery Charge</p>
-        {hasRate ? (
-          <>
-            <p className="text-sm font-black text-amber-900 tabnum">
-              {formatRupees(totalDeliveryCharge)}
-              <span className="font-medium text-amber-700">
-                {' '}({(perPackKg * packQuantity).toFixed(2)} kg{courierName ? ` · via ${courierName}` : ''})
-              </span>
-            </p>
-            <p className="text-xs text-amber-600 mt-1">
-              {deliveryMode === 'single'
-                ? `All ${packQuantity} packs delivered to a single location.`
-                : `Each pack ships separately to a different recipient (≈${formatRupees(deliveryRatePerPack)}/pack).`}
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-amber-700">
-            {loadingShipping
-              ? 'Calculating delivery charge…'
-              : 'Enter your delivery pincode to see the courier charge.'}
-          </p>
-        )}
-      </div>
 
       {/* Section D: Individual Recipients CSV Upload */}
       {deliveryMode === 'individual' && (

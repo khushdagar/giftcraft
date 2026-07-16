@@ -128,14 +128,14 @@ export function PricingPanel({
                 className="w-full flex justify-between items-center text-xs text-[#1A1A18]"
                 aria-expanded={gstOpen}
               >
-                <span className="flex items-center gap-1 font-medium">
+                <span className="flex items-center gap-1 text-[#6B6B63]">
                   
                   GST
                   <ChevronDown
                     className={`h-3.5 w-3.5 transition-transform ${gstOpen ? '' : '-rotate-90'}`}
                   />
                 </span>
-                <span className="font-semibold tabular-nums">{formatRupees(gstTotal)}</span>
+                <span className="tabular-nums">{formatRupees(gstTotal)}</span>
               </button>
 
               {gstOpen && (
@@ -166,7 +166,7 @@ export function PricingPanel({
             <span className="text-xs">
               Payment Processing Fee
               <br />
-              <span className="text-[10px] italic">Razorpay 2%</span>
+              <span className="text-[10px] italic">Razorpay 2% + 18% GST</span>
             </span>
             <span className="font-medium tabular-nums text-xs">{formatRupees(pricing.razorpayFee)}</span>
           </div>
