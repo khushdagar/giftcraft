@@ -144,7 +144,7 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
 
   const priceBounds = useMemo(() => {
     const prices = allPacks.map((p) => p.fromPrice).filter((n) => n > 0);
-    return { min: prices.length ? Math.min(...prices) : 0, max: prices.length ? Math.max(...prices) : 10000 };
+    return { min: 0, max: prices.length ? Math.max(...prices) : 10000 };
   }, [allPacks]);
 
   const openCollection = (id: string) => {
@@ -393,28 +393,41 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                       <span>{formatRupees(priceMin ?? priceBounds.min)}</span>
                       <span>{formatRupees(priceMax ?? priceBounds.max)}</span>
                     </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="range"
-                        min={priceBounds.min}
-                        max={priceBounds.max}
-                        value={priceMin ?? priceBounds.min}
-                        onChange={(e) =>
-                          setPriceMin(Math.min(Number(e.target.value), priceMax ?? priceBounds.max))
-                        }
-                        className="w-full accent-em"
-                      />
-                      <input
-                        type="range"
-                        min={priceBounds.min}
-                        max={priceBounds.max}
-                        value={priceMax ?? priceBounds.max}
-                        onChange={(e) =>
-                          setPriceMax(Math.max(Number(e.target.value), priceMin ?? priceBounds.min))
-                        }
-                        className="w-full accent-em"
-                      />
-                    </div>
+                    {(() => {
+                      const rMin = priceBounds.min
+                      const rMax = priceBounds.max
+                      const vMin = priceMin ?? rMin
+                      const vMax = priceMax ?? rMax
+                      const span = Math.max(rMax - rMin, 1)
+                      const leftPct = ((vMin - rMin) / span) * 100
+                      const rightPct = ((vMax - rMin) / span) * 100
+                      const thumb = "appearance-none pointer-events-none absolute inset-0 h-4 w-full bg-transparent focus:outline-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#1A6B4F] [&::-webkit-slider-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#1A6B4F] [&::-moz-range-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-moz-range-thumb]:cursor-pointer"
+                      return (
+                        <div className="relative h-4">
+                          <div className="absolute left-[7px] right-[7px] top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-gray-200">
+                            <div className="absolute inset-y-0 rounded-full bg-[#1A6B4F]" style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }} />
+                          </div>
+                          <input
+                            type="range"
+                            min={rMin}
+                            max={rMax}
+                            value={vMin}
+                            onChange={(e) => setPriceMin(Math.min(Number(e.target.value), vMax))}
+                            className={thumb}
+                            style={{ zIndex: vMin >= rMax ? 4 : 3 }}
+                          />
+                          <input
+                            type="range"
+                            min={rMin}
+                            max={rMax}
+                            value={vMax}
+                            onChange={(e) => setPriceMax(Math.max(Number(e.target.value), vMin))}
+                            className={thumb}
+                            style={{ zIndex: 4 }}
+                          />
+                        </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Collections */}
@@ -573,13 +586,12 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                           <p className="text-xs text-ink-3 mt-0.5">
                             {pack.productCount} product{pack.productCount === 1 ? '' : 's'}
                           </p>
-
                           <div className="mt-3 flex flex-col gap-2">
                             <Link
                               href={checkoutHref(pack)}
                               className="flex w-full items-center justify-center rounded-full bg-em px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-em-600"
                             >
-                              Add to Gift Builder
+                              Add to Pack
                             </Link>
                             <Link
                               href={`/products/${pack.slug}`}

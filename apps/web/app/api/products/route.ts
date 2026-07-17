@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const priceMin = searchParams.get('priceMin') ? Number(searchParams.get('priceMin')) : undefined;
     const priceMax = searchParams.get('priceMax') ? Number(searchParams.get('priceMax')) : undefined;
     const page = Math.max(1, Number(searchParams.get('page') || '1'));
-    const limit = Math.min(100, Number(searchParams.get('limit') || '24'));
+    const limit = Math.min(1000, Number(searchParams.get('limit') || '24'));
     const sort = searchParams.get('sort') || 'featured';
 
     // Packaging/add-on products are managed in their own tables and must never

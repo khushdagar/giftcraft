@@ -148,7 +148,7 @@ export function ProductInfoSection({
           }`}
           size="lg"
         >
-          <Link href={builderHref}>Add to Gift Builder</Link>
+          <Link href={builderHref}>Add to Pack</Link>
         </Button>
         <Button
           asChild
@@ -156,7 +156,7 @@ export function ProductInfoSection({
           className="flex-1 whitespace-nowrap rounded-full border border-bdr px-3 py-3 text-sm sm:text-base font-semibold"
           size="lg"
         >
-          <Link href="/catalog">Get Quick Quote</Link>
+          <Link href="/catalog">Go to Box Planner</Link>
         </Button>
       </div>
 

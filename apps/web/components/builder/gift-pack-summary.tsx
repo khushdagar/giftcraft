@@ -33,9 +33,6 @@ export function GiftPackSummary() {
     pincode,
   } = useBuilderStore();
 
-  // Price of one gift pack (one of each selected product)
-  const perPackPrice = selected.reduce((sum, p) => sum + p.sellPrice, 0);
-
   // Full running total — computed with the SAME pricing engine the final Review
   // step and checkout use (see step-4-review / lib/quote-pricing), so the number
   // shown here matches to the rupee. GST + payment fee are included so nothing
@@ -85,13 +82,30 @@ export function GiftPackSummary() {
   );
 
   // Line-item figures for the breakdown (all × packs, mirroring the engine).
+  //
+  // Every line here is quoted PRE-TAX, with all GST collected into a single line
+  // of its own further down (classic invoice form). The two must stay in step:
+  // fold GST into these lines AND keep the GST row and the same tax is counted
+  // twice, both visually and in the sum.
+  //
+  // Build Your Box uses the same split — its "Products (before GST)" figure is
+  // this page's per-pack products price, so the two pages reconcile on the
+  // pre-tax number.
   const productsTotal = pricing.subtotal;
   const packagingTotal = pricing.packaging;
   const addonsTotal = pricing.addons;
-  const shippingTotal = pricing.shipping;
+  // Pre-tax shipping, NOT pricing.shipping. The courier rate is quoted
+  // GST-inclusive, so showing it raw here while the GST line below also carries
+  // shipping's tax counts that tax twice and leaves the rows short of the grand
+  // total by exactly the shipping GST. The customer still pays the full rate:
+  // this line + its share of the GST line == the quoted courier charge.
+  const shippingTotal = pricing.shippingTaxable;
   const gstTotal = pricing.cgst + pricing.sgst + pricing.igst;
   const isInterState = pricing.igst > 0;
   const discountTotal = pricing.discount;
+
+  // Price of one gift pack, pre-tax (one of each selected product).
+  const perPackPrice = selected.reduce((sum, p) => sum + p.sellPrice, 0);
 
   // Box size is decided by the number of products in the pack (Small/Medium/Large).
   const boxSize = useMemo(() => packagingSizeForCount(selected.length), [selected.length]);
@@ -204,6 +218,9 @@ export function GiftPackSummary() {
                     <p className="text-xs font-semibold text-ink line-clamp-1">
                       {product.name}
                     </p>
+                    {/* Pre-tax, matching the "(₹605 + 5% GST)" base shown for the
+                        same item on Build Your Box. GST for the whole pack is in
+                        its own line in the total below. */}
                     <p className="text-xs text-gray-500 mt-0.5">
                       {formatRupees(product.sellPrice)} each
                     </p>
@@ -271,6 +288,8 @@ export function GiftPackSummary() {
             <div className="rounded-xl bg-dark text-white p-4 space-y-3">
               {/* Line-item breakdown */}
               <div className="space-y-1.5">
+                {/* (packs × per-box pre-tax) — matches the "Products (before
+                    GST)" figure on Build Your Box. */}
                 <div className="flex items-center justify-between text-xs text-white/70">
                   <span>
                     Products{' '}
@@ -313,6 +332,8 @@ export function GiftPackSummary() {
                   </div>
                 )}
 
+                {/* All GST, in one line — products (per their own HSN rates),
+                    packaging/add-ons and shipping combined. */}
                 {gstTotal > 0 && (
                   <div className="flex items-center justify-between text-xs text-white/70">
                     <span>GST {isInterState ? '(IGST)' : '(CGST + SGST)'}</span>

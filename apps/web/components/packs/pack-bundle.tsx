@@ -188,7 +188,7 @@ export function PackBundle({ pack }: PackBundleProps) {
             href={checkoutHref}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-em px-6 py-3.5 text-base font-bold text-white transition hover:bg-em-600 hover:-translate-y-0.5"
           >
-            Add to Gift Builder <ArrowRight className="h-4 w-4" />
+            Add to Pack <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
             href={`/packs/${pack.collectionSlug}`}

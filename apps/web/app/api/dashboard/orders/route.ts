@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
             select: {
               id: true,
               quantity: true,
+              unitPrice: true,
               product: {
                 select: {
                   name: true,
@@ -45,7 +46,6 @@ export async function GET(req: NextRequest) {
                 },
               },
             },
-            take: 1,
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -60,19 +60,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        orders: orders.map((o: any) => {
-          const firstItem = o.items[0];
-          return {
-            id: o.id,
-            orderNumber: o.orderNumber,
-            status: o.status,
-            grandTotal: Number(o.grandTotal),
-            createdAt: o.createdAt.toISOString(),
-            itemCount: o.packQuantity,
-            productName: firstItem?.product?.name || 'Product',
-            productImage: firstItem?.product?.images?.[0]?.url || null,
-          };
-        }),
+        orders: orders.map((o: any) => ({
+          id: o.id,
+          orderNumber: o.orderNumber,
+          status: o.status,
+          grandTotal: Number(o.grandTotal),
+          createdAt: o.createdAt.toISOString(),
+          itemCount: o.packQuantity,
+          items: o.items.map((it: any) => ({
+            id: it.id,
+            name: it.product?.name || 'Product',
+            quantity: it.quantity,
+            unitPrice: Number(it.unitPrice),
+            image: it.product?.images?.[0]?.url || null,
+          })),
+        })),
         total,
         page,
         limit,

@@ -40,8 +40,13 @@ interface Order {
   grandTotal: number;
   createdAt: string;
   itemCount: number;
-  productName?: string;
-  productImage?: string | null;
+  items: {
+    id: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    image: string | null;
+  }[];
 }
 
 export default function OrdersPage() {
@@ -124,22 +129,46 @@ export default function OrdersPage() {
               href={`/dashboard/orders/${o.id}`}
               className="flex items-center gap-4 border-b border-bdr px-5 py-4 text-sm transition last:border-0 hover:bg-elevated"
             >
-              {/* Product Image */}
-              {o.productImage ? (
-                <div className="h-14 w-14 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                  <img src={o.productImage} alt={o.productName} className="h-full w-full object-cover" />
-                </div>
-              ) : (
-                <div className="h-14 w-14 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs text-gray-400">No image</span>
-                </div>
-              )}
+              {/* Product collage — up to 4 thumbnails, last one counts the rest */}
+              <div className="grid h-14 w-14 flex-shrink-0 grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-lg bg-gray-100">
+                {(o.items?.length ?? 0) > 0 ? (
+                  o.items.slice(0, 4).map((it, i, shown) => {
+                    const hiddenCount = o.items.length - shown.length;
+                    const showOverflow = hiddenCount > 0 && i === shown.length - 1;
+                    const spanClass =
+                      shown.length === 1 ? 'col-span-2 row-span-2' : shown.length === 3 && i === 0 ? 'row-span-2' : '';
+                    return (
+                      <div key={it.id} className={`relative bg-gray-100 ${spanClass}`}>
+                        {it.image ? (
+                          <img src={it.image} alt={it.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-[8px] text-gray-400">—</div>
+                        )}
+                        {showOverflow && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-[10px] font-medium text-white">
+                            +{hiddenCount + 1}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="col-span-2 row-span-2 flex items-center justify-center text-xs text-gray-400">No image</div>
+                )}
+              </div>
 
               {/* Order Info */}
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{o.productName || 'Product'}</p>
-                <p className="mt-0.5 text-xs text-ink-3">Pack × {o.itemCount || '?'}</p>
-                <p className="mt-0.5 text-xs text-ink-3 tabnum">#{o.orderNumber}</p>
+                <ul className="space-y-0.5">
+                  {o.items?.map((it) => (
+                    <li key={it.id} className="flex items-baseline gap-2 text-xs text-ink-3">
+                      <span className="truncate">{it.name}</span>
+                      <span className="flex-shrink-0 tabnum">×{it.quantity}</span>
+                      <span className="flex-shrink-0 tabnum">({formatRupees(Number(it.unitPrice))})</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-0.5 text-xs text-ink-3 tabnum">Pack × {o.itemCount || '?'} · #{o.orderNumber}</p>
               </div>
 
               {/* Status and Price */}

@@ -105,7 +105,7 @@ export function Navbar() {
             </div>
           </li>
 
-          <li><Link href="/planner" className="text-sm font-medium text-ink-2 hover:text-ink">Budget Planner</Link></li>
+          <li><Link href="/packs" className="text-sm font-medium text-ink-2 hover:text-ink">Curated Packs</Link></li>
           <li><Link href="/box" className="text-sm font-medium text-ink-2 hover:text-ink">Build Your Box</Link></li>
           <li><Link href="/blog" className="text-sm font-medium text-ink-2 hover:text-ink">Blog</Link></li>
           <li><Link href="/contact" className="text-sm font-medium text-ink-2 hover:text-ink">Contact</Link></li>

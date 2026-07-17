@@ -338,9 +338,9 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
           {/* Auto-picked size — the customer chooses only the design; the size is
               set from the pack and locked. Shown once, here in the top-right. */}
           <div className="flex items-center gap-3">
-            {!packaging && (
+            {/* {!packaging && (
               <p className="text-xs font-semibold text-red-600">Required to continue</p>
-            )}
+            )} */}
             <span
               title={`Box size ${autoSize}, set automatically from your pack`}
               className="flex-shrink-0 rounded-full bg-sky-600 text-white text-[10px] font-black px-2.5 py-1 tracking-wide"
