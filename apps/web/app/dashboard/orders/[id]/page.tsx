@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ChevronLeft, FileDown, Link as LinkIcon, Check, X } from 'lucide-react';
 import { isImageUrl } from '@/lib/mockup-url';
+import { invoiceLabel } from '@/lib/invoice-status';
 import { PayBalanceButton } from './components/pay-balance-button';
 
 function getStatusLabel(status: string): string {
@@ -522,7 +523,11 @@ export default async function OrderDetailPage({
               className="mt-2 flex items-center justify-center gap-2 w-full px-4 py-2 rounded-md border border-em text-em hover:bg-em-50 transition text-sm font-normal"
             >
               <FileDown className="w-4 h-4" />
-              Download {order.paidAt ? 'Tax Invoice' : 'Proforma Invoice'}
+              Download{' '}
+              {invoiceLabel(
+                Number((order.billingJson as any)?.amountPaid ?? 0),
+                Number(order.grandTotal)
+              )}
             </a>
           </div>
 

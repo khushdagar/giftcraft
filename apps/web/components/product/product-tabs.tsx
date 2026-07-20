@@ -40,7 +40,7 @@ export function ProductTabs({
   };
 
   return (
-    <div className="mt-12 border-t border-bdr pt-8 pb-16">
+    <div className="mt-6 border-t border-bdr pt-8 pb-16">
       {/* Tab navigation */}
       <div className="flex gap-6 border-b border-bdr overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
         {TABS.map((tab) => (

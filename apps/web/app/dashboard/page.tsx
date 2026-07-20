@@ -126,6 +126,7 @@ export default async function DashboardPage() {
           id: true,
           productId: true,
           quantity: true,
+          unitPrice: true,
           product: {
             select: {
               name: true,
@@ -140,7 +141,6 @@ export default async function DashboardPage() {
             },
           },
         },
-        take: 1,
       },
     },
     orderBy: { createdAt: "desc" },
@@ -209,28 +209,52 @@ export default async function DashboardPage() {
         <div className="divide-y divide-bdr">
           {recentOrders.length > 0 ? (
             recentOrders.map((o: any) => {
-              const firstItem = o.items[0];
-              const productImage = firstItem?.product?.images?.[0]?.url;
-              const productName = firstItem?.product?.name;
+              const items = o.items ?? [];
+              const thumbs = items.slice(0, 4);
+              const hiddenCount = items.length - thumbs.length;
 
               return (
                 <Link key={o.id} href={`/dashboard/orders/${o.id}`} className="flex items-center gap-4 p-5 transition hover:bg-elevated">
-                  {/* Product Image */}
-                  {productImage ? (
-                    <div className="h-16 w-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
-                      <img src={productImage} alt={productName} className="h-full w-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="h-16 w-16 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs text-gray-400">No image</span>
-                    </div>
-                  )}
+                  {/* Product collage — up to 4 thumbnails, last one counts the rest */}
+                  <div className="grid h-16 w-16 flex-shrink-0 grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-lg bg-gray-100">
+                    {thumbs.length > 0 ? (
+                      thumbs.map((it: any, i: number) => {
+                        const url = it.product?.images?.[0]?.url;
+                        const showOverflow = hiddenCount > 0 && i === thumbs.length - 1;
+                        const spanClass =
+                          thumbs.length === 1 ? 'col-span-2 row-span-2' : thumbs.length === 3 && i === 0 ? 'row-span-2' : '';
+                        return (
+                          <div key={it.id} className={`relative bg-gray-100 ${spanClass}`}>
+                            {url ? (
+                              <img src={url} alt={it.product?.name ?? ''} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[8px] text-gray-400">—</div>
+                            )}
+                            {showOverflow && (
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/55 text-[10px] font-medium text-white">
+                                +{hiddenCount + 1}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="col-span-2 row-span-2 flex items-center justify-center text-xs text-gray-400">No image</div>
+                    )}
+                  </div>
 
                   {/* Order Details */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{productName || 'Product'}</p>
-                    <p className="mt-0.5 text-xs text-ink-3">Pack × {o.packQuantity}</p>
-                    <p className="mt-0.5 text-xs text-ink-3">#{o.orderNumber}</p>
+                    <ul className="space-y-0.5">
+                      {items.map((it: any) => (
+                        <li key={it.id} className="flex items-baseline gap-2 text-xs text-ink-3">
+                          <span className="truncate">{it.product?.name ?? 'Product'}</span>
+                          <span className="flex-shrink-0 tabnum">×{it.quantity}</span>
+                          <span className="flex-shrink-0 tabnum">({formatRupees(Number(it.unitPrice))})</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-0.5 text-xs text-ink-3">Pack × {o.packQuantity} · #{o.orderNumber}</p>
                   </div>
 
                   {/* Status and Price */}

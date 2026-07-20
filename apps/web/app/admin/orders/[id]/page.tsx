@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { formatRupees } from '@/lib/utils';
+import { invoiceLabel } from '@/lib/invoice-status';
 import Link from 'next/link';
 import { OrderStatusUpdater } from './components/order-status-updater';
 import { MockupPanel } from './components/mockup-panel';
@@ -362,22 +363,32 @@ export default async function AdminOrderDetailPage({
               className="flex items-center gap-2 px-4 py-2 rounded-md border border-bdr text-em hover:bg-em-50 transition text-sm font-normal"
             >
               <FileDown className="w-4 h-4" />
-              {order.paidAt ? 'Tax Invoice' : 'Proforma Invoice'}
+              {invoiceLabel(
+                Number((order.billingJson as any)?.amountPaid ?? 0),
+                Number(order.grandTotal)
+              )}
             </a>
-            <Link
+            {/* Plain anchors, not <Link>: these point at API routes that stream a
+                PDF. Link would try to client-side navigate to them as if they
+                were pages. */}
+            <a
               href={`/api/admin/orders/${order.id}/vendor-po`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-2 px-4 py-2 rounded-md border border-bdr text-em hover:bg-em-50 transition text-sm font-normal"
             >
               <FileDown className="w-4 h-4" />
               Vendor PO
-            </Link>
-            <Link
+            </a>
+            <a
               href={`/api/admin/orders/${order.id}/spec-sheet`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-2 px-4 py-2 rounded-md border border-bdr text-em hover:bg-em-50 transition text-sm font-normal"
             >
               <FileDown className="w-4 h-4" />
               Spec Sheet
-            </Link>
+            </a>
           </div>
 
           {/* Payment Status Card */}

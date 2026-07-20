@@ -264,8 +264,8 @@ function CheckoutContent() {
       products: items.map((p) => ({
         sellPrice: Number(p.sellPrice),
         quantity: 1, // one unit per pack; packQuantity is the multiplier
-        hsnCode: p.hsnCode || '4820',
-        gstRate: p.gstRate || 18,
+        hsnCode: p.hsnCode ?? '4820',
+        gstRate: p.gstRate ?? 18,
       })),
       packagingPerUnit: Number(payload.packaging?.price) || 0,
       addonsPerUnit,
@@ -562,7 +562,7 @@ function CheckoutContent() {
         <div className="cw">
           <p className="text-sm mb-2 font-serif italic text-opacity-40">GiftCraft</p>
           <div className="flex justify-between text-xs text-[#6B6B63]">
-            <span>© 2026 Arts Shala. All Rights Reserved.</span>
+            <span>© 2026 GiftCraft. All Rights Reserved.</span>
             <span>Made with ♥ in Delhi</span>
           </div>
         </div>

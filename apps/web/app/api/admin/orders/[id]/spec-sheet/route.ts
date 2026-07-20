@@ -27,6 +27,7 @@ export async function GET(
         id: true,
         orderNumber: true,
         deliveryDate: true,
+        billingJson: true,
         company: {
           select: { name: true },
         },
@@ -49,11 +50,14 @@ export async function GET(
       );
     }
 
-    // Generate PDF
+    // Self-serve orders have no Company row, so fall back to the billing details
+    // the customer entered at checkout — same order of preference as the invoice.
+    const billing = (order.billingJson as any) || {};
     const pdfElement = React.createElement(SpecSheetPDF, {
-      order: order as any,
-    }) as any;
-    const buffer = await renderToBuffer(pdfElement);
+      order,
+      clientName: billing.companyName || billing.name || undefined,
+    });
+    const buffer = await renderToBuffer(pdfElement as any);
 
     // Return PDF
     return new NextResponse(Buffer.from(buffer), {

@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
+import { invoiceLabel } from '@/lib/invoice-status';
 
 const resend = new Resend(process.env.RESEND_API_KEY || '');
 
@@ -126,6 +127,8 @@ const FONT = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial
 const inr = (n: number) =>
   `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 const esc = (s: string) =>
   String(s ?? '')
     .replace(/&/g, '&amp;')
@@ -186,32 +189,30 @@ export interface PriceBreakdown {
 }
 
 /**
- * Render the full price breakdown — identical line items and ordering to the
- * checkout confirmation ("thank you") page so the email matches what the
- * customer saw on screen.
+ * Render the price summary: taxable value, GST, total, and — when an advance has
+ * been taken — what has been paid against it.
+ *
+ * Deliberately NOT itemised. Packaging, add-ons, shipping and the gateway fee
+ * are all in the attached invoice PDF, which is the GST document of record; the
+ * email only has to answer "what do I owe". Keeping the itemisation in one place
+ * also means there is only one thing to keep correct.
  */
 function priceBreakdownCard(
   amounts: PriceBreakdown,
-  packQuantity: number,
   opts?: { advancePaid?: number; balanceDue?: number; paymentId?: string }
 ): string {
-  // "Subtotal" on the confirmation page bundles items + packaging + add-ons.
-  const itemsSubtotal = amounts.subtotal + amounts.packaging + amounts.addons;
-  const gst = amounts.cgst + amounts.sgst + amounts.igst;
-  const perPack = packQuantity > 0 ? amounts.grandTotal / packQuantity : 0;
+  // The gateway fee is stored GST-INCLUSIVE (fee base + 18% on the fee) and its
+  // tax is not part of cgst/sgst/igst, so split it out before totalling —
+  // otherwise the GST line under-reports and the three rows stop adding up.
+  const gatewayGst = round2(amounts.razorpayFee - amounts.razorpayFee / 1.18);
+  const gst = round2(amounts.cgst + amounts.sgst + amounts.igst + gatewayGst);
+  // Derive the taxable value from the total rather than re-adding the parts:
+  // exact by construction, so subtotal + GST always lands on the grand total
+  // even if a discount or a new charge is introduced upstream.
+  const taxable = round2(amounts.grandTotal - gst);
 
-  let rows = '';
-  if (amounts.packaging > 0) rows += row('Packaging', inr(amounts.packaging));
-  if (amounts.addons > 0) rows += row('Add-ons', inr(amounts.addons));
-  rows += row('Subtotal (before shipping, GST)', inr(itemsSubtotal), true);
-  // The courier rate is GST-inclusive and `gst` already carries the tax hidden
-  // inside it, so list shipping at its taxable value (amount ÷ 1.18) — showing
-  // the inclusive amount would count the same rupees twice down the column.
-  const shippingTaxable = Math.round((amounts.shipping / 1.18) * 100) / 100;
-  rows += row('Shipping (HSN 996812)', amounts.shipping > 0 ? inr(shippingTaxable) : 'FREE');
+  let rows = row('Subtotal (taxable value)', inr(taxable));
   if (gst > 0) rows += row('GST', inr(gst));
-  if (amounts.razorpayFee > 0)
-    rows += row('Payment Processing Fee (Razorpay 2% + 18% GST)', inr(amounts.razorpayFee));
 
   // Divider before the grand total.
   rows += `<tr><td colspan="2" style="padding:0;"><div style="border-top:2px solid ${COLORS.border};margin:8px 0 2px;"></div></td></tr>`;
@@ -226,9 +227,7 @@ function priceBreakdownCard(
   if (opts?.paymentId)
     rows += row('Payment ID', `<span style="font-family:monospace;font-size:12px;">${esc(opts.paymentId)}</span>`);
 
-  const perPackLine = `<p style="margin:-10px 0 20px;text-align:right;font-size:12px;font-style:italic;font-weight:700;color:${COLORS.emerald};">${inr(perPack)} per gift pack</p>`;
-
-  return card(rows) + perPackLine;
+  return card(rows);
 }
 
 /**
@@ -270,7 +269,7 @@ function renderEmail(opts: {
         <!-- Footer -->
         <tr><td style="padding:22px 32px;background-color:${COLORS.surface};border-top:1px solid ${COLORS.border};">
           ${footerNote ? `<p style="margin:0 0 12px;font-size:12px;line-height:1.5;color:${COLORS.faint};">${footerNote}</p>` : ''}
-          <p style="margin:0;font-size:13px;font-weight:700;color:#52525B;">GiftCraft by Arts Shala</p>
+          <p style="margin:0;font-size:13px;font-weight:700;color:#52525B;">GiftCraft</p>
           <p style="margin:4px 0 0;font-size:12px;color:${COLORS.faint};">Delhi, India &middot; <a href="${APP_URL}" style="color:${COLORS.navy};text-decoration:none;">giftcraft.in</a></p>
         </td></tr>
       </table>
@@ -399,19 +398,18 @@ export async function sendPaymentSuccessEmail(options: {
   paymentId: string;
   isAdvance: boolean;
   grandTotal: number;
-  // Optional: full price breakdown + invoice attachment (passed at order placement).
+  // Optional: price summary + invoice attachment (passed at order placement).
   amounts?: PriceBreakdown;
-  packQuantity?: number;
   attachments?: EmailAttachment[];
 }) {
   const balance = Math.max(0, options.grandTotal - options.amountPaid);
   const orderUrl = `${APP_URL}/dashboard/orders/${options.orderId}`;
 
-  // Prefer the full breakdown (matches the thank-you page); fall back to a short
-  // payment summary when the breakdown isn't available (e.g. balance payments).
+  // Prefer the priced summary; fall back to a short payment summary when the
+  // amounts aren't available (e.g. balance payments).
   const summary =
-    options.amounts && options.packQuantity != null
-      ? priceBreakdownCard(options.amounts, options.packQuantity, {
+    options.amounts
+      ? priceBreakdownCard(options.amounts, {
           advancePaid: options.amountPaid,
           balanceDue: options.isAdvance ? balance : 0,
           paymentId: options.paymentId,
@@ -429,7 +427,9 @@ export async function sendPaymentSuccessEmail(options: {
     summary +
     p('Our design team will now prepare your branded mockups for approval.') +
     (options.attachments?.length
-      ? p(`Your proforma invoice is attached to this email as a PDF. 📄`)
+      ? p(
+          `Your ${invoiceLabel(options.amountPaid, options.grandTotal).toLowerCase()} — with the full item-by-item breakdown, HSN codes and GST — is attached to this email as a PDF. 📄`
+        )
       : '') +
     button('View Your Order', orderUrl, COLORS.emerald);
 
@@ -681,10 +681,12 @@ export async function sendOrderConfirmationEmail(options: {
     p(`Hi ${esc(options.customerName)},`) +
     p(`We've received your order <strong>${esc(options.orderNumber)}</strong> for ${options.packQuantity} gift packs and our team is getting started. 🎉`) +
     itemsCard +
-    priceBreakdownCard(options.amounts, options.packQuantity) +
+    priceBreakdownCard(options.amounts) +
     p("Our design team will prepare your branded mockups next. We'll email you the moment they're ready for approval.") +
     (options.attachments?.length
-      ? p(`Your proforma invoice is attached to this email as a PDF. 📄`)
+      ? p(
+          'Your proforma invoice — with the full item-by-item breakdown, HSN codes and GST — is attached to this email as a PDF. 📄'
+        )
       : '') +
     button('View Your Order', orderUrl, COLORS.emerald);
 

@@ -1,10 +1,21 @@
 import { computePricing } from '@giftcraft/pricing';
 import type { PricingBreakdown } from '@giftcraft/types';
+import { prisma } from '@/lib/prisma';
 import { computeOrderShipping } from '@/lib/shipping';
 import { resolveBuyerStateCode } from '@/lib/pincode-to-state';
 import { SELLER_STATE_CODE } from '@/lib/constants';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Last-resort HSN when a product has no ProductHsn row: printed paper goods. */
+const DEFAULT_HSN_CODE = '4820';
+const DEFAULT_GST_RATE = 18;
+
+/** A product's tax identity, resolved from the database. */
+export interface ResolvedHsn {
+  hsnCode: string;
+  gstRate: number;
+}
 
 export interface QuotePricingResult {
   pricing: PricingBreakdown;
@@ -12,6 +23,33 @@ export interface QuotePricingResult {
   buyerStateCode: string;
   isInterState: boolean;
   packQty: number;
+  /** Tax identity per productId — persisted onto OrderItem as a snapshot. */
+  hsnByProductId: Map<string, ResolvedHsn>;
+}
+
+/**
+ * Resolve each product's HSN code and GST rate from the ProductHsn table.
+ *
+ * The quote payload is client-supplied builder state and has never carried
+ * these fields (the catalog API exposes HSN as a nested `hsn.hsn.code`
+ * relation, not a flat `hsnCode`), so trusting it silently taxed every product
+ * at the 18% default — wrong for the many products on 5%/12% HSNs. The
+ * database is the only source of truth for tax.
+ */
+export async function resolveProductHsn(
+  productIds: string[]
+): Promise<Map<string, ResolvedHsn>> {
+  const ids = [...new Set(productIds.filter(Boolean))];
+  if (ids.length === 0) return new Map();
+
+  const rows = await prisma.productHsn.findMany({
+    where: { productId: { in: ids } },
+    include: { hsn: { select: { code: true } } },
+  });
+
+  return new Map(
+    rows.map((r) => [r.productId, { hsnCode: r.hsn.code, gstRate: Number(r.gstRate) }])
+  );
 }
 
 /**
@@ -23,9 +61,15 @@ export interface QuotePricingResult {
  * `quantity = packQuantity`, which double-counted the pack quantity. We always
  * price with one unit per pack (packQuantity is the multiplier).
  */
-export function priceQuotePayload(payload: any, fallbackState?: string): QuotePricingResult {
+export async function priceQuotePayload(
+  payload: any,
+  fallbackState?: string
+): Promise<QuotePricingResult> {
   const products = payload?.products || [];
   const packQty = payload?.packQuantity || 1;
+
+  // Tax rates come from the DB, never from the payload.
+  const hsnByProductId = await resolveProductHsn(products.map((p: any) => p.id));
 
   const orderDeliveryMode: 'single' | 'individual' =
     (payload?.deliveryMode || 'single') === 'individual' ? 'individual' : 'single';
@@ -62,12 +106,15 @@ export function priceQuotePayload(payload: any, fallbackState?: string): QuotePr
     (payload?.sleeve ? 60 : 0);
 
   const pricing = computePricing({
-    products: products.map((p: any) => ({
-      sellPrice: Number(p.sellPrice),
-      quantity: 1,
-      hsnCode: p.hsnCode || '4820',
-      gstRate: p.gstRate || 18,
-    })),
+    products: products.map((p: any) => {
+      const resolved = hsnByProductId.get(p.id);
+      return {
+        sellPrice: Number(p.sellPrice),
+        quantity: 1,
+        hsnCode: resolved?.hsnCode ?? DEFAULT_HSN_CODE,
+        gstRate: resolved?.gstRate ?? DEFAULT_GST_RATE,
+      };
+    }),
     packagingPerUnit: Number(payload?.packaging?.price) || 0,
     addonsPerUnit,
     packQuantity: packQty,
@@ -81,7 +128,7 @@ export function priceQuotePayload(payload: any, fallbackState?: string): QuotePr
     razorpayFeeGstPct: 18,
   });
 
-  return { pricing, shippingFlat, buyerStateCode, isInterState, packQty };
+  return { pricing, shippingFlat, buyerStateCode, isInterState, packQty, hsnByProductId };
 }
 
 /** The advance payment due for the price-lock path (10% of the grand total). */

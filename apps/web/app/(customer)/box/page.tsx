@@ -8,6 +8,14 @@ import { useSession } from 'next-auth/react';
 import { Search, Plus, Check, X } from 'lucide-react';
 import { useBoxStore, type BoxProduct } from '@/store/box';
 import { useBuilderStore } from '@/store/builder';
+import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
+
+interface ApiPackaging {
+  id: string;
+  name: string;
+  price: number;
+  sizePrices?: Record<string, number> | null;
+}
 
 interface ApiProduct {
   id: string;
@@ -29,8 +37,33 @@ const QUICK_BUDGETS = [500, 1000, 2500, 5000];
 const MIN_BOX_QTY = 25;
 const QUICK_QTYS = [25, 50, 100, 250];
 
+// The budget on this page is GST-INCLUSIVE: the customer enters what they want
+// to spend per box tax-in, and every product consumes its price PLUS its own
+// GST. GST is per-product (driven by its HSN code), so the budget can't simply
+// be scaled by one blended rate — tax is added item by item as the box fills.
+// Products with no HSN mapping fall back to 18%, matching the builder.
+const DEFAULT_GST_RATE = 18;
+
+// Payment-processing fee passed through to the customer (CLAUDE.md Rule 2):
+// Razorpay's 2% plus the 18% GST Razorpay charges on that fee ≈ 2.36% effective.
+const RAZORPAY_FEE_PCT = 2;
+const RAZORPAY_FEE_GST_PCT = 18;
+const EFFECTIVE_FEE_PCT = RAZORPAY_FEE_PCT * (1 + RAZORPAY_FEE_GST_PCT / 100);
+
+// Packaging + add-ons are taxed at a flat 18% (HSN 4819) by the pricing engine.
+const PACKAGING_GST_RATE = 18;
+
 function inr(n: number) {
   return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+
+/**
+ * What the customer actually pays for one unit: the sell price plus that
+ * product's own GST. This is the number the budget is measured against, so the
+ * figure on the card is the figure that comes off the budget bar.
+ */
+function gstInclusive(sellPrice: number, gstRate?: number | null): number {
+  return sellPrice * (1 + (gstRate ?? DEFAULT_GST_RATE) / 100);
 }
 
 // Per-unit price at the tier matching the chosen pack quantity (higher volume →
@@ -86,11 +119,17 @@ export default function BuildYourBoxPage() {
 
   const seededRef = useRef(false);
 
-  // Per-box subtotal at the current volume tier (re-prices live when qty changes).
-  const subtotal = useMemo(
-    () => boxProducts.reduce((sum, p) => sum + tierPriceFor(p.priceTiers, packQuantity), 0),
-    [boxProducts, packQuantity]
-  );
+  // Per-box product cost at the current volume tier (re-prices live when qty
+  // changes), split so the breakdown can show the customer exactly how their
+  // tax-inclusive total is built: base price + each product's own GST.
+  const { subtotalExGst, productsGst, subtotal } = useMemo(() => {
+    const ex = boxProducts.reduce((sum, p) => sum + tierPriceFor(p.priceTiers, packQuantity), 0);
+    const inc = boxProducts.reduce(
+      (sum, p) => sum + gstInclusive(tierPriceFor(p.priceTiers, packQuantity), p.gstRate),
+      0
+    );
+    return { subtotalExGst: ex, productsGst: inc - ex, subtotal: inc };
+  }, [boxProducts, packQuantity]);
 
   // Budget is edited inline in the tracker; keep a local string for the custom field.
   const [budgetInput, setBudgetInput] = useState('');
@@ -132,10 +171,38 @@ export default function BuildYourBoxPage() {
   const { data: products = [], isLoading: productsLoading } = useQuery<ApiProduct[]>({
     queryKey: ['box', 'products'],
     queryFn: async () => {
-      const res = await fetch('/api/products?limit=300');
-      if (!res.ok) throw new Error('Failed to load products');
-      const data = await res.json();
-      return data.products || [];
+      // /api/products clamps `limit` to 100 per page, so one request can never
+      // return the whole catalogue however large a limit we ask for — asking for
+      // 300 silently returned the first 100 and hid the rest. Page through until
+      // we have them all: this picker must offer every product, since a hidden
+      // one simply cannot be added to a box. (Packaging and add-ons are already
+      // excluded server-side via getHiddenCategoryIds.)
+      const PAGE_SIZE = 100;
+      const all: ApiProduct[] = [];
+      for (let page = 1; ; page++) {
+        const res = await fetch(`/api/products?limit=${PAGE_SIZE}&page=${page}`);
+        if (!res.ok) throw new Error('Failed to load products');
+        const data = await res.json();
+        const batch: ApiProduct[] = data.products || [];
+        all.push(...batch);
+        // Stop on a short/empty page, or once we've collected the reported total.
+        const total = Number(data.total);
+        if (batch.length < PAGE_SIZE || (Number.isFinite(total) && all.length >= total)) break;
+      }
+      return all;
+    },
+    enabled: budget > 0,
+  });
+
+  // Packaging designs, used ONLY to estimate the final per-box cost. The customer
+  // picks the actual design later in the builder, so we quote the cheapest design
+  // at the size this box needs ("from ₹X").
+  const { data: packagingOptions = [] } = useQuery<ApiPackaging[]>({
+    queryKey: ['box', 'packaging'],
+    queryFn: async () => {
+      const res = await fetch('/api/packaging');
+      if (!res.ok) throw new Error('Failed to load packaging');
+      return res.json();
     },
     enabled: budget > 0,
   });
@@ -191,9 +258,26 @@ export default function BuildYourBoxPage() {
   }, [products]);
 
   const inBoxIds = useMemo(() => new Set(boxProducts.map((p) => p.id)), [boxProducts]);
+  // Budget, spend and remaining are all GST-inclusive — same basis throughout.
   const remaining = budget - subtotal;
   const isExceeded = budget > 0 && subtotal > budget;
   const percentage = budget > 0 ? Math.min((subtotal / budget) * 100, 100) : 0;
+
+  // ── Estimated final per-box cost ────────────────────────────────────────────
+  // The budget bar above tracks products + their GST, because that's all this
+  // page decides. The builder then adds packaging and the payment fee, so we
+  // surface that here rather than letting it surprise the customer at checkout.
+  // Box size is auto-picked from the product count, so packaging is only an
+  // estimate until a design is chosen; shipping is excluded entirely (no
+  // delivery pincode is known at this point).
+  const boxSize = useMemo(() => packagingSizeForCount(boxProducts.length), [boxProducts.length]);
+  const packagingFrom = useMemo(() => {
+    if (boxProducts.length === 0 || packagingOptions.length === 0) return 0;
+    return Math.min(...packagingOptions.map((d) => priceForSize(d, boxSize)));
+  }, [packagingOptions, boxSize, boxProducts.length]);
+  const packagingIncGst = gstInclusive(packagingFrom, PACKAGING_GST_RATE);
+  const paymentFee = (subtotal + packagingIncGst) * (EFFECTIVE_FEE_PCT / 100);
+  const estFinalPerBox = subtotal + packagingIncGst + paymentFee;
 
   // The box quantity can never drop below 25 (corporate floor) or below the
   // highest MOQ among the products already in the box.
@@ -215,7 +299,9 @@ export default function BuildYourBoxPage() {
         return false;
       }
       if (fitOnly && !inBoxIds.has(p.id)) {
-        const price = tierPriceFor(p.priceTiers, packQuantity);
+        // Compare tax-in against a tax-in budget — an item only "fits" if it AND
+        // its GST fit in what's left.
+        const price = gstInclusive(tierPriceFor(p.priceTiers, packQuantity), p.hsn?.gstRate);
         const moqOk = (p.moq ?? MIN_BOX_QTY) <= packQuantity;
         if (!moqOk || price > remaining) return false;
       }
@@ -297,10 +383,18 @@ export default function BuildYourBoxPage() {
               <div className="bg-white rounded-md border-2 border-amber-200 p-4">
                 <h3 className="text-sm font-bold text-ink mb-3">Set your budget</h3>
 
-                {/* Per-box budget */}
-                <label className="block text-xs uppercase font-semibold text-ink-3 mb-2">
+                {/* Per-box budget — stated as GST-inclusive up front, so the
+                    number the customer types is the number they think in. */}
+                <label className="block text-xs uppercase font-semibold text-ink-3 mb-1.5">
                   Per-box budget
+                  <span className="ml-1.5 normal-case tracking-normal rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                    including GST
+                  </span>
                 </label>
+                <p className="text-[11px] leading-snug text-ink-3 mb-2">
+                  What you want to spend on <strong className="font-semibold text-ink-2">one box</strong>, tax
+                  included. Each product uses up its price + its own GST.
+                </p>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {QUICK_BUDGETS.map((b) => (
                     <button
@@ -376,12 +470,22 @@ export default function BuildYourBoxPage() {
                   </p>
                 ) : (
                   <ul className="space-y-2 max-h-72 overflow-y-auto">
-                    {boxProducts.map((p) => (
+                    {boxProducts.map((p) => {
+                      const base = tierPriceFor(p.priceTiers, packQuantity);
+                      const rate = p.gstRate ?? DEFAULT_GST_RATE;
+                      return (
                       <li key={p.id} className="flex items-center gap-2 text-sm">
                         <div className="flex-1 min-w-0">
                           <p className="truncate text-ink">{p.name}</p>
+                          {/* Show the sum, not just the answer — the customer can
+                              see exactly why this item cost what it did. */}
                           <p className="text-xs text-ink-3 tabnum">
-                            {inr(tierPriceFor(p.priceTiers, packQuantity))}
+                            <span className="font-semibold text-ink-2">
+                              {inr(gstInclusive(base, p.gstRate))}
+                            </span>{' '}
+                            <span className="text-[11px]">
+                              ({inr(base)} + {rate}% GST)
+                            </span>
                           </p>
                         </div>
                         <button
@@ -392,18 +496,29 @@ export default function BuildYourBoxPage() {
                           <X className="h-4 w-4" />
                         </button>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 )}
 
+                {/* The full sum, laid out line by line, so "how was my box
+                    calculated?" is answered on screen rather than in support. */}
                 {boxProducts.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-bdr space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-ink-2">Per box</span>
+                    <div className="flex justify-between text-xs text-ink-3">
+                      <span>Products (before GST)</span>
+                      <span className="tabnum">{inr(subtotalExGst)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-ink-3">
+                      <span>GST on products</span>
+                      <span className="tabnum">+{inr(productsGst)}</span>
+                    </div>
+                    <div className="flex justify-between pt-1 border-t border-bdr">
+                      <span className="text-ink-2">Per box (incl. GST)</span>
                       <span className="tabnum font-semibold text-ink">{inr(subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-xs text-ink-3">
-                      <span>× {packQuantity} boxes (order total)</span>
+                      <span>× {packQuantity} boxes</span>
                       <span className="tabnum">{inr(subtotal * packQuantity)}</span>
                     </div>
                   </div>
@@ -433,13 +548,19 @@ export default function BuildYourBoxPage() {
                 <p className="text-sm">
                   Set your per-box budget on the left — we'll instantly show products that fit.
                 </p>
+                <p className="text-xs mt-2">
+                  Enter your budget with GST included; we'll do the tax maths for you.
+                </p>
               </div>
             ) : (
               <>
                 {/* Horizontal budget tracking line */}
                 <div className="bg-white rounded-md border-2 border-bdr px-4 py-3">
                   <div className="flex items-center gap-4">
-                    <span className="text-sm font-bold text-ink shrink-0">Budget tracking</span>
+                    <span className="text-sm font-bold text-ink shrink-0">
+                      Budget tracking
+                      <span className="ml-1 font-normal text-[11px] text-ink-3">incl. GST</span>
+                    </span>
                     <div className="relative flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden">
                       <motion.div
                         animate={{ width: `${Math.min(percentage, 100)}%` }}
@@ -468,13 +589,33 @@ export default function BuildYourBoxPage() {
                       {isExceeded ? 'Over' : `${Math.round(percentage)}%`}
                     </span>
                   </div>
+
+                  {/* Where the box actually lands at checkout. The bar above is
+                      products + GST (all this page decides); the builder still
+                      adds packaging and the payment fee, so we say so now
+                      instead of surprising the customer later. */}
+                  {boxProducts.length > 0 && (
+                    <div className="mt-2.5 pt-2.5 border-t border-bdr flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <p className="text-xs text-ink-2">
+                        Est. final cost per box{' '}
+                        <span className="tabnum font-semibold text-ink">{inr(estFinalPerBox)}</span>
+                      </p>
+                      <p className="text-[11px] text-ink-3 tabnum">
+                        {inr(subtotal)} products incl. GST
+                        {packagingIncGst > 0 && <> + packaging from {inr(packagingIncGst)}</>}
+                        {' '}+ {EFFECTIVE_FEE_PCT.toFixed(2)}% payment fee {inr(paymentFee)} · shipping
+                        added at checkout
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div>
                   <h2 className="text-2xl font-normal text-ink">Choose products</h2>
                   <p className="text-sm text-ink-2 mt-1 tabnum">
+                    Every price below includes that product's GST.{' '}
                     {fitOnly
-                      ? `Showing items ${inr(0)} to ${inr(Math.max(0, remaining))} that fit your remaining budget.`
+                      ? `Showing items up to ${inr(Math.max(0, remaining))} — what's left of your box budget.`
                       : `Showing all products · ${inr(Math.max(0, remaining))} left in your box.`}
                   </p>
                 </div>
@@ -530,7 +671,12 @@ export default function BuildYourBoxPage() {
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {filtered.map((p) => {
-                      const price = tierPriceFor(p.priceTiers, packQuantity);
+                      const base = tierPriceFor(p.priceTiers, packQuantity);
+                      // The card leads with the tax-in price because that's what
+                      // the budget is measured in — what you see is what comes
+                      // off the bar.
+                      const rate = p.hsn?.gstRate ?? DEFAULT_GST_RATE;
+                      const price = gstInclusive(base, p.hsn?.gstRate);
                       const inBox = inBoxIds.has(p.id);
                       const img = p.images?.find((i) => i.isPrimary)?.url || p.images?.[0]?.url;
                       const affordable = price <= remaining || inBox;
@@ -548,7 +694,13 @@ export default function BuildYourBoxPage() {
                           <div className="px-3 pb-3 flex flex-col flex-1">
                             {p.brand && <p className="text-[11px] text-ink-3">{p.brand}</p>}
                             <h4 className="text-sm font-medium line-clamp-2 text-ink">{p.name}</h4>
-                            <p className="text-sm font-bold tabnum mt-1 text-ink">{inr(price)}</p>
+                            <p className="text-sm font-bold tabnum mt-1 text-ink">
+                              {inr(price)}{' '}
+                              <span className="font-normal text-[10px] text-ink-3">incl. GST</span>
+                            </p>
+                            <p className="text-[10px] text-ink-3 tabnum">
+                              {inr(base)} + {rate}% GST
+                            </p>
                             {moqBlocked ? (
                               <p className="text-[10px] text-amber-600 mt-0.5">Needs min {moq} boxes</p>
                             ) : (

@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = quote.payload as any;
-    const { pricing } = priceQuotePayload(payload, billingState);
+    const { pricing } = await priceQuotePayload(payload, billingState);
 
     const amountRupees =
       paymentType === 'full' ? pricing.grandTotal : advanceAmount(pricing.grandTotal);

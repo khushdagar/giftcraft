@@ -177,7 +177,12 @@ export default async function AdminOrdersPage(props: {
               {orders.map((order) => (
                 <tr key={order.id} className="border-b border-bdr hover:bg-elevated/30 transition">
                   <td className="px-6 py-4">
-                    <p className="font-normal text-ink">{order.orderNumber}</p>
+                    <Link
+                      href={`/admin/orders/${order.id}`}
+                      className="font-normal text-ink underline underline-offset-2 hover:text-em"
+                    >
+                      #{order.orderNumber}
+                    </Link>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-block px-2 py-1 rounded-full text-xs font-normal ${getStatusColor(order.status)}`}>

@@ -14,11 +14,11 @@ export function ExpertHelp({ productName, productId }: ExpertHelpProps) {
 
   return (
     <>
-      <div className="mt-8 rounded-md border border-bdr bg-white p-6">
+      <div className="mt-8 rounded-md border border-bdr bg-white md:p-6 p-3">
         <h3 className="mb-2 text-sm font-semibold text-ink">Need help deciding?</h3>
         <p className="mb-4 text-xs text-ink-2">Our gifting experts are happy to assist.</p>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <a
             href="https://wa.me/919876543210?text=Hi%20I%20am%20interested%20in%20GiftCraft%20products"
             target="_blank"

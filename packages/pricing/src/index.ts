@@ -61,7 +61,11 @@ export function computePricing(input: PricingInput): PricingBreakdown {
   let productsSubtotal: number;
   let hsnBreakdown: HsnGstLine[] = [];
 
-  if (products && products.length > 0) {
+  // An explicitly-passed products[] selects the per-HSN path even when it is
+  // empty — an empty pack is a real state (the builder renders its summary
+  // before the first product is added) and must price to zero, not fall through
+  // to the legacy path and throw.
+  if (products) {
     // New per-HSN path
     const perPackProductCost = products.reduce(
       (sum, p) => sum + p.sellPrice * p.quantity,

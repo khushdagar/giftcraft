@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     template: "%s · GiftCraft",
   },
   description:
-    "Browse products, build branded gift packs, and get instant transparent pricing. By Arts Shala, Delhi.",
+    "Browse products, build branded gift packs, and get instant transparent pricing. By GiftCraft, Delhi.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
 };
 

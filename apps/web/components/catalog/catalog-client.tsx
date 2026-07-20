@@ -151,7 +151,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
       try {
         setLoading(true);
         const [productsRes, categoriesRes] = await Promise.all([
-          fetch('/api/products?limit=500'),
+          fetch('/api/products?limit=1000'),
           fetch('/api/catalog/filters'),
         ]);
 
@@ -176,7 +176,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
             .map((p: Product) => p.priceTiers?.[0]?.sellPrice || 0)
             .filter((p: number) => p > 0);
           if (prices.length > 0) {
-            setPriceMin(Math.min(...prices));
+            setPriceMin(0);
             setPriceMax(Math.max(...prices));
           }
         }
@@ -210,7 +210,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
       .map(p => p.priceTiers?.[0]?.sellPrice || 0)
       .filter(p => p > 0);
     return {
-      min: Math.min(...prices),
+      min: 0,
       max: Math.max(...prices),
     };
   }, [products]);
@@ -521,10 +521,25 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                     <span>{formatPrice(priceMin ?? priceRange.min ?? 0)}</span>
                     <span>{formatPrice(priceMax ?? priceRange.max ?? 3500)}</span>
                   </div>
-                  <div className="flex gap-2">
-                    <input type="range" min={priceRange.min || 0} max={priceRange.max || 3500} value={priceMin ?? priceRange.min ?? 0} onChange={(e) => setPriceMin(Math.min(parseInt(e.target.value), (priceMax ?? priceRange.max ?? 3500) - 100))} className="w-full" style={{ accentColor: '#1A6B4F' }} />
-                    <input type="range" min={priceRange.min || 0} max={priceRange.max || 3500} value={priceMax ?? priceRange.max ?? 3500} onChange={(e) => setPriceMax(Math.max(parseInt(e.target.value), (priceMin ?? priceRange.min ?? 0) + 100))} className="w-full" style={{ accentColor: '#1A6B4F' }} />
-                  </div>
+                  {(() => {
+                    const rMin = priceRange.min || 0
+                    const rMax = priceRange.max || 3500
+                    const vMin = priceMin ?? rMin
+                    const vMax = priceMax ?? rMax
+                    const span = Math.max(rMax - rMin, 1)
+                    const leftPct = ((vMin - rMin) / span) * 100
+                    const rightPct = ((vMax - rMin) / span) * 100
+                    const thumb = "appearance-none pointer-events-none absolute inset-0 h-4 w-full bg-transparent focus:outline-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#1A6B4F] [&::-webkit-slider-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#1A6B4F] [&::-moz-range-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-moz-range-thumb]:cursor-pointer"
+                    return (
+                      <div className="relative h-4">
+                        <div className="absolute left-[7px] right-[7px] top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-gray-200">
+                          <div className="absolute inset-y-0 rounded-full bg-[#1A6B4F]" style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }} />
+                        </div>
+                        <input type="range" min={rMin} max={rMax} value={vMin} onChange={(e) => setPriceMin(Math.min(parseInt(e.target.value), vMax - 100))} className={thumb} style={{ zIndex: vMin > rMax - 100 ? 4 : 3 }} />
+                        <input type="range" min={rMin} max={rMax} value={vMax} onChange={(e) => setPriceMax(Math.max(parseInt(e.target.value), vMin + 100))} className={thumb} style={{ zIndex: 4 }} />
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
 

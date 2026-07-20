@@ -90,8 +90,8 @@ export function Step4Review() {
       // One unit of each product per pack; packQuantity is the multiplier.
       // (Matches the server-side recompute in /api/orders.)
       quantity: 1,
-      hsnCode: p.hsnCode || '4820',
-      gstRate: p.gstRate || 18,
+      hsnCode: p.hsnCode ?? '4820',
+      gstRate: p.gstRate ?? 18,
     }));
 
     return computePricing({

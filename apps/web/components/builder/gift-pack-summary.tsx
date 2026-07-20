@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Image from 'next/image';
-import { X, Plus, Minus } from 'lucide-react';
+import { X, Plus, Minus, ChevronDown } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
 import { packagingSizeForCount } from '@/lib/packaging-designs';
@@ -32,9 +32,6 @@ export function GiftPackSummary() {
     address,
     pincode,
   } = useBuilderStore();
-
-  // Price of one gift pack (one of each selected product)
-  const perPackPrice = selected.reduce((sum, p) => sum + p.sellPrice, 0);
 
   // Full running total — computed with the SAME pricing engine the final Review
   // step and checkout use (see step-4-review / lib/quote-pricing), so the number
@@ -66,8 +63,8 @@ export function GiftPackSummary() {
         products: selected.map((p) => ({
           sellPrice: p.sellPrice,
           quantity: 1,
-          hsnCode: p.hsnCode || '4820',
-          gstRate: p.gstRate || 18,
+          hsnCode: p.hsnCode ?? '4820',
+          gstRate: p.gstRate ?? 18,
         })),
         packagingPerUnit: Number(packaging?.price) || 0,
         addonsPerUnit: addons.reduce((sum, a) => sum + Number(a.price), 0) + (sleeve ? 60 : 0),
@@ -85,20 +82,46 @@ export function GiftPackSummary() {
   );
 
   // Line-item figures for the breakdown (all × packs, mirroring the engine).
+  //
+  // Every line here is quoted PRE-TAX, with all GST collected into a single line
+  // of its own further down (classic invoice form). The two must stay in step:
+  // fold GST into these lines AND keep the GST row and the same tax is counted
+  // twice, both visually and in the sum.
+  //
+  // Build Your Box uses the same split — its "Products (before GST)" figure is
+  // this page's per-pack products price, so the two pages reconcile on the
+  // pre-tax number.
   const productsTotal = pricing.subtotal;
   const packagingTotal = pricing.packaging;
   const addonsTotal = pricing.addons;
-  const shippingTotal = pricing.shipping;
+  // Pre-tax shipping, NOT pricing.shipping. The courier rate is quoted
+  // GST-inclusive, so showing it raw here while the GST line below also carries
+  // shipping's tax counts that tax twice and leaves the rows short of the grand
+  // total by exactly the shipping GST. The customer still pays the full rate:
+  // this line + its share of the GST line == the quoted courier charge.
+  const shippingTotal = pricing.shippingTaxable;
   const gstTotal = pricing.cgst + pricing.sgst + pricing.igst;
   const isInterState = pricing.igst > 0;
   const discountTotal = pricing.discount;
 
+  // Price of one gift pack, pre-tax (one of each selected product).
+  const perPackPrice = selected.reduce((sum, p) => sum + p.sellPrice, 0);
+
   // Box size is decided by the number of products in the pack (Small/Medium/Large).
   const boxSize = useMemo(() => packagingSizeForCount(selected.length), [selected.length]);
 
+  // On mobile this panel sits above the step content, so it collapses to a
+  // summary (units, thumbnails, total) and expands on demand. At lg it's the
+  // sticky side column with room to show everything, so it's always expanded.
+  const [expanded, setExpanded] = useState(false);
+  const details = expanded ? 'block' : 'hidden lg:block';
+
   return (
-    <div className="min-w-0 lg:sticky lg:top-[140px] h-fit lg:max-h-[calc(100vh-230px)] lg:overflow-y-auto lg:pr-1 lg:pb-2">
-      <div className="rounded-2xl bg-em-50 border-2 border-em-200 p-3 md:p-3 shadow-sm space-y-4">
+    // order-first puts the pack above the step content on mobile, where the
+    // two columns stack — otherwise it lands right at the bottom of the page.
+    // At lg the sticky right-hand column takes over and source order applies.
+    <div className="order-first min-w-0 lg:order-none lg:sticky lg:top-[140px] h-fit lg:max-h-[calc(100vh-230px)] lg:overflow-y-auto lg:pr-1 lg:pb-2">
+      <div className="rounded-2xl bg-em-50 border-2 border-em-200 p-3 shadow-sm space-y-3 lg:space-y-4">
         {/* Title with Count Badge */}
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-black tracking-tight text-ink">Your Gift Pack</h3>
@@ -109,7 +132,7 @@ export function GiftPackSummary() {
         {selected.length > 0 ? (
           <>
             {/* Units selected — applies to the whole pack */}
-            <div className="rounded-md bg-white p-3">
+            <div className="rounded-md bg-white p-2.5 lg:p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 mb-1.5">You have selected</p>
               <div className="flex items-center gap-2">
                 <div className="flex items-center border-2 border-emerald-200 rounded-md overflow-hidden">
@@ -147,14 +170,16 @@ export function GiftPackSummary() {
               </div>
             </div>
 
-            <div className="rounded-md border-2 border-gray-200 bg-white p-3">
-              <div className="grid grid-cols-3 gap-2">
+            {/* Thumbnails — a scrolling strip on mobile (stays visible while
+                collapsed, so the pack is readable at a glance), a grid at lg. */}
+            <div className="rounded-md border-2 border-gray-200 bg-white p-2 lg:p-3">
+              <div className="no-scrollbar flex gap-2 overflow-x-auto lg:grid lg:grid-cols-3">
                 {selected.map((product) => (
                   <div
                     key={product.id}
-                    className="flex items-center justify-center"
+                    className="flex flex-shrink-0 items-center justify-center"
                   >
-                    <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
+                    <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
                       {product.images?.[0]?.url ? (
                         <Image
                           src={product.images[0].url}
@@ -172,6 +197,8 @@ export function GiftPackSummary() {
               </div>
             </div>
 
+            {/* Everything below is detail — collapsed on mobile by default. */}
+            <div className={`${details} space-y-4`}>
             {/* Box Size Badge */}
             <div className="inline-block px-3 py-1 rounded-full bg-emerald-600 text-white">
               <p className="text-xs font-black">BOX SIZE: {boxSize}</p>
@@ -204,6 +231,9 @@ export function GiftPackSummary() {
                     <p className="text-xs font-semibold text-ink line-clamp-1">
                       {product.name}
                     </p>
+                    {/* Pre-tax, matching the "(₹605 + 5% GST)" base shown for the
+                        same item on Build Your Box. GST for the whole pack is in
+                        its own line in the total below. */}
                     <p className="text-xs text-gray-500 mt-0.5">
                       {formatRupees(product.sellPrice)} each
                     </p>
@@ -265,12 +295,15 @@ export function GiftPackSummary() {
                 </div>
               </div>
             )}
+            </div>
 
             {/* Running total — grows the moment packaging, add-ons or shipping
                 are chosen, so the number never jumps unexpectedly at checkout. */}
-            <div className="rounded-xl bg-dark text-white p-4 space-y-3">
+            <div className="rounded-xl bg-dark text-white p-3 lg:p-4 space-y-3">
               {/* Line-item breakdown */}
-              <div className="space-y-1.5">
+              <div className={`${details} space-y-1.5`}>
+                {/* (packs × per-box pre-tax) — matches the "Products (before
+                    GST)" figure on Build Your Box. */}
                 <div className="flex items-center justify-between text-xs text-white/70">
                   <span>
                     Products{' '}
@@ -313,6 +346,8 @@ export function GiftPackSummary() {
                   </div>
                 )}
 
+                {/* All GST, in one line — products (per their own HSN rates),
+                    packaging/add-ons and shipping combined. */}
                 {gstTotal > 0 && (
                   <div className="flex items-center justify-between text-xs text-white/70">
                     <span>GST {isInterState ? '(IGST)' : '(CGST + SGST)'}</span>
@@ -328,11 +363,11 @@ export function GiftPackSummary() {
                 )}
               </div>
 
-              <div className="h-px bg-white/10" />
+              <div className={`${details} h-px bg-white/10`} />
 
               {/* Grand total — matches the final Review step & checkout exactly */}
               <div>
-                <p className="text-3xl font-black tabnum">{formatRupees(pricing.grandTotal)}</p>
+                <p className="text-2xl lg:text-3xl font-black tabnum">{formatRupees(pricing.grandTotal)}</p>
                 <p className="text-[11px] text-white/50 mt-1">
                   {shippingTotal > 0
                     ? 'Total incl. GST & payment fee'
@@ -340,6 +375,17 @@ export function GiftPackSummary() {
                 </p>
               </div>
             </div>
+
+            {/* Expand/collapse — mobile only; the lg side column shows it all. */}
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              className="flex w-full items-center justify-center gap-1 py-1 text-xs font-bold text-em-700 lg:hidden"
+            >
+              {expanded ? 'Hide details' : `View details (${selected.length} items, breakdown)`}
+              <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            </button>
           </>
         ) : (
           <div className="text-center py-12">
