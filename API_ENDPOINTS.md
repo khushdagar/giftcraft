@@ -1,7 +1,7 @@
 # GiftCraft API Endpoints Audit
 
-**Last Updated:** 2026-04-27  
-**Total Endpoints:** 60
+**Last Updated:** 2026-07-20  
+**Total Endpoints:** 114+ route files (this doc tracks the primary REST surface; some newer routes — blog, gift-packs, notifications, addresses, etc. — are not yet tabled below)
 
 ## Legend
 - ✅ Implemented
@@ -89,13 +89,13 @@
 | Endpoint | GET | POST | PUT | PATCH | DELETE |
 |----------|-----|------|-----|-------|--------|
 | `/api/admin/vendors` | ✅ | ✅ | ❌ | ❌ | ❌ |
-| `/api/admin/vendors/[id]` | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `/api/admin/vendors/[id]` | ✅ | ❌ | ❌ | ✅ | ❌ |
 | `/api/admin/vendors/[id]/communications` | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `/api/admin/vendors/[id]/confirm-prices` | ❌ | ✅ | ❌ | ❌ | ❌ |
 | `/api/admin/vendors/[id]/payments` | ✅ | ✅ | ❌ | ❌ | ❌ |
-| `/api/admin/vendors/[id]/score` | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `/api/admin/vendors/[id]/score` | ❌ | ❌ | ❌ | ✅ | ❌ |
 
-**Status:** ⚠️ Missing GET for single vendor, no DELETE support
+**Status:** ✅ Complete (GET + PATCH on single vendor; a malformed duplicate `[id/]` folder was removed)
 
 ### Disputes (Admin)
 | Endpoint | GET | POST | PUT | PATCH | DELETE |
@@ -103,7 +103,7 @@
 | `/api/admin/disputes` | ✅ | ❌ | ❌ | ❌ | ❌ |
 | `/api/admin/disputes/[id]` | ✅ | ❌ | ❌ | ✅ | ❌ |
 
-**Status:** ⚠️ Missing POST to create disputes, missing DELETE
+**Status:** ✅ Complete. Admins update status via PATCH here. POST-to-create is intentionally absent (customers raise disputes via `/api/disputes`); no DELETE by design (audit trail).
 
 ### Shipping (Admin)
 | Endpoint | GET | POST | PUT | PATCH | DELETE |
@@ -157,11 +157,11 @@
 ### Orders (User)
 | Endpoint | GET | POST | PUT | PATCH | DELETE |
 |----------|-----|------|-----|-------|--------|
-| `/api/orders` | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `/api/orders` | ✅ | ✅ | ❌ | ❌ | ❌ |
 | `/api/orders/[id]/approve-mockup` | ❌ | ✅ | ❌ | ❌ | ❌ |
 | `/api/orders/[id]/revisions` | ❌ | ✅ | ❌ | ❌ | ❌ |
 
-**Status:** ⚠️ Missing GET for user's own orders
+**Status:** ✅ GET now lists the authenticated user's own orders (scoped to `placedById`)
 
 ### Quotes
 | Endpoint | GET | POST | PUT | PATCH | DELETE |
@@ -239,10 +239,14 @@
 ✅ DELETE `/api/admin/categories/[id]` - Now implemented
 ✅ `/api/admin/products/[id]/images` - New immediate image upload endpoint
 
-### Remaining Medium Priority Issues
-1. ⚠️ `/api/orders` - Missing GET to list user's own orders (privacy concern)
-2. ⚠️ `/api/dashboard/orders` - Consider adding single order detail endpoint
-3. ⚠️ Disputes/User APIs - Missing GET all endpoints (might be intentional)
+### Recently Fixed (2026-07-20)
+1. ✅ `/api/orders` GET - Now lists the authenticated user's own orders (unblocks the "raise a dispute" order picker)
+2. ✅ Admin dispute status update - Frontend now correctly calls PATCH `/api/admin/disputes/[id]` (was calling an unimplemented PUT on the customer-facing route)
+3. ✅ Removed malformed duplicate route folder `admin/vendors/[id/]` (invalid dynamic segment)
+
+### Remaining (Low Priority / By Design)
+1. ⚠️ `/api/dashboard/orders` - Single order detail available via `/api/orders/[id]` (GET exists)
+2. ℹ️ Disputes/User APIs - No "GET all" for users by design (customers see disputes via order context)
 
 ### Low Priority
 1. ⚠️ Settings endpoints - No DELETE (might be intentional)

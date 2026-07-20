@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, AlertCircle, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText } from 'lucide-react';
 
 const NAV = [
   { section: "Overview", items: [
@@ -14,7 +14,6 @@ const NAV = [
     { href: "/admin/orders", icon: ShoppingBag, label: "Orders" },
     { href: "/admin/goc", icon: Sparkles, label: "GOC Campaigns" },
     { href: "/admin/samples", icon: Box, label: "Samples" },
-    { href: "/admin/disputes", icon: AlertCircle, label: "Disputes" },
     { href: "/admin/enquiries", icon: Mail, label: "Enquiries" },
     { href: "/admin/clients", icon: Users, label: "Clients" },
     { href: "/admin/vendors", icon: Truck, label: "Vendors" },

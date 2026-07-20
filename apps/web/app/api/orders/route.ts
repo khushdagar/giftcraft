@@ -10,6 +10,52 @@ import { invoiceLabel } from '@/lib/invoice-status';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// List the authenticated user's own orders. Used by flows that need to pick an
+// order (e.g. raising a dispute against a delivered order). Scoped to the
+// logged-in user — never returns another user's orders.
+export async function GET(req: NextRequest) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const orders = await prisma.order.findMany({
+      where: { placedById: session.user.id },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        deliveryDate: true,
+        grandTotal: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: orders.map((o) => ({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        status: o.status,
+        deliveryDate: o.deliveryDate ? o.deliveryDate.toISOString() : null,
+        grandTotal: Number(o.grandTotal),
+        createdAt: o.createdAt.toISOString(),
+      })),
+    });
+  } catch (error: any) {
+    console.error('❌ Error listing orders:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to fetch orders' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
