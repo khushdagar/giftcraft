@@ -15,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [newOrders, revisionRequests, openDisputes, navOrdersCount] = await Promise.all([
+    const [newOrders, revisionRequests, openDisputes, navOrdersCount, readRows] = await Promise.all([
       // Newly placed orders awaiting action.
       prisma.order.findMany({
         where: { status: 'confirmed' },
@@ -51,7 +51,14 @@ export async function GET() {
       prisma.order.count({
         where: { status: { notIn: ['delivered', 'completed', 'cancelled', 'refunded'] } },
       }),
+      // Notifications this admin has already seen/cleared.
+      prisma.adminNotificationRead.findMany({
+        where: { userId: session.user.id },
+        select: { key: true },
+      }),
     ]);
+
+    const readKeys = new Set(readRows.map((r) => r.key));
 
     const notifications = [
       ...newOrders.map((o) => ({
@@ -78,7 +85,9 @@ export async function GET() {
         href: `/admin/disputes/${d.id}`,
         createdAt: d.createdAt.toISOString(),
       })),
-    ].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    ]
+      .filter((n) => !readKeys.has(n.id))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
     return NextResponse.json({
       count: notifications.length,

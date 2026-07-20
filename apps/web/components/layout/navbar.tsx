@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard } from "lucide-react";
+import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard, Phone } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
@@ -112,9 +112,14 @@ export function Navbar() {
         </ul>
 
         <div className="flex items-center gap-3">
-          <Link href="/builder" className="hidden h-[38px] items-center justify-center rounded-md-p bg-em px-5 text-[13px] font-semibold text-white transition-all hover:scale-[1.02] hover:bg-em-600 hover:shadow-glow lg:inline-flex">
-            Build a Gift
-          </Link>
+          <a
+            href="tel:+919876543210"
+            aria-label="Call us"
+            title="Call us"
+            className="hidden h-9 w-9 items-center justify-center rounded-full bg-em text-white transition-all hover:scale-[1.02] hover:bg-em-600 hover:shadow-glow lg:inline-flex"
+          >
+            <Phone className="h-5 w-5" />
+          </a>
 
           {authLoading ? (
             // Same 36px footprint as both real states, so nothing shifts when it resolves.
@@ -123,13 +128,13 @@ export function Navbar() {
               aria-busy="true"
               aria-label="Checking sign-in status"
             >
-              <div className="h-8 w-8 animate-pulse rounded-full bg-elevated" />
+              <div className="h-9 w-9 animate-pulse rounded-full bg-elevated" />
             </div>
           ) : session?.user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-elevated" aria-label={`Account menu for ${session.user?.name}`}>
-                  <Avatar className="h-8 w-8">
+                  <Avatar className="h-9 w-9">
                     {session.user?.image && <AvatarImage src={session.user.image} alt={session.user?.name ?? ""} />}
                     <AvatarFallback>{userInitial}</AvatarFallback>
                   </Avatar>
@@ -204,7 +209,7 @@ export function Navbar() {
             </div>
             {[
               ["/", "Home"], ["/catalog", "Products"],
-              ["/pricing", "Pricing"], ["/planner", "Budget Planner"], ["/blog", "Blog"], ["/contact", "Contact"],
+              ["/packs", "Curated Box"], ["/box", "Build Your Box"], ["/blog", "Blog"], ["/contact", "Contact"],
               ["/dashboard", "Dashboard"],
             ].map(([href, label]) => (
               <Link
@@ -216,16 +221,7 @@ export function Navbar() {
                 {label}
               </Link>
             ))}
-            <Link
-              href="/builder"
-              className="mt-auto block w-full rounded-md-p bg-em py-4 text-center text-base font-semibold text-white"
-              onClick={() => setMobileOpen(false)}
-            >
-              Get a Quote
-            </Link>
-
-            {/* Account / sign out — mobile. Holds a placeholder while the session
-                resolves so the label never flips from "Sign in" to "Sign out". */}
+          
             {authLoading ? (
               <div
                 className="mt-3 h-[60px] w-full animate-pulse rounded-md-p bg-elevated"

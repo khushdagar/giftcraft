@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { SLA_MINUTES } from '@/lib/constants';
 import { executeTrigger } from '@/lib/automation';
 import { sendOrderStatusEmail } from '@/lib/email';
+import { sendPushToUser } from '@/lib/push';
 
 export async function PATCH(
   request: NextRequest,
@@ -153,6 +154,20 @@ export async function PATCH(
       } catch (e) {
         console.error('Status email failed (non-blocking):', e);
       }
+    }
+
+    // Web push to the customer (best-effort; respects their notif prefs).
+    if (order.placedById) {
+      sendPushToUser(
+        order.placedById,
+        {
+          title: `Order ${order.orderNumber} updated`,
+          body: `Your order is now "${status.replace(/_/g, ' ')}".`,
+          url: `/dashboard/orders/${order.id}`,
+          tag: `order-${order.id}`,
+        },
+        { event: 'orderStatus' }
+      ).catch(() => {});
     }
 
     return NextResponse.json(

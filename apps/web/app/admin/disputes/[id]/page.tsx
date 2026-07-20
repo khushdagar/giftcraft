@@ -7,6 +7,7 @@ import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { DisputeTimeline } from '@/components/admin/disputes/dispute-timeline';
 import { DisputePhotoGallery } from '@/components/disputes/dispute-photo-gallery';
 import { DisputeStatusUpdater } from './components/dispute-status-updater';
+import { markAdminNotificationsRead } from '@/lib/admin-notifications';
 
 export const metadata = {
   title: 'Dispute Details - GiftCraft Admin',
@@ -35,6 +36,9 @@ export default async function DisputeDetailPage({ params }: { params: { id: stri
   });
 
   if (!dispute) redirect('/admin/disputes');
+
+  // Viewing a dispute clears its bell notification.
+  await markAdminNotificationsRead(session.user!.id, [`dispute-${dispute.id}`]);
 
   const getStatusBadgeColor = (status: string) => {
     const colors: Record<string, string> = {

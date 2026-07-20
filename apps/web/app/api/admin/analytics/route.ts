@@ -20,6 +20,7 @@ export async function GET() {
       },
       include: {
         company: { select: { name: true } },
+        placedBy: { select: { company: { select: { name: true } } } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -85,15 +86,26 @@ export async function GET() {
       }))
       .sort((a, b) => b.value - a.value);
 
-    // Recent orders
-    const recentOrders = orders.slice(0, 10).map((order) => ({
-      id: order.id,
-      orderNumber: order.orderNumber,
-      companyName: order.company?.name || 'Unknown Company',
-      totalAmount: order.grandTotal.toNumber(),
-      status: order.status,
-      createdAt: order.createdAt.toISOString(),
-    }));
+    // Recent orders. Orders placed via the builder/checkout don't set a
+    // company relation, so fall back to the placing user's company and finally
+    // to the company name the customer typed at checkout (stored in billingJson).
+    const recentOrders = orders.slice(0, 10).map((order) => {
+      const billing = (order.billingJson as any) || {};
+      const companyName =
+        order.company?.name ||
+        order.placedBy?.company?.name ||
+        billing.companyName ||
+        billing.name ||
+        'Unknown Company';
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        companyName,
+        totalAmount: order.grandTotal.toNumber(),
+        status: order.status,
+        createdAt: order.createdAt.toISOString(),
+      };
+    });
 
     const stats = [
       {

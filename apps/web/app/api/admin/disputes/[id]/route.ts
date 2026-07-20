@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { sendDisputeStatusEmail } from '@/lib/email';
+import { sendPushToUser } from '@/lib/push';
 import { z } from 'zod';
 
 const UpdateDisputeSchema = z.object({
@@ -131,6 +132,7 @@ export async function PATCH(
         },
         submittedBy: {
           select: {
+            id: true,
             email: true,
           },
         },
@@ -172,6 +174,20 @@ export async function PATCH(
       });
     } catch (emailError) {
       console.error('Error sending dispute status email:', emailError);
+    }
+
+    // Web push to the customer who raised the dispute (best-effort).
+    if (dispute.submittedBy?.id) {
+      sendPushToUser(
+        dispute.submittedBy.id,
+        {
+          title: `Dispute on ${dispute.order.orderNumber}`,
+          body: `Status updated to "${status.replace(/_/g, ' ')}".`,
+          url: `/dashboard/disputes/${id}`,
+          tag: `dispute-${id}`,
+        },
+        { event: 'disputes' }
+      ).catch(() => {});
     }
 
     return NextResponse.json({

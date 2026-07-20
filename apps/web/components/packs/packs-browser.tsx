@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, Package } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Search, Package, SlidersHorizontal } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 
 interface NamedRef {
@@ -94,7 +95,9 @@ const toggle = (arr: string[], val: string) =>
   arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 
 export function PacksBrowser({ collections }: { collections: CollectionCard[] }) {
+  const searchParams = useSearchParams();
   const [browsing, setBrowsing] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
 
@@ -161,8 +164,20 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
 
   const backToCollections = () => {
     setBrowsing(false);
+    setSidebarOpen(false);
     setFCollections([]);
   };
+
+  // Deep-link support: /packs?collection=<slug> auto-opens that collection
+  // (used by the homepage "Curated collections" cards).
+  useEffect(() => {
+    const slug = searchParams.get('collection');
+    if (!slug) return;
+    const match = collections.find((c) => c.slug === slug);
+    if (match) openCollection(match.id);
+    // Only run on mount / when the query param changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, collections]);
 
   const filtered = useMemo(() => {
     let list = allPacks;
@@ -326,6 +341,14 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                     className="w-full rounded-full border-2 border-bdr bg-white pl-10 pr-4 py-2.5 text-sm text-ink focus:border-em focus:outline-none"
                   />
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className="lg:hidden inline-flex items-center justify-center gap-2 rounded-full border-2 border-bdr bg-white px-4 py-2.5 text-sm font-medium text-ink"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  Filters
+                </button>
                 <select
                   value={sort}
                   onChange={(e) => setSort(e.target.value as typeof sort)}
@@ -353,10 +376,33 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
             </div>
 
             <div className="flex flex-col lg:flex-row gap-6 items-start">
-              {/* Filter sidebar */}
-              <aside className="w-full lg:w-64 flex-shrink-0">
-                <div className="bg-white rounded-md border-2 border-bdr p-5 lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
-                  <h3 className="text-lg font-bold text-ink mb-4">Filters</h3>
+              {/* Filter sidebar — static column on desktop, bottom-sheet drawer on mobile */}
+              <aside
+                className={`w-full lg:w-64 flex-shrink-0 ${
+                  sidebarOpen
+                    ? 'fixed inset-0 z-40 bg-black/30 lg:static lg:z-auto lg:bg-transparent lg:inset-auto'
+                    : 'hidden lg:block'
+                }`}
+                onClick={() => setSidebarOpen(false)}
+              >
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className={`bg-white border-2 border-bdr p-5 lg:sticky lg:top-24 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto lg:rounded-md lg:bottom-auto ${
+                    sidebarOpen
+                      ? 'fixed bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl'
+                      : 'rounded-md'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-ink">Filters</h3>
+                    <button
+                      type="button"
+                      className="lg:hidden text-2xl leading-none text-ink-2"
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      ✕
+                    </button>
+                  </div>
 
                   {/* Categories */}
                   {catOptions.length > 0 && (
@@ -535,6 +581,28 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                           </label>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Mobile drawer actions */}
+                  {sidebarOpen && (
+                    <div className="lg:hidden flex gap-2 mt-6">
+                      <button
+                        type="button"
+                        onClick={() => setSidebarOpen(false)}
+                        className="flex-1 rounded-full bg-em px-4 py-2.5 text-sm font-semibold text-white"
+                      >
+                        Show {filtered.length} pack{filtered.length === 1 ? '' : 's'}
+                      </button>
+                      {hasActiveFilters && (
+                        <button
+                          type="button"
+                          onClick={clearAll}
+                          className="rounded-full border-2 border-bdr px-4 py-2.5 text-sm font-medium text-ink-2"
+                        >
+                          Clear
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

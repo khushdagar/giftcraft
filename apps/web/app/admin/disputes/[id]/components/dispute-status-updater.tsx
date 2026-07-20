@@ -42,15 +42,15 @@ export function DisputeStatusUpdater({
         return;
       }
 
-      const response = await fetch(`/api/disputes/${disputeId}`, {
-        method: 'PUT',
+      const response = await fetch(`/api/admin/disputes/${disputeId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(validation.data),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        setError(data.error?.message || 'Failed to update dispute');
+        setError(data.error?.message || data.error || 'Failed to update dispute');
         return;
       }
 

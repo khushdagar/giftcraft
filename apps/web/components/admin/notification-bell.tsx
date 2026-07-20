@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Bell, Package, PencilLine, AlertCircle } from 'lucide-react';
+import { Bell, Package, PencilLine, AlertCircle, CheckCheck } from 'lucide-react';
 
 interface NotificationItem {
   id: string;
@@ -68,6 +68,26 @@ export function NotificationBell() {
     };
   }, []);
 
+  // Mark the given keys read on the server and optimistically drop them from
+  // the bell so the badge/list update immediately.
+  const markRead = async (keys: string[]) => {
+    if (keys.length === 0) return;
+    const set = new Set(keys);
+    setItems((prev) => prev.filter((n) => !set.has(n.id)));
+    setCount((c) => Math.max(0, c - keys.length));
+    try {
+      await fetch('/api/admin/notifications/read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keys }),
+      });
+    } catch {
+      /* ignore — next poll will reconcile */
+    }
+  };
+
+  const markAllRead = () => markRead(items.map((n) => n.id));
+
   // Close on outside click.
   useEffect(() => {
     if (!open) return;
@@ -97,8 +117,15 @@ export function NotificationBell() {
         <div className="absolute right-0 top-11 z-50 w-80 rounded-md border border-gray-200 bg-white shadow-lg">
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
             <p className="text-sm font-medium text-gray-900">Notifications</p>
-            {count > 0 && (
-              <span className="text-xs text-gray-500">{count} pending</span>
+            {items.length > 0 && (
+              <button
+                onClick={markAllRead}
+                className="flex items-center gap-1 text-xs font-medium text-em hover:text-em-700"
+                title="Mark all as read"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                Clear all
+              </button>
             )}
           </div>
 
@@ -117,7 +144,10 @@ export function NotificationBell() {
                   <Link
                     key={n.id}
                     href={n.href}
-                    onClick={() => setOpen(false)}
+                    onClick={() => {
+                      markRead([n.id]);
+                      setOpen(false);
+                    }}
                     className="flex gap-3 border-b border-gray-50 px-4 py-3 transition-colors hover:bg-gray-50 last:border-0"
                   >
                     <span

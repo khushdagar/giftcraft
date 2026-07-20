@@ -1,5 +1,4 @@
 import { OrderStatus } from '@prisma/client';
-import axios from 'axios';
 import { prisma } from './prisma';
 
 const SHIPROCKET_API_URL =
@@ -24,10 +23,19 @@ async function getShiprocketToken(): Promise<string | null> {
     return null;
   }
   try {
-    const { data } = await axios.post(`${SHIPROCKET_API_URL}/auth/login`, {
-      email: SHIPROCKET_EMAIL,
-      password: SHIPROCKET_PASSWORD,
+    const res = await fetch(`${SHIPROCKET_API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: SHIPROCKET_EMAIL,
+        password: SHIPROCKET_PASSWORD,
+      }),
     });
+    if (!res.ok) {
+      console.error('Shiprocket auth failed:', res.status, res.statusText);
+      return null;
+    }
+    const data: any = await res.json();
     if (!data?.token) return null;
     cachedToken = { value: data.token, expiresAt: Date.now() + TOKEN_EXPIRY_MS };
     return cachedToken.value;
@@ -47,7 +55,7 @@ export async function fetchShiprocketTracking(awbCode: string) {
   }
 
   try {
-    const response = await axios.get(
+    const res = await fetch(
       `${SHIPROCKET_API_URL}/courier/track/awb/${awbCode}`,
       {
         headers: {
@@ -56,8 +64,14 @@ export async function fetchShiprocketTracking(awbCode: string) {
       }
     );
 
-    if (response.data.success && response.data.data?.tracking_data) {
-      return response.data.data.tracking_data;
+    if (!res.ok) {
+      console.error(`Shiprocket tracking HTTP ${res.status} for ${awbCode}`);
+      return null;
+    }
+
+    const data: any = await res.json();
+    if (data.success && data.data?.tracking_data) {
+      return data.data.tracking_data;
     }
 
     return null;

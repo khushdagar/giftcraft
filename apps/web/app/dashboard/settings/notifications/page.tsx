@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { PushToggle } from '@/components/notifications/push-toggle';
 
 interface Preferences {
   email: boolean;
   whatsapp: boolean;
+  push?: boolean;
   orderStatus: boolean;
   quotes: boolean;
   disputes: boolean;
@@ -111,6 +113,15 @@ export default function NotificationsSettingsPage() {
     }
   };
 
+  // Subscribing/unsubscribing the browser also flips the `push` channel flag so
+  // events actually push (or stop pushing) — persisted immediately, no Save needed.
+  const handlePushChange = (subscribed: boolean) => {
+    if (!preferences) return;
+    const next = { ...preferences, push: subscribed };
+    setPreferences(next);
+    updateMutation.mutate(next);
+  };
+
   if (isLoading || !preferences) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -166,6 +177,19 @@ export default function NotificationsSettingsPage() {
             </div>
           </div>
         ))}
+
+        {/* Browser push — the subscription lives in this browser, not just a pref flag */}
+        <div className="border border-bdr rounded-lg p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-normal text-ink">Browser Notifications</h2>
+            <p className="text-sm text-ink-2 mt-1">
+              Instant alerts in this browser for your order, quote, and dispute updates.
+            </p>
+          </div>
+          <div className="pt-4 border-t border-bdr">
+            <PushToggle onSubscribedChange={handlePushChange} />
+          </div>
+        </div>
       </div>
 
       {/* Data Privacy & Protection Act Consent */}

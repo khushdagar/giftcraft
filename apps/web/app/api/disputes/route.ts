@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { sendDisputeConfirmationEmail } from '@/lib/email';
+import { sendPushToAdmins } from '@/lib/push';
 import { z } from 'zod';
 
 const CreateDisputeSchema = z.object({
@@ -126,6 +127,14 @@ export async function POST(request: NextRequest) {
     } catch (emailError) {
       console.error('Error sending dispute confirmation email:', emailError);
     }
+
+    // Notify admins of the new dispute (best-effort desktop push).
+    sendPushToAdmins({
+      title: 'New dispute filed',
+      body: `${subject} — on order ${order.orderNumber}.`,
+      url: `/admin/disputes/${dispute.id}`,
+      tag: `dispute-${dispute.id}`,
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,

@@ -197,6 +197,7 @@ model User {
   disputesSubmitted DisputeTicket[]         @relation("DisputesSubmitted")
   vendorCommLogs    VendorCommunication[]   @relation("VendorCommLogs")
   notificationPref  NotificationPreference?
+  pushSubscriptions PushSubscription[]
   consentLogs       ConsentLog[]
   gocCampaigns      GocCampaign[]           @relation("CampaignCreatedBy")
   sampleOrders      SampleOrder[]
@@ -1049,6 +1050,37 @@ model NotificationPreference {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   prefsJson Json
   updatedAt DateTime @updatedAt
+}
+
+// Web Push subscription — one row per browser/device a user has opted into push
+// on. The endpoint is the unique push service URL; p256dh/auth are the client
+// keys web-push signs the payload with. Dead endpoints (404/410 on send) are
+// pruned automatically by lib/push.ts.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Per-admin "read/dismissed" state for the top-bar notification bell. The bell
+// derives alerts live from order/approval/dispute rows (no Notification table),
+// so we track which synthetic notification keys (e.g. "order-<id>",
+// "revision-<id>", "dispute-<id>") an admin has already seen/cleared.
+model AdminNotificationRead {
+  id     String   @id @default(cuid())
+  userId String
+  key    String
+  readAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([userId])
 }
 
 model ConsentLog {

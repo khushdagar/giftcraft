@@ -7,8 +7,8 @@ export function CuratedCollections() {
   const { data: collections, isLoading } = useQuery({
     queryKey: ['collections', 'homepage'],
     queryFn: async () => {
-      // Collections are now tag-driven occasion entries (isCollection=true).
-      const res = await fetch('/api/occasions?collections=true');
+      // Curated Collections managed in the admin dashboard (GiftCollection).
+      const res = await fetch('/api/collections');
       if (!res.ok) throw new Error('Failed to fetch collections');
       return res.json();
     },
@@ -48,12 +48,27 @@ export function CuratedCollections() {
               return (
                 <Link
                   key={col.id}
-                  href={`/catalog?occasion=${col.slug}`}
+                  href={`/packs?collection=${col.slug}`}
                   className={`rounded-3xl p-8 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer relative h-48 md:h-[400px] flex flex-col justify-end ${
                     isLastOdd ? 'md:col-span-2' : ''
                   }`}
-                  style={{ background: gradients[idx % gradients.length] }}
+                  style={
+                    col.image
+                      ? undefined
+                      : { background: col.gradient || gradients[idx % gradients.length] }
+                  }
                 >
+                  {col.image && (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={col.image}
+                        alt={col.name}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                    </>
+                  )}
                   <div className="relative z-10">
                     <h3 className="text-2xl md:text-3xl text-white mb-2 font-normal leading-snug font-serif">
                       {col.name}
