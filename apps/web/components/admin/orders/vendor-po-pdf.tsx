@@ -162,10 +162,10 @@ interface Order {
   orderNumber: string;
   grandTotal: number;
   items: Item[];
-  deliveryDate: string;
-  company: {
-    name: string;
-  };
+  // Both are nullable in the schema: self-serve orders are placed by a user who
+  // has no Company row, and deliveryDate is only set once ops schedules it.
+  deliveryDate?: string | Date | null;
+  company?: { name: string } | null;
 }
 
 interface VendorPoPDFProps {
@@ -177,12 +177,18 @@ interface VendorPoPDFProps {
     state: string;
     gst: string;
   };
+  /** Falls back to when `order.company` is null (self-serve orders). */
+  clientName?: string;
 }
 
-export function VendorPoPDF({ order, vendor }: VendorPoPDFProps) {
+export function VendorPoPDF({ order, vendor, clientName }: VendorPoPDFProps) {
   const subtotal = order.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const gst = subtotal * 0.18; // Assume 18% GST
   const total = subtotal + gst;
+  const client = order.company?.name || clientName || '—';
+  const deliveryDate = order.deliveryDate
+    ? new Date(order.deliveryDate).toLocaleDateString('en-IN')
+    : 'To be scheduled';
 
   return (
     <Document>
@@ -218,7 +224,7 @@ export function VendorPoPDF({ order, vendor }: VendorPoPDFProps) {
           </View>
           <View style={styles.column}>
             <Text style={styles.label}>Client (Ship To)</Text>
-            <Text style={styles.value}>{order.company.name}</Text>
+            <Text style={styles.value}>{client}</Text>
             <Text style={styles.value}>GiftCraft Delhi</Text>
             <Text style={styles.value}>Delhi, DL</Text>
           </View>
@@ -228,7 +234,7 @@ export function VendorPoPDF({ order, vendor }: VendorPoPDFProps) {
         <View style={styles.twoColumn}>
           <View style={styles.column}>
             <Text style={styles.label}>Delivery Date</Text>
-            <Text style={styles.value}>{new Date(order.deliveryDate).toLocaleDateString('en-IN')}</Text>
+            <Text style={styles.value}>{deliveryDate}</Text>
           </View>
           <View style={styles.column}>
             <Text style={styles.label}>Order Reference</Text>

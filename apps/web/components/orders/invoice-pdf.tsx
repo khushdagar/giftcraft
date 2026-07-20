@@ -82,6 +82,10 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   grandText: { fontSize: 13, fontWeight: 'bold' },
+  // Amount-payable rows: label takes the slack, amounts share a fixed-width
+  // right-aligned column so every figure lines up on its last digit.
+  tLabel: { flex: 1, fontSize: 10 },
+  tAmount: { width: 130, fontSize: 10, textAlign: 'right' },
   // Summary (totals) presented as a bordered table
   sumTable: { display: 'flex', flexDirection: 'column', borderTop: 1, borderTopColor: '#E4E4E7' },
   sumRow: {
@@ -187,6 +191,9 @@ const SHIPPING_GST_RATE = 18;
 /** Packaging & add-ons: cartons/boxes of paper. */
 const PACKAGING_HSN_CODE = '4819';
 const PACKAGING_GST_RATE = 18;
+/** Payment gateway: other financial services (SAC). The fee already contains GST. */
+const GATEWAY_HSN_CODE = '997158';
+const GATEWAY_GST_RATE = 18;
 
 /**
  * One line of the itemised GST table. `quantity`/`unitPrice` are null for
@@ -281,6 +288,25 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
       gstRate: SHIPPING_GST_RATE,
       ...splitGst(gst),
       total: round2(amounts.shipping),
+    });
+  }
+
+  // 4. Payment gateway fee — passed through to the customer as its own taxable
+  //    line (CLAUDE.md Rule 2). Like shipping it is not unit-priced, and the
+  //    stored amount is GST-INCLUSIVE (fee base + GST on the fee), so the
+  //    taxable value is reverse-calculated the same way.
+  if (amounts.razorpayFee > 0) {
+    const taxable = round2(amounts.razorpayFee / (1 + GATEWAY_GST_RATE / 100));
+    const gst = round2(amounts.razorpayFee - taxable);
+    rows.push({
+      name: 'Payment Gateway Fee',
+      hsn: GATEWAY_HSN_CODE,
+      quantity: null,
+      unitPrice: null,
+      taxable,
+      gstRate: GATEWAY_GST_RATE,
+      ...splitGst(gst),
+      total: round2(amounts.razorpayFee),
     });
   }
 
@@ -398,75 +424,49 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
               <Text style={[styles.cTotal, styles.cBold]}>{inr(totals.total)}</Text>
             </View>
           </View>
-
-          <Text style={{ fontSize: 8, color: '#71717A', marginTop: 4 }}>
-            Shipping (HSN {SHIPPING_HSN_CODE}) is quoted inclusive of GST. Its taxable value is
-            reverse-calculated as amount ÷ 1.{SHIPPING_GST_RATE}, and the GST shown is the tax
-            already contained in that amount.
-          </Text>
         </View>
 
-        {/* Amount payable — discount, gateway fee and payments sit outside the
-            taxable item table so the tax columns stay auditable. */}
+        {/* Amount payable. Taxable value and GST are not repeated here — the
+            item table's Grand Total row already carries both. Only figures the
+            table cannot show (discount, payments received) appear below it. */}
         <View style={styles.section}>
           <View style={styles.totals}>
-            <View style={styles.row}>
-              <Text>Taxable Value</Text>
-              <Text>{inr(totals.taxable)}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text>Total GST</Text>
-              <Text>{inr(totalTax)}</Text>
-            </View>
             {amounts.discount > 0 && (
               <View style={styles.row}>
-                <Text>Discount</Text>
-                <Text>- {inr(amounts.discount)}</Text>
-              </View>
-            )}
-            {amounts.razorpayFee > 0 && (
-              <View style={styles.row}>
-                <Text>Payment Gateway Fee</Text>
-                <Text>{inr(amounts.razorpayFee)}</Text>
+                <Text style={styles.tLabel}>Discount</Text>
+                <Text style={styles.tAmount}>- {inr(amounts.discount)}</Text>
               </View>
             )}
             <View style={[styles.row, styles.grandRow]}>
-              <Text style={styles.grandText}>Amount Payable</Text>
-              <Text style={styles.grandText}>{inr(amounts.grandTotal)}</Text>
+              <Text style={[styles.tLabel, styles.grandText]}>Amount Payable</Text>
+              <Text style={[styles.tAmount, styles.grandText]}>{inr(amounts.grandTotal)}</Text>
             </View>
 
             {/* Advance paid + pending balance (price-lock path) */}
             {amountPaid > 0 && (
               <>
                 <View style={styles.row}>
-                  <Text>{isAdvance ? 'Advance Paid (10%)' : 'Amount Paid'}</Text>
-                  <Text>- {inr(amountPaid)}</Text>
+                  <Text style={styles.tLabel}>
+                    {isAdvance ? 'Advance Paid (10%)' : 'Amount Paid'}
+                  </Text>
+                  <Text style={styles.tAmount}>- {inr(amountPaid)}</Text>
                 </View>
                 <View style={[styles.row, styles.grandRow]}>
-                  <Text style={styles.grandText}>Balance Pending</Text>
-                  <Text style={styles.grandText}>{inr(balanceDue)}</Text>
+                  <Text style={[styles.tLabel, styles.grandText]}>Balance Pending</Text>
+                  <Text style={[styles.tAmount, styles.grandText]}>{inr(balanceDue)}</Text>
                 </View>
               </>
             )}
           </View>
         </View>
 
-        {!data.isPaid && (
+        {/* {!data.isPaid && (
           <Text style={styles.note}>
             {amountPaid > 0
               ? `This is a Proforma Invoice. A 10% advance of ${inr(amountPaid)} has been received; the balance of ${inr(balanceDue)} is due after mockup approval. A GST Tax Invoice will be issued once the order is fully paid.`
               : 'This is a Proforma Invoice for your reference and is not a valid tax invoice. A GST Tax Invoice will be issued upon receipt of payment.'}
           </Text>
-        )}
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            GST Invoice as per Stage 1 scope. IRN &amp; QR code (e-invoicing) are not included at this stage.
-          </Text>
-          <Text style={styles.footerText}>Questions? Contact us at hello@giftcraft.in</Text>
-          <Text style={styles.footerText}>© GiftCraft 2026. Powered by Arts Shala.</Text>
-        </View>
+        )} */}
       </Page>
     </Document>
   );

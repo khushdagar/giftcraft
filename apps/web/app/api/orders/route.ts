@@ -6,6 +6,7 @@ import { priceQuotePayload, advanceAmount } from '@/lib/quote-pricing';
 import { verifyRazorpaySignature } from '@/lib/razorpay';
 import { sendPaymentSuccessEmail, sendOrderConfirmationEmail } from '@/lib/email';
 import { renderInvoiceBuffer } from '@/lib/invoice';
+import { invoiceLabel } from '@/lib/invoice-status';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     // ── Recompute pricing server-side (shared with the payment route) ───────
     // Never trust the totals baked into the quote. The same helper prices the
     // Razorpay order, so the amount charged always matches this saved total.
-    const { pricing, isInterState, packQty } = priceQuotePayload(
+    const { pricing, isInterState, packQty, hsnByProductId } = await priceQuotePayload(
       payload,
       billingJson?.state
     );
@@ -141,13 +142,16 @@ export async function POST(req: NextRequest) {
         items: {
           create: products.map((product: any) => {
             const totalUnits = packQty;
+            // Snapshot the same DB-resolved tax identity the pricing above used,
+            // so the invoice can never disagree with the amount charged.
+            const resolved = hsnByProductId.get(product.id);
             return {
               productId: product.id,
               quantity: totalUnits,
               unitPrice: new Decimal(product.sellPrice),
               totalPrice: new Decimal(Number(product.sellPrice) * totalUnits),
-              hsnCode: product.hsnCode,
-              gstRate: product.gstRate ? new Decimal(product.gstRate) : null,
+              hsnCode: resolved?.hsnCode ?? null,
+              gstRate: resolved ? new Decimal(resolved.gstRate) : null,
             };
           }),
         },
@@ -201,12 +205,17 @@ export async function POST(req: NextRequest) {
         include: { items: { include: { product: { select: { name: true } } } } },
       });
 
-      // Generate the proforma invoice PDF as an attachment (best-effort).
+      // Generate the invoice PDF as an attachment (best-effort). The filename
+      // must track the heading inside the PDF — a 10% advance still ships a
+      // proforma, so it can't be hardcoded either way.
       let attachments: { filename: string; content: Buffer }[] | undefined;
       try {
         if (fullOrder) {
           const pdf = await renderInvoiceBuffer(fullOrder);
-          attachments = [{ filename: `proforma-invoice-${order.orderNumber}.pdf`, content: pdf }];
+          const slug = invoiceLabel(amountPaid, Number(pricing.grandTotal || 0))
+            .toLowerCase()
+            .replace(/\s+/g, '-');
+          attachments = [{ filename: `${slug}-${order.orderNumber}.pdf`, content: pdf }];
         }
       } catch (e) {
         console.error('Invoice PDF generation failed (non-blocking):', e);
@@ -230,7 +239,6 @@ export async function POST(req: NextRequest) {
             isAdvance: paymentType !== 'full',
             grandTotal: Number(pricing.grandTotal || 0),
             amounts,
-            packQuantity: packQty,
             attachments,
           });
         } else {

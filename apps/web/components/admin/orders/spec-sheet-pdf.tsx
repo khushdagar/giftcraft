@@ -131,18 +131,24 @@ interface Order {
   id: string;
   orderNumber: string;
   items: Item[];
-  deliveryDate: string;
-  company: {
-    name: string;
-  };
+  // Both are nullable in the schema: self-serve orders are placed by a user who
+  // has no Company row, and deliveryDate is only set once ops schedules it.
+  deliveryDate?: string | Date | null;
+  company?: { name: string } | null;
 }
 
 interface SpecSheetPDFProps {
   order: Order;
+  /** Falls back to when `order.company` is null (self-serve orders). */
+  clientName?: string;
 }
 
-export function SpecSheetPDF({ order }: SpecSheetPDFProps) {
+export function SpecSheetPDF({ order, clientName }: SpecSheetPDFProps) {
   const totalQuantity = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  const client = order.company?.name || clientName || '—';
+  const deliveryDate = order.deliveryDate
+    ? new Date(order.deliveryDate).toLocaleDateString('en-IN')
+    : 'To be scheduled';
 
   return (
     <Document>
@@ -155,7 +161,7 @@ export function SpecSheetPDF({ order }: SpecSheetPDFProps) {
             <Text>Order: {order.orderNumber}</Text>
           </View>
           <View style={styles.headerMeta}>
-            <Text>Client: {order.company.name}</Text>
+            <Text>Client: {client}</Text>
             <Text>Date: {new Date().toLocaleDateString('en-IN')}</Text>
           </View>
         </View>
@@ -173,7 +179,7 @@ export function SpecSheetPDF({ order }: SpecSheetPDFProps) {
             </View>
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Client</Text>
-              <Text style={styles.specValue}>{order.company.name}</Text>
+              <Text style={styles.specValue}>{client}</Text>
             </View>
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Total Quantity</Text>
@@ -182,7 +188,7 @@ export function SpecSheetPDF({ order }: SpecSheetPDFProps) {
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Delivery By</Text>
               <Text style={styles.specValue}>
-                {new Date(order.deliveryDate).toLocaleDateString('en-IN')}
+                {deliveryDate}
               </Text>
             </View>
             <View style={styles.specRow}>
@@ -292,7 +298,7 @@ export function SpecSheetPDF({ order }: SpecSheetPDFProps) {
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Required By</Text>
               <Text style={styles.specValue}>
-                {new Date(order.deliveryDate).toLocaleDateString('en-IN')}
+                {deliveryDate}
               </Text>
             </View>
             <View style={styles.specRow}>

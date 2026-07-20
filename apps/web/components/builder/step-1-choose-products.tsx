@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useBuilderStore } from '@/store/builder';
@@ -30,6 +30,10 @@ interface StepProps {
   categories: Array<{ id: string; name: string }>;
   presetIds?: string[];
 }
+
+// How many cards to mount at a time. The grid grows as the user scrolls rather
+// than rendering the whole catalogue up front.
+const PAGE_SIZE = 12;
 
 export function Step1ChooseProducts({ allProducts, categories, presetIds }: StepProps) {
   const {
@@ -94,6 +98,36 @@ export function Step1ChooseProducts({ allProducts, categories, presetIds }: Step
       return 0;
     });
   }, [allProducts, selectedCategory, searchQuery, showPresetOnly, presetIds, selected]);
+
+  // Grow the grid as the sentinel below it scrolls into view.
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const hasMore = visibleCount < filteredProducts.length;
+
+  // Any change of filter starts the list over from the top.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [selectedCategory, searchQuery, showPresetOnly]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredProducts.length));
+        }
+      },
+      // Load the next batch slightly before it's reached, so scrolling never stalls.
+      { rootMargin: '400px' }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+    // visibleCount is a dep so the observer re-fires when a short batch doesn't
+    // fill the viewport and the sentinel is still on screen.
+  }, [filteredProducts.length, visibleCount]);
+
+  const visibleProducts = filteredProducts.slice(0, visibleCount);
 
   return (
     <div className="space-y-6">
@@ -172,7 +206,7 @@ export function Step1ChooseProducts({ allProducts, categories, presetIds }: Step
           {/* Product Grid */}
           <div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {filteredProducts.map((product) => {
+              {visibleProducts.map((product) => {
                 const isSelected = selected.some((p) => p.id === product.id);
                 // Price for the tier that matches the current pack quantity
                 const tier =
@@ -201,6 +235,7 @@ export function Step1ChooseProducts({ allProducts, categories, presetIds }: Step
                           src={product.images[0].url}
                           alt={product.name}
                           fill
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                           className="object-cover group-hover:scale-105 transition duration-300"
                         />
                       ) : (
@@ -267,6 +302,14 @@ export function Step1ChooseProducts({ allProducts, categories, presetIds }: Step
                 );
               })}
             </div>
+            {/* Scroll sentinel — mounting the next batch when it comes into view. */}
+            {hasMore && (
+              <div ref={sentinelRef} className="py-6 text-center">
+                <p className="text-xs text-ink-3">
+                  Showing {visibleProducts.length} of {filteredProducts.length}
+                </p>
+              </div>
+            )}
             {filteredProducts.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-ink-3">No products found</p>

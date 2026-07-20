@@ -46,6 +46,14 @@ export interface SerializedProduct
   priceTiers?: SerializedPriceTier[];
   images?: ProductImage[];
   hsn?: SerializedProductHsn | null;
+  /**
+   * The product's tax identity, flattened off the `hsn` relation. Consumers
+   * (builder, checkout, quote payload) price against these — reaching through
+   * `hsn.hsn.code` is easy to forget, and a missed lookup silently taxes the
+   * product at the 18% default instead of its real rate.
+   */
+  hsnCode?: string | null;
+  gstRate?: number | null;
   categories?: any[];
   occasions?: any[];
   categoryIds?: string[];
@@ -137,6 +145,8 @@ export function serializeProduct(
     priceTiers: product.priceTiers?.map(serializePriceTier),
     images: product.images || [],
     hsn: product.hsn ? serializeProductHsn(product.hsn) : null,
+    hsnCode: product.hsn?.hsn?.code ?? null,
+    gstRate: product.hsn?.gstRate != null ? Number(product.hsn.gstRate) : null,
     categoryIds,
     occasionIds,
     vendors: vendors || [],

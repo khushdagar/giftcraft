@@ -114,7 +114,7 @@ export function PricingPanel({
             <span className="text-xs">
               Shipping
               <br />
-              <span className="text-[10px] italic">HSN 996812 · GST shown below</span>
+              {/* <span className="text-[10px] italic">HSN 996812 · GST shown below</span> */}
             </span>
             <span className="font-medium tabular-nums text-xs">{formatRupees(shippingTaxable)}</span>
           </div>

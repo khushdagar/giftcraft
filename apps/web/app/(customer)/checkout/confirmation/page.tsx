@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { formatRupees } from '@/lib/utils';
+import { invoiceLabel } from '@/lib/invoice-status';
 import { useBuilderStore } from '@/store/builder';
 
 interface OrderItem {
@@ -335,7 +336,7 @@ function ConfirmationContent() {
               rel="noopener noreferrer"
               className="flex items-center justify-center w-full h-11 border-2 border-[#D4D4CF] rounded-full font-medium text-sm text-[#1A1A18] hover:bg-[#F5F5F0] transition"
             >
-              📄 Download Proforma Invoice
+              📄 Download {invoiceLabel(order.amountPaid, order.grandTotal)}
             </a>
             <Link
               href="/"
@@ -371,7 +372,7 @@ function ConfirmationContent() {
         <div className="cw">
           <p className="text-sm mb-2 font-serif italic text-opacity-40">GiftCraft</p>
           <div className="flex justify-between text-xs text-[#6B6B63]">
-            <span>© 2026 Arts Shala. All Rights Reserved.</span>
+            <span>© 2026 GiftCraft. All Rights Reserved.</span>
             <span>Made with ♥ in Delhi</span>
           </div>
         </div>

@@ -207,11 +207,18 @@ export default async function ProductPage({ params }: { params: { slug: string }
         {/* Gallery - Sticky on desktop */}
         <div className="lg:sticky lg:top-6 lg:h-fit">
           {isPack ? (
-            <PackImageGallery images={memberImages} productName={product.name} />
+            <PackImageGallery
+              images={memberImages}
+              productName={product.name}
+              productId={product.id}
+              slug={product.slug}
+            />
           ) : (
             <ImageGallery
               images={product.images && product.images.length > 0 ? product.images : serialized.images || []}
               productName={product.name}
+              productId={product.id}
+              slug={product.slug}
             />
           )}
         </div>

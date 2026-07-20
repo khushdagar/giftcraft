@@ -28,6 +28,7 @@ export async function GET(
         orderNumber: true,
         grandTotal: true,
         deliveryDate: true,
+        billingJson: true,
         company: {
           select: { name: true },
         },
@@ -54,13 +55,21 @@ export async function GET(
     // Generate PDF
     const orderForPdf = {
       ...order,
+      grandTotal: Number(order.grandTotal),
       items: order.items.map((item) => ({
         ...item,
         unitPrice: Number(item.unitPrice),
       })),
     };
+    // Self-serve orders have no Company row, so fall back to the billing details
+    // the customer entered at checkout — same order of preference as the invoice.
+    const billing = (order.billingJson as any) || {};
+    // NOTE: vendor details are still placeholders — no Product→Vendor relation
+    // exists yet, so there is nothing to resolve them from (vendor sourcing is
+    // Stage 3, CLAUDE.md §4 Rule 8).
     const pdfElement = React.createElement(VendorPoPDF, {
-      order: orderForPdf as any,
+      order: orderForPdf,
+      clientName: billing.companyName || billing.name || undefined,
       vendor: {
         name: 'Vendor Name',
         address: 'Vendor Address',
@@ -68,8 +77,8 @@ export async function GET(
         state: 'Vendor State',
         gst: 'GST Number',
       },
-    }) as any;
-    const buffer = await renderToBuffer(pdfElement);
+    });
+    const buffer = await renderToBuffer(pdfElement as any);
 
     // Return PDF
     return new NextResponse(Buffer.from(buffer), {

@@ -1,5 +1,6 @@
 import { renderToBuffer } from '@react-pdf/renderer';
 import { InvoicePDF, type InvoiceData } from '@/components/orders/invoice-pdf';
+import { isOrderFullyPaid } from '@/lib/invoice-status';
 
 /**
  * Minimal shape needed to build an invoice — a Prisma Order with its items and
@@ -46,7 +47,7 @@ export function buildInvoiceData(order: InvoiceOrder): InvoiceData {
   // (showing advance paid + balance pending) until the order is fully paid.
   const grandTotal = Number(order.grandTotal);
   const amountPaid = Number(billing.amountPaid ?? 0);
-  const isFullyPaid = amountPaid > 0 && amountPaid >= grandTotal - 0.01;
+  const isFullyPaid = isOrderFullyPaid(amountPaid, grandTotal);
 
   return {
     invoiceNumber: `INV-${order.orderNumber}`,
