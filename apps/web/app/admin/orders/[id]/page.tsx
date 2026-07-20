@@ -10,6 +10,7 @@ import { ShiprocketShipButton } from './components/shiprocket-ship-button';
 import { SlaLogDisplay } from '@/components/admin/orders/sla-log-display';
 import { SendPaymentLinkButton } from './components/send-payment-link-button';
 import { MarkPaidButton } from './components/mark-paid-button';
+import { markAdminNotificationsRead } from '@/lib/admin-notifications';
 import { FileDown } from 'lucide-react';
 
 export default async function AdminOrderDetailPage({
@@ -43,6 +44,15 @@ export default async function AdminOrderDetailPage({
   if (!order) {
     redirect('/admin/orders');
   }
+
+  // Viewing an order clears its bell notifications (the new-order alert plus any
+  // pending revision-request alerts on this order).
+  await markAdminNotificationsRead(session.user.id, [
+    `order-${order.id}`,
+    ...order.artworkApprovals
+      .filter((a) => a.status === 'revision_requested')
+      .map((a) => `revision-${a.id}`),
+  ]);
 
   const billingInfo = order.billingJson as any;
 

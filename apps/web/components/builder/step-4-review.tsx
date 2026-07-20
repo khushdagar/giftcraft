@@ -308,7 +308,7 @@ export function Step4Review() {
           variant="em"
           className="gap-2 rounded-md"
         >
-          {loading ? 'Processing...' : 'Next: Review & Quote'}
+          {loading ? 'Processing...' : 'Review Order'}
           {!loading && <ChevronRight className="h-4 w-4" />}
         </Button>
       </div>

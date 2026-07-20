@@ -1051,6 +1051,20 @@ model NotificationPreference {
   updatedAt DateTime @updatedAt
 }
 
+// Per-admin "read/dismissed" state for the top-bar notification bell. The bell
+// derives alerts live from order/approval/dispute rows (no Notification table),
+// so we track which synthetic notification keys (e.g. "order-<id>",
+// "revision-<id>", "dispute-<id>") an admin has already seen/cleared.
+model AdminNotificationRead {
+  id     String   @id @default(cuid())
+  userId String
+  key    String
+  readAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
 model ConsentLog {
   id        String      @id @default(cuid())
   userId    String
