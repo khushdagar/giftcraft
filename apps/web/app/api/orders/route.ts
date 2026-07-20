@@ -7,6 +7,7 @@ import { verifyRazorpaySignature } from '@/lib/razorpay';
 import { sendPaymentSuccessEmail, sendOrderConfirmationEmail } from '@/lib/email';
 import { renderInvoiceBuffer } from '@/lib/invoice';
 import { invoiceLabel } from '@/lib/invoice-status';
+import { sendPushToAdmins } from '@/lib/push';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -222,6 +223,14 @@ export async function POST(req: NextRequest) {
     });
 
     console.log('✅ Order created:', order.id, order.orderNumber, paidAt ? '(paid)' : '(mockup)');
+
+    // Notify admins of the new order (best-effort desktop push).
+    sendPushToAdmins({
+      title: `New order ${order.orderNumber}`,
+      body: `${packQty} packs — needs processing.`,
+      url: `/admin/orders/${order.id}`,
+      tag: `order-${order.id}`,
+    }).catch(() => {});
 
     // Order email (best-effort — never block the order on email). The paid path
     // sends a payment receipt; the no-payment "mockup" path sends a plain order

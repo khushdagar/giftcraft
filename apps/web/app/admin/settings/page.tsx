@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { Button } from '@/components/ui/button';
 import { Settings, Building2, Truck, DollarSign, Users } from 'lucide-react';
+import { AdminPushCard } from '@/components/admin/admin-push-card';
 
 interface SettingsCard {
   title: string;
@@ -81,6 +82,16 @@ export default async function SettingsPage() {
             </Link>
           );
         })}
+      </div>
+
+      {/* Personal notification preferences for this admin */}
+      <div>
+        <h2 className="text-sm font-normal uppercase tracking-wider text-ink-3 mb-3">
+          Your Notifications
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <AdminPushCard />
+        </div>
       </div>
     </div>
   );

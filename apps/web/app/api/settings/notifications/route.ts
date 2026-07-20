@@ -6,6 +6,7 @@ import { z } from 'zod';
 const preferencesSchema = z.object({
   email: z.boolean().optional(),
   whatsapp: z.boolean().optional(),
+  push: z.boolean().optional(),
   orderStatus: z.boolean().optional(),
   quotes: z.boolean().optional(),
   disputes: z.boolean().optional(),
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
           prefsJson: {
             email: true,
             whatsapp: false,
+            push: false,
             orderStatus: true,
             quotes: true,
             disputes: true,
@@ -75,6 +77,7 @@ export async function PATCH(request: NextRequest) {
           prefsJson: {
             email: true,
             whatsapp: false,
+            push: false,
             orderStatus: true,
             quotes: true,
             disputes: true,

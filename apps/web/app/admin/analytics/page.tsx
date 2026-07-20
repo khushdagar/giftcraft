@@ -87,10 +87,20 @@ export default function AdminAnalyticsPage() {
         <div className="border border-bdr rounded-lg bg-surface p-6">
           <h2 className="text-lg font-normal text-ink mb-4">Revenue (Last 12 Months)</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.revenueData}>
+            <BarChart data={data.revenueData} margin={{ top: 12, right: 12, left: 8, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E4E4E7" />
               <XAxis dataKey="month" stroke="#71717A" />
-              <YAxis stroke="#71717A" />
+              <YAxis
+                stroke="#71717A"
+                width={56}
+                tickFormatter={(value) => {
+                  const n = Number(value);
+                  if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)}Cr`;
+                  if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
+                  if (n >= 1000) return `₹${Math.round(n / 1000)}k`;
+                  return `₹${n}`;
+                }}
+              />
               <Tooltip
                 contentStyle={{ backgroundColor: '#FFF', border: '1px solid #E4E4E7' }}
                 formatter={(value) => `₹${(value as number).toLocaleString('en-IN')}`}
