@@ -1,5 +1,30 @@
 import { OrderStatus } from '@prisma/client';
 import { prisma } from './prisma';
+import { getSlaMinutes } from './sla';
+
+// Canonical order lifecycle. `statusProgression` (used to decide whether a
+// tracking update moves the order forward) is derived from this single list, so
+// there are no hand-numbered maps to keep in sync.
+const STATUS_FLOW: OrderStatus[] = [
+  'draft',
+  'quote_sent',
+  'confirmed',
+  'mockup_pending',
+  'mockup_approved',
+  'payment_pending',
+  'production',
+  'quality_check',
+  'packed',
+  'shipped',
+  'in_transit',
+  'delivered',
+  'completed',
+  'cancelled',
+  'refunded',
+];
+const statusProgression = Object.fromEntries(
+  STATUS_FLOW.map((status, index) => [status, index])
+) as Record<OrderStatus, number>;
 
 const SHIPROCKET_API_URL =
   process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external';
@@ -172,23 +197,7 @@ export async function checkOrderStatusTransition(
   }
 
   // Only transition if status is different and represents progression
-  const statusProgression: Record<OrderStatus, number> = {
-    draft: 0,
-    quote_sent: 1,
-    confirmed: 2,
-    mockup_pending: 3,
-    mockup_approved: 4,
-    production: 5,
-    quality_check: 6,
-    packed: 7,
-    shipped: 8,
-    in_transit: 9,
-    delivered: 10,
-    completed: 11,
-    cancelled: 12,
-    refunded: 13,
-  };
-
+  // (statusProgression is derived from STATUS_FLOW at module load).
   const currentOrder = await prisma.order.findUnique({
     where: { id: order.id },
     select: { status: true },
@@ -278,30 +287,16 @@ export async function syncOrderTracking(order: any): Promise<boolean> {
         });
       }
 
-      // Create new SLA log if needed (for new status)
+      // Create new SLA log if needed (for new status). SLA targets are read
+      // from the dynamic, admin-configurable config (DB-backed, cached).
       if (newStatus !== 'delivered' && newStatus !== 'cancelled') {
-        const SLA_MINUTES: Record<OrderStatus, number> = {
-          draft: 60,
-          quote_sent: 1440,
-          confirmed: 240,
-          mockup_pending: 2880,
-          mockup_approved: 240,
-          production: 7200,
-          quality_check: 1440,
-          packed: 1440,
-          shipped: 240,
-          in_transit: 4320,
-          delivered: 2880,
-          completed: 0,
-          cancelled: 0,
-          refunded: 0,
-        };
+        const slaMinutes = await getSlaMinutes();
 
         await prisma.orderSlaLog.create({
           data: {
             orderId: order.id,
             stage: newStatus,
-            slaMinutes: SLA_MINUTES[newStatus] || 0,
+            slaMinutes: slaMinutes[newStatus] || 0,
           },
         });
       }

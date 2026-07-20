@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { SLA_MINUTES } from '@/lib/constants';
+import { getSlaMinutes } from '@/lib/sla-config';
 import { executeTrigger } from '@/lib/automation';
 import { sendOrderStatusEmail } from '@/lib/email';
 import { sendPushToUser } from '@/lib/push';
@@ -98,7 +98,8 @@ export async function PATCH(
     });
 
     // Create new SlaLog entry for the incoming stage
-    const slaMinutes = SLA_MINUTES[status] ?? 0;
+    const slaConfig = await getSlaMinutes();
+    const slaMinutes = slaConfig[status] ?? 0;
     if (slaMinutes > 0) {
       await prisma.orderSlaLog.create({
         data: {

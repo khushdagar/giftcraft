@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { Button } from '@/components/ui/button';
-import { Settings, Building2, Truck, DollarSign, Users } from 'lucide-react';
+import { Settings, Building2, Truck, DollarSign, Users, Clock } from 'lucide-react';
 import { AdminPushCard } from '@/components/admin/admin-push-card';
 
 interface SettingsCard {
@@ -37,6 +37,12 @@ const SETTINGS: SettingsCard[] = [
     description: 'Manage team access and permissions',
     href: '/admin/settings/users',
     icon: Users,
+  },
+  {
+    title: 'SLA Targets',
+    description: 'Set time limits for each order stage',
+    href: '/admin/settings/sla',
+    icon: Clock,
   },
 ];
 

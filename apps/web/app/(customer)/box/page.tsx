@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useSession } from 'next-auth/react';
-import { Search, Plus, Check, X } from 'lucide-react';
+import { Search, Plus, Check, X, ChevronDown } from 'lucide-react';
 import { useBoxStore, type BoxProduct } from '@/store/box';
 import { useBuilderStore } from '@/store/builder';
 import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
@@ -137,6 +137,10 @@ export default function BuildYourBoxPage() {
   const [selectedCat, setSelectedCat] = useState<string>('all');
   // Auto-fit: by default only show products that fit the remaining budget.
   const [fitOnly, setFitOnly] = useState(true);
+  // Mobile-only: collapse the box's item list + breakdown behind a "See details"
+  // toggle so the panel stays short and the Proceed button is reachable. On lg+
+  // the details are always shown (the toggle is hidden).
+  const [showBoxDetails, setShowBoxDetails] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -469,7 +473,8 @@ export default function BuildYourBoxPage() {
                     No products yet. Add items from the right to build your box.
                   </p>
                 ) : (
-                  <ul className="space-y-2 max-h-72 overflow-y-auto">
+                  <div className={`${showBoxDetails ? '' : 'hidden'} lg:block`}>
+                  <ul className="space-y-2">
                     {boxProducts.map((p) => {
                       const base = tierPriceFor(p.priceTiers, packQuantity);
                       const rate = p.gstRate ?? DEFAULT_GST_RATE;
@@ -499,11 +504,9 @@ export default function BuildYourBoxPage() {
                       );
                     })}
                   </ul>
-                )}
 
-                {/* The full sum, laid out line by line, so "how was my box
-                    calculated?" is answered on screen rather than in support. */}
-                {boxProducts.length > 0 && (
+                  {/* The full sum, laid out line by line, so "how was my box
+                      calculated?" is answered on screen rather than in support. */}
                   <div className="mt-3 pt-3 border-t border-bdr space-y-1 text-sm">
                     <div className="flex justify-between text-xs text-ink-3">
                       <span>Products (before GST)</span>
@@ -522,6 +525,56 @@ export default function BuildYourBoxPage() {
                       <span className="tabnum">{inr(subtotal * packQuantity)}</span>
                     </div>
                   </div>
+                  </div>
+                )}
+
+                {/* Mobile-only preview: overlapping product thumbnails so the
+                    collapsed panel still reads clearly as "my products". */}
+                {boxProducts.length > 0 && !showBoxDetails && (
+                  <div className="lg:hidden mt-3 flex items-center justify-between gap-3">
+                    <div className="flex -space-x-2">
+                      {boxProducts.slice(0, 5).map((p) => {
+                        const thumb = p.images?.[0]?.url;
+                        return (
+                          <div
+                            key={p.id}
+                            className="h-11 w-11 rounded-md border-2 border-white bg-gray-50 overflow-hidden shrink-0 shadow-sm flex items-center justify-center"
+                          >
+                            {thumb ? (
+                              <img src={thumb} alt={p.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-base opacity-40">🎁</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {boxProducts.length > 5 && (
+                        <div className="h-11 w-11 rounded-md border-2 border-white bg-em text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                          +{boxProducts.length - 5}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs text-ink-2 shrink-0 tabnum">
+                      Per box <span className="font-semibold text-ink">{inr(subtotal)}</span>
+                    </span>
+                  </div>
+                )}
+
+                {/* Mobile-only: reveal/hide the item list + breakdown so the
+                    panel stays short and the Proceed button is reachable. */}
+                {boxProducts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBoxDetails((v) => !v)}
+                    className="lg:hidden mt-3 w-full flex items-center justify-center gap-1 text-xs font-semibold text-em"
+                  >
+                    {showBoxDetails
+                      ? 'Hide details'
+                      : `See details · ${boxProducts.length} item${boxProducts.length !== 1 ? 's' : ''}`}
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${showBoxDetails ? 'rotate-180' : ''}`}
+                    />
+                  </button>
                 )}
 
                 <button
@@ -556,12 +609,12 @@ export default function BuildYourBoxPage() {
               <>
                 {/* Horizontal budget tracking line */}
                 <div className="bg-white rounded-md border-2 border-bdr px-4 py-3">
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <span className="text-sm font-bold text-ink shrink-0">
                       Budget tracking
                       <span className="ml-1 font-normal text-[11px] text-ink-3">incl. GST</span>
                     </span>
-                    <div className="relative flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="relative order-last w-full h-2.5 bg-gray-200 rounded-full overflow-hidden sm:order-none sm:flex-1 sm:w-auto">
                       <motion.div
                         animate={{ width: `${Math.min(percentage, 100)}%` }}
                         transition={{ type: 'spring', stiffness: 50, damping: 15 }}
