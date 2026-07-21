@@ -608,14 +608,16 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                 </div>
               </aside>
 
-              {/* Packs as product cards */}
+              {/* Packs as product cards — two across on mobile, matching the
+                  catalog product grid. One full-width card per screen made
+                  browsing a long list of packs feel much longer than it is. */}
               <div className="flex-1 w-full">
                 {filtered.length === 0 ? (
                   <div className="text-center py-16 rounded-md border-2 border-dashed border-bdr bg-white">
                     <p className="text-ink">No packs match your filters</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     {filtered.map((pack) => (
                       <div
                         key={pack.id}
