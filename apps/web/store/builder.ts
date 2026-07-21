@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useBoxStore } from "./box";
 
 export interface BuilderProduct {
   id: string;
@@ -7,6 +8,9 @@ export interface BuilderProduct {
   slug: string;
   quantity: number;
   sellPrice: number;
+  // Minimum order quantity for THIS product (from the product master). Used to
+  // floor the pack quantity so a box can't be ordered below its products' MOQ.
+  moq?: number;
   brand?: string;
   printingTechnique?: string;
   hsnCode?: string;
@@ -210,6 +214,11 @@ export const useBuilderStore = create<BuilderState>()(
       removeProduct: (productId) => {
         const products = get().products.filter((p) => p.id !== productId);
         set({ products });
+        // The Build-Your-Pack planner (/box) keeps its own copy of the same
+        // selection, so a removal here must remove it there too — otherwise
+        // going back to /box resurrects products the user just deleted from the
+        // pack. (/box already mirrors its removals into this store.)
+        useBoxStore.getState().removeProduct(productId);
       },
 
       updateProductQuantity: (productId, quantity) => {
@@ -274,7 +283,13 @@ export const useBuilderStore = create<BuilderState>()(
         return get().packQuantity;
       },
 
-      clearAll: () => set(initialState),
+      clearAll: () => {
+        set(initialState);
+        // Emptying the pack empties the planner's box for the same reason. Only
+        // the products are cleared — the budget and box count the user set on
+        // /box are their settings, not pack contents, and are kept.
+        useBoxStore.setState({ products: [] });
+      },
     }),
     {
       name: "giftcraft-builder",

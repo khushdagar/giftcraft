@@ -119,6 +119,15 @@ export default function BuildYourBoxPage() {
 
   const seededRef = useRef(false);
 
+  // Locally-editable text for the Boxes field so the user can clear it and type
+  // a fresh number. We only clamp to the minimum on blur — clamping on every
+  // keystroke made it impossible to replace the existing value (typing "45" into
+  // "25" produced "2545"). Kept in sync when the +/- buttons change the store.
+  const [boxQtyInput, setBoxQtyInput] = useState(String(packQuantity));
+  useEffect(() => {
+    setBoxQtyInput(String(packQuantity));
+  }, [packQuantity]);
+
   // Per-box product cost at the current volume tier (re-prices live when qty
   // changes), split so the breakdown can show the customer exactly how their
   // tax-inclusive total is built: base price + each product's own GST.
@@ -372,8 +381,8 @@ export default function BuildYourBoxPage() {
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <p className="text-xs font-normal uppercase tracking-wider text-ink-3">NEW FEATURE</p>
-          <h1 className="text-4xl sm:text-5xl font-normal mt-2 text-ink">Build Your Box</h1>
-          <p className="text-base text-ink-2 mt-3 max-w-2xl">
+          <h1 className="text-4xl sm:text-5xl font-normal mt-2 text-ink">Build Your Pack</h1>
+          <p className="text-base text-ink-2 mt-3 max-w-2xl"> 
             Create a custom gift pack within your budget. We'll help you maximize every rupee!
           </p>
         </motion.div>
@@ -442,10 +451,20 @@ export default function BuildYourBoxPage() {
                   <input
                     type="number"
                     min={minBoxQty}
-                    value={packQuantity}
+                    value={boxQtyInput}
                     onChange={(e) => {
+                      // Let the field hold whatever is typed (including empty
+                      // mid-edit); push valid numbers to the store live.
+                      setBoxQtyInput(e.target.value);
                       const v = parseInt(e.target.value, 10);
-                      if (!isNaN(v) && v > 0) setPackQuantity(Math.max(minBoxQty, v));
+                      if (!isNaN(v) && v > 0) setPackQuantity(v);
+                    }}
+                    onBlur={() => {
+                      // Enforce the floor once the user is done editing.
+                      const v = parseInt(boxQtyInput, 10);
+                      const next = isNaN(v) || v < minBoxQty ? minBoxQty : v;
+                      setPackQuantity(next);
+                      setBoxQtyInput(String(next));
                     }}
                     className="flex-1 h-9 text-center rounded-md border-2 border-bdr focus:border-em focus:outline-none text-sm"
                   />
@@ -470,7 +489,7 @@ export default function BuildYourBoxPage() {
 
                 {boxProducts.length === 0 ? (
                   <p className="text-xs text-ink-3 py-4 text-center">
-                    No products yet. Add items from the right to build your box.
+                    No products yet. Add items from the right to build your pack.
                   </p>
                 ) : (
                   <div className={`${showBoxDetails ? '' : 'hidden'} lg:block`}>

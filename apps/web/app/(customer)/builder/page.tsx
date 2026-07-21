@@ -22,7 +22,9 @@ async function getBuilderData() {
 
   try {
     const [productsRes, filtersRes, packagingRes, addonsRes] = await Promise.all([
-      fetch(`${baseUrl}/api/products?limit=100`, { next: { revalidate: 3600 } }),
+      // The builder filters by category client-side, so it needs the WHOLE
+      // catalogue — a short page would silently hide products from the pills.
+      fetch(`${baseUrl}/api/products?limit=1000`, { next: { revalidate: 3600 } }),
       fetch(`${baseUrl}/api/catalog/filters`, { next: { revalidate: 3600 } }),
       // Packaging/addons drive live pricing + box suggestion and change with admin
       // edits — keep them fresh (short revalidate) so dimension/price updates apply.

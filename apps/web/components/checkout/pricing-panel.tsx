@@ -28,10 +28,11 @@ interface PricingPanelProps {
 }
 
 // Human label for the HSN-grouped GST lines (per SOW: one line per HSN group,
-// plus a separate shipping GST line).
+// plus a separate shipping GST line, plus the payment-fee GST).
 function gstLineLabel(hsnCode: string, gstRate: number): string {
   if (hsnCode === '996812') return 'GST @ 18% on shipping';
   if (hsnCode === '4819') return 'GST @ 18% on packaging & add-ons';
+  if (hsnCode === 'FEE') return 'GST @ 18% on payment fee';
   return `GST @ ${gstRate}% on products`;
 }
 
@@ -48,11 +49,19 @@ export function PricingPanel({
   const [gstOpen, setGstOpen] = useState(false);
 
   // GST detail lines, one per HSN group (products, packaging & add-ons, and
-  // shipping under HSN 996812). Combined GST is a single collapsible row.
-  const gstLines = pricing.hsnBreakdown.filter(
-    (line) => line.cgst + line.sgst + line.igst > 0
-  );
-  const gstTotal = pricing.cgst + pricing.sgst + pricing.igst;
+  // shipping under HSN 996812), PLUS a synthetic line for the GST charged on the
+  // payment fee — so the collapsible detail still sums to the combined GST shown
+  // in the header. Combined GST is a single collapsible row.
+  const gstLines = [
+    ...pricing.hsnBreakdown.filter((line) => line.cgst + line.sgst + line.igst > 0),
+    ...(pricing.razorpayFeeGst > 0
+      ? [{ hsnCode: 'FEE', gstRate: 18, taxableAmount: pricing.razorpayFeeBase, cgst: 0, sgst: 0, igst: pricing.razorpayFeeGst }]
+      : []),
+  ];
+  // Single all-in GST: goods/shipping GST + the GST on the payment fee.
+  const gstTotal = pricing.gstTotal;
+  // Payment fee shown PRE-GST; its GST is part of the combined GST line.
+  const paymentFeeBase = pricing.razorpayFeeBase;
 
   // Shipping's courier rate is GST-inclusive. `gstTotal` above already contains
   // the tax hidden inside it, so this line must show the TAXABLE value — showing
@@ -119,7 +128,19 @@ export function PricingPanel({
             <span className="font-medium tabular-nums text-xs">{formatRupees(shippingTaxable)}</span>
           </div>
 
-          {/* GST — single line, collapsible. Click to view the calculation. */}
+          {/* Payment Processing Fee — shown PRE-GST (2%); its GST is folded into
+              the single combined GST line below. */}
+          <div className="flex justify-between text-[#6B6B63]">
+            <span className="text-xs">
+              Payment Processing Fee
+              <br />
+              <span className="text-[10px] italic">Razorpay 2%</span>
+            </span>
+            <span className="font-medium tabular-nums text-xs">{formatRupees(paymentFeeBase)}</span>
+          </div>
+
+          {/* GST — single all-in line (products + packaging/add-ons + shipping +
+              payment-fee GST), collapsible. Click to view the calculation. */}
           {gstTotal > 0 && (
             <div className="mt-1 overflow-hidden">
               <button
@@ -129,7 +150,7 @@ export function PricingPanel({
                 aria-expanded={gstOpen}
               >
                 <span className="flex items-center gap-1 text-[#6B6B63]">
-                  
+
                   GST
                   <ChevronDown
                     className={`h-3.5 w-3.5 transition-transform ${gstOpen ? '' : '-rotate-90'}`}
@@ -150,7 +171,9 @@ export function PricingPanel({
                         <span>
                           {gstLineLabel(line.hsnCode, line.gstRate)}
                           <br />
-                          <span className="text-[10px]">HSN {line.hsnCode}</span>
+                          <span className="text-[10px]">
+                            {line.hsnCode === 'FEE' ? 'Razorpay fee' : `HSN ${line.hsnCode}`}
+                          </span>
                         </span>
                         <span className="font-medium tabular-nums">{formatRupees(amount)}</span>
                       </div>
@@ -160,16 +183,6 @@ export function PricingPanel({
               )}
             </div>
           )}
-
-          {/* Payment Processing Fee */}
-          <div className="flex justify-between text-[#6B6B63]">
-            <span className="text-xs">
-              Payment Processing Fee
-              <br />
-              <span className="text-[10px] italic">Razorpay 2% + 18% GST</span>
-            </span>
-            <span className="font-medium tabular-nums text-xs">{formatRupees(pricing.razorpayFee)}</span>
-          </div>
 
           {/* Grand Total */}
           <div className="flex justify-between border-t-2 border-[#D4D4CF] pt-3 mt-2 text-lg font-bold">

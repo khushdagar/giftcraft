@@ -1074,10 +1074,15 @@ model PushSubscription {
 // so we track which synthetic notification keys (e.g. "order-<id>",
 // "revision-<id>", "dispute-<id>") an admin has already seen/cleared.
 model AdminNotificationRead {
-  id     String   @id @default(cuid())
-  userId String
-  key    String
-  readAt DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  // A record marks a notification as *read* (seen — drops the unread badge but
+  // stays visible in the bell). `dismissed` promotes it to *cleared* (hidden
+  // entirely). Read and cleared are two distinct states on purpose: clicking a
+  // notification only reads it; it isn't removed until the admin clears it.
+  dismissed Boolean  @default(false)
+  readAt    DateTime @default(now())
 
   @@unique([userId, key])
   @@index([userId])

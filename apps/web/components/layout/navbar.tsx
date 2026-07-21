@@ -87,10 +87,11 @@ export function Navbar() {
         <ul className="hidden items-center gap-7 lg:flex">
           <li><Link href="/" className="text-sm font-medium text-ink-2 hover:text-ink">Home</Link></li>
           <li><Link href="/catalog" className="text-sm font-medium text-ink-2 hover:text-ink">Products</Link></li>
+          <li><Link href="/packs" className="text-sm font-medium text-ink-2 hover:text-ink">Curated Packs</Link></li>
 
           {/* Occasions dropdown — hover-triggered */}
           <li className="group relative py-4">
-            <button className="text-sm font-medium text-ink-2 hover:text-ink">Occasions ▾</button>
+            <button className="text-sm font-medium text-ink-2 hover:text-ink">Collections ▾</button>
             <div className="glass invisible absolute left-1/2 top-full grid min-w-[480px] -translate-x-1/2 grid-cols-3 gap-1 rounded-md-s p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
               {occasions.map((o) => (
                 <Link
@@ -105,8 +106,7 @@ export function Navbar() {
             </div>
           </li>
 
-          <li><Link href="/packs" className="text-sm font-medium text-ink-2 hover:text-ink">Curated Packs</Link></li>
-          <li><Link href="/box" className="text-sm font-medium text-ink-2 hover:text-ink">Build Your Box</Link></li>
+          <li><Link href="/box" className="text-sm font-medium text-ink-2 hover:text-ink">Build Your Pack</Link></li>
           <li><Link href="/blog" className="text-sm font-medium text-ink-2 hover:text-ink">Blog</Link></li>
           <li><Link href="/contact" className="text-sm font-medium text-ink-2 hover:text-ink">Contact</Link></li>
         </ul>

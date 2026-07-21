@@ -116,6 +116,7 @@ export function ProductQuickView({ product, open, onOpenChange }: ProductQuickVi
       dimensionH: (fullProduct as any).dimensionH ?? (fullProduct as any).heightCm,
       quantity: 1, // one unit of this product per pack
       sellPrice: unitPrice,
+      moq: (fullProduct as any).moq,
       priceTiers: tiers,
       images: fullProduct.images,
       variantValue: selectedVariant?.value,

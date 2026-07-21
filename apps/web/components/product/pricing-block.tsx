@@ -272,9 +272,9 @@ export function PricingBlock({
             <span className="font-black tabnum text-3xl text-ink">
               <AnimatedNumber value={subtotal} formatter={formatRupees} />
             </span>
-            <p className="mt-1 text-xs text-ink-3">
+            {/* <p className="mt-1 text-xs text-ink-3">
               ⚪ GST packaging & shipping
-            </p>
+            </p> */}
           </div>
         </div>
       </div>

@@ -7,8 +7,14 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   try {
-    const product = await prisma.product.findUnique({
-      where: { slug: params.slug, status: 'active' },
+    // Accept either a slug (product pages) or an id — the builder resolves
+    // products it was handed by id in a `?product=`/`?pack=` link, and has no
+    // slug to look them up with.
+    const product = await prisma.product.findFirst({
+      where: {
+        status: 'active',
+        OR: [{ slug: params.slug }, { id: params.slug }],
+      },
       include: {
         priceTiers: {
           orderBy: { tier: 'asc' },

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { formatRupees } from '@/lib/utils';
+import { combinedGst, splitPaymentFee } from '@/lib/pricing-display';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
@@ -168,19 +169,22 @@ export default async function QuotePage({ params }: { params: { token: string } 
                   </span>
                 </div>
               )}
-              {/* GST — single combined line, incl. the GST inside the courier rate */}
-              {(pricing.cgst || 0) + (pricing.sgst || 0) + (pricing.igst || 0) > 0 && (
+              {/* Payment fee (2%), pre-GST — its GST is part of the combined GST
+                  line below. */}
+              {splitPaymentFee(pricing.razorpayFee || 0).base > 0 && (
+                <div className="flex items-center justify-between text-sm border-t border-inv/20 pt-2">
+                  <span>Payment Fee (2%)</span>
+                  <span className="font-normal tabnum">+{formatRupees(splitPaymentFee(pricing.razorpayFee || 0).base)}</span>
+                </div>
+              )}
+              {/* GST — single all-in line: goods + shipping GST + the payment-fee
+                  GST, shown last below the payment fee. */}
+              {combinedGst(pricing.cgst || 0, pricing.sgst || 0, pricing.igst || 0, pricing.razorpayFee || 0) > 0 && (
                 <div className="flex items-center justify-between text-sm">
                   <span>GST</span>
                   <span className="font-normal tabnum">
-                    +{formatRupees((pricing.cgst || 0) + (pricing.sgst || 0) + (pricing.igst || 0))}
+                    +{formatRupees(combinedGst(pricing.cgst || 0, pricing.sgst || 0, pricing.igst || 0, pricing.razorpayFee || 0))}
                   </span>
-                </div>
-              )}
-              {pricing.razorpayFee > 0 && (
-                <div className="flex items-center justify-between text-sm border-t border-inv/20 pt-2">
-                  <span>Payment Fee</span>
-                  <span className="font-normal tabnum">+{formatRupees(pricing.razorpayFee)}</span>
                 </div>
               )}
               <div className="border-t border-inv/20 pt-3 flex items-center justify-between">

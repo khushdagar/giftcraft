@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Bell, Package, PencilLine, AlertCircle, CheckCheck } from 'lucide-react';
+import { Bell, Package, PencilLine, AlertCircle, CheckCheck, X } from 'lucide-react';
 
 interface NotificationItem {
   id: string;
@@ -11,6 +11,7 @@ interface NotificationItem {
   subtitle: string;
   href: string;
   createdAt: string;
+  read: boolean;
 }
 
 const ICON = {
@@ -68,13 +69,15 @@ export function NotificationBell() {
     };
   }, []);
 
-  // Mark the given keys read on the server and optimistically drop them from
-  // the bell so the badge/list update immediately.
+  // Mark the given keys read on the server. Read notifications stay visible in
+  // the bell (styled as read) but drop out of the unread badge — they're only
+  // removed once cleared. Optimistically flips them read so the badge updates.
   const markRead = async (keys: string[]) => {
-    if (keys.length === 0) return;
     const set = new Set(keys);
-    setItems((prev) => prev.filter((n) => !set.has(n.id)));
-    setCount((c) => Math.max(0, c - keys.length));
+    const wasUnread = items.filter((n) => set.has(n.id) && !n.read).length;
+    if (wasUnread === 0) return;
+    setItems((prev) => prev.map((n) => (set.has(n.id) ? { ...n, read: true } : n)));
+    setCount((c) => Math.max(0, c - wasUnread));
     try {
       await fetch('/api/admin/notifications/read', {
         method: 'POST',
@@ -86,7 +89,26 @@ export function NotificationBell() {
     }
   };
 
-  const markAllRead = () => markRead(items.map((n) => n.id));
+  // Clear the given keys — removes them from the bell entirely. Optimistically
+  // drops them from the list and the unread badge.
+  const dismiss = async (keys: string[]) => {
+    if (keys.length === 0) return;
+    const set = new Set(keys);
+    const removedUnread = items.filter((n) => set.has(n.id) && !n.read).length;
+    setItems((prev) => prev.filter((n) => !set.has(n.id)));
+    setCount((c) => Math.max(0, c - removedUnread));
+    try {
+      await fetch('/api/admin/notifications/dismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keys }),
+      });
+    } catch {
+      /* ignore — next poll will reconcile */
+    }
+  };
+
+  const clearAll = () => dismiss(items.map((n) => n.id));
 
   // Close on outside click.
   useEffect(() => {
@@ -119,9 +141,9 @@ export function NotificationBell() {
             <p className="text-sm font-medium text-gray-900">Notifications</p>
             {items.length > 0 && (
               <button
-                onClick={markAllRead}
+                onClick={clearAll}
                 className="flex items-center gap-1 text-xs font-medium text-em hover:text-em-700"
-                title="Mark all as read"
+                title="Clear all notifications"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
                 Clear all
@@ -141,26 +163,53 @@ export function NotificationBell() {
               items.map((n) => {
                 const Icon = ICON[n.type];
                 return (
-                  <Link
+                  <div
                     key={n.id}
-                    href={n.href}
-                    onClick={() => {
-                      markRead([n.id]);
-                      setOpen(false);
-                    }}
-                    className="flex gap-3 border-b border-gray-50 px-4 py-3 transition-colors hover:bg-gray-50 last:border-0"
+                    className={`group relative flex items-center border-b border-gray-50 transition-colors last:border-0 ${
+                      n.read ? 'bg-white hover:bg-gray-50' : 'bg-em-50/40 hover:bg-em-50/70'
+                    }`}
                   >
-                    <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ICON_STYLE[n.type]}`}
+                    <Link
+                      href={n.href}
+                      onClick={() => {
+                        markRead([n.id]);
+                        setOpen(false);
+                      }}
+                      className="flex min-w-0 flex-1 gap-3 px-4 py-3"
                     >
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-gray-900">{n.title}</p>
-                      <p className="truncate text-xs text-gray-500">{n.subtitle}</p>
-                      <p className="mt-0.5 text-[11px] text-gray-400">{timeAgo(n.createdAt)}</p>
-                    </div>
-                  </Link>
+                      {!n.read && (
+                        <span className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-em" />
+                      )}
+                      <span
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ICON_STYLE[n.type]}`}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={`truncate text-sm ${
+                            n.read ? 'font-normal text-gray-600' : 'font-medium text-gray-900'
+                          }`}
+                        >
+                          {n.title}
+                        </p>
+                        <p className="truncate text-xs text-gray-500">{n.subtitle}</p>
+                        <p className="mt-0.5 text-[11px] text-gray-400">{timeAgo(n.createdAt)}</p>
+                      </div>
+                    </Link>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        dismiss([n.id]);
+                      }}
+                      className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-gray-300 opacity-0 transition-opacity hover:bg-gray-200 hover:text-gray-600 group-hover:opacity-100"
+                      title="Clear notification"
+                      aria-label="Clear notification"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 );
               })
             )}

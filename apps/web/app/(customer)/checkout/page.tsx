@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { CheckoutNav } from '@/components/checkout/checkout-nav';
 import { OrderSummary } from '@/components/checkout/order-summary';
@@ -88,6 +89,10 @@ function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const quoteId = searchParams.get('quoteId');
+
+  // Signed-in user — used to pre-fill the contact email so the buyer doesn't
+  // re-type the address they logged in with.
+  const { data: session } = useSession();
 
   const [selectedPath, setSelectedPath] = useState<'mockup' | 'lock'>('mockup');
 
@@ -175,6 +180,15 @@ function CheckoutContent() {
       phone: a.phone || prev.phone,
     }));
   }, [payload?.address]);
+
+  // Pre-fill the contact email from the signed-in user's account so they don't
+  // enter it again. Only fills a blank field — never overwrites something the
+  // buyer has already typed.
+  useEffect(() => {
+    const email = session?.user?.email;
+    if (!email) return;
+    setContactData((prev) => (prev.email ? prev : { ...prev, email }));
+  }, [session?.user?.email]);
 
   const packQuantity = payload?.packQuantity || 0;
   const sleeve = !!payload?.sleeve;

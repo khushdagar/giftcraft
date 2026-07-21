@@ -51,14 +51,16 @@ export async function GET() {
       prisma.order.count({
         where: { status: { notIn: ['delivered', 'completed', 'cancelled', 'refunded'] } },
       }),
-      // Notifications this admin has already seen/cleared.
+      // Notifications this admin has already read or cleared.
       prisma.adminNotificationRead.findMany({
         where: { userId: session.user.id },
-        select: { key: true },
+        select: { key: true, dismissed: true },
       }),
     ]);
 
+    // A row means "read"; a dismissed row means "cleared" (hidden entirely).
     const readKeys = new Set(readRows.map((r) => r.key));
+    const dismissedKeys = new Set(readRows.filter((r) => r.dismissed).map((r) => r.key));
 
     const notifications = [
       ...newOrders.map((o) => ({
@@ -86,11 +88,16 @@ export async function GET() {
         createdAt: d.createdAt.toISOString(),
       })),
     ]
-      .filter((n) => !readKeys.has(n.id))
+      // Hide only cleared notifications; read-but-not-cleared ones stay visible.
+      .filter((n) => !dismissedKeys.has(n.id))
+      .map((n) => ({ ...n, read: readKeys.has(n.id) }))
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 
+    // Badge reflects UNREAD notifications only.
+    const unreadCount = notifications.filter((n) => !n.read).length;
+
     return NextResponse.json({
-      count: notifications.length,
+      count: unreadCount,
       navOrdersCount,
       notifications,
     });

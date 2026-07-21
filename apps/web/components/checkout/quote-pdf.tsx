@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { formatRupees } from '@/lib/utils';
+import { combinedGst, splitPaymentFee } from '@/lib/pricing-display';
 
 const styles = StyleSheet.create({
   page: {
@@ -212,24 +213,26 @@ export function QuotePDF({ quoteId, expiresAt, payload, shareToken }: QuotePDFPr
             </View>
           )}
 
-          {/* GST — single combined line, incl. the GST inside the courier rate */}
-          {(pricing.cgst || 0) + (pricing.sgst || 0) + (pricing.igst || 0) > 0 && (
-            <View style={styles.row}>
-              <Text>GST</Text>
-              <Text>₹{((pricing.cgst || 0) + (pricing.sgst || 0) + (pricing.igst || 0)).toFixed(2)}</Text>
-            </View>
-          )}
-
-          {/* Razorpay Fee */}
-          {pricing.razorpayFee > 0 && (
+          {/* Payment fee (2%), pre-GST — its GST is folded into the combined GST
+              line below. */}
+          {splitPaymentFee(pricing.razorpayFee || 0).base > 0 && (
             <View>
               <View style={styles.row}>
                 <Text>Payment Processing Fee</Text>
-                <Text>₹{pricing.razorpayFee.toFixed(2)}</Text>
+                <Text>₹{splitPaymentFee(pricing.razorpayFee || 0).base.toFixed(2)}</Text>
               </View>
               <Text style={{ fontSize: 8, color: '#71717A', paddingHorizontal: 8 }}>
-                (2% + 18% GST on fee)
+                (Razorpay 2%)
               </Text>
+            </View>
+          )}
+
+          {/* GST — single all-in line: goods + shipping GST + the payment-fee GST,
+              shown last, below the payment fee. */}
+          {combinedGst(pricing.cgst || 0, pricing.sgst || 0, pricing.igst || 0, pricing.razorpayFee || 0) > 0 && (
+            <View style={styles.row}>
+              <Text>GST</Text>
+              <Text>₹{combinedGst(pricing.cgst || 0, pricing.sgst || 0, pricing.igst || 0, pricing.razorpayFee || 0).toFixed(2)}</Text>
             </View>
           )}
 

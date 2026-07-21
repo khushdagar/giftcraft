@@ -50,7 +50,7 @@ export function ShopByOccasion() {
                 <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-600" style={{ background: occasionColors[occ.name] || occ.bg }} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 text-white z-10">
-                  <div className="text-2xl mb-2">{occ.icon}</div>
+                  {/* <div className="text-2xl mb-2">{occ.icon}</div> */}
                   <h3 className="text-lg md:text-xl font-bold font-serif mb-1">{occ.name}</h3>
                   <p className="text-xs md:text-sm text-white/80">{occ.description}</p>
                 </div>

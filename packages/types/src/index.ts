@@ -62,10 +62,16 @@ export interface PricingBreakdown {
   shippingTaxable: number;     // shipping / 1.18 — the taxable value under HSN 996812
   shippingGst: number;         // shipping − shippingTaxable — the GST already inside the courier rate
   discount: number;
-  cgst: number;                // includes the CGST half of shippingGst
-  sgst: number;                // includes the SGST half of shippingGst
-  igst: number;                // includes shippingGst when inter-state
-  razorpayFee: number;
+  cgst: number;                // includes the CGST half of shippingGst — legal tax-invoice split
+  sgst: number;                // includes the SGST half of shippingGst — legal tax-invoice split
+  igst: number;                // includes shippingGst when inter-state — legal tax-invoice split
+  razorpayFee: number;         // payment-processing fee INCLUDING its own GST (base + fee GST)
+  razorpayFeeBase: number;     // just the % fee, PRE-GST — the "Payment fee (2%)" display line
+  razorpayFeeGst: number;      // GST charged on the payment fee — folded into gstTotal for display
+  // Single all-in GST figure for customer-facing summaries: product GST +
+  // packaging/add-on GST + shipping GST + payment-fee GST, combined. Formal tax
+  // invoices still split this into cgst/sgst/igst above; summaries show one line.
+  gstTotal: number;
   grandTotal: number;
   perPack: number;
   hsnBreakdown: HsnGstLine[];

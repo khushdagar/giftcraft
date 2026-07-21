@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { formatRupees } from '@/lib/utils';
+import { combinedGst, splitPaymentFee, shippingTaxable } from '@/lib/pricing-display';
 import { invoiceLabel } from '@/lib/invoice-status';
 import { useBuilderStore } from '@/store/builder';
+import { useBoxStore } from '@/store/box';
 
 interface OrderItem {
   id: string;
@@ -47,6 +49,7 @@ function ConfirmationContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
   const { clearAll } = useBuilderStore();
+  const resetBox = useBoxStore((s) => s.reset);
 
   const {
     data: order,
@@ -65,10 +68,15 @@ function ConfirmationContent() {
     },
   });
 
-  // Clear the builder once the order is confirmed so a stale pack can't be re-submitted.
+  // Clear the cart once the order is confirmed so a stale pack can't be
+  // re-submitted — both the main builder AND the Build Your Box store, since
+  // either could hold the products that were just ordered.
   useEffect(() => {
-    if (order) clearAll();
-  }, [order, clearAll]);
+    if (order) {
+      clearAll();
+      resetBox();
+    }
+  }, [order, clearAll, resetBox]);
 
   // ── No order in the URL ───────────────────────────────────────────────
   if (!orderId) {
@@ -116,8 +124,11 @@ function ConfirmationContent() {
 
   // Full price breakdown (mirrors the checkout Price Breakdown panel).
   const itemsSubtotal = order.subtotal + order.packagingAmount + order.addonsAmount;
-  // GST is shown as a single combined line everywhere (CGST+SGST or IGST rolled up).
-  const gstTotal = order.cgstAmount + order.sgstAmount + order.igstAmount;
+  // One combined GST line everywhere: product/packaging/shipping GST PLUS the GST
+  // on the payment fee, rolled into a single figure. The payment fee itself is
+  // shown pre-GST below.
+  const gstTotal = combinedGst(order.cgstAmount, order.sgstAmount, order.igstAmount, order.razorpayFee);
+  const paymentFeeBase = splitPaymentFee(order.razorpayFee).base;
   const perPack = quantity > 0 ? grand / quantity : 0;
 
   const steps = [
@@ -197,7 +208,7 @@ function ConfirmationContent() {
             <p className="font-semibold mb-1">📬 What happens now?</p>
             <p>
               Our design team will create branded mockups of your products within <strong>1–2 business days</strong>.
-              You'll receive an approval link via WhatsApp and email.
+              You'll receive an approval link via email.
             </p>
           </div>
 
@@ -252,28 +263,34 @@ function ConfirmationContent() {
                 <span className="tabular-nums">{formatRupees(itemsSubtotal)}</span>
               </div>
 
+              {/* Shipping at its TAXABLE value — the courier rate is GST-inclusive
+                  and that GST is disclosed in the combined GST line below. Showing
+                  the inclusive amount here would double-count shipping's GST. */}
               <div className="flex justify-between text-[#6B6B63]">
-                <span>Shipping (incl. GST)</span>
+                <span>Shipping</span>
                 <span className="tabular-nums">
-                  {order.shippingAmount > 0 ? formatRupees(order.shippingAmount) : 'FREE'}
+                  {order.shippingAmount > 0 ? formatRupees(shippingTaxable(order.shippingAmount)) : 'FREE'}
                 </span>
               </div>
 
-              {/* GST — single combined line (shipping is already GST-inclusive) */}
+              {/* Payment fee (2%), shown PRE-GST — its GST is part of the
+                  combined GST line below. */}
+              {paymentFeeBase > 0 && (
+                <div className="flex justify-between text-[#6B6B63]">
+                  <span>
+                    Payment Processing Fee
+                    <span className="block text-[11px] italic text-[#9B9B93]">Razorpay 2%</span>
+                  </span>
+                  <span className="tabular-nums">{formatRupees(paymentFeeBase)}</span>
+                </div>
+              )}
+
+              {/* GST — single all-in line (goods + shipping + payment-fee GST),
+                  shown last, below the payment fee. */}
               {gstTotal > 0 && (
                 <div className="flex justify-between text-[#6B6B63]">
                   <span>GST</span>
                   <span className="tabular-nums">{formatRupees(gstTotal)}</span>
-                </div>
-              )}
-
-              {order.razorpayFee > 0 && (
-                <div className="flex justify-between text-[#6B6B63]">
-                  <span>
-                    Payment Processing Fee
-                    <span className="block text-[11px] italic text-[#9B9B93]">Razorpay 2% + 18% GST</span>
-                  </span>
-                  <span className="tabular-nums">{formatRupees(order.razorpayFee)}</span>
                 </div>
               )}
             </div>
