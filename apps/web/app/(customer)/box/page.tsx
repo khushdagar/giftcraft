@@ -626,8 +626,13 @@ export default function BuildYourBoxPage() {
               </div>
             ) : (
               <>
-                {/* Horizontal budget tracking line */}
-                <div className="bg-white rounded-md border-2 border-bdr px-4 py-3">
+                {/* Horizontal budget tracking line.
+                    On mobile the budget panel is far above the product grid, so
+                    this sticks below the navbar (h-14) as the user scrolls the
+                    products — "what's left" has to stay on screen at the moment
+                    they're deciding what to add. On lg+ the sticky sidebar
+                    already shows it, so it scrolls normally there. */}
+                <div className="sticky top-14 z-30 bg-white rounded-md border-2 border-bdr px-4 py-3 shadow-sm lg:static lg:z-auto lg:shadow-none">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <span className="text-sm font-bold text-ink shrink-0">
                       Budget tracking

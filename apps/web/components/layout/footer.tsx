@@ -8,7 +8,6 @@ const COL_PRODUCT = [
   ["/packs", "Curated Packs"],
   ["/catalog?occasion=eco-friendly", "Eco-Friendly"],
   ["/catalog?occasion=premium-executive", "Premium"],
-  ["/pricing", "Pricing"],
 ];
 const COL_COMPANY = [
   ["/blog", "Blog"],
