@@ -165,6 +165,11 @@ export default async function DashboardPage() {
     orderBy: { createdAt: "desc" },
   });
 
+  // The single-order layout below reads element [0]. A `.length === 1` check
+  // does not narrow an index access for the compiler, so bind it once here and
+  // let the JSX branch on the value itself.
+  const [onlyMockupOrder] = mockupPendingOrders;
+
   return (
     <div className="max-w-full space-y-8">
       {/* Balance-payment popup — opens when redirected here with ?pay=<orderId>
@@ -206,9 +211,9 @@ export default async function DashboardPage() {
                 {mockupPendingOrders.length > 1 ? ` (${mockupPendingOrders.length})` : ""}
               </p>
 
-              {mockupPendingOrders.length === 1 ? (
+              {mockupPendingOrders.length === 1 && onlyMockupOrder ? (
                 <p className="mt-1 text-sm text-ink-2">
-                  Order #{mockupPendingOrders[0].orderNumber} (Pack × {mockupPendingOrders[0].packQuantity}) has mockups ready. Approve to start production.
+                  Order #{onlyMockupOrder.orderNumber} (Pack × {onlyMockupOrder.packQuantity}) has mockups ready. Approve to start production.
                 </p>
               ) : (
                 <>
@@ -236,9 +241,9 @@ export default async function DashboardPage() {
             </div>
 
             {/* Single-order shortcut keeps the original one-click layout. */}
-            {mockupPendingOrders.length === 1 && (
+            {mockupPendingOrders.length === 1 && onlyMockupOrder && (
               <Button asChild variant="outline" size="sm">
-                <Link href={`/dashboard/orders/${mockupPendingOrders[0].id}`}>Review now</Link>
+                <Link href={`/dashboard/orders/${onlyMockupOrder.id}`}>Review now</Link>
               </Button>
             )}
           </div>
