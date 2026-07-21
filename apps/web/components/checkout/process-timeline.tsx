@@ -20,7 +20,7 @@ export function ProcessTimeline({ selectedPath, advance10, balance90, grand }: P
     {
       number: '2',
       title: 'Mockup Creation (1–2 business days)',
-      desc: "Our design team creates branded mockups showing your logo on each product. You'll receive an approval link via WhatsApp and email.",
+      desc: "Our design team creates branded mockups showing your logo on each product. You'll receive an approval link via email.",
       color: '#1A6B4F',
     },
     {

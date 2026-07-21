@@ -20,7 +20,7 @@ const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
 const TIMELINE_STEPS = [
   { number: 1, label: 'Order Confirmed', description: 'We create an order confirmation via email with Order ID' },
-  { number: 2, label: 'Mockup Creation (1-2 business days)', description: 'Our design team creates branded mockups showing your logo on each product. You\'ll receive an approval link via WhatsApp/email' },
+  { number: 2, label: 'Mockup Creation (1-2 business days)', description: 'Our design team creates branded mockups showing your logo on each product. You\'ll receive an approval link email' },
   { number: 3, label: 'Design Approval', description: 'Review the mockups, request changes if needed, and approve when satisfied. Digital approval via email' },
   { number: 4, label: 'Full Payment', description: 'Once mockups are approved, complete the remaining payment to begin production' },
   { number: 5, label: 'Production & QC', description: 'Products are produced, branded, and quality-checked. You\'ll receive QC photos for review' },

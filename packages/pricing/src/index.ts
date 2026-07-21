@@ -170,11 +170,15 @@ export function computePricing(input: PricingInput): PricingBreakdown {
       productsSubtotal + packaging + addons + shippingTaxable - discount
     );
 
-    const gstTotal = totalCgst + totalSgst + totalIgst;
-    const amountWithTax = preTax + gstTotal;
+    const goodsGst = totalCgst + totalSgst + totalIgst;
+    const amountWithTax = preTax + goodsGst;
     const rpBase = round2((amountWithTax * razorpayFeePct) / 100);
     const rpGst = round2((rpBase * razorpayFeeGstPct) / 100);
     const razorpayFee = round2(rpBase + rpGst);
+
+    // All-in GST for customer-facing summaries: goods/shipping GST + the GST
+    // charged on the payment fee, in one figure.
+    const gstTotal = round2(goodsGst + rpGst);
 
     const grandTotal = round2(amountWithTax + razorpayFee);
     const perPack = packQuantity > 0 ? round2(grandTotal / packQuantity) : 0;
@@ -192,6 +196,9 @@ export function computePricing(input: PricingInput): PricingBreakdown {
       sgst: round2(totalSgst),
       igst: round2(totalIgst),
       razorpayFee,
+      razorpayFeeBase: rpBase,
+      razorpayFeeGst: rpGst,
+      gstTotal,
       grandTotal,
       perPack,
       hsnBreakdown,
@@ -211,15 +218,17 @@ export function computePricing(input: PricingInput): PricingBreakdown {
     const preTax = Math.max(0, subtotal + packaging + addons + shippingFlat - discount);
 
     const sameState = sellerStateCode.toUpperCase() === buyerStateCode.toUpperCase();
-    const gstTotal = round2((preTax * legacyEffectiveGstRate) / 100);
-    const cgst = sameState ? round2(gstTotal / 2) : 0;
-    const sgst = sameState ? round2(gstTotal / 2) : 0;
-    const igst = sameState ? 0 : gstTotal;
+    const goodsGst = round2((preTax * legacyEffectiveGstRate) / 100);
+    const cgst = sameState ? round2(goodsGst / 2) : 0;
+    const sgst = sameState ? round2(goodsGst / 2) : 0;
+    const igst = sameState ? 0 : goodsGst;
 
-    const amountWithTax = preTax + gstTotal;
+    const amountWithTax = preTax + goodsGst;
     const rpBase = round2((amountWithTax * razorpayFeePct) / 100);
     const rpGst = round2((rpBase * razorpayFeeGstPct) / 100);
     const razorpayFee = round2(rpBase + rpGst);
+
+    const gstTotal = round2(goodsGst + rpGst);
 
     const grandTotal = round2(amountWithTax + razorpayFee);
     const perPack = quantity > 0 ? round2(grandTotal / quantity) : 0;
@@ -239,6 +248,9 @@ export function computePricing(input: PricingInput): PricingBreakdown {
       sgst,
       igst,
       razorpayFee,
+      razorpayFeeBase: rpBase,
+      razorpayFeeGst: rpGst,
+      gstTotal,
       grandTotal,
       perPack,
       hsnBreakdown: [],

@@ -45,13 +45,68 @@ interface BuilderContentProps {
   }>;
 }
 
+type CatalogueProduct = BuilderContentProps['allProducts'][number] & Record<string, any>;
+
+/**
+ * Find the product behind an id from a `?product=`/`?pack=` link.
+ *
+ * The pre-loaded catalogue must NOT be assumed to hold every product: the
+ * products API caps how many rows one request returns and hides some
+ * categories. A product missing from it used to make "Add to Pack" a silent
+ * no-op — the user landed on the builder with an empty pack and no explanation
+ * — so fall back to fetching that single product by id.
+ */
+async function resolveProduct(
+  id: string,
+  catalogue: CatalogueProduct[]
+): Promise<CatalogueProduct | null> {
+  const local = catalogue.find((p) => p.id === id);
+  if (local) return local;
+  try {
+    const res = await fetch(`/api/products/${encodeURIComponent(id)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.product ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Map a catalogue product onto a pack line, priced at the pack's quantity. */
+function toBuilderProduct(p: CatalogueProduct, qty: number) {
+  const tier =
+    p.priceTiers?.find((t) => qty >= t.minQty && (t.maxQty === null || qty <= t.maxQty)) ||
+    p.priceTiers?.[0];
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    brand: p.brand,
+    printingTechnique: p.printingTechnique,
+    hsnCode: p.hsnCode,
+    gstRate: p.gstRate,
+    leadTimeDays: p.leadTimeDays,
+    weightG: p.weightG,
+    dimensionL: p.dimensionL ?? p.lengthCm,
+    dimensionW: p.dimensionW ?? p.widthCm,
+    dimensionH: p.dimensionH ?? p.heightCm,
+    quantity: 1, // one unit per pack; qty drives packQuantity
+    sellPrice: tier?.sellPrice || 0,
+    moq: p.moq,
+    priceTiers: p.priceTiers,
+    images: p.images,
+  };
+}
+
 export function BuilderContent({
   allProducts,
   categories,
   packagingOptions,
   addonOptions,
 }: BuilderContentProps) {
-  const { currentStep, products, packQuantity, addProduct, setPackQuantity, clearAll, setCurrentStep } = useBuilderStore();
+  // The URL hand-off effects below read products/packQuantity live via
+  // getState() (they resolve asynchronously), so they are not subscribed here.
+  const { currentStep, addProduct, setPackQuantity, clearAll, setCurrentStep } = useBuilderStore();
   const searchParams = useSearchParams();
   const processedRef = useRef(false);
   const presetRef = useRef(false);
@@ -109,32 +164,19 @@ export function BuilderContent({
     setCurrentStep(1);
     setPackQuantity(qty);
 
-    packProductIds.forEach((id) => {
-      const found = allProducts.find((p) => p.id === id);
-      if (!found) return;
-      const tier =
-        found.priceTiers?.find(
-          (t) => qty >= t.minQty && (t.maxQty === null || qty <= t.maxQty)
-        ) || found.priceTiers?.[0];
-      addProduct({
-        id: found.id,
-        name: found.name,
-        slug: found.slug,
-        brand: found.brand,
-        printingTechnique: found.printingTechnique,
-        hsnCode: found.hsnCode,
-        gstRate: found.gstRate,
-        leadTimeDays: found.leadTimeDays,
-        weightG: found.weightG,
-        dimensionL: (found as any).dimensionL ?? (found as any).lengthCm,
-        dimensionW: (found as any).dimensionW ?? (found as any).widthCm,
-        dimensionH: (found as any).dimensionH ?? (found as any).heightCm,
-        quantity: 1, // one unit per pack; qty drives packQuantity (set above)
-        sellPrice: tier?.sellPrice || 0,
-        priceTiers: found.priceTiers,
-        images: found.images,
-      });
-    });
+    // A member missing from the pre-loaded catalogue is resolved over the
+    // network rather than dropped — a curated pack that quietly loses an item
+    // is worse than a slow one.
+    // Deliberately NOT cancelled on cleanup: under StrictMode the effect is
+    // mounted, torn down and re-run, and the re-run stops at packRef — so
+    // cancelling here would throw away the only pass that does the work.
+    // packRef already prevents duplicates, and addProduct ignores repeats.
+    (async () => {
+      for (const id of packProductIds) {
+        const found = await resolveProduct(id, allProducts);
+        if (found) addProduct(toBuilderProduct(found, qty));
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
   // Inline notice shown when a product is added at the pack's shared quantity
@@ -149,57 +191,43 @@ export function BuilderContent({
     const productId = searchParams.get('product');
     if (!productId) return;
 
-    const found = allProducts.find((p) => p.id === productId);
-    if (!found) return;
-
     processedRef.current = true;
 
     const qtyParam = searchParams.get('qty');
     const requestedQty = qtyParam ? Math.max(1, parseInt(qtyParam, 10) || 1) : 1;
 
-    // A pack shares ONE quantity across every product. Only the FIRST product
-    // (empty pack) sets that quantity; later products inherit it so the pack can
-    // never end up with mixed quantities. If the user picked a different number
-    // on the product page, keep the pack's quantity and explain why.
-    const packIsEmpty = products.length === 0;
-    const effectiveQty = packIsEmpty ? requestedQty : packQuantity;
+    // Not cancelled on cleanup — see the note in the curated-pack effect above.
+    (async () => {
+      const found = await resolveProduct(productId, allProducts);
+      if (!found) return;
 
-    if (packIsEmpty) {
-      // Keep tier pricing in sync with the chosen quantity
-      setPackQuantity(requestedQty);
-    } else if (requestedQty !== packQuantity) {
-      setQuantityNotice(
-        `"${found.name}" was added at ${packQuantity} units to match the rest of your pack.`
-      );
-    }
+      // Resolving may have gone to the network, so read the pack LIVE rather
+      // than from this effect's closure — <BuilderReset/> and the user could
+      // both have changed it in the meantime.
+      const { products: pack, packQuantity: packQty } = useBuilderStore.getState();
 
-    // Add the product, priced at the pack's effective quantity
-    const alreadyInPack = products.some((p) => p.id === productId);
-    if (!alreadyInPack) {
-      const tier =
-        found.priceTiers?.find(
-          (t) => effectiveQty >= t.minQty && (t.maxQty === null || effectiveQty <= t.maxQty)
-        ) || found.priceTiers?.[0];
-      addProduct({
-        id: found.id,
-        name: found.name,
-        slug: found.slug,
-        brand: found.brand,
-        printingTechnique: found.printingTechnique,
-        hsnCode: found.hsnCode,
-        gstRate: found.gstRate,
-        leadTimeDays: found.leadTimeDays,
-        weightG: found.weightG,
-        dimensionL: (found as any).dimensionL ?? (found as any).lengthCm,
-        dimensionW: (found as any).dimensionW ?? (found as any).widthCm,
-        dimensionH: (found as any).dimensionH ?? (found as any).heightCm,
-        quantity: 1, // one unit per pack; qty drives packQuantity (set above)
-        sellPrice: tier?.sellPrice || 0,
-        priceTiers: found.priceTiers,
-        images: found.images,
-      });
-    }
-  }, [searchParams, allProducts, products, packQuantity, addProduct, setPackQuantity]);
+      // A pack shares ONE quantity across every product. Only the FIRST product
+      // (empty pack) sets that quantity; later products inherit it so the pack can
+      // never end up with mixed quantities. If the user picked a different number
+      // on the product page, keep the pack's quantity and explain why.
+      const packIsEmpty = pack.length === 0;
+      const effectiveQty = packIsEmpty ? requestedQty : packQty;
+
+      if (packIsEmpty) {
+        // Keep tier pricing in sync with the chosen quantity
+        setPackQuantity(requestedQty);
+      } else if (requestedQty !== packQty) {
+        setQuantityNotice(
+          `"${found.name}" was added at ${packQty} units to match the rest of your pack.`
+        );
+      }
+
+      // Add the product, priced at the pack's effective quantity
+      if (!pack.some((p) => p.id === productId)) {
+        addProduct(toBuilderProduct(found, effectiveQty));
+      }
+    })();
+  }, [searchParams, allProducts, addProduct, setPackQuantity]);
 
   return (
     <>

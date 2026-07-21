@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Package, FileText, Clock, TrendingUp, Plus } from "lucide-react";
@@ -6,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRupees } from "@/lib/utils";
 import { Decimal } from "@prisma/client/runtime/library";
+import { DashboardPaymentModal } from "./components/payment-modal";
 
 interface KpiProps {
   label: string;
@@ -147,7 +149,9 @@ export default async function DashboardPage() {
     take: 3,
   });
 
-  // Fetch mockup pending orders for the alert
+  // Every order currently awaiting the customer's mockup review — not just the
+  // first. When several orders have mockups ready at once, each must surface here
+  // with its own order number and Review link, or the later ones get stranded.
   const mockupPendingOrders = await prisma.order.findMany({
     where: {
       placedById: userId,
@@ -158,13 +162,17 @@ export default async function DashboardPage() {
       orderNumber: true,
       packQuantity: true,
     },
-    take: 1,
+    orderBy: { createdAt: "desc" },
   });
-
-  const mockupAlert = mockupPendingOrders[0];
 
   return (
     <div className="max-w-full space-y-8">
+      {/* Balance-payment popup — opens when redirected here with ?pay=<orderId>
+          right after a mockup is approved. */}
+      <Suspense fallback={null}>
+        <DashboardPaymentModal />
+      </Suspense>
+
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="overline text-ink-3">Dashboard</p>
@@ -186,16 +194,53 @@ export default async function DashboardPage() {
         <Kpi label="YTD Spend" value={formatRupees(Number(ytdSpend))} icon={TrendingUp} accent="em-400" />
       </div>
 
-      {/* Mockup alert */}
-      {mockupAlert ? (
+      {/* Mockup alert — lists EVERY order awaiting review, each with its own
+          order number and a Review link to that specific order. */}
+      {mockupPendingOrders.length > 0 ? (
         <div className="rounded-md border-2 border-gold/30 bg-gold-50 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-white font-normal">!</div>
-            <div className="flex-1">
-              <p className="font-normal text-gold-700">Mockups awaiting your review</p>
-              <p className="mt-1 text-sm text-ink-2">Order #{mockupAlert.orderNumber} (Pack × {mockupAlert.packQuantity}) has mockups ready. Approve to start production.</p>
+            <div className="flex-1 min-w-0">
+              <p className="font-normal text-gold-700">
+                Mockups awaiting your review
+                {mockupPendingOrders.length > 1 ? ` (${mockupPendingOrders.length})` : ""}
+              </p>
+
+              {mockupPendingOrders.length === 1 ? (
+                <p className="mt-1 text-sm text-ink-2">
+                  Order #{mockupPendingOrders[0].orderNumber} (Pack × {mockupPendingOrders[0].packQuantity}) has mockups ready. Approve to start production.
+                </p>
+              ) : (
+                <>
+                  <p className="mt-1 text-sm text-ink-2">
+                    {mockupPendingOrders.length} orders have mockups ready. Approve each to start production.
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {mockupPendingOrders.map((o) => (
+                      <li
+                        key={o.id}
+                        className="flex items-center justify-between gap-3 rounded-md border border-gold/20 bg-white/60 px-3 py-2"
+                      >
+                        <span className="min-w-0 truncate text-sm text-ink-2">
+                          Order #{o.orderNumber}
+                          <span className="text-ink-3"> · Pack × {o.packQuantity}</span>
+                        </span>
+                        <Button asChild variant="outline" size="sm" className="flex-shrink-0">
+                          <Link href={`/dashboard/orders/${o.id}`}>Review</Link>
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
-            <Button asChild variant="outline" size="sm"><Link href="/dashboard/orders">Review now</Link></Button>
+
+            {/* Single-order shortcut keeps the original one-click layout. */}
+            {mockupPendingOrders.length === 1 && (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/dashboard/orders/${mockupPendingOrders[0].id}`}>Review now</Link>
+              </Button>
+            )}
           </div>
         </div>
       ) : null}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendRevisionReceivedEmail, sendBalancePaymentLinkEmail } from '@/lib/email';
+import { sendPushToAdmins } from '@/lib/push';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -35,6 +36,7 @@ export async function GET(
             orderNumber: true,
             grandTotal: true,
             deliveryDate: true,
+            billingJson: true,
             items: {
               select: {
                 product: { select: { name: true, slug: true } },
@@ -249,6 +251,17 @@ export async function POST(
         approval.order.placedBy?.name || 'Customer',
         notes
       );
+
+      // Real-time desktop push to admins (best-effort). The bell already derives
+      // this from the revision_requested status; the push makes it active. Tag +
+      // url match the bell's revision-<id> key / admin order link, so opening the
+      // order clears it.
+      sendPushToAdmins({
+        title: `Changes requested on ${approval.order.orderNumber}`,
+        body: notes.length > 120 ? `${notes.slice(0, 117)}…` : notes,
+        url: `/admin/orders/${approval.order.id}`,
+        tag: `revision-${approval.id}`,
+      }).catch(() => {});
 
       return NextResponse.json(
         {

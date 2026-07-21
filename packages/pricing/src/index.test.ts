@@ -148,6 +148,34 @@ describe("Pricing Engine", () => {
 
       expect(result.razorpayFee).toBe(27.85);
     });
+
+    it("should split the fee into base + GST, and roll fee-GST into gstTotal", () => {
+      const result = computePricing({
+        products: [{ sellPrice: 1000, quantity: 1, hsnCode: "4820", gstRate: 18 }],
+        packagingPerUnit: 0,
+        addonsPerUnit: 0,
+        packQuantity: 1,
+        shippingFlat: 0,
+        sellerStateCode: "DL",
+        buyerStateCode: "DL",
+        razorpayFeePct: 2,
+        razorpayFeeGstPct: 18,
+      });
+
+      // fee base = (1000 + 180) * 0.02 = 23.6 ; fee GST = 23.6 * 0.18 = 4.25
+      expect(result.razorpayFeeBase).toBe(23.6);
+      expect(result.razorpayFeeGst).toBe(4.25);
+      expect(result.razorpayFee).toBe(27.85);
+
+      // gstTotal = goods GST (180) + fee GST (4.25)
+      expect(result.gstTotal).toBe(184.25);
+
+      // The customer-facing lines must reconcile to grandTotal exactly:
+      //   products + fee base + gstTotal === grandTotal
+      const displaySum =
+        result.subtotal + result.razorpayFeeBase + result.gstTotal;
+      expect(Math.abs(displaySum - result.grandTotal)).toBeLessThan(0.01);
+    });
   });
 
   describe("Discount Handling", () => {

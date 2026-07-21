@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 import { formatRupees } from '@/lib/utils';
+import { combinedGst, splitPaymentFee, shippingTaxable } from '@/lib/pricing-display';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ChevronLeft, FileDown, Link as LinkIcon, Check, X } from 'lucide-react';
@@ -467,27 +468,33 @@ export default async function OrderDetailPage({
                 </div>
               )}
 
+              {/* Shipping at its TAXABLE value — the courier rate is GST-inclusive
+                  and that GST is in the combined GST line below, so showing the
+                  inclusive amount here would count shipping's GST twice. */}
               {Number(order.shippingAmount) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Shipping (incl. GST)</span>
-                  <span className="font-medium">+{formatRupees(Number(order.shippingAmount))}</span>
+                  <span className="text-gray-600">Shipping</span>
+                  <span className="font-medium">+{formatRupees(shippingTaxable(Number(order.shippingAmount)))}</span>
                 </div>
               )}
 
-              {/* GST — single combined line (shipping is already GST-inclusive) */}
-              {Number(order.cgstAmount) + Number(order.sgstAmount) + Number(order.igstAmount) > 0 && (
+              {/* Payment fee (2%), pre-GST — its GST is part of the combined GST
+                  line below. */}
+              {splitPaymentFee(Number(order.razorpayFee)).base > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Payment Fee (2%)</span>
+                  <span className="font-medium">+{formatRupees(splitPaymentFee(Number(order.razorpayFee)).base)}</span>
+                </div>
+              )}
+
+              {/* GST — single all-in line (goods + shipping + payment-fee GST),
+                  shown last, below the payment fee. */}
+              {combinedGst(Number(order.cgstAmount), Number(order.sgstAmount), Number(order.igstAmount), Number(order.razorpayFee)) > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">GST</span>
                   <span className="font-medium">
-                    +{formatRupees(Number(order.cgstAmount) + Number(order.sgstAmount) + Number(order.igstAmount))}
+                    +{formatRupees(combinedGst(Number(order.cgstAmount), Number(order.sgstAmount), Number(order.igstAmount), Number(order.razorpayFee)))}
                   </span>
-                </div>
-              )}
-
-              {Number(order.razorpayFee) > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Gateway Fee</span>
-                  <span className="font-medium">+{formatRupees(Number(order.razorpayFee))}</span>
                 </div>
               )}
 

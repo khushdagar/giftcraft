@@ -18,9 +18,13 @@ declare global {
 export function PayBalanceButton({
   orderId,
   balanceDue,
+  onPaid,
 }: {
   orderId: string;
   balanceDue: number;
+  // Fired after a verified successful payment (in addition to refreshing the
+  // route) so a host — e.g. the dashboard payment popup — can close itself.
+  onPaid?: () => void;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -76,6 +80,7 @@ export function PayBalanceButton({
               const b = await v.json().catch(() => ({}));
               throw new Error(b.error || 'Payment verification failed');
             }
+            onPaid?.();
             router.refresh();
           } catch (e) {
             alert(

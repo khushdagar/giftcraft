@@ -284,6 +284,7 @@ export function Step1ChooseProducts({ allProducts, categories, presetIds }: Step
                               dimensionH: (product as any).dimensionH ?? (product as any).heightCm,
                               quantity: 1, // one unit of this product per pack
                               sellPrice: tierPrice,
+                              moq: (product as any).moq,
                               priceTiers: product.priceTiers,
                               images: product.images,
                             });

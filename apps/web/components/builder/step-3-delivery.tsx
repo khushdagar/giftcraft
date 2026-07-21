@@ -364,6 +364,15 @@ export function Step3Delivery() {
   };
 
 
+  // Warn when the pincode checked in the estimator box differs from the delivery
+  // address pincode below — shipping is quoted for whichever was resolved last,
+  // so a mismatch means the estimate may not match where the order actually
+  // ships. Only flagged once both are complete 6-digit pincodes.
+  const pincodeMismatch =
+    /^\d{6}$/.test(pincodeInput) &&
+    /^\d{6}$/.test(formAddress.pincode) &&
+    pincodeInput !== formAddress.pincode;
+
   // Live address validation (single-location delivery). Mirrors the Step 4 gate
   // so any problem — e.g. a 5-digit pincode — is shown here, not silently failed.
   const pincodeInvalid =
@@ -463,8 +472,19 @@ export function Step3Delivery() {
 
           {shippingError && <p className="text-xs text-red-600">{shippingError}</p>}
 
-          {shippingZone && (
+          {shippingZone && !pincodeMismatch && (
             <p className="text-xs text-em">✓ Delivery available to this pincode.</p>
+          )}
+
+          {pincodeMismatch && (
+            <p className="flex items-start gap-1.5 text-xs text-amber-700">
+              <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+              <span>
+                You've entered a different pincode ({pincodeInput}) than your delivery
+                address ({formAddress.pincode}). Please make sure they match so shipping is
+                charged for the correct location.
+              </span>
+            </p>
           )}
         </div>
       </div>
@@ -564,6 +584,12 @@ export function Step3Delivery() {
                 {pincodeInvalid && (
                   <p className="mt-1 text-xs text-red-600">
                     Pincode must be exactly 6 digits.
+                  </p>
+                )}
+                {!pincodeInvalid && pincodeMismatch && (
+                  <p className="mt-1 flex items-start gap-1 text-xs text-amber-700">
+                    <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                    <span>Doesn't match the pincode you checked above ({pincodeInput}).</span>
                   </p>
                 )}
               </div>

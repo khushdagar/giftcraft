@@ -1,11 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { X, Plus, Minus, ChevronDown } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
-import { packagingSizeForCount } from '@/lib/packaging-designs';
 import { computePricing } from '@giftcraft/pricing';
 import { computeOrderShipping } from '@/lib/shipping';
 import { SELLER_STATE_CODE } from '@/lib/constants';
@@ -38,21 +37,29 @@ export function GiftPackSummary() {
   // shown here matches to the rupee. GST + payment fee are included so nothing
   // jumps unexpectedly later; before a delivery address is entered, GST is
   // estimated intra-state (Delhi) and re-computes once the address is set.
-  const shippingFlat =
-    shippingZone?.shippingCost ??
-    computeOrderShipping({
-      products: selected.map((p) => ({
-        weightG: p.weightG,
-        quantity: 1,
-        sellPrice: p.sellPrice,
-        dimensionL: p.dimensionL,
-        dimensionW: p.dimensionW,
-        dimensionH: p.dimensionH,
-      })),
-      zone: shippingZone,
-      packQuantity,
-      deliveryMode: 'single',
-    }).shippingCost;
+  //
+  // Shipping is intentionally left OUT of the total until the user has actually
+  // entered delivery details (a shippingZone is only set once a pincode is
+  // validated on the Delivery step). Before that we show no shipping line and
+  // charge ₹0 — no speculative estimate from default rates. Once the zone is
+  // resolved we use its quoted cost, falling back to a zone-rate calc only if the
+  // quote is missing.
+  const shippingFlat = shippingZone
+    ? (shippingZone.shippingCost ??
+      computeOrderShipping({
+        products: selected.map((p) => ({
+          weightG: p.weightG,
+          quantity: 1,
+          sellPrice: p.sellPrice,
+          dimensionL: p.dimensionL,
+          dimensionW: p.dimensionW,
+          dimensionH: p.dimensionH,
+        })),
+        zone: shippingZone,
+        packQuantity,
+        deliveryMode: 'single',
+      }).shippingCost)
+    : 0;
 
   const buyerStateCode =
     resolveBuyerStateCode(address?.state, address?.pincode || pincode) || SELLER_STATE_CODE;
@@ -100,15 +107,52 @@ export function GiftPackSummary() {
   // total by exactly the shipping GST. The customer still pays the full rate:
   // this line + its share of the GST line == the quoted courier charge.
   const shippingTotal = pricing.shippingTaxable;
-  const gstTotal = pricing.cgst + pricing.sgst + pricing.igst;
-  const isInterState = pricing.igst > 0;
+  // Single all-in GST line (products + packaging/add-ons + shipping + payment-fee
+  // GST). No CGST/SGST/IGST split in customer-facing summaries — just "GST".
+  const gstTotal = pricing.gstTotal;
+  // Payment fee shown PRE-GST; its GST is part of the combined GST line above.
+  const paymentFeeBase = pricing.razorpayFeeBase;
   const discountTotal = pricing.discount;
 
   // Price of one gift pack, pre-tax (one of each selected product).
   const perPackPrice = selected.reduce((sum, p) => sum + p.sellPrice, 0);
 
-  // Box size is decided by the number of products in the pack (Small/Medium/Large).
-  const boxSize = useMemo(() => packagingSizeForCount(selected.length), [selected.length]);
+
+  // Minimum pack quantity the user is allowed to set. Each product carries its
+  // own MOQ (product master); the pack floor is the LOWEST MOQ among the products
+  // added — a user should never be able to order below the smallest MOQ in the
+  // box. Products missing an MOQ fall back to the 25 corporate default.
+  const minQty = useMemo(() => {
+    if (selected.length === 0) return 1;
+    return selected.reduce((m, p) => Math.min(m, p.moq && p.moq > 0 ? p.moq : 25), Infinity);
+  }, [selected]);
+
+  // Full landed cost of ONE box — grand total ÷ number of boxes. Shown beside the
+  // grand total so the buyer sees per-box economics at a glance.
+  const perBoxTotal = packQuantity > 0 ? pricing.grandTotal / packQuantity : 0;
+
+  // Locally-editable text for the units field so the user can clear it and type a
+  // fresh number. We clamp to the MOQ floor only on blur — clamping every
+  // keystroke makes it impossible to replace the existing value. Kept in sync
+  // when the +/- buttons (or MOQ floor) change the store value.
+  const [qtyInput, setQtyInput] = useState(String(packQuantity));
+  useEffect(() => {
+    setQtyInput(String(packQuantity));
+  }, [packQuantity]);
+
+  // Keep the quantity at or above the MOQ floor — but ONLY when the floor itself
+  // changes (a product is added/removed), NOT on every keystroke. Depending on
+  // packQuantity here would fight live typing: typing "4" toward "40" briefly
+  // reads 4 < 25 and snaps back to 25, so the next digit produces "250". We read
+  // the current quantity through a ref so this effect doesn't re-run as it's
+  // edited; the blur handler enforces the floor when the user is done typing.
+  const packQtyRef = useRef(packQuantity);
+  packQtyRef.current = packQuantity;
+  useEffect(() => {
+    if (selected.length > 0 && packQtyRef.current < minQty) {
+      setPackQuantity(minQty);
+    }
+  }, [minQty, selected.length, setPackQuantity]);
 
   // On mobile this panel sits above the step content, so it collapses to a
   // summary (units, thumbnails, total) and expands on demand. At lg it's the
@@ -140,19 +184,32 @@ export function GiftPackSummary() {
                     onClick={() => {
                       // packQuantity = number of packs. Each product stays at
                       // 1 unit per pack, so only the pack count changes here.
-                      setPackQuantity(Math.max(1, packQuantity - 1));
+                      // Can't drop below the pack's MOQ floor.
+                      setPackQuantity(Math.max(minQty, packQuantity - 1));
                     }}
-                    className="w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-emerald-50 hover:text-em transition"
-                    title="Decrease units"
+                    disabled={packQuantity <= minQty}
+                    className="w-9 h-9 flex items-center justify-center text-gray-500 hover:bg-emerald-50 hover:text-em transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    title={packQuantity <= minQty ? `Minimum ${minQty} units` : 'Decrease units'}
                   >
                     <Minus className="h-4 w-4" />
                   </button>
                   <input
                     type="number"
-                    min="1"
-                    value={packQuantity}
+                    min={minQty}
+                    value={qtyInput}
                     onChange={(e) => {
-                      setPackQuantity(Math.max(1, parseInt(e.target.value) || 1));
+                      // Let the field hold whatever is typed (including empty
+                      // mid-edit); push valid numbers to the store live.
+                      setQtyInput(e.target.value);
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v > 0) setPackQuantity(v);
+                    }}
+                    onBlur={() => {
+                      // Enforce the MOQ floor once the user is done editing.
+                      const v = parseInt(qtyInput, 10);
+                      const next = isNaN(v) || v < minQty ? minQty : v;
+                      setPackQuantity(next);
+                      setQtyInput(String(next));
                     }}
                     className="w-14 text-center text-base font-bold text-ink outline-none border-x-2 border-emerald-200 py-1.5 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -168,44 +225,22 @@ export function GiftPackSummary() {
                 </div>
                 <span className="text-sm text-ink-2">units</span>
               </div>
-            </div>
-
-            {/* Thumbnails — a scrolling strip on mobile (stays visible while
-                collapsed, so the pack is readable at a glance), a grid at lg. */}
-            <div className="rounded-md border-2 border-gray-200 bg-white p-2 lg:p-3">
-              <div className="no-scrollbar flex gap-2 overflow-x-auto lg:grid lg:grid-cols-3">
-                {selected.map((product) => (
-                  <div
-                    key={product.id}
-                    className="flex flex-shrink-0 items-center justify-center"
-                  >
-                    <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
-                      {product.images?.[0]?.url ? (
-                        <Image
-                          src={product.images[0].url}
-                          alt={product.name}
-                          width={56}
-                          height={56}
-                          className="object-cover w-full h-full"
-                        />
-                      ) : (
-                        <span className="text-2xl">📦</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {/* MOQ floor — the lowest quantity this pack can be ordered at,
+                  driven by the smallest MOQ among the added products. */}
+              <p className="text-[11px] text-ink-3 mt-1.5">
+                Minimum <span className="font-semibold text-ink-2">{minQty}</span> units
+                <span className="text-ink-3/70"> · lowest MOQ in your pack</span>
+              </p>
             </div>
 
             {/* Everything below is detail — collapsed on mobile by default. */}
             <div className={`${details} space-y-4`}>
-            {/* Box Size Badge */}
-            <div className="inline-block px-3 py-1 rounded-full bg-emerald-600 text-white">
-              <p className="text-xs font-black">BOX SIZE: {boxSize}</p>
-            </div>
-
-            {/* Product List */}
-            <div className="space-y-3">
+            {/* Products — listed like the Packaging and Add-ons sections below. */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+                Products ({selected.length})
+              </p>
+              <div className="space-y-3">
               {selected.map((product) => (
                 <div
                   key={product.id}
@@ -248,6 +283,7 @@ export function GiftPackSummary() {
                   </button>
                 </div>
               ))}
+              </div>
             </div>
 
             {/* Packaging — shown here (not on the page) once a design is picked */}
@@ -346,33 +382,48 @@ export function GiftPackSummary() {
                   </div>
                 )}
 
-                {/* All GST, in one line — products (per their own HSN rates),
-                    packaging/add-ons and shipping combined. */}
-                {gstTotal > 0 && (
+                {/* Payment fee (2%), shown PRE-GST — its GST is rolled into the
+                    single combined GST line below. */}
+                {paymentFeeBase > 0 && (
                   <div className="flex items-center justify-between text-xs text-white/70">
-                    <span>GST {isInterState ? '(IGST)' : '(CGST + SGST)'}</span>
-                    <span className="tabnum">+{formatRupees(gstTotal)}</span>
+                    <span>Payment fee (2%)</span>
+                    <span className="tabnum">+{formatRupees(paymentFeeBase)}</span>
                   </div>
                 )}
 
-                {pricing.razorpayFee > 0 && (
+                {/* One combined GST line, last — products (per their own HSN
+                    rates), packaging/add-ons, shipping AND the payment-fee GST,
+                    all in a single "GST" figure. No CGST/SGST/IGST split here. */}
+                {gstTotal > 0 && (
                   <div className="flex items-center justify-between text-xs text-white/70">
-                    <span>Payment fee (2% + GST)</span>
-                    <span className="tabnum">+{formatRupees(pricing.razorpayFee)}</span>
+                    <span>GST</span>
+                    <span className="tabnum">+{formatRupees(gstTotal)}</span>
                   </div>
                 )}
               </div>
 
               <div className={`${details} h-px bg-white/10`} />
 
-              {/* Grand total — matches the final Review step & checkout exactly */}
-              <div>
-                <p className="text-2xl lg:text-3xl font-black tabnum">{formatRupees(pricing.grandTotal)}</p>
-                <p className="text-[11px] text-white/50 mt-1">
-                  {shippingTotal > 0
-                    ? 'Total incl. GST & payment fee'
-                    : 'Incl. GST & fee · shipping added at Delivery'}
-                </p>
+              {/* Grand total — matches the final Review step & checkout exactly.
+                  Alongside it, the per-box landed cost (total ÷ boxes), split off
+                  with a white left divider so buyers see per-box economics. */}
+              <div className="flex items-end gap-3">
+                <div className="min-w-0">
+                  <p className="text-2xl lg:text-3xl font-black tabnum">{formatRupees(pricing.grandTotal)}</p>
+                  <p className="text-[11px] text-white/50 mt-1">
+                    {shippingTotal > 0
+                      ? 'Total incl. GST & payment fee'
+                      : 'Incl. GST & fee · shipping added at Delivery'}
+                  </p>
+                </div>
+                {packQuantity > 0 && (
+                  <div className="border-l-2 border-white/25 pl-3 shrink-0">
+                    <p className="text-lg lg:text-xl font-black tabnum leading-none">
+                      {formatRupees(perBoxTotal)}
+                    </p>
+                    <p className="text-[11px] text-white/50 mt-1">per box</p>
+                  </div>
+                )}
               </div>
             </div>
 

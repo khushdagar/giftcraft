@@ -31,6 +31,7 @@ interface ApprovalData {
     }>;
     company: { name: string } | null;
     placedBy: { name: string } | null;
+    billingJson: { companyName?: string } | null;
   };
 }
 
@@ -97,11 +98,18 @@ export default function ApprovePage({ params }: PageProps) {
         setSubmitting(false);
         return;
       }
-      setSuccessMessage('Artwork approved successfully! Order is now ready for production.');
-      setApproval((prev) =>
-        prev ? { ...prev, status: 'approved', approvedAt: new Date().toISOString() } : null
-      );
-      setSubmitting(false);
+      const data = await res.json().catch(() => ({}));
+      // After approving, send the customer to their dashboard overview. If a
+      // balance is still due, deep-link with ?pay=<orderId> so the overview opens
+      // the balance-payment popup (order summary + Razorpay) automatically.
+      const orderId = approval.order.id;
+      const balanceDue = Number(data?.balanceDue ?? 0);
+      setSuccessMessage('Artwork approved! Taking you to your dashboard…');
+      if (balanceDue > 0) {
+        router.push(`/dashboard?pay=${orderId}`);
+      } else {
+        router.push('/dashboard?approved=1');
+      }
     } catch (err) {
       setError('Failed to approve');
       setSubmitting(false);
@@ -300,7 +308,10 @@ export default function ApprovePage({ params }: PageProps) {
                 <div className="flex justify-between">
                   <span className="text-ink-2">Company</span>
                   <span className="font-normal text-ink text-right">
-                    {approval.order.company?.name || approval.order.placedBy?.name || '—'}
+                    {approval.order.billingJson?.companyName ||
+                      approval.order.company?.name ||
+                      approval.order.placedBy?.name ||
+                      '—'}
                   </span>
                 </div>
                 <div className="flex justify-between">

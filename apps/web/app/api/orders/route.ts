@@ -222,6 +222,50 @@ export async function POST(req: NextRequest) {
       data: { status: 'converted' },
     });
 
+    // Save the delivery address to the buyer's address book so it's available in
+    // their dashboard and pre-fillable on the next order. Best-effort — never
+    // block the order on this. De-duped on the key fields (line 1 + pincode +
+    // contact) so repeat orders to the same place don't pile up duplicates.
+    try {
+      const addr = payload.address;
+      const line1 = String(addr?.address1 || '').trim();
+      const pin = String(addr?.pincode || '').trim();
+      const contact = String(addr?.name || '').trim();
+      if (line1 && contact && /^\d{6}$/.test(pin)) {
+        const existing = await prisma.savedAddress.findFirst({
+          where: {
+            userId: session.user.id,
+            pincode: pin,
+            addressLine1: { equals: line1, mode: 'insensitive' },
+            contactName: { equals: contact, mode: 'insensitive' },
+          },
+          select: { id: true },
+        });
+        if (!existing) {
+          const savedCount = await prisma.savedAddress.count({
+            where: { userId: session.user.id },
+          });
+          await prisma.savedAddress.create({
+            data: {
+              userId: session.user.id,
+              contactName: contact,
+              company: String(addr.company || '').trim() || null,
+              addressLine1: line1,
+              addressLine2: String(addr.address2 || '').trim() || null,
+              city: String(addr.city || '').trim(),
+              state: String(addr.state || '').trim(),
+              pincode: pin,
+              phone: String(addr.phone || '').trim() || null,
+              // The buyer's first-ever saved address becomes their default.
+              isDefault: savedCount === 0,
+            },
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Saving delivery address to address book failed (non-blocking):', e);
+    }
+
     console.log('✅ Order created:', order.id, order.orderNumber, paidAt ? '(paid)' : '(mockup)');
 
     // Notify admins of the new order (best-effort desktop push).

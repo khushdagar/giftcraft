@@ -196,7 +196,7 @@ export function TrendingProducts() {
                           inCart ? 'bg-[#1A6B4F] text-white' : 'bg-[#1A6B4F] text-white hover:bg-[#145A42]'
                         }`}
                       >
-                        {inCart ? '✓ In Cart' : 'Add to Cart'}
+                        {inCart ? '✓ In Cart' : 'Add to Pack'}
                       </button>
                     </div>
                   </div>
