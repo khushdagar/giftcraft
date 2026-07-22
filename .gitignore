@@ -12,3 +12,7 @@ out
 .vercel
 coverage
 .vscode
+
+# TypeScript incremental build cache — generated, machine-specific,
+# rewritten on every tsc run. Never commit (it cannot be merged).
+*.tsbuildinfo
