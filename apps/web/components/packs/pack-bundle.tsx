@@ -196,7 +196,7 @@ export function PackBundle({ pack }: PackBundleProps) {
           >
             ← Back to {pack.collectionName}
           </Link>
-        </div>
+        </div> 
       </div>
     </div>
   );
