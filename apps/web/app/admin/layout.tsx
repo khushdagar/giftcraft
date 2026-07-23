@@ -8,6 +8,11 @@ import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { NotificationBell } from "@/components/admin/notification-bell";
 
+// Admin pages are session-gated and render live operational data. Force
+// per-request dynamic rendering so nothing under /admin is statically cached.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session) redirect("/login?from=/admin");

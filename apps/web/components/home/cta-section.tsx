@@ -4,13 +4,13 @@ import Link from 'next/link';
 
 export function CTASection() {
   return (
-    <section className="bg-[#1A1A18] text-white py-20 md:py-40 text-center">
+    <section className="bg-[#1A6B4F] text-white py-20 md:py-20 text-center">
       <div className="container">
         <h2 className="text-5xl md:text-6xl font-serif font-normal mb-4">
           Ready to craft the<br />
           <span className="italic">perfect gift?</span>
         </h2>
-        <p className="text-lg text-white/50 mb-12 max-w-lg mx-auto">
+        <p className="text-lg text-white mb-12 max-w-lg mx-auto">
           Start building your custom gift pack in under 5 minutes. No signup required to explore.
         </p>
         <div className="flex gap-4 justify-center flex-wrap">

@@ -116,8 +116,20 @@ export interface BuilderState {
     discountAmount: number;
   } | null;
 
+  // ── Step 4 "Review Order" bridge ──────────────────────────────────────────
+  // Step 4 owns the quote-creation flow (pricing + /api/quotes + redirect). The
+  // sticky footer in BuilderLayout needs to trigger the very same action, so
+  // Step 4 publishes its handler and live status here. Transient — never
+  // persisted (a stored handler/loading flag would be stale on reload).
+  reviewOrder: (() => void) | null;
+  reviewLoading: boolean;
+  reviewReady: boolean;
+
   // Actions
   setCurrentStep: (step: 1 | 2 | 3 | 4) => void;
+
+  setReviewOrder: (fn: (() => void) | null) => void;
+  setReviewStatus: (status: { loading: boolean; ready: boolean }) => void;
 
   openQuantityModal: () => void;
   closeQuantityModal: () => void;
@@ -175,6 +187,9 @@ const initialState = {
   brandingNotes: "",
   delivDate: null,
   coupon: null,
+  reviewOrder: null,
+  reviewLoading: false,
+  reviewReady: false,
 };
 
 export const useBuilderStore = create<BuilderState>()(
@@ -183,6 +198,10 @@ export const useBuilderStore = create<BuilderState>()(
       ...initialState,
 
       setCurrentStep: (step) => set({ currentStep: step }),
+
+      setReviewOrder: (fn) => set({ reviewOrder: fn }),
+      setReviewStatus: ({ loading, ready }) =>
+        set({ reviewLoading: loading, reviewReady: ready }),
 
       openQuantityModal: () => set({ quantityModalOpen: true }),
       closeQuantityModal: () => set({ quantityModalOpen: false }),
@@ -314,6 +333,10 @@ export const useBuilderStore = create<BuilderState>()(
       partialize: (state) => ({
         ...state,
         csvRecipients: null,
+        // Transient Step-4 bridge — recomputed on mount, never restored.
+        reviewOrder: null,
+        reviewLoading: false,
+        reviewReady: false,
       }),
     }
   )

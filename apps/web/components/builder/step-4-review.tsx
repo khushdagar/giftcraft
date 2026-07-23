@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBuilderStore } from '@/store/builder';
 import { computePricing } from '@giftcraft/pricing';
@@ -29,6 +29,8 @@ export function Step4Review() {
     cardMessage,
     pincode,
     csvRecipientCount,
+    setReviewOrder,
+    setReviewStatus,
   } = useBuilderStore();
 
   const [loading, setLoading] = useState(false);
@@ -149,6 +151,20 @@ export function Step4Review() {
       setLoading(false);
     }
   };
+
+  // Publish this step's action + live status so the sticky footer's forward
+  // button (BuilderLayout) triggers the exact same "Review Order" flow. The ref
+  // keeps the registered wrapper stable (registered once) while always calling
+  // the latest handler, so re-renders don't re-register or loop.
+  const handlerRef = useRef(handleProceedToCheckout);
+  handlerRef.current = handleProceedToCheckout;
+  useEffect(() => {
+    setReviewOrder(() => handlerRef.current());
+    return () => setReviewOrder(null);
+  }, [setReviewOrder]);
+  useEffect(() => {
+    setReviewStatus({ loading, ready: deliveryComplete });
+  }, [loading, deliveryComplete, setReviewStatus]);
 
   const formattedDate = delivDate
     ? new Date(delivDate).toLocaleDateString('en-IN', {

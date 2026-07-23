@@ -161,6 +161,12 @@ export interface InvoiceData {
     email: string | null;
     phone: string | null;
   };
+  /** Delivery address, when it exists and can differ from the billing address. */
+  shipTo: {
+    name: string;
+    address: string;
+    phone: string | null;
+  } | null;
   items: InvoiceItem[];
   /** Number of gift packs — packaging & add-ons are priced per pack. */
   packQuantity: number;
@@ -214,7 +220,7 @@ interface TaxRow {
 }
 
 export function InvoicePDF({ data }: { data: InvoiceData }) {
-  const { seller, buyer, items, amounts, packQuantity } = data;
+  const { seller, buyer, shipTo, items, amounts, packQuantity } = data;
   const title = data.isPaid ? 'Tax Invoice' : 'Proforma Invoice';
 
   // Place of supply: same state → CGST + SGST, different state → IGST.
@@ -349,7 +355,7 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
           </View>
         </View>
 
-        {/* Bill To */}
+        {/* Bill To (company / GST address) + Ship To (delivery address) */}
         <View style={styles.parties}>
           <View style={styles.party}>
             <Text style={styles.partyTitle}>Bill To</Text>
@@ -360,6 +366,15 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
             {buyer.email ? <Text style={styles.partyLine}>{buyer.email}</Text> : null}
             {buyer.phone ? <Text style={styles.partyLine}>{buyer.phone}</Text> : null}
           </View>
+
+          {shipTo ? (
+            <View style={styles.party}>
+              <Text style={styles.partyTitle}>Ship To</Text>
+              <Text style={styles.partyName}>{shipTo.name || buyer.companyName || '—'}</Text>
+              <Text style={styles.partyLine}>{shipTo.address}</Text>
+              {shipTo.phone ? <Text style={styles.partyLine}>{shipTo.phone}</Text> : null}
+            </View>
+          ) : null}
         </View>
 
         {/* Itemised GST table — one row per item, tax shown inline */}

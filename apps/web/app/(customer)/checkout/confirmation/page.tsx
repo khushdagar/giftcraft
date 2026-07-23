@@ -131,54 +131,52 @@ function ConfirmationContent() {
   const paymentFeeBase = splitPaymentFee(order.razorpayFee).base;
   const perPack = quantity > 0 ? grand / quantity : 0;
 
-  const steps = [
-    {
-      label: 'Order Confirmed',
-      status: 'Done',
-      statusColor: 'text-[#2D8B56]',
-      dotColor: 'bg-[#2D8B56]',
-    },
+  // Drive the timeline from the order's real status. Each canonical milestone
+  // maps to the point in the OrderStatus progression where it becomes the
+  // *current* stage; earlier milestones read Done, later ones Pending.
+  const STATUS_TO_STEP: Record<string, number> = {
+    draft: 0,
+    quote_sent: 0,
+    confirmed: 1, // order placed → mockups next
+    mockup_pending: 1, // design team creating mockups
+    mockup_approved: 3, // approved → payment next
+    payment_pending: 3,
+    production: 4,
+    quality_check: 4,
+    packed: 5,
+    shipped: 5,
+    in_transit: 5,
+    delivered: 6, // all steps complete
+    completed: 6,
+  };
+  const activeStep = STATUS_TO_STEP[order.status] ?? 1;
+  const stateFor = (i: number): 'done' | 'current' | 'pending' =>
+    i < activeStep ? 'done' : i === activeStep ? 'current' : 'pending';
+  const STATE_STYLE = {
+    done: { status: 'Done', statusColor: 'text-[#2D8B56]', dotColor: 'bg-[#2D8B56]' },
+    current: { status: 'In progress', statusColor: 'text-[#D4872A]', dotColor: 'bg-[#D4872A]' },
+    pending: { status: 'Pending', statusColor: 'text-[#9B9B93]', dotColor: 'bg-[#D4D4CF]' },
+  } as const;
+
+  // Canonical milestones; `i` is the index used by the status mapping above.
+  // The 10%-advance row (lock path only) is inserted after Order Confirmed.
+  const paymentLabel =
+    selectedPath === 'lock'
+      ? `Balance Payment (${formatRupees(balance90)})`
+      : `Full Payment (${formatRupees(grand)})`;
+  const milestones = [
+    { i: 0, label: 'Order Confirmed', state: stateFor(0) as 'done' | 'current' | 'pending' },
     ...(selectedPath === 'lock'
-      ? [
-          {
-            label: '10% Advance Received',
-            status: 'Done',
-            statusColor: 'text-[#2D8B56]',
-            dotColor: 'bg-[#2D8B56]',
-          },
-        ]
+      ? [{ i: 0, label: '10% Advance Received', state: 'done' as const }]
       : []),
-    {
-      label: 'Mockup Creation',
-      status: '⏳ 1–2 days',
-      statusColor: 'text-[#D4872A]',
-      dotColor: 'bg-[#D4D4CF]',
-    },
-    {
-      label: 'Your Design Approval',
-      status: 'Pending',
-      statusColor: 'text-[#9B9B93]',
-      dotColor: 'bg-[#D4D4CF]',
-    },
-    {
-      label: `${selectedPath === 'lock' ? 'Balance Payment (' + formatRupees(balance90) + ')' : 'Full Payment (' + formatRupees(grand) + ')'}`,
-      status: 'Pending',
-      statusColor: 'text-[#9B9B93]',
-      dotColor: 'bg-[#D4D4CF]',
-    },
-    {
-      label: 'Production & QC',
-      status: 'Pending',
-      statusColor: 'text-[#9B9B93]',
-      dotColor: 'bg-[#D4D4CF]',
-    },
-    {
-      label: 'Shipping & Delivery',
-      status: 'Pending',
-      statusColor: 'text-[#9B9B93]',
-      dotColor: 'bg-[#D4D4CF]',
-    },
+    { i: 1, label: 'Mockup Creation', state: stateFor(1) },
+    { i: 2, label: 'Your Design Approval', state: stateFor(2) },
+    { i: 3, label: paymentLabel, state: stateFor(3) },
+    { i: 4, label: 'Production & QC', state: stateFor(4) },
+    { i: 5, label: 'Shipping & Delivery', state: stateFor(5) },
   ];
+
+  const steps = milestones.map((m) => ({ label: m.label, ...STATE_STYLE[m.state] }));
 
   return (
     <>
@@ -367,10 +365,6 @@ function ConfirmationContent() {
           <div className="bg-[#F5F5F0] rounded-lg p-4 text-left text-sm text-[#6B6B63] mb-6">
             <p className="font-semibold mb-2">📲 Notifications sent to:</p>
             <p className="mb-1">✉️ Confirmation email with order details and quote PDF</p>
-            <p>
-              💬 WhatsApp message: "Your GiftCraft order #{order.orderNumber} for {quantity} gifts has been confirmed! We'll create
-              mockups within 1–2 business days."
-            </p>
           </div>
 
           <p className="text-xs text-[#9B9B93]">

@@ -11,6 +11,7 @@ export interface InvoiceOrder {
   createdAt: Date;
   paidAt: Date | null;
   billingJson: any;
+  shippingJson: any;
   packQuantity: number;
   subtotal: any;
   packagingAmount: any;
@@ -43,6 +44,21 @@ export function buildInvoiceData(order: InvoiceOrder): InvoiceData {
     .filter(Boolean)
     .join(', ');
 
+  // Ship To = the delivery address captured in the builder (shippingJson), which
+  // can differ from the company's billing address. Only shown on the invoice
+  // when a delivery address exists (single-location orders); individual-delivery
+  // orders ship to CSV recipients and carry no single address here.
+  const shipping = (order.shippingJson as any) || {};
+  const shipAddress = [
+    shipping.address1,
+    shipping.address2,
+    shipping.city,
+    shipping.state,
+    shipping.pincode,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
   // A 10% advance does NOT make this a full Tax Invoice — it stays a Proforma
   // (showing advance paid + balance pending) until the order is fully paid.
   const grandTotal = Number(order.grandTotal);
@@ -72,6 +88,13 @@ export function buildInvoiceData(order: InvoiceOrder): InvoiceData {
       email: billing.email || null,
       phone: billing.phone || null,
     },
+    shipTo: shipAddress
+      ? {
+          name: shipping.name || billing.companyName || billing.name || '',
+          address: shipAddress,
+          phone: shipping.phone || null,
+        }
+      : null,
     items: order.items.map((it) => ({
       name: it.product?.name || 'Product',
       hsnCode: it.hsnCode,

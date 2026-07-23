@@ -10,6 +10,12 @@ export const metadata = {
   description: 'Manage purchase orders and payments',
 };
 
+// SECURITY: vendor pages render POs, payments and profile data scoped to the
+// signed-in vendor. Force per-request dynamic rendering so no vendor's page is
+// statically cached and served to another vendor.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function VendorLayout({
   children,
 }: {

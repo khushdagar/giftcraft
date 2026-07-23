@@ -12,18 +12,21 @@ export function HomeHero() {
       title: 'Bulk Gifting.\nPerfectly Crafted.',
       desc: 'Custom branded gifts for your team, delivered in 10 days.',
       bg: 'linear-gradient(135deg, #2a1f14 0%, #1a1510 20%, #12100d 50%, #1a1510 80%, #2a1f14 100%)',
+      image: '/home-banners/Banners-01.png',
     },
     {
       subtitle: 'Festive Season 2026',
       title: 'Diwali Gifting\nMade Simple.',
       desc: 'Premium branded gifts for the season of lights.',
       bg: 'linear-gradient(135deg, #5C2D0E 0%, #8B4513 50%, #D4872A 100%)',
+      image: '/home-banners/Banners-02.png',
     },
     {
       subtitle: 'Employee Onboarding',
       title: 'Welcome Kits\nThat Wow.',
       desc: 'Make every new hire feel valued from day one.',
       bg: 'linear-gradient(135deg, #0A3726 0%, #1A6B4F 50%, #2A7EC4 100%)',
+      image: '/home-banners/Banners-03.png',
     },
   ];
 
@@ -35,18 +38,18 @@ export function HomeHero() {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex items-end justify-center pb-20 md:pb-32 overflow-hidden">
+    <section className="relative h-[60vh] min-h-[420px] md:h-[600px] flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0">
         {slides.map((s, i) => (
           <div
             key={i}
-            className={`absolute inset-0 transition-opacity duration-1000 ${
+            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${
               slide === i ? 'opacity-100' : 'opacity-0'
             }`}
-            style={{ background: s.bg }}
+            style={{ background: s.bg, backgroundImage: `url(${s.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
           />
         ))}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+        <div className="absolute inset-0 bg-black/40" />
       </div>
 
       <div className="relative z-10 text-center max-w-2xl px-6">

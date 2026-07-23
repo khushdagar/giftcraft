@@ -376,7 +376,11 @@ export default function BuildYourBoxPage() {
   const hasBudget = budget > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-emerald-50 to-rose-50 py-12">
+    <div
+      className={`min-h-screen bg-gradient-to-br from-sky-50 via-emerald-50 to-rose-50 py-12 ${
+        boxProducts.length > 0 ? 'pb-28' : ''
+      }`}
+    >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
@@ -632,7 +636,7 @@ export default function BuildYourBoxPage() {
                     products — "what's left" has to stay on screen at the moment
                     they're deciding what to add. On lg+ the sticky sidebar
                     already shows it, so it scrolls normally there. */}
-                <div className="sticky top-14 z-30 bg-white rounded-md border-2 border-bdr px-4 py-3 shadow-sm lg:static lg:z-auto lg:shadow-none">
+                <div className="sticky top-14 z-30 bg-white rounded-md border-2 border-bdr px-4 py-3 shadow-sm lg:shadow-none">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <span className="text-sm font-bold text-ink shrink-0">
                       Budget tracking
@@ -817,6 +821,38 @@ export default function BuildYourBoxPage() {
           </div>
         </div>
       </div>
+
+      {/* Sticky checkout bar — the sidebar Proceed button scrolls out of reach as
+          the box fills, so pin one to the bottom of the viewport. Stays on screen
+          the whole time the user is adding products, with the CTA bottom-right. */}
+      {boxProducts.length > 0 && (
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t-2 border-bdr shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs text-ink-3">
+                {boxProducts.length} item{boxProducts.length !== 1 ? 's' : ''} · {packQuantity} boxes
+              </p>
+              <p className="text-sm text-ink-2 tabnum truncate">
+                Per box <span className="font-semibold text-ink">{inr(subtotal)}</span>
+                <span className="hidden sm:inline text-ink-3">
+                  {' '}· est. final {inr(estFinalPerBox)}
+                </span>
+                {isExceeded && (
+                  <span className="ml-2 text-rose-600 font-semibold">
+                    {inr(subtotal - budget)} over budget
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={handleProceed}
+              className="shrink-0 py-3 px-6 bg-em hover:bg-em-600 text-white font-medium rounded-2xl transition"
+            >
+              Proceed to Customize →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

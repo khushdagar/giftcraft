@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { X } from 'lucide-react';
+import { X, Upload } from 'lucide-react';
 
 interface OccasionFormProps {
   mode?: 'create' | 'edit';
@@ -15,6 +16,7 @@ interface OccasionFormProps {
     name: string;
     slug: string;
     icon: string | null;
+    imageUrl?: string | null;
     gradient: string | null;
     description: string | null;
     sortOrder: number;
@@ -46,10 +48,13 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string>(occasion?.imageUrl || '');
   const [formData, setFormData] = useState({
     name: occasion?.name || '',
     slug: occasion?.slug || '',
     icon: occasion?.icon || '🎁',
+    imageUrl: occasion?.imageUrl || '',
     gradient: occasion?.gradient || 'from-orange-400 to-yellow-400',
     description: occasion?.description || '',
     sortOrder: occasion?.sortOrder || 0,
@@ -57,6 +62,47 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
     isCollection: occasion?.isCollection ?? false,
     tags: occasion?.tags || ([] as string[]),
   });
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setImageLoading(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append('file', file);
+      uploadData.append('folder', 'occasions');
+
+      const response = await fetch('/api/upload', { method: 'POST', body: uploadData });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upload image');
+      }
+
+      const data = await response.json();
+      setFormData((prev) => ({ ...prev, imageUrl: data.url }));
+      setImagePreview(data.url);
+      toast.success('Image uploaded successfully');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData((prev) => ({ ...prev, imageUrl: '' }));
+    setImagePreview('');
+  };
 
   const addTag = () => {
     const val = tagInput.trim().toLowerCase();
@@ -205,6 +251,49 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
       {/* Icon & Styling */}
       <div className="bg-white rounded-lg border-2 border-bdr p-6 space-y-6">
         <h2 className="text-lg font-normal text-ink">Icon & Styling</h2>
+
+        <div>
+          <label className="block text-sm font-normal text-ink mb-2">
+            Occasion Image (optional)
+          </label>
+          <p className="text-xs text-ink-2 mb-3">
+            Shown on the occasion tile in the customer UI. When set, it replaces the
+            colour gradient below. PNG, JPG, GIF up to 5MB.
+          </p>
+          <div className="space-y-4">
+            {imagePreview ? (
+              <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-bdr bg-gray-50">
+                <Image src={imagePreview} alt="Occasion preview" fill className="object-cover" />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition-colors"
+                  aria-label="Remove image"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-bdr rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload className="w-8 h-8 text-em mb-2" />
+                  <p className="text-sm text-ink font-medium">Click to upload image</p>
+                  <p className="text-xs text-ink-2">PNG, JPG, GIF up to 5MB</p>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={imageLoading}
+                  className="hidden"
+                />
+              </label>
+            )}
+            {imageLoading && (
+              <p className="text-sm text-ink-2 text-center">Uploading image…</p>
+            )}
+          </div>
+        </div>
 
         <div>
           <label className="block text-sm font-normal text-ink mb-3">

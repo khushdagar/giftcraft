@@ -56,6 +56,27 @@ export default async function AdminOrderDetailPage({
   ]);
 
   const billingInfo = order.billingJson as any;
+  // Delivery address captured in the builder (Step 3) — where the gifts ship,
+  // which can differ from the company's billing address on the invoice.
+  const shippingInfo = order.shippingJson as any;
+  const billingAddress = [
+    billingInfo?.address1,
+    billingInfo?.address2,
+    billingInfo?.city,
+    billingInfo?.state,
+    billingInfo?.pincode,
+  ]
+    .filter(Boolean)
+    .join(', ');
+  const deliveryAddress = [
+    shippingInfo?.address1,
+    shippingInfo?.address2,
+    shippingInfo?.city,
+    shippingInfo?.state,
+    shippingInfo?.pincode,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -137,15 +158,25 @@ export default async function AdminOrderDetailPage({
             </p>
           </div>
 
-          {/* Billing Details */}
+          {/* Billing Details — the company / GST address that prints as
+              "Bill To" on the invoice. */}
           <div className="rounded-md border-2 border-bdr bg-white p-5">
-            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">
+            <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
               Billing Details
             </p>
+            <p className="text-[11px] text-ink-3 mb-3">Appears as “Bill To” on the invoice</p>
             <div className="space-y-2 text-sm">
               <div>
                 <p className="text-ink-3 text-xs">Company</p>
                 <p className="font-normal text-ink">{billingInfo?.companyName || '-'}</p>
+              </div>
+              <div>
+                <p className="text-ink-3 text-xs">Billing Address</p>
+                <p className="text-ink">{billingAddress || '-'}</p>
+              </div>
+              <div>
+                <p className="text-ink-3 text-xs">GSTIN</p>
+                <p className="text-ink">{billingInfo?.gstin || 'Unregistered (B2C)'}</p>
               </div>
               <div>
                 <p className="text-ink-3 text-xs">Contact Email</p>
@@ -156,6 +187,31 @@ export default async function AdminOrderDetailPage({
                 <p className="text-ink">{billingInfo?.phone || '-'}</p>
               </div>
             </div>
+          </div>
+
+          {/* Delivery Address — where the gift packs actually ship (from the
+              builder). Separate from billing so ops can pick/pack correctly. */}
+          <div className="rounded-md border-2 border-bdr bg-white p-5">
+            <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
+              Delivery Address
+            </p>
+            <p className="text-[11px] text-ink-3 mb-3">Where the gift packs are shipped</p>
+            {deliveryAddress ? (
+              <div className="space-y-1 text-sm">
+                {shippingInfo?.name && (
+                  <p className="font-normal text-ink">{shippingInfo.name}</p>
+                )}
+                {shippingInfo?.company && <p className="text-ink-2">{shippingInfo.company}</p>}
+                <p className="text-ink">{deliveryAddress}</p>
+                {shippingInfo?.phone && <p className="text-ink-2">📞 {shippingInfo.phone}</p>}
+              </div>
+            ) : (
+              <p className="text-sm text-ink-3">
+                {order.deliveryMode === 'individual'
+                  ? 'Individual delivery — recipients uploaded separately.'
+                  : 'No delivery address on file.'}
+              </p>
+            )}
           </div>
 
           {/* Order Items */}

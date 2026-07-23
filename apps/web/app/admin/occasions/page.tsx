@@ -78,7 +78,16 @@ export default async function AdminOccasionsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-2xl">{occ.icon || '🎁'}</span>
+                    {occ.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={occ.imageUrl}
+                        alt={occ.name}
+                        className="h-10 w-10 rounded-md object-cover border border-bdr"
+                      />
+                    ) : (
+                      <span className="text-2xl">{occ.icon || '🎁'}</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-sm text-ink-2">{occ.products.length} products</p>

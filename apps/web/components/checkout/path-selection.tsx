@@ -7,6 +7,7 @@ interface PathSelectionProps {
   onSelectPath: (path: 'mockup' | 'lock') => void;
   advance10: number;
   balance90: number;
+  onContinue: () => void;
 }
 
 export function PathSelection({
@@ -14,6 +15,7 @@ export function PathSelection({
   onSelectPath,
   advance10,
   balance90,
+  onContinue,
 }: PathSelectionProps) {
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 md:p-7 mb-4">
@@ -135,6 +137,26 @@ export function PathSelection({
           </div>
         </button>
       </div>
+
+      {/* Primary CTA mirrored from the pricing panel, so buyers can act right
+          after choosing a path without scrolling to the panel on the right. The
+          button label + legal note match the panel exactly. */}
+      <button
+        onClick={onContinue}
+        className={`w-full h-13 rounded-full font-semibold flex items-center justify-center gap-2 transition-all ${
+          selectedPath === 'mockup'
+            ? 'bg-[#1A6B4F] text-white hover:bg-[#145A42]'
+            : 'bg-[#C4963C] text-white hover:bg-[#886528]'
+        }`}
+      >
+        {selectedPath === 'mockup'
+          ? '✓ Confirm Order & Get Mockups'
+          : `🔒 Pay ${formatRupees(advance10)} & Lock Prices`}
+      </button>
+      <p className="text-[11px] text-[#9B9B93] text-center mt-3 leading-relaxed">
+        By confirming, you agree to our Terms of Service, Privacy Policy, and Refund Policy.
+        GST-compliant invoice will be generated upon payment.
+      </p>
     </div>
   );
 }

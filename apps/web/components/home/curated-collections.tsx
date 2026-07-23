@@ -49,7 +49,7 @@ export function CuratedCollections() {
                 <Link
                   key={col.id}
                   href={`/packs?collection=${col.slug}`}
-                  className={`rounded-3xl p-8 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer relative h-48 md:h-[400px] flex flex-col justify-end ${
+                  className={`rounded-3xl p-4 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer relative h-52 md:h-[400px] flex flex-col justify-end ${
                     isLastOdd ? 'md:col-span-2' : ''
                   }`}
                   style={

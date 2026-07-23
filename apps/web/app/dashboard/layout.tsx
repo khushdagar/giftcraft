@@ -5,15 +5,22 @@ import { auth, signOut } from "@/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DashboardMobileNav } from "@/components/dashboard/dashboard-mobile-nav";
 
+// SECURITY: every page under /dashboard renders data scoped to the signed-in
+// user (orders, quotes, addresses, company, assets). Force per-request dynamic
+// rendering for the whole subtree so Next.js never statically caches a rendered
+// page and serves one customer's private data to the next visitor.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const NAV = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
   { href: "/dashboard/orders", icon: Package, label: "Orders" },
-  { href: "/dashboard/quotes", icon: FileText, label: "Quotes" },
+  // { href: "/dashboard/quotes", icon: FileText, label: "Quotes" },
   { href: "/dashboard/assets", icon: FolderOpen, label: "Brand Assets" },
   { href: "/dashboard/addresses", icon: MapPin, label: "Saved Addresses" },
   { href: "/dashboard/company", icon: Building2, label: "Company" },
   { href: "/dashboard/settings", icon: Settings, label: "Settings" },
-  { href: "/dashboard/settings/notifications", icon: Bell, label: "Notifications" },
+  // { href: "/dashboard/settings/notifications", icon: Bell, label: "Notifications" },
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {

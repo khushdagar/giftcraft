@@ -142,7 +142,7 @@ export default function PrivacySettingsPage() {
       </div>
 
       {/* Data rights */}
-      <div className="border border-bdr rounded-lg p-6 space-y-3 bg-elevated">
+      {/* <div className="border border-bdr rounded-lg p-6 space-y-3 bg-elevated">
         <h2 className="text-lg font-normal text-ink">Your Data</h2>
         <p className="text-sm text-ink-2">
           Under India&apos;s Digital Personal Data Protection Act, you can request a copy of your
@@ -158,10 +158,10 @@ export default function PrivacySettingsPage() {
         >
           Request data export or deletion →
         </Link>
-      </div>
+      </div> */}
 
       <p className="text-xs text-ink-3">
-        Notification channels (email / WhatsApp per event) are managed on the{' '}
+        Notification channels ( email ) are managed on the{' '}
         <Link href="/dashboard/settings/notifications" className="text-em hover:underline">
           Notifications
         </Link>{' '}
