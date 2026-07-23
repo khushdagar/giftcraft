@@ -15,9 +15,10 @@ export interface CheckoutProduct {
 interface OrderSummaryProps {
   products: CheckoutProduct[];
   packQuantity: number;
-  packagingName?: string;
-  sleeve: boolean;
-  addonCount: number;
+  // Packaging + add-ons are shown as their own line items (like products),
+  // each with a per-unit price. `price` is per pack; packQuantity multiplies it.
+  packaging?: { name: string; price: number } | null;
+  addons?: { name: string; price: number }[];
   deliveryMode: string;
   onEdit: () => void;
   logo?: string;
@@ -26,9 +27,8 @@ interface OrderSummaryProps {
 export function OrderSummary({
   products,
   packQuantity,
-  packagingName,
-  sleeve,
-  addonCount,
+  packaging,
+  addons = [],
   deliveryMode,
   onEdit,
   logo,
@@ -80,14 +80,53 @@ export function OrderSummary({
             </p>
           </div>
         ))}
+
+        {/* Small heading to separate packaging & add-ons from the products
+            above, while keeping everything inside the same summary box. */}
+        {(packaging || addons.length > 0) && (
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-[#9B9B93] pt-1">
+            Packaging &amp; Add-ons
+          </p>
+        )}
+
+        {/* Packaging — shown as its own line item, matching the product rows. */}
+        {packaging && (
+          <div className="flex items-center gap-3 py-2.5 pb-3 border-b border-[#E8E8E3] last:border-0">
+            <div className="w-12 h-12 bg-[#F5F5F0] rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-lg">🎁</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{packaging.name}</p>
+              <p className="text-xs text-[#9B9B93]">Packaging</p>
+            </div>
+            <p className="text-sm font-semibold text-right flex-shrink-0 tabular-nums">
+              {formatRupees(packaging.price)} ×{packQuantity}
+            </p>
+          </div>
+        )}
+
+        {/* Add-ons — one line item each, priced per pack. */}
+        {addons.map((addon, i) => (
+          <div
+            key={`addon-${i}`}
+            className="flex items-center gap-3 py-2.5 pb-3 border-b border-[#E8E8E3] last:border-0"
+          >
+            <div className="w-12 h-12 bg-[#F5F5F0] rounded-lg flex items-center justify-center flex-shrink-0">
+              <span className="text-lg">✨</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{addon.name}</p>
+              <p className="text-xs text-[#9B9B93]">Add-on</p>
+            </div>
+            <p className="text-sm font-semibold text-right flex-shrink-0 tabular-nums">
+              {formatRupees(addon.price)} ×{packQuantity}
+            </p>
+          </div>
+        ))}
       </div>
 
       <div className="border-t border-[#E8E8E3] pt-3 mt-3 flex justify-between items-center text-xs text-[#6B6B63]">
-        <span>
-          📦 {packagingName || 'Standard packaging'}
-          {sleeve ? ' + Sleeve' : ''} · {addonCount} add-on{addonCount === 1 ? '' : 's'} ·{' '}
-          {deliveryMode === 'individual' ? 'Individual delivery' : 'Bulk delivery'}
-        </span>
+        <span>{deliveryMode === 'individual' ? 'Individual delivery' : 'Bulk delivery'}</span>
         <span className="font-semibold text-[#1A1A18]">{packQuantity} packs</span>
       </div>
 

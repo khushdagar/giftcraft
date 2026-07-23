@@ -47,9 +47,9 @@ export function Testimonials() {
   }, [testimonials.length]);
 
   return (
-    <section className="bg-[#F5F5F0] py-20 md:py-28">
+    <section className="bg-[#F5F5F0] py-20">
       <div className="container">
-        <h2 className="text-5xl md:text-6xl font-serif font-normal text-center mb-4">
+        <h2 className="text-5xl md:text-6xl font-serif font-normal text-center">
           Loved by teams <span className="italic text-[#1A6B4F]">across India.</span>
         </h2>
 
@@ -61,7 +61,7 @@ export function Testimonials() {
                 slide === i ? 'opacity-100' : 'opacity-0 absolute'
               }`}
             >
-              <p className="text-6xl text-center text-[#EDD5A3] leading-none mb-6">❝</p>
+              <p className="text-6xl text-center text-[#fac85c] leading-none">❝</p>
               <p className="text-2xl font-serif italic text-center mb-8">{t.text}</p>
               <p className="text-center font-semibold">{t.name}</p>
               <p className="text-center text-sm text-[#9B9B93]">{t.role}</p>

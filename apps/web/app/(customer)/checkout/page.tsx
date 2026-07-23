@@ -161,19 +161,13 @@ function CheckoutContent() {
     }));
   }, [companyResp]);
 
-  // Pre-fill billing/contact from the delivery details captured in the builder.
+  // Pre-fill the CONTACT PERSON from the delivery details captured in the
+  // builder. Billing details are the COMPANY's (name, GSTIN, PAN, company
+  // address) and come from the saved company profile above — we deliberately do
+  // NOT copy the shipping/delivery address into the billing form.
   useEffect(() => {
     if (!payload?.address) return;
     const a = payload.address;
-    setBillingData((prev) => ({
-      ...prev,
-      companyName: a.company || prev.companyName,
-      address1: a.address1 || prev.address1,
-      address2: a.address2 || prev.address2,
-      city: a.city || prev.city,
-      state: a.state || prev.state,
-      pincode: a.pincode || prev.pincode,
-    }));
     setContactData((prev) => ({
       ...prev,
       name: a.name || prev.name,
@@ -231,6 +225,18 @@ function CheckoutContent() {
     if (sleeve) lines.push({ name: 'Branded Sleeve', total: 60 * packQuantity });
     return lines;
   }, [payload?.addons, sleeve, packQuantity]);
+
+  // Per-unit add-on lines for the Order Summary, where packaging and add-ons are
+  // shown as line items alongside products (price × packs). The branded sleeve is
+  // a ₹60/pack add-on, so it's included here too.
+  const summaryAddons = useMemo(() => {
+    const lines = (payload?.addons || []).map((a) => ({
+      name: a.name,
+      price: Number(a.price),
+    }));
+    if (sleeve) lines.push({ name: 'Branded Sleeve', price: 60 });
+    return lines;
+  }, [payload?.addons, sleeve]);
 
   // Recompute the price breakdown fresh from the products rather than trusting
   // the value baked into the quote. Older quotes stored `quantity = packQuantity`
@@ -527,9 +533,12 @@ function CheckoutContent() {
                 <OrderSummary
                   products={summaryProducts}
                   packQuantity={packQuantity}
-                  packagingName={payload.packaging?.name}
-                  sleeve={sleeve}
-                  addonCount={payload.addons?.length || 0}
+                  packaging={
+                    payload.packaging
+                      ? { name: payload.packaging.name, price: Number(payload.packaging.price) }
+                      : null
+                  }
+                  addons={summaryAddons}
                   deliveryMode={payload.deliveryMode || 'single'}
                   logo={payload.logoUrl || undefined}
                   onEdit={() => router.push('/builder')}
@@ -544,6 +553,7 @@ function CheckoutContent() {
                   onSelectPath={setSelectedPath}
                   advance10={advance10}
                   balance90={balance90}
+                  onContinue={handleContinue}
                 />
 
                 <ProcessTimeline

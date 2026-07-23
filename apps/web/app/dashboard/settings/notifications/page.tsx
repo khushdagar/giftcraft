@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { PushToggle } from '@/components/notifications/push-toggle';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 interface Preferences {
   email: boolean;
@@ -132,6 +134,12 @@ export default function NotificationsSettingsPage() {
 
   return (
     <div className="max-w-2xl space-y-8">
+      <Link
+          href="/dashboard/settings"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-ink-2 hover:text-em"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Settings
+        </Link>
       <div>
         <h1 className="text-3xl font-normal tracking-tight text-ink">Notification Preferences</h1>
         <p className="mt-1 text-sm text-ink-2">Manage how you receive notifications</p>

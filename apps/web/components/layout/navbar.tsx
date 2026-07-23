@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/store/builder";
 
 interface NavOccasion { icon: string; name: string; slug: string }
+interface NavLink { name: string; slug: string }
 
 // Shown until the live occasions load (and if the fetch fails), so the menu
 // is never empty.
@@ -35,6 +36,8 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [occasions, setOccasions] = useState<NavOccasion[]>(FALLBACK_OCCASIONS);
+  const [categories, setCategories] = useState<NavLink[]>([]);
+  const [collections, setCollections] = useState<NavLink[]>([]);
   const products = useBuilderStore((state) => state.products);
 
   // The builder store is persisted to localStorage, which only exists on the
@@ -70,6 +73,26 @@ export function Navbar() {
     return () => { active = false; };
   }, []);
 
+  // Categories (Products dropdown) and collections (Curated Packs dropdown).
+  useEffect(() => {
+    let active = true;
+    fetch("/api/categories")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((res) => {
+        if (!active || !Array.isArray(res?.data)) return;
+        setCategories(res.data.map((c: any) => ({ name: c.name, slug: c.slug })));
+      })
+      .catch(() => {/* no dropdown if it fails */});
+    fetch("/api/collections")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!active || !Array.isArray(data)) return;
+        setCollections(data.map((c: any) => ({ name: c.name, slug: c.slug })));
+      })
+      .catch(() => {/* no dropdown if it fails */});
+    return () => { active = false; };
+  }, []);
+
   const userInitial = session?.user?.name?.[0]?.toUpperCase() ?? "G";
 
   return (
@@ -86,10 +109,43 @@ export function Navbar() {
 
         <ul className="hidden items-center gap-7 lg:flex">
           <li><Link href="/" className="text-sm font-medium text-ink-2 hover:text-ink">Home</Link></li>
-          <li><Link href="/catalog" className="text-sm font-medium text-ink-2 hover:text-ink">Products</Link></li>
-          <li><Link href="/packs" className="text-sm font-medium text-ink-2 hover:text-ink">Curated Packs</Link></li>
+          {/* Products dropdown — all categories in 4 columns */}
+          <li className="group relative py-4">
+            <Link href="/catalog" className="text-sm font-medium text-ink-2 hover:text-ink">Products ▾</Link>
+            {categories.length > 0 && (
+              <div className="glass invisible absolute left-1/2 top-full grid min-w-[640px] -translate-x-1/2 grid-cols-4 gap-1 rounded-md-s p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+                {categories.map((c) => (
+                  <Link
+                    key={c.slug}
+                    href={`/catalog?category=${c.slug}`}
+                    className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
+                  >
+                    {c.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </li>
 
-          {/* Occasions dropdown — hover-triggered */}
+          {/* Curated Packs dropdown — collections */}
+          <li className="group relative py-4">
+            <Link href="/packs" className="text-sm font-medium text-ink-2 hover:text-ink">Curated Packs ▾</Link>
+            {collections.length > 0 && (
+              <div className="glass invisible absolute left-1/2 top-full grid min-w-[280px] -translate-x-1/2 grid-cols-1 gap-1 rounded-md-s p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+                {collections.map((c) => (
+                  <Link
+                    key={c.slug}
+                    href={`/packs/${c.slug}`}
+                    className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
+                  >
+                    {c.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </li>
+
+          {/* Occasions dropdown — hover-triggered, no icons */}
           <li className="group relative py-4">
             <button className="text-sm font-medium text-ink-2 hover:text-ink">Collections ▾</button>
             <div className="glass invisible absolute left-1/2 top-full grid min-w-[480px] -translate-x-1/2 grid-cols-3 gap-1 rounded-md-s p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
@@ -97,9 +153,8 @@ export function Navbar() {
                 <Link
                   key={o.slug}
                   href={`/catalog?occasion=${o.slug}`}
-                  className="flex items-center gap-2 rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
+                  className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
                 >
-                  <span className="text-lg">{o.icon}</span>
                   {o.name}
                 </Link>
               ))}

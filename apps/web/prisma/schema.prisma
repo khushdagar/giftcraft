@@ -771,6 +771,9 @@ model OccasionConfig {
   name         String
   slug         String            @unique
   icon         String?
+  // Optional hero image for the occasion tile (Digital Ocean Spaces CDN URL).
+  // When set, the customer UI shows this photo instead of the flat gradient.
+  imageUrl     String?
   gradient     String?
   description  String?
   sortOrder    Int               @default(0)

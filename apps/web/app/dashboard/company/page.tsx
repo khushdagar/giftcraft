@@ -18,16 +18,6 @@ export default async function CompanyPage() {
         some: { id: session.user.id },
       },
     },
-    include: {
-      users: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-        },
-      },
-    },
   });
 
   // Per SOW §3.7.3, every customer has a Company Profile they can view/edit. If
@@ -49,8 +39,10 @@ export default async function CompanyPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Company Info — editable (create or update) */}
+      {/* Company Info — editable (create or update). Team-member/role
+          management is an admin concern and lives in the admin dashboard, so
+          it is intentionally not shown in the customer portal. */}
+      <div className="max-w-2xl">
         <CompanyDetailsForm
           canEdit
           isNew={isNew}
@@ -66,37 +58,6 @@ export default async function CompanyPage() {
             website: company?.website ?? '',
           }}
         />
-
-        {/* Team Members — only once a company exists */}
-        {company ? (
-          <div className="rounded-md border-2 border-bdr bg-white p-6">
-            <h2 className="font-normal text-ink mb-4">
-              Team Members ({company.users.length})
-            </h2>
-            <div className="space-y-3">
-              {company.users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-start justify-between border-b border-bdr pb-3 last:border-0"
-                >
-                  <div>
-                    <p className="font-normal text-ink text-sm">{user.name}</p>
-                    <p className="text-xs text-ink-2">{user.email}</p>
-                  </div>
-                  <span className="text-xs font-normal bg-em-50 text-em-700 px-2 py-1 rounded">
-                    {user.role}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-md border-2 border-dashed border-bdr p-6 flex items-center justify-center">
-            <p className="text-sm text-ink-3 text-center">
-              Your team members will appear here once your company is set up.
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

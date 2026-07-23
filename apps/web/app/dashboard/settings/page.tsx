@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Bell, Lock, User as UserIcon } from 'lucide-react';
 
-export const revalidate = 60;
+// Per-user data — must render per request, never cache across users.
+export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
   const session = await auth();

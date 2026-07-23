@@ -13,8 +13,18 @@ const STEPS = [
 ];
 
 export function BuilderLayout({ children }: { children: ReactNode }) {
-  const { currentStep, setCurrentStep, products, packaging, deliveryMode, address, csvRecipientCount } =
-    useBuilderStore();
+  const {
+    currentStep,
+    setCurrentStep,
+    products,
+    packaging,
+    deliveryMode,
+    address,
+    csvRecipientCount,
+    reviewOrder,
+    reviewLoading,
+    reviewReady,
+  } = useBuilderStore();
 
   // Step 2 (Customize) — a pack has to ship in *something*, so packaging is required.
   const step2Valid = !!packaging;
@@ -131,12 +141,26 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
           </div>
 
           <Button
-            onClick={() => setCurrentStep((currentStep + 1) as 1 | 2 | 3 | 4)}
-            disabled={!canGoForward}
+            onClick={() => {
+              // On the final step the forward button runs Step 4's "Review Order"
+              // flow (create quote → checkout), published to the store by
+              // Step4Review. On earlier steps it simply advances.
+              if (currentStep === 4) reviewOrder?.();
+              else setCurrentStep((currentStep + 1) as 1 | 2 | 3 | 4);
+            }}
+            disabled={
+              currentStep === 4 ? !reviewReady || reviewLoading || !reviewOrder : !canGoForward
+            }
             variant="em"
             className="gap-2 rounded-md"
             title={
-              blockedAtStep2
+              currentStep === 4
+                ? !reviewReady
+                  ? deliveryMode === 'individual'
+                    ? 'Upload your recipients list to continue'
+                    : 'Complete your delivery details to continue'
+                  : undefined
+                : blockedAtStep2
                 ? 'Select a packaging option to continue'
                 : blockedAtStep3
                 ? deliveryMode === 'individual'
@@ -145,8 +169,8 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
                 : undefined
             }
           >
-            {currentStep === 4 ? 'Place Order' : 'Continue'}
-            {currentStep !== 4 && <ChevronRight className="h-4 w-4" />}
+            {currentStep === 4 ? (reviewLoading ? 'Processing…' : 'Review Order') : 'Continue'}
+            {(currentStep !== 4 || !reviewLoading) && <ChevronRight className="h-4 w-4" />}
           </Button>
         </div>
       </footer>

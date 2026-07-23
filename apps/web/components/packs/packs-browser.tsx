@@ -621,55 +621,66 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                     {filtered.map((pack) => (
                       <div
                         key={pack.id}
-                        className="flex flex-col overflow-hidden rounded-md border-2 border-bdr bg-white group"
+                        className="flex flex-col overflow-hidden rounded-md border-2 border-bdr bg-white group transition hover:shadow-md hover:border-em/40"
                       >
-                        <div className="relative aspect-square">
-                          {pack.image ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={pack.image}
-                              alt={pack.name}
-                              className="absolute inset-0 h-full w-full object-cover"
-                            />
-                          ) : (
-                            <Collage tiles={pack.productImages} />
-                          )}
-                        </div>
-
-                        <div className="flex flex-1 flex-col p-4">
-                          <p className="text-xs text-ink-3 mb-0.5">{pack.collectionName}</p>
-                          <h3 className="text-sm font-semibold text-ink leading-snug">
-                            {pack.name}
-                          </h3>
-                          {pack.descriptionShort && (
-                            <p className="mt-1 text-xs text-ink-2 line-clamp-2">
-                              {pack.descriptionShort}
-                            </p>
-                          )}
-                          <p className="mt-1 text-sm text-ink-2">
-                            From{' '}
-                            <span className="font-bold text-ink tabular-nums">
-                              {pack.fromPrice > 0 ? formatRupees(pack.fromPrice) : '—'}
-                            </span>
-                            <span className="text-ink-3"> /pack</span>
-                          </p>
-                          <p className="text-xs text-ink-3 mt-0.5">
-                            {pack.productCount} product{pack.productCount === 1 ? '' : 's'}
-                          </p>
-                          <div className="mt-3 flex flex-col gap-2">
-                            <Link
-                              href={checkoutHref(pack)}
-                              className="flex w-full items-center justify-center rounded-full bg-em px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-em-600"
-                            >
-                              Add to Pack
-                            </Link>
-                            <Link
-                              href={`/products/${pack.slug}`}
-                              className="flex w-full items-center justify-center rounded-full border-2 border-em px-4 py-2.5 text-sm font-semibold text-em transition hover:bg-em-50"
-                            >
-                              View Details
-                            </Link>
+                        {/* Whole card (image + details) opens the pack detail
+                            page. The action buttons below sit outside this Link
+                            so they stay independently clickable — no nested
+                            anchors. */}
+                        <Link
+                          href={`/products/${pack.slug}`}
+                          className="flex flex-1 flex-col"
+                          aria-label={`View details for ${pack.name}`}
+                        >
+                          <div className="relative aspect-square">
+                            {pack.image ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={pack.image}
+                                alt={pack.name}
+                                className="absolute inset-0 h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Collage tiles={pack.productImages} />
+                            )}
                           </div>
+
+                          <div className="flex flex-1 flex-col px-4 pt-4">
+                            <p className="text-xs text-ink-3 mb-0.5">{pack.collectionName}</p>
+                            <h3 className="text-sm font-semibold text-ink leading-snug transition group-hover:text-em">
+                              {pack.name}
+                            </h3>
+                            {pack.descriptionShort && (
+                              <p className="mt-1 text-xs text-ink-2 line-clamp-2">
+                                {pack.descriptionShort}
+                              </p>
+                            )}
+                            <p className="mt-1 text-sm text-ink-2">
+                              From{' '}
+                              <span className="font-bold text-ink tabular-nums">
+                                {pack.fromPrice > 0 ? formatRupees(pack.fromPrice) : '—'}
+                              </span>
+                              <span className="text-ink-3"> /pack</span>
+                            </p>
+                            <p className="text-xs text-ink-3 mt-0.5">
+                              {pack.productCount} product{pack.productCount === 1 ? '' : 's'}
+                            </p>
+                          </div>
+                        </Link>
+
+                        <div className="flex flex-col gap-2 px-4 pb-4 pt-3">
+                          <Link
+                            href={checkoutHref(pack)}
+                            className="flex w-full items-center justify-center rounded-full bg-em px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-em-600"
+                          >
+                            Add to Pack
+                          </Link>
+                          <Link
+                            href={`/products/${pack.slug}`}
+                            className="flex w-full items-center justify-center rounded-full border-2 border-em px-4 py-2.5 text-sm font-semibold text-em transition hover:bg-em-50"
+                          >
+                            View Details
+                          </Link>
                         </div>
                       </div>
                     ))}

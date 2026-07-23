@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
           name: c.name,
           description: c.description || "",
           icon: c.icon || "🎁",
+          image: c.imageUrl || null,
           tags: c.tags,
           bg:
             c.gradient && c.gradient.includes("from-") && c.gradient.includes("to-")
@@ -117,6 +118,8 @@ export async function GET(request: NextRequest) {
         icon: occasion.icon || "🎁",
         name: occasion.name,
         desc: occasion.description || "Perfect for this occasion",
+        // Optional hero image; the UI falls back to `bg` (gradient) when absent.
+        image: occasion.imageUrl || null,
         bg: bg,
         slug: occasion.slug,
       };

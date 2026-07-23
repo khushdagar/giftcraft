@@ -299,8 +299,8 @@ export default async function DashboardPage() {
                       {items.map((it: any) => (
                         <li key={it.id} className="flex items-baseline gap-2 text-xs text-ink-3">
                           <span className="truncate">{it.product?.name ?? 'Product'}</span>
-                          <span className="flex-shrink-0 tabnum">×{it.quantity}</span>
-                          <span className="flex-shrink-0 tabnum">({formatRupees(Number(it.unitPrice))})</span>
+                          <span className="flex-shrink-0 tabnum">× &nbsp;{it.quantity}</span>
+                          {/* <span className="flex-shrink-0 tabnum">({formatRupees(Number(it.unitPrice))})</span> */}
                         </li>
                       ))}
                     </ul>

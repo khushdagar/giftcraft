@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
-export const revalidate = 60;
+// Per-user data — must render per request, never cache across users.
+export const dynamic = 'force-dynamic';
 
 export default async function QuotesPage() {
   const session = await auth();

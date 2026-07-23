@@ -47,13 +47,11 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Login is NOT required to upload a logo — guests can brand their pack in the
+    // builder and provide their details later at checkout. When the user IS
+    // signed in and belongs to a company, we also persist it to their saved
+    // brand-asset library below so it can be reused on future orders.
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Please sign in to upload your logo' },
-        { status: 401 }
-      );
-    }
 
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -83,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Persist to the company's brand asset library when the user belongs to one.
     let assetId: string | null = null;
-    const companyId = session.user.companyId;
+    const companyId = session?.user?.companyId;
     if (companyId) {
       const asset = await prisma.brandAsset.create({
         data: {
@@ -92,7 +90,7 @@ export async function POST(request: NextRequest) {
           url,
           mimeType: file.type || 'application/octet-stream',
           sizeBytes: file.size,
-          uploadedBy: session.user.id,
+          uploadedBy: session!.user!.id,
         },
       });
       assetId = asset.id;
