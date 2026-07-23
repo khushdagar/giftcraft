@@ -22,7 +22,7 @@ export function TrustStrip() {
           ))}
         </div>
 
-        <div className="border-t border-[#E8E8E3] pt-8">
+        {/* <div className="border-t border-[#E8E8E3] pt-8">
           <p className="text-center text-sm text-[#9B9B93] italic mb-6">India's first self-serve bulk gifting platform with transparent pricing</p>
           <div className="overflow-hidden">
             <div className="flex gap-16 whitespace-nowrap animate-marquee">
@@ -34,7 +34,7 @@ export function TrustStrip() {
               ))}
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </section>
   );
