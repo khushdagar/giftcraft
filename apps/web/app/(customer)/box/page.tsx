@@ -100,7 +100,7 @@ function toBoxProduct(p: ApiProduct, qty: number): BoxProduct {
 export default function BuildYourBoxPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [mounted, setMounted] = useState(false);
 
   const budget = useBoxStore((s) => s.budget);
@@ -151,10 +151,9 @@ export default function BuildYourBoxPage() {
   // the details are always shown (the toggle is hidden).
   const [showBoxDetails, setShowBoxDetails] = useState(false);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (status === 'unauthenticated') router.push('/login');
-  }, [status, router]);
+  // No auth gate: anyone can build a box. Account creation happens later, at
+  // logo upload in the builder — asking to sign in here would block the whole
+  // flow for a first-time visitor.
 
   // Hydrate the budget field from the persisted store + honour deep links once.
   useEffect(() => {
@@ -362,7 +361,7 @@ export default function BuildYourBoxPage() {
     router.push('/builder');
   };
 
-  if (!mounted || status === 'loading' || !session) {
+  if (!mounted || status === 'loading') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-sky-50 via-emerald-50 to-rose-50 flex items-center justify-center">
         <div className="text-center">
