@@ -152,7 +152,7 @@ export default async function AdminDashboard() {
         <MiniKpi label="Revenue MTD" value={formatRupees(revenueMtd)} change={`${revChange >= 0 ? "+" : ""}${revChange}%`} positive={revChange >= 0} negative={revChange < 0} />
         <MiniKpi label="Orders MTD" value={String(ordersMtd)} change={`${orderDelta >= 0 ? "+" : ""}${orderDelta}`} positive={orderDelta >= 0} negative={orderDelta < 0} />
         <MiniKpi label="Avg Order Value" value={formatRupees(aov)} change="this month" />
-        <MiniKpi label="Active Quotes" value={String(activeQuotes)} change="not expired" />
+        {/* <MiniKpi label="Active Quotes" value={String(activeQuotes)} change="not expired" /> */}
         <MiniKpi label="Clients" value={String(clients)} />
         <MiniKpi label="Mockups Pending" value={String(mockupsPending)} change={mockupsPending > 0 ? "awaiting approval" : "all clear"} negative={mockupsPending > 0} />
       </div>

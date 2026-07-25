@@ -163,7 +163,7 @@ export function DashboardContent({ userId, initialOrders }: DashboardContentProp
       </Tabs.Content>
 
       {/* Quotes Tab */}
-      <Tabs.Content value="quotes" className="animate-in fade-in">
+      {/* <Tabs.Content value="quotes" className="animate-in fade-in">
         <div className="rounded-md border-2 border-bdr bg-white p-8 text-center">
           <p className="text-ink-3 mb-4">No active quotes yet</p>
           <a
@@ -173,7 +173,7 @@ export function DashboardContent({ userId, initialOrders }: DashboardContentProp
             Create a Quote
           </a>
         </div>
-      </Tabs.Content>
+      </Tabs.Content> */}
 
       {/* Brand Assets Tab */}
       <Tabs.Content value="assets" className="animate-in fade-in">

@@ -6,6 +6,7 @@ import { z } from 'zod';
 const UpdateCategorySchema = z.object({
   name: z.string().min(1).optional(),
   slug: z.string().regex(/^[a-z0-9-]+$/).optional(),
+  description: z.string().optional().nullable(),
   parentId: z.string().optional().nullable(),
   sortOrder: z.number().optional(),
   imageUrl: z.string().url().optional().nullable(),
@@ -63,6 +64,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       data: {
         ...(data.name && { name: data.name }),
         ...(data.slug && { slug: data.slug }),
+        ...(data.description !== undefined && { description: data.description || null }),
         ...(data.parentId !== undefined && { parentId: data.parentId }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
         ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl || null }),

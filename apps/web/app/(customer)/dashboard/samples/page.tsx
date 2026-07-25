@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useTopLoading } from '@/components/ui/top-loading-bar';
 import { AlertCircle, Package, CheckCircle, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -88,16 +89,9 @@ export default function DashboardSamplesPage() {
     }
   };
 
-  if (status === 'loading' || !session) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-navy-800"></div>
-          <p className="mt-3 text-ink-2">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // Global top loading bar is the only loading indicator.
+  useTopLoading(status === 'loading' || !session);
+  if (status === 'loading' || !session) return null;
 
   return (
     <div className="space-y-8">

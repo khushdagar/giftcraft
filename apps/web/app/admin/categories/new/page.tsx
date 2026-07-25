@@ -16,12 +16,8 @@ export default async function NewCategoryPage() {
   });
 
   return (
-    <div className="min-h-screen bg-white py-12">
-      <div className="max-w-4xl mx-auto px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-normal text-ink">Create New Category</h1>
-          <p className="text-sm text-gray-500 mt-2">Add a new category with optional image</p>
-        </div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="mx-auto max-w-5xl px-6">
         <CategoryForm mode="create" parentCategories={parentCategories} />
       </div>
     </div>

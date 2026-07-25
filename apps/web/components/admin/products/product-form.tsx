@@ -1,14 +1,19 @@
 'use client';
 
+import { compressAndUpload } from '@/hooks/use-compressed-upload';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
+import { RichTextField } from '@/components/admin/rich-text-field';
+import { stripHtml } from '@/lib/strip-html';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, GripVertical, Plus, Trash2, X } from 'lucide-react';
+import { AlertCircle, GripVertical, Plus, Trash2, X, ArrowLeft } from 'lucide-react';
+import { TagCombobox } from '@/components/admin/tag-combobox';
 import { formatRupees } from '@/lib/utils';
 import { toast, useToastStore } from '@/lib/stores/toast-store';
 import { resolveSwatchHex } from '@/lib/color-name';
@@ -96,6 +101,18 @@ const COLLECTION_TAG_OPTIONS = [
   'tech-gifts',
 ];
 
+// The public product page's detail tabs. Edited one-at-a-time in the admin via a
+// dropdown so the form stays compact. Field names match the Prisma columns.
+const DETAIL_TABS = [
+  { name: 'specifications', label: 'Specifications', placeholder: 'e.g. Material, capacity, finish, certifications…' },
+  { name: 'designArtwork', label: 'Design & Artwork', placeholder: 'Branding methods, print area, artwork file requirements…' },
+  { name: 'shippingDelivery', label: 'Shipping & Delivery', placeholder: 'Lead times, dispatch info, delivery coverage…' },
+  { name: 'samplesInfo', label: 'Samples', placeholder: 'Sample availability, cost, turnaround…' },
+  { name: 'packagingAddons', label: 'Packaging & Add-ons', placeholder: 'Packaging options, gift boxes, add-on items…' },
+] as const;
+
+type DetailTabName = (typeof DETAIL_TABS)[number]['name'];
+
 interface VendorOption {
   id: string;
   name: string;
@@ -132,6 +149,7 @@ export function ProductForm({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [detailTab, setDetailTab] = useState<DetailTabName>('specifications');
   const [error, setError] = useState<string | null>(null);
   const [priceReason, setPriceReason] = useState('');
   // Drag-to-reorder state for the price-tier rows.
@@ -523,15 +541,7 @@ export function ProductForm({
     let uploadingToastId: string | null = null;
     try {
       uploadingToastId = toast.info('📤 Uploading variant image...', 0);
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('folder', 'variants');
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Upload failed');
-      }
-      const { url } = await res.json();
+      const { url } = await compressAndUpload(file, { folder: 'variants' });
       setVariants((prev) => prev.map((v, i) => (i === idx ? { ...v, imageUrl: url } : v)));
       if (uploadingToastId) useToastStore.getState().removeToast(uploadingToastId);
       toast.success('✅ Variant image added — Save Changes to persist', 2500);
@@ -743,15 +753,26 @@ export function ProductForm({
       {/* Sticky action bar — Save is always reachable while scrolling. Sits
           just below the admin topbar (h-16). */}
       <div className="sticky top-16 z-30 -mx-4 flex items-center justify-between gap-3 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <p className="text-sm font-medium text-gray-900">
-          {isPack
-            ? mode === 'create'
-              ? 'New Curated Pack'
-              : 'Edit Curated Pack'
-            : mode === 'create'
-            ? 'New Product'
-            : 'Edit Product'}
-        </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => router.push('/admin/products')}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50"
+            aria-label="Back to products"
+            title="Back to products"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <p className="text-sm font-medium text-gray-900">
+            {isPack
+              ? mode === 'create'
+                ? 'New Curated Pack'
+                : 'Edit Curated Pack'
+              : mode === 'create'
+              ? 'New Product'
+              : 'Edit Product'}
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
             Cancel
@@ -832,69 +853,59 @@ export function ProductForm({
 
             <div>
               <label className="block text-sm font-normal text-gray-900 mb-1">Long Description</label>
-              <textarea
-                {...form.register('descriptionLong')}
-                placeholder="Detailed product description"
-                rows={4}
-                className="w-full border border-gray-300 rounded-lg p-2 text-sm"
+              <Controller
+                control={form.control}
+                name="descriptionLong"
+                render={({ field }) => (
+                  <RichTextField
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    placeholder="Detailed product description"
+                    minHeight={180}
+                  />
+                )}
               />
               <p className="text-xs text-gray-500 mt-1">Shown under the &ldquo;Product Description&rdquo; tab.</p>
             </div>
 
             {/* Product detail tabs — each maps to a tab on the public product page.
-                Leave blank to hide that tab's content. */}
+                Edited one at a time via the dropdown to keep the form compact. */}
             <div className="pt-2 border-t border-gray-100">
               <p className="text-sm font-semibold text-gray-900 mb-1">Product Detail Tabs</p>
               <p className="text-xs text-gray-500 mb-3">
-                Fills the tabs on the public product page. Any tab left blank shows &ldquo;No information available&rdquo;.
+                Pick a tab to edit its content. Any tab left blank shows &ldquo;No information available&rdquo; on the public page.
               </p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">Specifications</label>
-                  <textarea
-                    {...form.register('specifications')}
-                    placeholder="e.g. Material, capacity, finish, certifications…"
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">Design &amp; Artwork</label>
-                  <textarea
-                    {...form.register('designArtwork')}
-                    placeholder="Branding methods, print area, artwork file requirements…"
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">Shipping &amp; Delivery</label>
-                  <textarea
-                    {...form.register('shippingDelivery')}
-                    placeholder="Lead times, dispatch info, delivery coverage…"
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">Samples</label>
-                  <textarea
-                    {...form.register('samplesInfo')}
-                    placeholder="Sample availability, cost, turnaround…"
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">Packaging &amp; Add-ons</label>
-                  <textarea
-                    {...form.register('packagingAddons')}
-                    placeholder="Packaging options, gift boxes, add-on items…"
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  />
-                </div>
-              </div>
+
+              <select
+                value={detailTab}
+                onChange={(e) => setDetailTab(e.target.value as DetailTabName)}
+                className="mb-3 w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-gray-400 focus:outline-none sm:max-w-xs"
+              >
+                {DETAIL_TABS.map((tab) => {
+                  const filled = !!(form.watch(tab.name) || '').trim();
+                  return (
+                    <option key={tab.name} value={tab.name}>
+                      {tab.label}{filled ? '  ●' : ''}
+                    </option>
+                  );
+                })}
+              </select>
+
+              {DETAIL_TABS.filter((tab) => tab.name === detailTab).map((tab) => (
+                <Controller
+                  key={tab.name}
+                  control={form.control}
+                  name={tab.name}
+                  render={({ field }) => (
+                    <RichTextField
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                      placeholder={tab.placeholder}
+                      minHeight={160}
+                    />
+                  )}
+                />
+              ))}
             </div>
 
             {isPack && (
@@ -1757,7 +1768,7 @@ export function ProductForm({
           </section>
 
           <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
-            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Visibility & SEO</h2>
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Visibility</h2>
             <div>
               <label className="block text-sm font-normal text-gray-900 mb-2">Status</label>
               <select
@@ -1791,14 +1802,42 @@ export function ProductForm({
               <Input {...form.register('ecoCertification')} placeholder="e.g. GOTS, FSC, GRS, rPET" />
               <p className="text-xs text-gray-500 mt-1">Name of the eco certification (if eco-certified)</p>
             </div>
+          </section>
+
+          {/* Search engine listing — Shopify-style SEO card with live Google preview. */}
+          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Search engine listing</h2>
+
+            <div className="rounded-lg border border-gray-200 p-4">
+              <p className="truncate text-xs text-gray-500">
+                {(process.env.NEXT_PUBLIC_APP_URL || 'https://giftcraft.in')}/products/{form.watch('slug') || 'product-handle'}
+              </p>
+              <p className="mt-0.5 truncate text-lg leading-snug text-[#1a0dab]">
+                {form.watch('metaTitle') || form.watch('name') || 'Product title'}
+              </p>
+              <p className="mt-0.5 line-clamp-2 text-sm text-gray-600">
+                {form.watch('metaDescription') ||
+                  stripHtml(form.watch('descriptionShort') || form.watch('descriptionLong')) ||
+                  'Add a page title and description to control how this product appears in search results.'}
+              </p>
+            </div>
 
             <div>
-              <label className="block text-sm font-normal text-gray-900 mb-1">Meta Title</label>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Page title</label>
               <Input {...form.register('metaTitle')} placeholder="SEO page title" />
             </div>
 
             <div>
-              <label className="block text-sm font-normal text-gray-900 mb-1">Meta Description</label>
+              <label className="block text-sm font-normal text-gray-900 mb-1">URL handle</label>
+              <Input
+                value={form.watch('slug') || ''}
+                onChange={(e) => form.setValue('slug', e.target.value, { shouldDirty: true })}
+                placeholder="product-handle"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-normal text-gray-900 mb-1">Meta description</label>
               <textarea
                 {...form.register('metaDescription')}
                 placeholder="SEO description"
@@ -1846,83 +1885,36 @@ export function ProductForm({
             {/* Recipient Tags */}
             <div>
               <label className="block text-sm font-normal text-gray-900 mb-3">Recipient Tags</label>
-              <div className="flex flex-wrap gap-2">
-                {RECIPIENT_OPTIONS.map((tag) => {
-                  const selected = form.watch('recipientTags')?.includes(tag) || false;
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => {
-                        const current = form.getValues('recipientTags') || [];
-                        if (current.includes(tag)) {
-                          form.setValue('recipientTags', current.filter((t) => t !== tag));
-                        } else {
-                          form.setValue('recipientTags', [...current, tag]);
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-full border text-sm transition ${
-                        selected
-                          ? 'bg-dark text-inv border-dark'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
+              <Controller
+                control={form.control}
+                name="recipientTags"
+                render={({ field }) => (
+                  <TagCombobox
+                    value={field.value || []}
+                    onChange={field.onChange}
+                    suggestions={RECIPIENT_OPTIONS}
+                    placeholder="Search or add a recipient…"
+                  />
+                )}
+              />
               <p className="text-xs text-gray-500 mt-2">Who this product is meant for (from the product master)</p>
             </div>
 
             {/* Collection Tags — drive tag-based curated collections */}
             <div>
               <label className="block text-sm font-normal text-gray-900 mb-3">Collection Tags</label>
-              <div className="flex flex-wrap gap-2">
-                {Array.from(
-                  new Set([
-                    ...COLLECTION_TAG_OPTIONS,
-                    ...((form.watch('tags') as string[] | undefined) || []),
-                  ])
-                ).map((tag) => {
-                  const selected = form.watch('tags')?.includes(tag) || false;
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => {
-                        const current = form.getValues('tags') || [];
-                        if (current.includes(tag)) {
-                          form.setValue('tags', current.filter((t) => t !== tag));
-                        } else {
-                          form.setValue('tags', [...current, tag]);
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-full border text-sm transition ${
-                        selected
-                          ? 'bg-dark text-inv border-dark'
-                          : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  );
-                })}
-              </div>
-              <input
-                type="text"
-                placeholder="Add a custom tag and press Enter"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    const val = e.currentTarget.value.trim().toLowerCase();
-                    if (!val) return;
-                    const current = form.getValues('tags') || [];
-                    if (!current.includes(val)) form.setValue('tags', [...current, val]);
-                    e.currentTarget.value = '';
-                  }
-                }}
-                className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-400 focus:outline-none"
+              <Controller
+                control={form.control}
+                name="tags"
+                render={({ field }) => (
+                  <TagCombobox
+                    value={field.value || []}
+                    onChange={field.onChange}
+                    suggestions={COLLECTION_TAG_OPTIONS}
+                    placeholder="Search or add a tag…"
+                    lowercaseNew
+                  />
+                )}
               />
               <p className="text-xs text-gray-500 mt-2">
                 Products with a tag matching a Collection (set in Occasions → tags) are pulled in automatically.

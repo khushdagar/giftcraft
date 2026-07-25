@@ -194,7 +194,7 @@ export default async function DashboardPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Kpi label="Active Orders" value={activeOrders} icon={Package} accent="em" />
-        <Kpi label="Active Quotes" value={activeQuotes} icon={FileText} accent="gold" />
+        {/* <Kpi label="Active Quotes" value={activeQuotes} icon={FileText} accent="gold" /> */}
         <Kpi label="In Production" value={inProductionCount} icon={Clock} accent="em" />
         <Kpi label="YTD Spend" value={formatRupees(Number(ytdSpend))} icon={TrendingUp} accent="em-400" />
       </div>

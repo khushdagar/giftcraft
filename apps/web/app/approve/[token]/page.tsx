@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { formatRupees } from '@/lib/utils';
+import { useTopLoading } from '@/components/ui/top-loading-bar';
 import { AlertCircle, ArrowLeft, CheckCircle, Clock, ExternalLink, FileText } from 'lucide-react';
 import { isImageUrl } from '@/lib/mockup-url';
 
@@ -149,17 +150,9 @@ export default function ApprovePage({ params }: PageProps) {
     }
   };
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-emerald-50 to-rose-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-em"></div>
-          <p className="mt-4 text-ink-2">Loading approval...</p>
-        </div>
-      </div>
-    );
-  }
+  // Loading state — global top loading bar is the only indicator.
+  useTopLoading(loading);
+  if (loading) return null;
 
   // Error state
   if (error) {

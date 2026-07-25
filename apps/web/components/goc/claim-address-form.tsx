@@ -82,7 +82,7 @@ export function ClaimAddressForm({ onSubmit, isSubmitting }: ClaimAddressFormPro
       onSubmit={handleSubmit}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-emerald-50 rounded-md border-2 border-em-200 p-6 space-y-4"
+      className="bg-white rounded-md border border-bdr p-6 space-y-4 shadow-card"
     >
       <h3 className="text-lg font-bold text-em-700">Delivery Address</h3>
 

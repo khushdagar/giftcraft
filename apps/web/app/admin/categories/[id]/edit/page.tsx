@@ -12,6 +12,33 @@ export default async function EditCategoryPage({ params }: { params: { id: strin
 
   const category = await prisma.category.findUnique({
     where: { id: params.id },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      parentId: true,
+      sortOrder: true,
+      imageUrl: true,
+      products: {
+        select: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              sku: true,
+              status: true,
+              images: {
+                take: 1,
+                orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+                select: { url: true },
+              },
+            },
+          },
+        },
+        orderBy: { product: { name: 'asc' } },
+      },
+    },
   });
 
   if (!category) {
@@ -26,14 +53,12 @@ export default async function EditCategoryPage({ params }: { params: { id: strin
     orderBy: { sortOrder: 'asc' },
   });
 
+  const { products, ...categoryData } = category;
+
   return (
-    <div className="min-h-screen bg-white py-12">
-      <div className="max-w-4xl mx-auto px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-normal text-ink">Edit Category</h1>
-          <p className="text-sm text-gray-500 mt-2">Update category details and image</p>
-        </div>
-        <CategoryForm mode="edit" parentCategories={parentCategories} category={category} />
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="mx-auto max-w-5xl px-6">
+        <CategoryForm mode="edit" parentCategories={parentCategories} category={categoryData} products={products} />
       </div>
     </div>
   );

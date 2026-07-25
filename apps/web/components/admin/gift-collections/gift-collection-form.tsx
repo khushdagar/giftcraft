@@ -1,5 +1,7 @@
 'use client';
 
+import { compressAndUpload } from '@/hooks/use-compressed-upload';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -61,12 +63,7 @@ export function GiftCollectionForm({ mode = 'create', collection }: GiftCollecti
     if (!file) return;
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('folder', 'gift-collections');
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      const data = await compressAndUpload(file, { folder: 'gift-collections' });
       setFormData((prev) => ({ ...prev, image: data.url }));
       toast.success('Image uploaded');
     } catch (err) {

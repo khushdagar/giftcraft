@@ -1,5 +1,7 @@
 'use client';
 
+import { compressAndUpload } from '@/hooks/use-compressed-upload';
+
 import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -119,12 +121,7 @@ export function BlogForm({
   const upload = async (file: File, target: 'cover' | 'og') => {
     setUploading(target);
     try {
-      const body = new FormData();
-      body.append('file', file);
-      body.append('folder', 'blog');
-      const res = await fetch('/api/upload', { method: 'POST', body });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      const data = await compressAndUpload(file, { folder: 'blog' });
       set(target === 'cover' ? 'coverImageUrl' : 'ogImageUrl', data.url);
       toast.success('Image uploaded');
     } catch (err) {

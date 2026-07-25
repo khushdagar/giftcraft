@@ -58,41 +58,15 @@ export function ProductTabs({
         ))}
       </div>
 
-      {/* Tab content */}
+      {/* Tab content. Values are HTML already sanitized on the server
+          (see lib/rich-text.toRichHtml), so it's safe to inject here. */}
       <div className="mt-8 mb-8">
-        {activeTab === 'description' && description && (
-          <div className="prose prose-sm max-w-none text-ink">
-            <p>{description}</p>
-          </div>
-        )}
-        {activeTab === 'specifications' && specifications && (
-          <div className="prose prose-sm max-w-none text-ink">
-            <p>{specifications}</p>
-          </div>
-        )}
-        {activeTab === 'design' && designArtwork && (
-          <div className="prose prose-sm max-w-none text-ink">
-            <p>{designArtwork}</p>
-          </div>
-        )}
-        {activeTab === 'shipping' && shippingDelivery && (
-          <div className="prose prose-sm max-w-none text-ink">
-            <p>{shippingDelivery}</p>
-          </div>
-        )}
-        {activeTab === 'samples' && samples && (
-          <div className="prose prose-sm max-w-none text-ink">
-            <p>{samples}</p>
-          </div>
-        )}
-        {activeTab === 'packaging' && packagingAddons && (
-          <div className="prose prose-sm max-w-none text-ink">
-            <p>{packagingAddons}</p>
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!content[activeTab as keyof typeof content] && (
+        {content[activeTab as keyof typeof content] ? (
+          <div
+            className="prose prose-sm max-w-none text-ink"
+            dangerouslySetInnerHTML={{ __html: content[activeTab as keyof typeof content] }}
+          />
+        ) : (
           <p className="text-sm text-ink-3">No information available for this section.</p>
         )}
       </div>

@@ -255,6 +255,7 @@ export default async function AdminProductsPage({
         priceTiers: { where: { tier: 1 }, take: 1 },
         images: { where: { isPrimary: true }, take: 1 },
         categories: { include: { category: true } },
+        vendors: { include: { vendor: { select: { name: true } } } },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, ArrowRight } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
+import { useTopLoading } from '@/components/ui/top-loading-bar';
 import { toast } from '@/lib/stores/toast-store';
 import { resolveSwatchHex } from '@/lib/color-name';
 
@@ -360,16 +361,9 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
     setSort('featured');
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#FAFAF7' }}>
-        <div className="text-center">
-          <p className="text-lg font-semibold mb-2">Loading products...</p>
-          <div className="inline-block h-8 w-8 border-4 border-emerald-700 border-t-transparent rounded-full animate-spin" />
-        </div>
-      </div>
-    );
-  }
+  // While products load, the global top loading bar is the only indicator.
+  useTopLoading(loading);
+  if (loading) return null;
 
   return (
     <div className="min-h-screen" style={{ background: '#FAFAF7' }}>
@@ -547,7 +541,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
               {brandFacets.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Brand</h4>
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                  <div className="space-y-1">
                     {brandFacets.map(({ name, count }) => (
                       <label key={name} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
                         <input type="checkbox" checked={selectedBrands.has(name)} onChange={() => handleBrandChange(name)} style={{ accentColor: '#1A6B4F' }} />
@@ -563,7 +557,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
               {occasionFacets.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Occasion</h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="space-y-2">
                     {occasionFacets.map(occ => (
                       <label key={occ.id} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
                         <input type="checkbox" checked={selectedOccasions.has(occ.id)} onChange={() => toggleSetValue(setSelectedOccasions, occ.id)} style={{ accentColor: '#1A6B4F' }} />
@@ -579,7 +573,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
               {recipientFacets.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Recipient Type</h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="space-y-2">
                     {recipientFacets.map(({ tag, count }) => (
                       <label key={tag} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
                         <input type="checkbox" checked={selectedRecipients.has(tag)} onChange={() => toggleSetValue(setSelectedRecipients, tag)} style={{ accentColor: '#1A6B4F' }} />

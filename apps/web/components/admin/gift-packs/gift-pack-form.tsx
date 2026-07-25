@@ -1,5 +1,7 @@
 'use client';
 
+import { compressAndUpload } from '@/hooks/use-compressed-upload';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -194,12 +196,7 @@ export function GiftPackForm({
     if (!file) return;
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('folder', 'gift-packs');
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      const data = await compressAndUpload(file, { folder: 'gift-packs' });
       setFormData((prev) => ({ ...prev, image: data.url }));
       toast.success('Image uploaded');
     } catch (err) {
