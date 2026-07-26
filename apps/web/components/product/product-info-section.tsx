@@ -10,6 +10,7 @@ import { AddonsSelector } from './addons-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { resolveSwatchHex } from '@/lib/color-name';
+import { stripHtml } from '@/lib/strip-html';
 
 interface ProductInfoSectionProps {
   product: any;
@@ -56,7 +57,7 @@ export function ProductInfoSection({
       <p className="mb-2 text-xs text-ink-3">{product.brand ? `${product.brand} · ` : ""}{categoryName}</p>
       <h1 className="font-serif text-4xl font-light tracking-tight text-ink">{product.name}</h1>
       <p className="mt-4 text-base leading-relaxed text-ink-2">
-        {product.descriptionShort || product.descriptionLong}
+        {product.descriptionShort || stripHtml(product.descriptionLong)}
       </p>
 
       {/* Badges */}

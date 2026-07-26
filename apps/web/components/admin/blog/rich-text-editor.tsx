@@ -1,5 +1,7 @@
 'use client';
 
+import { compressAndUpload } from '@/hooks/use-compressed-upload';
+
 import { useCallback, useRef } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -119,12 +121,7 @@ export function RichTextEditor({
 
     uploadingRef.current = true;
     try {
-      const body = new FormData();
-      body.append('file', file);
-      body.append('folder', 'blog');
-      const res = await fetch('/api/upload', { method: 'POST', body });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      const data = await compressAndUpload(file, { folder: 'blog' });
       editor.chain().focus().setImage({ src: data.url, alt: file.name }).run();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to upload image');

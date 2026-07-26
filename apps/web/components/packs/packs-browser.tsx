@@ -201,6 +201,60 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
     return list;
   }, [allPacks, fCollections, fCategories, fBrands, fOccasions, fRecipients, search, priceMin, priceMax, sort]);
 
+  // Packs matching every active filter EXCEPT the given facet. Measuring an
+  // option against the OTHER filters (not the fully-filtered list) is what lets
+  // you tick more than one option in the same facet — otherwise selecting one
+  // would drop every sibling to a count of 0 and hide it.
+  const packsExcept = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (skip: 'categories' | 'brands' | 'occasions' | 'recipients') => {
+      let list = allPacks;
+      if (fCollections.length) list = list.filter((p) => fCollections.includes(p.collectionId));
+      if (skip !== 'categories' && fCategories.length)
+        list = list.filter((p) => p.categories.some((c) => fCategories.includes(c.id)));
+      if (skip !== 'brands' && fBrands.length)
+        list = list.filter((p) => p.brands.some((b) => fBrands.includes(b)));
+      if (skip !== 'occasions' && fOccasions.length)
+        list = list.filter((p) => p.occasions.some((o) => fOccasions.includes(o.id)));
+      if (skip !== 'recipients' && fRecipients.length)
+        list = list.filter((p) => p.recipients.some((r) => fRecipients.includes(r)));
+      if (q) list = list.filter((p) => p.name.toLowerCase().includes(q));
+      if (priceMin != null) list = list.filter((p) => p.fromPrice >= priceMin);
+      if (priceMax != null) list = list.filter((p) => p.fromPrice <= priceMax);
+      return list;
+    };
+  }, [allPacks, fCollections, fCategories, fBrands, fOccasions, fRecipients, search, priceMin, priceMax]);
+
+  // Only options that can still narrow the results survive (count > 0). A ticked
+  // option always stays visible so it can be unticked.
+  const catFacets = useMemo(() => {
+    const base = packsExcept('categories');
+    return catOptions
+      .map((c) => ({ ...c, count: base.filter((p) => p.categories.some((x) => x.id === c.id)).length }))
+      .filter((c) => c.count > 0 || fCategories.includes(c.id));
+  }, [catOptions, packsExcept, fCategories]);
+
+  const brandFacets = useMemo(() => {
+    const base = packsExcept('brands');
+    return brandOptions
+      .map((brand) => ({ brand, count: base.filter((p) => p.brands.includes(brand)).length }))
+      .filter((b) => b.count > 0 || fBrands.includes(b.brand));
+  }, [brandOptions, packsExcept, fBrands]);
+
+  const occasionFacets = useMemo(() => {
+    const base = packsExcept('occasions');
+    return occasionOptions
+      .map((o) => ({ ...o, count: base.filter((p) => p.occasions.some((x) => x.id === o.id)).length }))
+      .filter((o) => o.count > 0 || fOccasions.includes(o.id));
+  }, [occasionOptions, packsExcept, fOccasions]);
+
+  const recipientFacets = useMemo(() => {
+    const base = packsExcept('recipients');
+    return recipientOptions
+      .map((tag) => ({ tag, count: base.filter((p) => p.recipients.includes(tag)).length }))
+      .filter((r) => r.count > 0 || fRecipients.includes(r.tag));
+  }, [recipientOptions, packsExcept, fRecipients]);
+
   const hasActiveFilters =
     fCategories.length > 0 ||
     fBrands.length > 0 ||
@@ -405,11 +459,11 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                   </div>
 
                   {/* Categories */}
-                  {catOptions.length > 0 && (
+                  {catFacets.length > 0 && (
                     <div className="mb-5 pb-4 border-b border-bdr">
                       <p className="text-sm font-semibold text-ink mb-3">Categories</p>
                       <div className="space-y-2">
-                        {catOptions.map((cat) => (
+                        {catFacets.map((cat) => (
                           <label
                             key={cat.id}
                             className="flex items-center justify-between gap-2 cursor-pointer text-sm text-ink-2 hover:text-ink"
@@ -423,9 +477,7 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                               />
                               {cat.name}
                             </span>
-                            <span className="text-ink-3">
-                              ({filtered.filter((p) => p.categories.some((c) => c.id === cat.id)).length})
-                            </span>
+                            <span className="text-ink-3">({cat.count})</span>
                           </label>
                         ))}
                       </div>
@@ -501,11 +553,11 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                   </div>
 
                   {/* Brand */}
-                  {brandOptions.length > 0 && (
+                  {brandFacets.length > 0 && (
                     <div className="mb-5 pb-4 border-b border-bdr">
                       <p className="text-sm font-semibold text-ink mb-3">Brand</p>
-                      <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {brandOptions.map((brand) => (
+                      <div className="space-y-2">
+                        {brandFacets.map(({ brand, count }) => (
                           <label
                             key={brand}
                             className="flex items-center justify-between gap-2 cursor-pointer text-sm text-ink-2 hover:text-ink"
@@ -519,9 +571,7 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                               />
                               {brand}
                             </span>
-                            <span className="text-ink-3">
-                              ({filtered.filter((p) => p.brands.includes(brand)).length})
-                            </span>
+                            <span className="text-ink-3">({count})</span>
                           </label>
                         ))}
                       </div>
@@ -529,11 +579,11 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                   )}
 
                   {/* Occasion */}
-                  {occasionOptions.length > 0 && (
+                  {occasionFacets.length > 0 && (
                     <div className="mb-5 pb-4 border-b border-bdr">
                       <p className="text-sm font-semibold text-ink mb-3">Occasion</p>
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {occasionOptions.map((occ) => (
+                      <div className="space-y-2">
+                        {occasionFacets.map((occ) => (
                           <label
                             key={occ.id}
                             className="flex items-center justify-between gap-2 cursor-pointer text-sm text-ink-2 hover:text-ink"
@@ -547,9 +597,7 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                               />
                               {occ.name}
                             </span>
-                            <span className="text-ink-3">
-                              ({filtered.filter((p) => p.occasions.some((o) => o.id === occ.id)).length})
-                            </span>
+                            <span className="text-ink-3">({occ.count})</span>
                           </label>
                         ))}
                       </div>
@@ -557,11 +605,11 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                   )}
 
                   {/* Recipient Type */}
-                  {recipientOptions.length > 0 && (
+                  {recipientFacets.length > 0 && (
                     <div>
                       <p className="text-sm font-semibold text-ink mb-3">Recipient Type</p>
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {recipientOptions.map((tag) => (
+                      <div className="space-y-2">
+                        {recipientFacets.map(({ tag, count }) => (
                           <label
                             key={tag}
                             className="flex items-center justify-between gap-2 cursor-pointer text-sm text-ink-2 hover:text-ink"
@@ -575,9 +623,7 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                               />
                               {tag}
                             </span>
-                            <span className="text-ink-3">
-                              ({filtered.filter((p) => p.recipients.includes(tag)).length})
-                            </span>
+                            <span className="text-ink-3">({count})</span>
                           </label>
                         ))}
                       </div>

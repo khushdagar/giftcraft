@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useSession } from 'next-auth/react';
 import { Search, Plus, Check, X, ChevronDown } from 'lucide-react';
+import { useTopLoading } from '@/components/ui/top-loading-bar';
 import { useBoxStore, type BoxProduct } from '@/store/box';
 import { useBuilderStore } from '@/store/builder';
 import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
@@ -361,16 +362,9 @@ export default function BuildYourBoxPage() {
     router.push('/builder');
   };
 
-  if (!mounted || status === 'loading') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-emerald-50 to-rose-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-em"></div>
-          <p className="mt-4 text-ink-2">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // Global top loading bar is the only loading indicator.
+  useTopLoading(!mounted || status === 'loading');
+  if (!mounted || status === 'loading') return null;
 
   const hasBudget = budget > 0;
 

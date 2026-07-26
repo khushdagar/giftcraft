@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { ReactNode, useState } from 'react';
 import { ToastContainer } from '@/components/ui/toast-container';
+import { TopLoadingBar } from '@/components/ui/top-loading-bar';
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -21,6 +22,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={client}>
+      <TopLoadingBar />
       {children}
       <ToastContainer />
       {process.env.NODE_ENV === 'development' && <ReactQueryDevtools />}

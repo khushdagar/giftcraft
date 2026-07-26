@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { ClaimOptionCard } from '@/components/goc/claim-option-card';
 import { ClaimAddressForm } from '@/components/goc/claim-address-form';
 import { ClaimSuccess } from '@/components/goc/claim-success';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Package } from 'lucide-react';
+import { useTopLoading } from '@/components/ui/top-loading-bar';
 import { toast } from 'sonner';
 
 interface GocCampaign {
@@ -152,33 +153,25 @@ export default function GocClaimPage({ params }: PageProps) {
     }
   };
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-emerald-50 to-rose-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-navy-800 animate-spin mx-auto mb-4" />
-          <p className="text-ink-2">Loading campaign...</p>
-        </div>
-      </div>
-    );
-  }
+  // Loading state — global top loading bar is the only indicator.
+  useTopLoading(loading);
+  if (loading) return null;
 
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-emerald-50 to-rose-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-md border-2 border-rose-300 p-8 max-w-md w-full text-center"
+          className="bg-white rounded-md border border-bdr p-8 max-w-md w-full text-center shadow-card"
         >
-          <AlertCircle className="w-16 h-16 text-rose-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-normal text-ink mb-2">Oops!</h1>
+          <AlertCircle className="w-14 h-14 text-err mx-auto mb-4" />
+          <h1 className="font-display text-3xl text-ink mb-2">Oops!</h1>
           <p className="text-ink-2 mb-6">{error}</p>
           <a
             href="/"
-            className="inline-block px-6 py-2 rounded-2xl bg-navy-800 text-white font-normal hover:bg-navy-900 transition"
+            className="inline-block px-6 py-3 rounded-2xl bg-em text-white font-medium transition hover:bg-em-600"
           >
             Back to Home
           </a>
@@ -191,6 +184,8 @@ export default function GocClaimPage({ params }: PageProps) {
     return null;
   }
 
+  const selectedProduct = campaign.options.find((o) => o.id === selectedOptionId)?.product;
+
   // Success state
   if (currentStep === 'success') {
     return <ClaimSuccess claimerName={successData.name} claimerEmail={successData.email} />;
@@ -198,30 +193,46 @@ export default function GocClaimPage({ params }: PageProps) {
 
   // Main page
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-emerald-50 to-rose-50">
+    <div className="min-h-screen bg-canvas">
       {/* Hero Section */}
-      <motion.div
+      <motion.section
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative w-full h-64 sm:h-80 overflow-hidden bg-navy-800"
+        className="relative w-full overflow-hidden border-b border-bdr"
+        style={
+          campaign.heroImage
+            ? undefined
+            : { background: 'linear-gradient(135deg, #FBF5E9 0%, #E8F5EF 50%, #FBF5E9 100%)' }
+        }
       >
         {campaign.heroImage && (
-          <Image
-            src={campaign.heroImage}
-            alt={campaign.name}
-            fill
-            className="object-cover opacity-40"
-          />
+          <>
+            <Image src={campaign.heroImage} alt={campaign.name} fill className="object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-b from-ink/75 to-ink/50" />
+          </>
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-navy-900/60 to-navy-800/40 flex items-center justify-center">
-          <div className="text-center text-white px-4">
-            <h1 className="text-4xl sm:text-5xl font-normal mb-2">{campaign.name}</h1>
-            {campaign.description && (
-              <p className="text-sm sm:text-base text-sky-100">{campaign.description}</p>
-            )}
-          </div>
+        <div className="relative mx-auto max-w-4xl px-4 py-16 text-center sm:py-24">
+          <p className={`overline ${campaign.heroImage ? 'text-white/80' : 'text-em-700'}`}>
+            You&apos;ve received a gift
+          </p>
+          <h1
+            className={`mt-3 font-display text-4xl leading-tight sm:text-6xl ${
+              campaign.heroImage ? 'text-white' : 'text-ink'
+            }`}
+          >
+            {campaign.name}
+          </h1>
+          {campaign.description && (
+            <p
+              className={`mx-auto mt-4 max-w-xl text-base ${
+                campaign.heroImage ? 'text-white/85' : 'text-ink-2'
+              }`}
+            >
+              {campaign.description}
+            </p>
+          )}
         </div>
-      </motion.div>
+      </motion.section>
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -233,13 +244,11 @@ export default function GocClaimPage({ params }: PageProps) {
           >
             {/* Header */}
             <div>
-              <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
-                STEP 01
-              </p>
-              <h2 className="text-3xl sm:text-4xl font-normal mt-2 text-ink">
+              <p className="overline text-em-700">Step 01</p>
+              <h2 className="mt-2 font-display text-3xl sm:text-4xl text-ink">
                 Choose Your Gift
               </h2>
-              <p className="text-base text-ink-2 mt-3">
+              <p className="mt-3 text-base text-ink-2">
                 Select one of the available gift options below.
               </p>
             </div>
@@ -271,7 +280,7 @@ export default function GocClaimPage({ params }: PageProps) {
                   }
                   setCurrentStep('address');
                 }}
-                className="px-8 py-4 bg-navy-800 hover:bg-navy-900 text-white font-normal rounded-2xl transition transform hover:-translate-y-1"
+                className="rounded-2xl bg-em px-8 py-4 font-medium text-white transition hover:-translate-y-0.5 hover:bg-em-600"
               >
                 Continue to Address
               </button>
@@ -285,44 +294,42 @@ export default function GocClaimPage({ params }: PageProps) {
           >
             {/* Header */}
             <div>
-              <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
-                STEP 02
-              </p>
-              <h2 className="text-3xl sm:text-4xl font-normal mt-2 text-ink">
+              <p className="overline text-em-700">Step 02</p>
+              <h2 className="mt-2 font-display text-3xl sm:text-4xl text-ink">
                 Delivery Address
               </h2>
-              <p className="text-base text-ink-2 mt-3">
+              <p className="mt-3 text-base text-ink-2">
                 Tell us where to deliver your gift.
               </p>
             </div>
 
             {/* Selected Option Summary */}
-            {selectedOptionId && (
+            {selectedProduct && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="bg-amber-50 rounded-md border-2 border-amber-200 p-4 flex gap-4"
+                className="flex gap-4 rounded-md border border-bdr bg-em-50 p-4"
               >
-                <div className="relative w-20 h-20 flex-shrink-0 bg-gray-50 rounded-md overflow-hidden">
-                  <Image
-                    src={
-                      campaign.options.find((o) => o.id === selectedOptionId)?.product.image || ''
-                    }
-                    alt="Selected product"
-                    fill
-                    className="object-cover"
-                  />
+                <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-white">
+                  {selectedProduct.image ? (
+                    <Image
+                      src={selectedProduct.image}
+                      alt={selectedProduct.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-ink-3">
+                      <Package className="h-7 w-7" />
+                    </div>
+                  )}
                 </div>
                 <div>
-                  <p className="text-xs text-amber-700 uppercase font-normal mb-1">
-                    Selected Gift
-                  </p>
-                  <p className="text-lg font-normal text-ink">
-                    {campaign.options.find((o) => o.id === selectedOptionId)?.product.name}
-                  </p>
+                  <p className="overline mb-1 text-em-700">Selected Gift</p>
+                  <p className="font-display text-lg text-ink">{selectedProduct.name}</p>
                   <button
                     onClick={() => setCurrentStep('options')}
-                    className="text-xs text-amber-700 underline hover:text-amber-900 mt-1"
+                    className="mt-1 text-xs text-em underline underline-offset-2 hover:text-em-600"
                   >
                     Change selection
                   </button>

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, Edit2, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
+import { Trash2, Edit2, ImageIcon, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,8 @@ interface SerializedProduct {
   status: string;
   priceTiers?: Array<{ sellPrice: number }>;
   categories?: Array<{ category: { name: string } }>;
+  images?: Array<{ url: string }>;
+  vendors?: Array<{ vendorName: string | null; isPrimary: boolean }>;
 }
 
 interface ProductDataTableProps {
@@ -48,7 +50,11 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
   const [status, setStatus] = useState(searchParams.get('status') || '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  // isPending stays true for as long as the server re-fetches the filtered list,
+  // so we can show a real "still loading" bar rather than a fixed spinner.
+  const [isPending, startTransition] = useTransition();
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const isFirstRender = useRef(true);
 
   // Navigate pages while keeping the current search/status filters.
   const goToPage = (target: number) => {
@@ -56,15 +62,21 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
     if (search) params.set('search', search);
     if (status) params.set('status', status);
     params.set('page', String(target));
-    router.push(`/admin/products?${params.toString()}`, { scroll: false });
+    startTransition(() => router.push(`/admin/products?${params.toString()}`, { scroll: false }));
   };
 
   useEffect(() => {
+    // Don't fire a navigation (and flash the loading bar) on the initial mount —
+    // the server already rendered the correct list.
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     debounceRef.current = setTimeout(() => {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (status) params.set('status', status);
-      router.push(`/admin/products?${params.toString()}`, { scroll: false });
+      startTransition(() => router.push(`/admin/products?${params.toString()}`, { scroll: false }));
     }, 300);
 
     return () => {
@@ -190,8 +202,22 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
       )}
 
       {/* Table */}
-      <div className="border border-gray-200 rounded-lg overflow-x-auto">
-        <table className="w-full min-w-[820px]">
+      <div className="border border-gray-200 rounded-lg overflow-hidden">
+        {/* Indeterminate loading bar — visible only while the filtered list is
+            being re-fetched from the server. */}
+        <div className="relative h-0.5 w-full overflow-hidden bg-transparent">
+          {isPending && (
+            <>
+              <style>{`@keyframes gc-indeterminate{0%{left:-40%;width:40%}50%{width:55%}100%{left:100%;width:40%}}`}</style>
+              <div
+                className="absolute top-0 h-full rounded-full bg-blue-500"
+                style={{ animation: 'gc-indeterminate 1.1s ease-in-out infinite' }}
+              />
+            </>
+          )}
+        </div>
+        <div className={`overflow-x-auto transition-opacity duration-200 ${isPending ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+        <table className="w-full min-w-[960px]">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-4 py-3 text-left w-4">
@@ -210,6 +236,7 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
               <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Name</th>
               <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">SKU</th>
               <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Category</th>
+              <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Vendor</th>
               <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Price</th>
               <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Status</th>
               <th className="px-4 py-3 text-right text-xs font-normal text-gray-600 uppercase">Actions</th>
@@ -219,9 +246,15 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
             {initialData.map((product) => {
               const price = product.priceTiers?.[0]?.sellPrice || 0;
               const category = product.categories?.[0]?.category?.name || '—';
+              const vendor =
+                (product.vendors?.find((v) => v.isPrimary) ?? product.vendors?.[0])?.vendorName || '—';
               return (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+                <tr
+                  key={product.id}
+                  onClick={() => startTransition(() => router.push(`/admin/products/${product.id}/edit`))}
+                  className="cursor-pointer hover:bg-gray-50"
+                >
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selected.has(product.id)}
@@ -230,12 +263,24 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/products/${product.id}/edit`}
-                      className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline"
-                    >
-                      {product.name}
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+                        {product.images?.[0]?.url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={product.images[0].url}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="h-4 w-4 text-gray-300" />
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600">
+                        {product.name}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-sm text-gray-600 font-mono">{product.sku}</p>
@@ -244,12 +289,15 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
                     <p className="text-sm text-gray-600">{category}</p>
                   </td>
                   <td className="px-4 py-3">
+                    <p className="text-sm text-gray-600">{vendor}</p>
+                  </td>
+                  <td className="px-4 py-3">
                     <p className="text-sm font-normal text-gray-900 tabnum">{formatRupees(price)}</p>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={statusVariants[product.status] || 'grey'}>{product.status}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-2 justify-end">
                       <Link href={`/admin/products/${product.id}/edit`} title="Edit">
                         <Edit2 className="h-4 w-4 text-gray-600 hover:text-gray-900" />
@@ -268,6 +316,7 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

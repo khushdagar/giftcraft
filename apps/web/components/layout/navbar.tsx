@@ -13,21 +13,20 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/store/builder";
 
-interface NavOccasion { icon: string; name: string; slug: string }
 interface NavLink { name: string; slug: string }
 
 // Shown until the live occasions load (and if the fetch fails), so the menu
 // is never empty.
-const FALLBACK_OCCASIONS: NavOccasion[] = [
-  { icon: "🪔", name: "Diwali", slug: "diwali" },
-  { icon: "🎨", name: "Holi", slug: "holi" },
-  { icon: "🎄", name: "Christmas", slug: "christmas" },
-  { icon: "🎆", name: "New Year", slug: "new-year" },
-  { icon: "💝", name: "Women's Day", slug: "womens-day" },
-  { icon: "👋", name: "Onboarding", slug: "onboarding" },
-  { icon: "💼", name: "Client Gifting", slug: "client-gifting" },
-  { icon: "🎂", name: "Birthday", slug: "birthday" },
-  { icon: "🏆", name: "Anniversary", slug: "anniversary" },
+const FALLBACK_OCCASIONS: NavLink[] = [
+  { name: "Diwali", slug: "diwali" },
+  { name: "Holi", slug: "holi" },
+  { name: "Christmas", slug: "christmas" },
+  { name: "New Year", slug: "new-year" },
+  { name: "Women's Day", slug: "womens-day" },
+  { name: "Onboarding", slug: "onboarding" },
+  { name: "Client Gifting", slug: "client-gifting" },
+  { name: "Birthday", slug: "birthday" },
+  { name: "Anniversary", slug: "anniversary" },
 ];
 
 export function Navbar() {
@@ -35,9 +34,9 @@ export function Navbar() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [occasions, setOccasions] = useState<NavOccasion[]>(FALLBACK_OCCASIONS);
   const [categories, setCategories] = useState<NavLink[]>([]);
   const [collections, setCollections] = useState<NavLink[]>([]);
+  const [occasions, setOccasions] = useState<NavLink[]>(FALLBACK_OCCASIONS);
   const products = useBuilderStore((state) => state.products);
 
   // The builder store is persisted to localStorage, which only exists on the
@@ -58,21 +57,6 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Load occasions managed in the admin panel; keep fallback on empty/error.
-  useEffect(() => {
-    let active = true;
-    fetch("/api/occasions")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!active || !Array.isArray(data) || data.length === 0) return;
-        setOccasions(
-          data.map((o: any) => ({ icon: o.icon || "🎁", name: o.name, slug: o.slug }))
-        );
-      })
-      .catch(() => {/* keep fallback */});
-    return () => { active = false; };
-  }, []);
-
   // Categories (Products dropdown) and collections (Curated Packs dropdown).
   useEffect(() => {
     let active = true;
@@ -90,6 +74,13 @@ export function Navbar() {
         setCollections(data.map((c: any) => ({ name: c.name, slug: c.slug })));
       })
       .catch(() => {/* no dropdown if it fails */});
+    fetch("/api/occasions")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!active || !Array.isArray(data) || data.length === 0) return;
+        setOccasions(data.map((o: any) => ({ name: o.name, slug: o.slug })));
+      })
+      .catch(() => {/* keep fallback */});
     return () => { active = false; };
   }, []);
 
@@ -113,7 +104,7 @@ export function Navbar() {
           <li className="group relative py-4">
             <Link href="/catalog" className="text-sm font-medium text-ink-2 hover:text-ink">Products ▾</Link>
             {categories.length > 0 && (
-              <div className="glass invisible absolute left-1/2 top-full grid min-w-[640px] -translate-x-1/2 grid-cols-4 gap-1 rounded-md-s p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+              <div className="invisible absolute left-1/2 top-full grid min-w-[640px] -translate-x-1/2 grid-cols-4 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
                 {categories.map((c) => (
                   <Link
                     key={c.slug}
@@ -127,15 +118,15 @@ export function Navbar() {
             )}
           </li>
 
-          {/* Curated Packs dropdown — collections */}
+          {/* Curated Packs dropdown — curated collections */}
           <li className="group relative py-4">
             <Link href="/packs" className="text-sm font-medium text-ink-2 hover:text-ink">Curated Packs ▾</Link>
             {collections.length > 0 && (
-              <div className="glass invisible absolute left-1/2 top-full grid min-w-[280px] -translate-x-1/2 grid-cols-1 gap-1 rounded-md-s p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+              <div className="invisible absolute left-1/2 top-full grid min-w-[280px] -translate-x-1/2 grid-cols-1 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
                 {collections.map((c) => (
                   <Link
                     key={c.slug}
-                    href={`/packs/${c.slug}`}
+                    href={`/packs?collection=${c.slug}`}
                     className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
                   >
                     {c.name}
@@ -145,20 +136,22 @@ export function Navbar() {
             )}
           </li>
 
-          {/* Occasions dropdown — hover-triggered, no icons */}
+          {/* Occasions dropdown — seasonal & gifting occasions */}
           <li className="group relative py-4">
-            <button className="text-sm font-medium text-ink-2 hover:text-ink">Collections ▾</button>
-            <div className="glass invisible absolute left-1/2 top-full grid min-w-[480px] -translate-x-1/2 grid-cols-3 gap-1 rounded-md-s p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
-              {occasions.map((o) => (
-                <Link
-                  key={o.slug}
-                  href={`/catalog?occasion=${o.slug}`}
-                  className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
-                >
-                  {o.name}
-                </Link>
-              ))}
-            </div>
+            <button className="text-sm font-medium text-ink-2 hover:text-ink">Occasions ▾</button>
+            {occasions.length > 0 && (
+              <div className="invisible absolute left-1/2 top-full grid min-w-[480px] -translate-x-1/2 grid-cols-3 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+                {occasions.map((o) => (
+                  <Link
+                    key={o.slug}
+                    href={`/catalog?occasion=${o.slug}`}
+                    className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
+                  >
+                    {o.name}
+                  </Link>
+                ))}
+              </div>
+            )}
           </li>
 
           <li><Link href="/box" className="text-sm font-medium text-ink-2 hover:text-ink">Build Your Pack</Link></li>

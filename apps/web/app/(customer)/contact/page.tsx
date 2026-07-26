@@ -281,25 +281,6 @@ export default function ContactPage() {
             </div>
           </div>
         </motion.div>
-
-        {/* Office Hours */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-200 p-8 text-center"
-        >
-          <Clock className="w-8 h-8 text-indigo-600 mx-auto mb-4" />
-          <h3 className="text-2xl font-normal text-slate-900 mb-2">We're Here 24/7</h3>
-          <p className="text-slate-600 mb-4">Our team responds to all inquiries within 24 hours. For urgent matters, reach out via WhatsApp for instant support.</p>
-          <a
-            href="https://wa.me/919876543210"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block bg-green-500 hover:bg-green-600 text-white font-normal py-2 px-6 rounded-lg transition-all hover:shadow-lg"
-          >
-            💬 Chat on WhatsApp
-          </a>
-        </motion.div>
       </div>
     </div>
   );

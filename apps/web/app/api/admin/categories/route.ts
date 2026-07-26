@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
 const CreateCategorySchema = z.object({
   name: z.string().min(1, 'Name required'),
   slug: z.string().min(1, 'Slug required'),
+  description: z.string().optional().nullable(),
   parentId: z.string().optional().nullable(),
   sortOrder: z.number().int().default(0),
   imageUrl: z.string().url().optional().nullable(),
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: data.name,
         slug: data.slug,
+        description: data.description || null,
         parentId: data.parentId || null,
         sortOrder: data.sortOrder,
         ...(data.imageUrl && { imageUrl: data.imageUrl }),

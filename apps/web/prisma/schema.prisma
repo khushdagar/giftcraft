@@ -406,8 +406,9 @@ model ProductVariant {
 
 model Category {
   id        String             @id @default(cuid())
-  name      String
-  slug      String             @unique
+  name        String
+  slug        String             @unique
+  description String?            @db.Text // Shopify-style collection description
   imageUrl  String? // Category cover image (from Unsplash or custom)
   parentId  String?
   parent    Category?          @relation("CategoryTree", fields: [parentId], references: [id])

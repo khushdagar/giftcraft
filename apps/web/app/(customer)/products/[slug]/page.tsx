@@ -4,6 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { serializeProduct } from "@/lib/serialize";
 import { formatRupees } from "@/lib/utils";
+import { toRichHtml } from "@/lib/rich-text";
 import { ImageGallery } from "@/components/product/image-gallery";
 import { PackImageGallery } from "@/components/product/pack-image-gallery";
 import { PricingBlock } from "@/components/product/pricing-block";
@@ -240,12 +241,12 @@ export default async function ProductPage({ params }: { params: { slug: string }
       {/* Product tabs and details */}
       <div className="container-gc-w">
         <ProductTabs
-          description={product.descriptionLong || undefined}
-          specifications={product.specifications || undefined}
-          designArtwork={product.designArtwork || undefined}
-          shippingDelivery={product.shippingDelivery || undefined}
-          samples={product.samplesInfo || undefined}
-          packagingAddons={product.packagingAddons || undefined}
+          description={toRichHtml(product.descriptionLong)}
+          specifications={toRichHtml(product.specifications)}
+          designArtwork={toRichHtml(product.designArtwork)}
+          shippingDelivery={toRichHtml(product.shippingDelivery)}
+          samples={toRichHtml(product.samplesInfo)}
+          packagingAddons={toRichHtml(product.packagingAddons)}
         />
       </div>
 

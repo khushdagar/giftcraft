@@ -1,5 +1,7 @@
 'use client';
 
+import { compressAndUpload } from '@/hooks/use-compressed-upload';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -78,17 +80,7 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
 
     setImageLoading(true);
     try {
-      const uploadData = new FormData();
-      uploadData.append('file', file);
-      uploadData.append('folder', 'occasions');
-
-      const response = await fetch('/api/upload', { method: 'POST', body: uploadData });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to upload image');
-      }
-
-      const data = await response.json();
+      const data = await compressAndUpload(file, { folder: 'occasions' });
       setFormData((prev) => ({ ...prev, imageUrl: data.url }));
       setImagePreview(data.url);
       toast.success('Image uploaded successfully');
