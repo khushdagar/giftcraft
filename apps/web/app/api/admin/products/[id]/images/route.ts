@@ -18,7 +18,31 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const formData = await request.formData();
     const imageFiles = formData.getAll('images').filter((f): f is File => f instanceof File);
 
-    if (!imageFiles || imageFiles.length === 0) {
+    // Already-hosted image URLs — sent either by the client after a
+    // compress-and-upload (so we get an upload progress bar) or when the user
+    // picks from the existing media library. Accepts a JSON array string.
+    let imageUrlItems: { url: string; altText?: string }[] = [];
+    const urlsRaw = formData.get('urls');
+    if (typeof urlsRaw === 'string' && urlsRaw.trim()) {
+      try {
+        const parsed = JSON.parse(urlsRaw);
+        if (Array.isArray(parsed)) {
+          imageUrlItems = parsed
+            .map((u) =>
+              typeof u === 'string'
+                ? { url: u }
+                : u && typeof u.url === 'string'
+                  ? { url: u.url, altText: typeof u.altText === 'string' ? u.altText : undefined }
+                  : null
+            )
+            .filter((u): u is { url: string; altText?: string } => !!u && !!u.url);
+        }
+      } catch {
+        return NextResponse.json({ error: 'Invalid urls payload' }, { status: 400 });
+      }
+    }
+
+    if (imageFiles.length === 0 && imageUrlItems.length === 0) {
       return NextResponse.json({ error: 'No images provided' }, { status: 400 });
     }
 
@@ -36,6 +60,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const uploadedImages: any[] = [];
     const failedImages: string[] = [];
 
+    // Helper: next sort position / whether this is the product's first image.
+    const nextSort = () => product.images.length + uploadedImages.length;
+    const isFirstEver = () => product.images.length === 0 && uploadedImages.length === 0;
+
+    // 1) Files uploaded straight to this endpoint (legacy path).
     for (const file of imageFiles) {
       try {
         // Validate file size (5MB)
@@ -53,8 +82,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           data: {
             productId: params.id,
             url,
-            isPrimary: product.images.length === 0 && uploadedImages.length === 0,
-            sortOrder: product.images.length + uploadedImages.length,
+            isPrimary: isFirstEver(),
+            sortOrder: nextSort(),
             altText: file.name.replace(/\.[^/.]+$/, ''), // Remove extension for alt text
           },
         });
@@ -65,6 +94,27 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         const errorMsg = err instanceof Error ? err.message : String(err);
         failedImages.push(`${file.name}: ${errorMsg}`);
         console.error(`✗ Failed to save ${file.name}:`, err);
+      }
+    }
+
+    // 2) Already-hosted URLs (client-uploaded with progress, or picked from
+    //    the media library) — just record them, no re-upload.
+    for (const item of imageUrlItems) {
+      try {
+        const savedImage = await prisma.productImage.create({
+          data: {
+            productId: params.id,
+            url: item.url,
+            isPrimary: isFirstEver(),
+            sortOrder: nextSort(),
+            altText: item.altText ?? null,
+          },
+        });
+        uploadedImages.push(savedImage);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        failedImages.push(`${item.url}: ${errorMsg}`);
+        console.error(`✗ Failed to save ${item.url}:`, err);
       }
     }
 

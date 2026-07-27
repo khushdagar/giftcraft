@@ -381,9 +381,9 @@ function ConfirmationContent() {
       {/* Footer */}
       <footer className="bg-[#1A1A18] text-[#FAFAF7] py-8 mt-12">
         <div className="cw">
-          <p className="text-sm mb-2 font-serif italic text-opacity-40">GiftCraft</p>
+          <p className="text-sm mb-2 font-serif italic text-opacity-40">GIVOO</p>
           <div className="flex justify-between text-xs text-[#6B6B63]">
-            <span>© 2026 GiftCraft. All Rights Reserved.</span>
+            <span>© 2026 GIVOO. All Rights Reserved.</span>
             <span>Made with ♥ in Delhi</span>
           </div>
         </div>

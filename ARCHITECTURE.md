@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — GiftCraft Technical Blueprint
+# ARCHITECTURE.md — GIVOO Technical Blueprint
 
 > Read CLAUDE.md first for business rules and tech stack.
 

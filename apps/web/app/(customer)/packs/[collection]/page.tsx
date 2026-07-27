@@ -10,9 +10,9 @@ export async function generateMetadata({ params }: { params: { collection: strin
     where: { slug: params.collection },
     select: { name: true, description: true },
   });
-  if (!collection) return { title: 'Collection | GiftCraft' };
+  if (!collection) return { title: 'Collection | GIVOO' };
   return {
-    title: `${collection.name} | GiftCraft`,
+    title: `${collection.name} | GIVOO`,
     description: collection.description || `Gift packs in the ${collection.name} collection.`,
   };
 }

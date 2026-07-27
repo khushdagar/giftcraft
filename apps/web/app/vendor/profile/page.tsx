@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { User, Mail, Phone, MapPin } from 'lucide-react';
 
 export const metadata = {
-  title: 'Profile - GiftCraft Vendor',
+  title: 'Profile - GIVOO Vendor',
   description: 'View vendor profile',
 };
 

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Package, DollarSign, AlertCircle, CheckCircle } from 'lucide-react';
 
 export const metadata = {
-  title: 'Vendor Dashboard - GiftCraft',
+  title: 'Vendor Dashboard - GIVOO',
   description: 'Manage your purchase orders and payments',
 };
 

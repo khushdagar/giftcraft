@@ -205,7 +205,7 @@ export default function NotificationsSettingsPage() {
         <h2 className="text-lg font-normal text-ink">Data Privacy & Protection</h2>
         <p className="text-sm text-ink-2">
           We respect your privacy. Your data is securely stored and only used as per your preferences above.
-          By using GiftCraft, you consent to our{' '}
+          By using GIVOO, you consent to our{' '}
           <a href="/privacy" className="text-em hover:underline">
             Privacy Policy
           </a>

@@ -38,7 +38,7 @@ export default async function RegisterPage({
           </div>
 
           <Link href="/" className="relative z-10 font-display text-2xl italic text-em">
-            GiftCraft
+            GIVOO
           </Link>
 
           <div className="relative z-10 space-y-5">
@@ -63,7 +63,7 @@ export default async function RegisterPage({
         <section className="flex items-center justify-center px-6 py-16 lg:px-12">
           <div className="w-full max-w-md">
             <Link href="/" className="mb-8 inline-block font-display text-2xl italic text-em lg:hidden">
-              GiftCraft
+              GIVOO
             </Link>
 
             <div className="rounded-md border border-bdr bg-white p-8 shadow-card sm:p-10">

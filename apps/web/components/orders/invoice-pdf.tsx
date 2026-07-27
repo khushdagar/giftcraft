@@ -340,7 +340,7 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.logo}>GiftCraft</Text>
+            <Text style={styles.logo}>GIVOO</Text>
             <Text style={[styles.partyLine, { marginTop: 6 }]}>{seller.name}</Text>
             <Text style={styles.partyLine}>{seller.address}</Text>
             <Text style={styles.partyLine}>GSTIN: {seller.gstin}</Text>

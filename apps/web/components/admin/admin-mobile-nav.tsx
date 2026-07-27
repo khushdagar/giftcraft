@@ -59,7 +59,7 @@ export function AdminMobileNav({ userName, userRole, userImage }: Props) {
           <aside className="absolute left-0 top-0 flex h-full w-[280px] max-w-[85vw] flex-col overflow-y-auto bg-dark text-inv shadow-float">
             <div className="flex items-center justify-between px-5 py-4">
               <Link href="/" className="font-display text-base font-normal tracking-tight text-inv">
-                GiftCraft <span className="text-xs font-normal text-inv/40">admin</span>
+                GIVOO <span className="text-xs font-normal text-inv/40">admin</span>
               </Link>
               <button
                 type="button"

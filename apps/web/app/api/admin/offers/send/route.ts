@@ -55,10 +55,20 @@ export async function POST(request: NextRequest) {
 
     // Test mode: send one preview to the admin's chosen address, skip the list.
     if (parsed.testEmail) {
-      const result = await sendOfferEmail({ ...offer, to: parsed.testEmail });
+      const result = await sendOfferEmail({
+        ...offer,
+        to: parsed.testEmail,
+        bypassOptOut: true,
+      });
+      if (!result.success) {
+        return NextResponse.json(
+          { error: 'Test email could not be sent. Check the email service configuration.' },
+          { status: 502 }
+        );
+      }
       return NextResponse.json({
         success: true,
-        data: { test: true, sent: result.success ? 1 : 0, recipientCount: 1 },
+        data: { test: true, sent: 1, recipientCount: 1 },
       });
     }
 

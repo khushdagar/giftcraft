@@ -270,7 +270,7 @@ export default function ContactPage() {
           <div className="bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
             <div className="h-96 md:h-[500px] w-full">
               <iframe
-                title="GiftCraft Location"
+                title="GIVOO Location"
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}

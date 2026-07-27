@@ -5,8 +5,8 @@ import { prisma } from '@/lib/prisma';
 import { ASSEMBLY_QC_DAYS, DEFAULT_LEAD_TIME_DAYS, deliveryWindowDays } from '@/lib/shipping';
 
 export const metadata = {
-  title: 'Transparent Pricing | GiftCraft',
-  description: 'See exactly how GiftCraft pricing works. No hidden fees.',
+  title: 'Transparent Pricing | GIVOO',
+  description: 'See exactly how GIVOO pricing works. No hidden fees.',
 };
 
 // Re-read pricing inputs (packaging, shipping, fee, GST) hourly so admin changes

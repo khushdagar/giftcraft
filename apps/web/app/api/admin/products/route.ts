@@ -213,6 +213,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Already-hosted URLs from the form (images the client compressed & uploaded
+    // as it went, or picked from the media library). Order is preserved and the
+    // first entry becomes the primary image below.
+    if (data.imageUrls?.length) {
+      imageUrls.push(...data.imageUrls);
+    }
+
     // Check if SKU already exists
     const existing = await prisma.product.findUnique({ where: { sku: data.sku } });
     if (existing) {

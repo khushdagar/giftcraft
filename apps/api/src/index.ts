@@ -1,5 +1,5 @@
 /**
- * GiftCraft API — Stage 1 scaffold.
+ * GIVOO API — Stage 1 scaffold.
  *
  * Most server-side work in Sprint 1 lives inside the Next.js app (server
  * components, server actions, route handlers). This Express service exists
@@ -60,7 +60,7 @@ app.use((req: Request, res: Response) => {
 });
 
 app.listen(PORT, async () => {
-  console.log(`🟢 GiftCraft API listening on :${PORT}`);
+  console.log(`🟢 GIVOO API listening on :${PORT}`);
 
   // Initialize workers
   try {

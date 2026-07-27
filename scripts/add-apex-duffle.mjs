@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Add Apex Duffle product to GiftCraft
+ * Add Apex Duffle product to GIVOO
  * Run with: node scripts/add-apex-duffle.mjs
  */
 

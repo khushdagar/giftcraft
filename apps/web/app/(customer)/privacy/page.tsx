@@ -3,7 +3,7 @@ import { InfoPage, InfoSection } from '@/components/layout/info-page';
 
 export const metadata = {
   title: 'Privacy Policy',
-  description: 'What data GiftCraft collects, why we collect it, and the control you have over it.',
+  description: 'What data GIVOO collects, why we collect it, and the control you have over it.',
 };
 
 export default function PrivacyPage() {

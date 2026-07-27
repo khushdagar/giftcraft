@@ -71,7 +71,7 @@ export function WhyChooseUsSection() {
         >
           <div className="flex items-center justify-center gap-2 mb-4">
             <Shield className="w-5 h-5 text-em" />
-            <span className="text-sm font-normal text-em uppercase tracking-wider">Why GiftCraft</span>
+            <span className="text-sm font-normal text-em uppercase tracking-wider">Why GIVOO</span>
           </div>
           <h2 className="text-5xl font-normal text-slate-900 mb-4">Why Teams Love Us</h2>
           <p className="text-slate-600 text-lg max-w-2xl mx-auto">

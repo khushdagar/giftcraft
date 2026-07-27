@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'PO Details - GiftCraft Vendor',
+  title: 'PO Details - GIVOO Vendor',
   description: 'View purchase order',
 };
 

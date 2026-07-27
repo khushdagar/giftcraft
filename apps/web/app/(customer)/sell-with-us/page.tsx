@@ -67,7 +67,7 @@ export default function SellWithUsPage() {
         </div>
         <h1 className="font-display text-3xl font-black tracking-tight text-ink">Application received</h1>
         <p className="mt-3 text-base text-ink-2">
-          Thanks for your interest in supplying GiftCraft. Our sourcing team will review your details
+          Thanks for your interest in supplying GIVOO. Our sourcing team will review your details
           and reach out if there&apos;s a fit. You can close this page.
         </p>
         <a
@@ -89,7 +89,7 @@ export default function SellWithUsPage() {
           Sell With Us
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-ink-2">
-          Are you a manufacturer, brand, or supplier? Partner with GiftCraft to reach India&apos;s fastest
+          Are you a manufacturer, brand, or supplier? Partner with GIVOO to reach India&apos;s fastest
           growing corporate gifting platform. Tell us about your business and we&apos;ll be in touch.
         </p>
       </div>
@@ -162,7 +162,7 @@ export default function SellWithUsPage() {
           {loading ? 'Submitting…' : 'Submit Application'}
         </button>
         <p className="text-center text-xs text-ink-3">
-          By submitting, you agree to be contacted by the GiftCraft sourcing team.
+          By submitting, you agree to be contacted by the GIVOO sourcing team.
         </p>
       </form>
     </div>

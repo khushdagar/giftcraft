@@ -3,7 +3,7 @@ import { InfoPage, InfoSection } from '@/components/layout/info-page';
 
 export const metadata = {
   title: 'Terms of Service',
-  description: 'The terms governing your use of GiftCraft and any order you place through it.',
+  description: 'The terms governing your use of GIVOO and any order you place through it.',
 };
 
 export default function TermsPage() {
@@ -11,12 +11,12 @@ export default function TermsPage() {
     <InfoPage
       eyebrow="Legal"
       title="Terms of Service"
-      intro="These terms govern your use of GiftCraft and any order you place through it. By placing an order you accept them."
+      intro="These terms govern your use of GIVOO and any order you place through it. By placing an order you accept them."
       updated="10 July 2026"
     >
       <InfoSection title="Who we are">
         <p>
-          GiftCraft is operated by Arts Shala, New Delhi, India. &quot;We&quot; and &quot;us&quot;
+          GIVOO is operated by Arts Shala, New Delhi, India. &quot;We&quot; and &quot;us&quot;
           refer to Arts Shala; &quot;you&quot; refers to the person or company placing an order.
         </p>
       </InfoSection>

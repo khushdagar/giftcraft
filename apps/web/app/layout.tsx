@@ -14,11 +14,11 @@ const roboto = Roboto({
 
 export const metadata: Metadata = {
   title: {
-    default: "GiftCraft — India's First Self-Serve Bulk Gifting Platform",
-    template: "%s · GiftCraft",
+    default: "GIVOO — India's First Self-Serve Bulk Gifting Platform",
+    template: "%s · GIVOO",
   },
   description:
-    "Browse products, build branded gift packs, and get instant transparent pricing. By GiftCraft, Delhi.",
+    "Browse products, build branded gift packs, and get instant transparent pricing. By GIVOO, Delhi.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
 };
 

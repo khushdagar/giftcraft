@@ -1,4 +1,4 @@
-// GiftCraft — Prisma schema
+// GIVOO — Prisma schema
 // Stage 1 tables are fully wired; Stage 2–5 tables are present but minimal
 // until those sprints land. Decimal(10,2) is used for every money field.
 

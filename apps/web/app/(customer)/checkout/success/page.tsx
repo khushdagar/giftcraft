@@ -78,7 +78,7 @@ export default function CheckoutSuccessPage() {
         {/* Main heading */}
         <h1 className="text-4xl font-normal text-ink mb-2">Your order is confirmed!</h1>
         <p className="text-ink-3 mb-8">
-          Thank you for choosing GiftCraft. Your gift pack is being prepared with care.
+          Thank you for choosing GIVOO. Your gift pack is being prepared with care.
         </p>
 
         {/* Order number badge */}

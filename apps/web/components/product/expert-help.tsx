@@ -20,7 +20,7 @@ export function ExpertHelp({ productName, productId }: ExpertHelpProps) {
 
         <div className="flex flex-wrap gap-2">
           <a
-            href="https://wa.me/919876543210?text=Hi%20I%20am%20interested%20in%20GiftCraft%20products"
+            href="https://wa.me/919876543210?text=Hi%20I%20am%20interested%20in%20GIVOO%20products"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 rounded-full border border-bdr bg-white px-4 py-2 text-xs font-medium text-ink transition hover:bg-elevated"

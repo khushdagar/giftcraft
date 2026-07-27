@@ -11,9 +11,9 @@ interface Testimonial {
 // Shown only if the database has no active testimonials (or the fetch fails),
 // so the section never renders empty.
 const FALLBACK: Testimonial[] = [
-  { text: 'GiftCraft simplified our entire Diwali gifting process. What used to take weeks now takes minutes.', name: 'Priya Sharma', role: 'Head of HR, TechCorp India' },
+  { text: 'GIVOO simplified our entire Diwali gifting process. What used to take weeks now takes minutes.', name: 'Priya Sharma', role: 'Head of HR, TechCorp India' },
   { text: 'The transparent pricing was a game-changer. No hidden costs, no surprises. Perfect!', name: 'Rajesh Menon', role: 'Procurement Manager, Acme' },
-  { text: 'We onboarded 200 new employees with GiftCraft welcome kits. Everyone felt valued from day one.', name: 'Ananya Desai', role: 'People Operations' },
+  { text: 'We onboarded 200 new employees with GIVOO welcome kits. Everyone felt valued from day one.', name: 'Ananya Desai', role: 'People Operations' },
 ];
 
 export function Testimonials() {

@@ -39,7 +39,7 @@ export const INDIAN_STATES = [
 
 export const DELIVERY_RATES = { single: 90, individual: 140 };
 
-// GiftCraft / Arts Shala is registered in Delhi. Per SOW, GST is split as
+// GIVOO / Arts Shala is registered in Delhi. Per SOW, GST is split as
 // CGST+SGST for same-state (Delhi) deliveries and IGST for other states.
 // The buyer's state is derived from the delivery pincode at pricing time.
 export const SELLER_STATE_CODE = "DL";

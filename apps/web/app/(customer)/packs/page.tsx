@@ -4,7 +4,7 @@ import { PacksBrowser } from '@/components/packs/packs-browser';
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: 'Curated Packs | GiftCraft',
+  title: 'Curated Packs | GIVOO',
   description:
     'Hand-picked gift assortments curated by our gifting experts. Ready to customise with your branding.',
 };

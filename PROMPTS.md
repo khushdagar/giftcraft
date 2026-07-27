@@ -41,7 +41,7 @@
 ```
 Read CLAUDE.md first. It contains the MANDATORY "Vibrant Bento Block" design system and NextAuth.js auth setup.
 
-Initialize the GiftCraft project — Sprint 1.
+Initialize the GIVOO project — Sprint 1.
 
 1. TURBOREPO MONOREPO:
    - apps/web (Next.js 14 App Router, TypeScript)
@@ -90,8 +90,8 @@ Initialize the GiftCraft project — Sprint 1.
    g) /login page — BENTO STYLED:
       - Split layout: left half = pastel gradient (amber-50 to indigo-50 diagonal) with massive heading "Bulk Gifting, Made Beautiful." and subtitle
       - Right half = white card (rounded-md border-2 p-12) with:
-        - GiftCraft logo at top
-        - "Welcome to GiftCraft" text-3xl font-black
+        - GIVOO logo at top
+        - "Welcome to GIVOO" text-3xl font-black
         - "Sign in to start gifting" text-gray-500
         - Large "Continue with Google" button: rounded-2xl border-2 border-gray-300 py-4 px-8 font-bold with Google icon. hover:border-navy-800 hover:-translate-y-1 hover:shadow-xl
         - Small text below: "By signing in, you agree to our Terms of Service"
@@ -105,7 +105,7 @@ Initialize the GiftCraft project — Sprint 1.
 
 4. PRISMA SCHEMA — ALL tables from ARCHITECTURE.md:
    
-   Include NextAuth adapter tables (Account, Session, VerificationToken) PLUS all GiftCraft tables:
+   Include NextAuth adapter tables (Account, Session, VerificationToken) PLUS all GIVOO tables:
    
    Product (id, name, slug unique, brand, sku unique, descriptionShort, descriptionLong, material, dimensionL/W/H Float, weightG Float, leadTimeDays Int, status enum active/draft/archived/seasonal, printingTechnique enum, printingPosition, isEcoCertified, isFeatured, sortOrder, metaTitle, metaDescription, createdAt, updatedAt)
    
@@ -519,6 +519,6 @@ Read CLAUDE.md. Zapier/Make, Google Sheets sync, React Native mobile app (use Ne
 
 ---
 
-*End of GiftCraft Prompt Library*
+*End of GIVOO Prompt Library*
 *NextAuth.js + Google OAuth | Vibrant Bento UI*
 *Confidential — Arts Shala*

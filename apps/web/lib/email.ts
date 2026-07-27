@@ -9,7 +9,7 @@ const resend = new Resend(process.env.RESEND_API_KEY || '');
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || 'orders@giftcraft.in';
 const FROM_NAME =
-  process.env.RESEND_FROM_NAME || process.env.SENDGRID_FROM_NAME || 'GiftCraft';
+  process.env.RESEND_FROM_NAME || process.env.SENDGRID_FROM_NAME || 'GIVOO';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 // Categories map to the toggles in NotificationPreference.prefsJson. Passing a
@@ -258,7 +258,7 @@ function renderEmail(opts: {
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${COLORS.border};font-family:${FONT};">
         <!-- Header -->
         <tr><td style="background-color:${COLORS.navy};padding:26px 32px;">
-          <span style="font-size:23px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">🎁 GiftCraft</span>
+          <span style="font-size:23px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">🎁 GIVOO</span>
           <span style="display:block;font-size:12px;color:#A9C0E0;margin-top:3px;">Corporate gifting, made effortless</span>
         </td></tr>
         <!-- Body -->
@@ -269,11 +269,11 @@ function renderEmail(opts: {
         <!-- Footer -->
         <tr><td style="padding:22px 32px;background-color:${COLORS.surface};border-top:1px solid ${COLORS.border};">
           ${footerNote ? `<p style="margin:0 0 12px;font-size:12px;line-height:1.5;color:${COLORS.faint};">${footerNote}</p>` : ''}
-          <p style="margin:0;font-size:13px;font-weight:700;color:#52525B;">GiftCraft</p>
+          <p style="margin:0;font-size:13px;font-weight:700;color:#52525B;">GIVOO</p>
           <p style="margin:4px 0 0;font-size:12px;color:${COLORS.faint};">Delhi, India &middot; <a href="${APP_URL}" style="color:${COLORS.navy};text-decoration:none;">giftcraft.in</a></p>
         </td></tr>
       </table>
-      <p style="margin:16px 0 0;font-size:11px;color:${COLORS.faint};font-family:${FONT};">&copy; GiftCraft &middot; You're receiving this because you have an account or placed an order with us.</p>
+      <p style="margin:16px 0 0;font-size:11px;color:${COLORS.faint};font-family:${FONT};">&copy; GIVOO &middot; You're receiving this because you have an account or placed an order with us.</p>
     </td></tr>
   </table>
 </body>
@@ -308,7 +308,7 @@ const STATUS_BLURBS: Record<string, string> = {
   shipped: 'Your order has been shipped.',
   in_transit: 'Your order is on its way.',
   delivered: 'Your order has been delivered. We hope you love it!',
-  completed: 'Your order is complete. Thank you for choosing GiftCraft!',
+  completed: 'Your order is complete. Thank you for choosing GIVOO!',
   cancelled: 'Your order has been cancelled.',
   refunded: 'Your order has been refunded.',
 };
@@ -350,7 +350,7 @@ export async function sendArtworkApprovalEmail(
 
   return sendEmail({
     to: customerEmail,
-    subject: `Your GiftCraft Mockup is Ready - Order ${orderId}`,
+    subject: `Your GIVOO Mockup is Ready - Order ${orderId}`,
     html: renderEmail({
       heading: 'Your mockup is ready for approval 🎨',
       preheader: 'Review and approve your branded mockup',
@@ -498,7 +498,7 @@ export async function sendBalancePaymentLinkEmail(options: {
     p(`Thanks for approving the mockup for order <strong>${esc(options.orderNumber)}</strong>! 🎉`) +
     p(`To start production, please complete the remaining balance of <strong style="color:${COLORS.ink};">${inr(options.balanceDue)}</strong>.`) +
     button(`Pay ${inr(options.balanceDue)} Now`, payUrl, COLORS.amber) +
-    `<p style="margin:0;font-size:13px;color:${COLORS.muted};">You can also pay anytime from your order page in the GiftCraft dashboard.</p>`;
+    `<p style="margin:0;font-size:13px;color:${COLORS.muted};">You can also pay anytime from your order page in the GIVOO dashboard.</p>`;
 
   return sendEmail({
     to: options.customerEmail,
@@ -523,9 +523,9 @@ export async function sendShipmentNotificationEmail(
 ) {
   const content =
     p(`Hi ${esc(customerName)},`) +
-    p(`Your GiftCraft order <strong>${esc(orderId)}</strong> has been shipped and is on its way to you.`) +
+    p(`Your GIVOO order <strong>${esc(orderId)}</strong> has been shipped and is on its way to you.`) +
     (trackingUrl ? button('Track Your Shipment', trackingUrl, COLORS.emerald) : '') +
-    p('Thank you for choosing GiftCraft!');
+    p('Thank you for choosing GIVOO!');
 
   return sendEmail({
     to: customerEmail,
@@ -557,10 +557,10 @@ export async function sendOrderShippedEmail(options: {
 
   const content =
     p(`Hi ${esc(options.companyName)},`) +
-    p(`Your GiftCraft order <strong>${esc(options.orderNumber)}</strong> has been shipped and is on its way to you.`) +
+    p(`Your GIVOO order <strong>${esc(options.orderNumber)}</strong> has been shipped and is on its way to you.`) +
     summary +
     button('Track Your Shipment', options.trackingUrl, COLORS.emerald) +
-    p('Thank you for choosing GiftCraft!');
+    p('Thank you for choosing GIVOO!');
 
   return sendEmail({
     to: options.companyEmail,
@@ -593,7 +593,7 @@ export async function sendDisputeConfirmationEmail(options: {
     p(`Hi ${esc(options.customerName)},`) +
     p(`Thank you for reporting an issue with order <strong>${esc(options.orderNumber)}</strong>. We've received your dispute and our team will review it shortly.`) +
     summary +
-    p('We aim to resolve this within 48 hours of order delivery. You can track the status of your dispute in your GiftCraft dashboard.') +
+    p('We aim to resolve this within 48 hours of order delivery. You can track the status of your dispute in your GIVOO dashboard.') +
     `<p style="margin:0;font-size:13px;color:${COLORS.muted};">If you have any questions, just reply to this email.</p>`;
 
   return sendEmail({
@@ -717,6 +717,7 @@ export async function sendOfferEmail(options: {
   ctaLabel?: string;
   ctaUrl?: string;
   imageUrl?: string;
+  bypassOptOut?: boolean; // admin test sends should always deliver
 }) {
   const greeting = options.customerName ? `Hi ${esc(options.customerName)},` : 'Hi there,';
   const prefsUrl = `${APP_URL}/dashboard/settings/notifications`;
@@ -742,8 +743,8 @@ export async function sendOfferEmail(options: {
       heading: options.headline,
       preheader: options.subject,
       contentHtml: content,
-      footerNote: `You're receiving this because you opted in to offers from GiftCraft. <a href="${prefsUrl}" style="color:${COLORS.muted};text-decoration:underline;">Manage your email preferences</a>.`,
+      footerNote: `You're receiving this because you opted in to offers from GIVOO. <a href="${prefsUrl}" style="color:${COLORS.muted};text-decoration:underline;">Manage your email preferences</a>.`,
     }),
-    category: 'marketing',
+    category: options.bypassOptOut ? undefined : 'marketing',
   });
 }

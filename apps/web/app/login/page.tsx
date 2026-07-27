@@ -45,7 +45,7 @@ export default async function LoginPage({
             href="/"
             className="relative z-10 font-display text-2xl italic text-em"
           >
-            GiftCraft
+            GIVOO
           </Link>
 
           <div className="relative z-10 space-y-5">
@@ -73,13 +73,13 @@ export default async function LoginPage({
               href="/"
               className="mb-8 inline-block font-display text-2xl italic text-em lg:hidden"
             >
-              GiftCraft
+              GIVOO
             </Link>
 
             <div className="rounded-md border border-bdr bg-white p-8 shadow-card sm:p-10">
               <p className="overline text-ink-3">Welcome back</p>
               <h2 className="mt-2 font-display text-[2rem] leading-tight text-ink">
-                Sign in to GiftCraft
+                Sign in to GIVOO
               </h2>
               <p className="mt-3 text-sm text-ink-2">
                 Sign in with your email & password, or continue with Google.
@@ -89,7 +89,7 @@ export default async function LoginPage({
               <CredentialsLoginForm callbackUrl={callbackUrl} />
 
               <p className="mt-4 text-center text-sm text-ink-2">
-                New to GiftCraft?{" "}
+                New to GIVOO?{" "}
                 <Link
                   href={`/register${searchParams.from ? `?from=${searchParams.from}` : ""}`}
                   className="font-normal text-em underline-offset-2 hover:underline"

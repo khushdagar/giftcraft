@@ -3,7 +3,7 @@ import { InfoPage, InfoSection } from '@/components/layout/info-page';
 
 export const metadata = {
   title: 'Shipping',
-  description: 'How GiftCraft calculates delivery timelines and courier charges across India.',
+  description: 'How GIVOO calculates delivery timelines and courier charges across India.',
 };
 
 export default function ShippingPage() {

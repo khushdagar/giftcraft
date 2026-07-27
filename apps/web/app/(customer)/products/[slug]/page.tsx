@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!product) return { title: "Product not found" };
 
   return {
-    title: `${product.name} | GiftCraft`,
+    title: `${product.name} | GIVOO`,
     description: product.descriptionShort || "Corporate gifting made simple.",
     openGraph: {
       title: product.name,

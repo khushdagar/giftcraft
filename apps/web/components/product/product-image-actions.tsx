@@ -34,7 +34,7 @@ export function ProductImageActions({ productId, name, slug, image }: ProductIma
     e.preventDefault();
     e.stopPropagation();
     const url = `${window.location.origin}/products/${slug}`;
-    const payload = { title: name, text: `Check out ${name} on GiftCraft`, url };
+    const payload = { title: name, text: `Check out ${name} on GIVOO`, url };
     try {
       // Native share sheet on mobile; clipboard everywhere else.
       if (navigator.share && (!navigator.canShare || navigator.canShare(payload))) {

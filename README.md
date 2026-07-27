@@ -1,4 +1,4 @@
-# GiftCraft
+# GIVOO
 
 **India's first self-serve bulk corporate gifting platform** — by Arts Shala, Delhi.
 
@@ -72,4 +72,4 @@ npm run make-admin -- you@email.com    # promote a user to super_admin
 
 ---
 
-*Confidential — Arts Shala · GiftCraft Platform*
+*Confidential — Arts Shala · GIVOO Platform*

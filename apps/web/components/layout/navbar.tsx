@@ -95,7 +95,7 @@ export function Navbar() {
         )}
       >
         <Link href="/" className="font-display text-[22px] italic font-medium text-em">
-          GiftCraft
+          GIVOO
         </Link>
 
         <ul className="hidden items-center gap-7 lg:flex">
@@ -249,7 +249,7 @@ export function Navbar() {
           <div className="fixed inset-0 z-[799] bg-black/30" onClick={() => setMobileOpen(false)} />
           <div className="fixed right-0 top-0 bottom-0 z-[800] flex w-full max-w-[380px] flex-col bg-white p-6 shadow-float">
             <div className="mb-8 flex items-center justify-between">
-              <span className="font-display text-xl italic text-em">GiftCraft</span>
+              <span className="font-display text-xl italic text-em">GIVOO</span>
               <button
                 onClick={() => setMobileOpen(false)}
                 className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-elevated"

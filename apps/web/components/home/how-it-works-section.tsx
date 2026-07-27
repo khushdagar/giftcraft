@@ -48,7 +48,7 @@ export function HowItWorksSection() {
           <span className="text-xs font-normal text-em uppercase tracking-widest block mb-2">OUR PROCESS</span>
           <h2 className="text-4xl sm:text-5xl font-normal mb-4">How It Works</h2>
           <p className="text-base text-slate-600 max-w-2xl">
-            From concept to delivery, GiftCraft handles every detail of your branded merchandise journey.
+            From concept to delivery, GIVOO handles every detail of your branded merchandise journey.
           </p>
         </motion.div>
 

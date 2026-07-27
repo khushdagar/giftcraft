@@ -107,7 +107,7 @@ export default function NewVendorPage() {
     <div className="max-w-2xl">
       <div className="mb-8 border-b border-bdr pb-8">
         <h1 className="text-3xl font-normal tracking-tight text-ink">Create New Vendor</h1>
-        <p className="mt-2 text-sm text-ink-2">Add a new supplier to the GiftCraft network</p>
+        <p className="mt-2 text-sm text-ink-2">Add a new supplier to the GIVOO network</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

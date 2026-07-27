@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: { token: string } }
     .join(' • ') || 'Gift Pack';
 
   return {
-    title: `GiftCraft Quote - ${productNames}`,
+    title: `GIVOO Quote - ${productNames}`,
     description: `View this curated gift pack quote. Total: ${formatRupees(payload.pricing?.grandTotal || 0)}`,
   };
 }

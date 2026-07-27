@@ -3,7 +3,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { UploadCloud, Copy, Check, ExternalLink, Link as LinkIcon } from 'lucide-react';
+import {
+  UploadCloud,
+  Copy,
+  Check,
+  ExternalLink,
+  Link as LinkIcon,
+  X,
+  Clock,
+  CheckCircle2,
+} from 'lucide-react';
 import { isImageUrl } from '@/lib/mockup-url';
 
 export interface MockupApproval {
@@ -38,13 +47,22 @@ export function MockupPanel({
 }) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState('');
   const [fileUrl, setFileUrl] = useState('');
+  const [showLink, setShowLink] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
-  const appOrigin =
-    typeof window !== 'undefined' ? window.location.origin : '';
+  const appOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+
+  const chooseFile = (f: File | null) => {
+    if (preview) URL.revokeObjectURL(preview);
+    setFile(f);
+    setPreview(f ? URL.createObjectURL(f) : '');
+    if (f) setError('');
+  };
 
   const handleSend = async () => {
     setError('');
@@ -63,11 +81,10 @@ export function MockupPanel({
         body,
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send mockup');
-      }
-      setFile(null);
+      if (!res.ok) throw new Error(data.error || 'Failed to send mockup');
+      chooseFile(null);
       setFileUrl('');
+      setShowLink(false);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send mockup');
@@ -87,120 +104,209 @@ export function MockupPanel({
     }
   };
 
+  // Newest first — the top card is the "current" mockup.
+  const sorted = [...approvals].sort((a, b) => b.revision - a.revision);
+
   return (
-    <div className="rounded-md border-2 border-bdr bg-white p-5">
-      <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-4">
-        Design Approval
-      </p>
+    <div className="space-y-5 rounded-md border border-bdr bg-white p-5">
+      <div>
+        <h3 className="text-sm font-semibold text-ink">Design Approval</h3>
+        <p className="mt-0.5 text-xs text-ink-3">
+          Send the customer a mockup to approve before production starts.
+        </p>
+      </div>
 
-      {/* Existing versions */}
-      {approvals.length > 0 && (
-        <div className="space-y-3 mb-5">
-          {approvals.map((a) => (
-            <div key={a.id} className="rounded-md border border-bdr p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-normal text-ink">
-                  Mockup v{a.revision}
-                </span>
-                <span
-                  className={`text-xs font-normal px-2 py-0.5 rounded-full ${
-                    STATUS_STYLE[a.status] || 'bg-gray-100 text-gray-700'
-                  }`}
-                >
-                  {statusLabel(a.status)}
-                </span>
-              </div>
-
-              {a.fileUrl && <MockupPreview url={a.fileUrl} revision={a.revision} />}
-
-              {a.status === 'revision_requested' && a.revisionNotes && (
-                <div className="rounded-md bg-rose-50 border border-rose-200 p-2 mb-2">
-                  <p className="text-xs text-rose-700 font-normal mb-0.5">
-                    Customer's change request
-                  </p>
-                  <p className="text-xs text-ink-2 whitespace-pre-wrap">
-                    {a.revisionNotes}
-                  </p>
+      {/* Version history */}
+      {sorted.length > 0 && (
+        <div className="space-y-3">
+          {sorted.map((a, i) => {
+            const link = `${appOrigin}/approve/${a.token}`;
+            const isCurrent = i === 0;
+            return (
+              <div
+                key={a.id}
+                className={`overflow-hidden rounded-md border ${
+                  isCurrent ? 'border-bdr' : 'border-bdr/70 opacity-90'
+                }`}
+              >
+                <div className="flex items-center justify-between border-b border-bdr bg-elevated/40 px-3 py-2">
+                  <span className="text-sm font-medium text-ink">
+                    Mockup v{a.revision}
+                    {isCurrent && <span className="ml-2 text-xs text-ink-3">· current</span>}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      STATUS_STYLE[a.status] || 'bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    {statusLabel(a.status)}
+                  </span>
                 </div>
-              )}
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => copyLink(a.token)}
-                  className="inline-flex items-center gap-1.5 text-xs text-ink-2 hover:text-ink px-2 py-1 rounded-md border border-bdr"
-                >
-                  {copiedToken === a.token ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-em" /> Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" /> Copy link
-                    </>
+                <div className="p-3">
+                  {a.fileUrl && <MockupPreview url={a.fileUrl} revision={a.revision} />}
+
+                  {/* State hint */}
+                  {a.status === 'pending' && (
+                    <div className="mb-2 flex items-center gap-1.5 text-xs text-ink-3">
+                      <Clock className="h-3.5 w-3.5" /> Waiting for the customer to review
+                    </div>
                   )}
-                </button>
-                <a
-                  href={`/approve/${a.token}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-em hover:underline px-2 py-1"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" /> Open
-                </a>
+                  {a.status === 'approved' && (
+                    <div className="mb-2 flex items-center gap-1.5 text-xs text-em-700">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Approved
+                      {a.approvedAt
+                        ? ` on ${new Date(a.approvedAt).toLocaleDateString('en-IN')}`
+                        : ''}
+                    </div>
+                  )}
+                  {a.status === 'revision_requested' && a.revisionNotes && (
+                    <div className="mb-2 rounded-md border border-rose-200 bg-rose-50 p-2">
+                      <p className="mb-0.5 text-xs font-medium text-rose-700">
+                        Customer's change request
+                      </p>
+                      <p className="whitespace-pre-wrap text-xs text-ink-2">{a.revisionNotes}</p>
+                    </div>
+                  )}
+
+                  {/* Approval link — the thing you send the customer */}
+                  <div className="rounded-md border border-bdr bg-elevated/30 p-2">
+                    <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-ink-3">
+                      Customer approval link
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        readOnly
+                        value={link}
+                        onFocus={(e) => e.currentTarget.select()}
+                        className="min-w-0 flex-1 truncate rounded border border-bdr bg-white px-2 py-1 text-xs text-ink-2"
+                      />
+                      <button
+                        onClick={() => copyLink(a.token)}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-md border border-bdr px-2 py-1 text-xs text-ink-2 hover:bg-white"
+                      >
+                        {copiedToken === a.token ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-em" /> Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3.5 w-3.5" /> Copy
+                          </>
+                        )}
+                      </button>
+                      <a
+                        href={`/approve/${a.token}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-md border border-bdr px-2 py-1 text-xs text-em hover:bg-white"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" /> Open
+                      </a>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Send a new mockup */}
       <div className="space-y-3 border-t border-bdr pt-4">
-        <p className="text-sm font-normal text-ink">
-          {approvals.length > 0 ? 'Send a new version' : 'Send mockup for approval'}
+        <p className="text-sm font-medium text-ink">
+          {sorted.length > 0 ? 'Send a new version' : 'Send first mockup'}
         </p>
 
-        <label className="flex items-center gap-2 px-3 py-2 rounded-md border border-dashed border-bdr cursor-pointer hover:border-em text-sm text-ink-2">
-          <UploadCloud className="w-4 h-4" />
-          <span className="truncate">
-            {file ? file.name : 'Choose mockup image…'}
-          </span>
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            disabled={loading}
-          />
-        </label>
+        {/* Upload zone / preview */}
+        {file ? (
+          <div className="flex items-center gap-3 rounded-md border border-bdr p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt={file.name} className="h-14 w-14 rounded object-cover" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm text-ink">{file.name}</p>
+              <p className="text-xs text-ink-3">Ready to send</p>
+            </div>
+            <button
+              onClick={() => chooseFile(null)}
+              className="rounded-md p-1.5 text-ink-3 hover:bg-elevated hover:text-ink"
+              title="Remove"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const f = e.dataTransfer.files?.[0];
+              if (f) chooseFile(f);
+            }}
+            className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed p-6 text-center transition ${
+              dragOver ? 'border-em bg-em-50/40' : 'border-bdr hover:border-em'
+            }`}
+          >
+            <UploadCloud className="h-6 w-6 text-ink-3" />
+            <span className="text-sm text-ink-2">
+              Drag &amp; drop or <span className="font-medium text-em">click to upload</span>
+            </span>
+            <span className="text-xs text-ink-3">PNG, JPG up to 5MB</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => chooseFile(e.target.files?.[0] ?? null)}
+              disabled={loading}
+            />
+          </label>
+        )}
 
-        <div className="flex items-center gap-2">
-          <div className="h-px flex-1 bg-bdr" />
-          <span className="text-xs text-ink-3">or</span>
-          <div className="h-px flex-1 bg-bdr" />
-        </div>
-
-        <input
-          type="url"
-          value={fileUrl}
-          onChange={(e) => setFileUrl(e.target.value)}
-          placeholder="Paste an image or file link (Google Drive, Dropbox…)"
-          disabled={loading}
-          className="w-full px-3 py-2 rounded-md border border-bdr text-sm disabled:opacity-50"
-        />
+        {/* Paste-a-link — secondary, tucked away to reduce clutter */}
+        {showLink ? (
+          <div className="space-y-1">
+            <input
+              type="url"
+              value={fileUrl}
+              onChange={(e) => setFileUrl(e.target.value)}
+              placeholder="Paste an image or file link (Google Drive, Dropbox…)"
+              disabled={loading}
+              className="w-full rounded-md border border-bdr px-3 py-2 text-sm disabled:opacity-50"
+            />
+            <button
+              onClick={() => {
+                setShowLink(false);
+                setFileUrl('');
+              }}
+              className="text-xs text-ink-3 hover:text-ink"
+            >
+              Cancel link
+            </button>
+          </div>
+        ) : (
+          !file && (
+            <button
+              onClick={() => setShowLink(true)}
+              className="inline-flex items-center gap-1.5 text-xs text-ink-2 hover:text-ink"
+            >
+              <LinkIcon className="h-3.5 w-3.5" /> or paste a file link instead
+            </button>
+          )
+        )}
 
         {error && <p className="text-xs text-err">{error}</p>}
 
-        <Button
-          onClick={handleSend}
-          disabled={loading}
-          variant="em"
-          className="w-full rounded-md"
-        >
+        <Button onClick={handleSend} disabled={loading} variant="em" className="w-full rounded-md">
           {loading ? 'Sending…' : 'Send for Approval'}
         </Button>
         <p className="text-xs text-ink-3">
-          This moves the order to <span className="font-normal">Mockup Pending</span> and
-          gives the customer an approval link (valid 72 hours).
+          This moves the order to <span className="font-medium">Mockup Pending</span> and gives the
+          customer an approval link (valid 72 hours).
         </p>
       </div>
     </div>
@@ -217,13 +323,15 @@ function MockupPreview({ url, revision }: { url: string; revision: number }) {
 
   if (isImageUrl(url) && !imgFailed) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={`Mockup v${revision}`}
-        onError={() => setImgFailed(true)}
-        className="w-full h-32 object-cover rounded-md border border-bdr bg-elevated mb-2"
-      />
+      <a href={url} target="_blank" rel="noopener noreferrer" title="Open full image">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={`Mockup v${revision}`}
+          onError={() => setImgFailed(true)}
+          className="mb-2 h-24 w-full rounded-md border border-bdr bg-elevated object-cover transition hover:opacity-90"
+        />
+      </a>
     );
   }
 
@@ -232,16 +340,16 @@ function MockupPreview({ url, revision }: { url: string; revision: number }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-3 rounded-md border border-bdr bg-elevated/50 p-3 mb-2 hover:border-em transition"
+      className="mb-2 flex items-center gap-3 rounded-md border border-bdr bg-elevated/50 p-3 transition hover:border-em"
     >
-      <div className="h-10 w-10 flex-shrink-0 rounded-md bg-sky-50 flex items-center justify-center">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-sky-50">
         <LinkIcon className="h-5 w-5 text-sky-600" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-normal text-ink">View mockup file</p>
-        <p className="text-xs text-ink-3 truncate">{url}</p>
+        <p className="text-sm font-medium text-ink">View mockup file</p>
+        <p className="truncate text-xs text-ink-3">{url}</p>
       </div>
-      <ExternalLink className="w-4 h-4 text-ink-3 flex-shrink-0" />
+      <ExternalLink className="h-4 w-4 flex-shrink-0 text-ink-3" />
     </a>
   );
 }
