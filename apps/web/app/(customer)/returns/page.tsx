@@ -3,7 +3,7 @@ import { InfoPage, InfoSection } from '@/components/layout/info-page';
 
 export const metadata = {
   title: 'Returns',
-  description: 'GiftCraft returns, replacements and refund policy for branded corporate gift orders.',
+  description: 'GIVOO returns, replacements and refund policy for branded corporate gift orders.',
 };
 
 export default function ReturnsPage() {

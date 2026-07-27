@@ -1,4 +1,4 @@
-# CLAUDE.md — AI Instructions for GiftCraft Platform
+# CLAUDE.md — AI Instructions for GIVOO Platform
 
 > **Read this ENTIRE file before writing ANY code. This is the single source of truth.**
 
@@ -6,7 +6,7 @@
 
 ## 1. PROJECT OVERVIEW
 
-**GiftCraft** is India's first self-serve bulk corporate gifting platform by Arts Shala (Delhi). Corporate buyers browse products, build branded gift packs, get instant transparent pricing, and place orders — all without a sales rep.
+**GIVOO** is India's first self-serve bulk corporate gifting platform by Arts Shala (Delhi). Corporate buyers browse products, build branded gift packs, get instant transparent pricing, and place orders — all without a sales rep.
 
 **UI Goal:** Vibrant, colorful, product-focused, high-impact. The platform should feel premium and fun — not like a boring B2B portal. Think "if Notion's clean layout met a candy store's energy."
 
@@ -38,7 +38,7 @@
 
 ### Authentication Architecture: NextAuth.js + Google OAuth
 
-GiftCraft uses **NextAuth.js v5** (Auth.js) with **Google OAuth** as the primary login method. No Clerk. No custom email/password auth in Stage 1.
+GIVOO uses **NextAuth.js v5** (Auth.js) with **Google OAuth** as the primary login method. No Clerk. No custom email/password auth in Stage 1.
 
 **How it works:**
 1. User clicks "Sign in with Google" → redirected to Google consent screen
@@ -88,7 +88,7 @@ GiftCraft uses **NextAuth.js v5** (Auth.js) with **Google OAuth** as the primary
 
 ## 3. VISUAL DESIGN SYSTEM — "VIBRANT BENTO BLOCKS" (MANDATORY)
 
-This is NOT a generic corporate template. GiftCraft's UI must feel alive, colorful, and modern. Every page follows the "Bento Block" philosophy — distinct, rounded tiles with bold typography and pastel accents.
+This is NOT a generic corporate template. GIVOO's UI must feel alive, colorful, and modern. Every page follows the "Bento Block" philosophy — distinct, rounded tiles with bold typography and pastel accents.
 
 ### 3.1 Design Philosophy
 
@@ -356,10 +356,10 @@ export const config = {
 ### Custom Login Page (Bento-styled)
 ```
 /login page: 
-- Split layout: left half = pastel gradient (amber-50 to indigo-50) with GiftCraft tagline
+- Split layout: left half = pastel gradient (amber-50 to indigo-50) with GIVOO tagline
 - Right half = white card (rounded-md) with:
-  - GiftCraft logo
-  - "Welcome to GiftCraft" text-3xl font-black
+  - GIVOO logo
+  - "Welcome to GIVOO" text-3xl font-black
   - "Sign in to manage your gifting" text-gray-500
   - Large "Continue with Google" button (rounded-2xl, Google icon, chunky py-4)
   - "For vendor access, contact us" small text below
@@ -429,7 +429,7 @@ DO_SPACES_CDN_ENDPOINT="https://giftcraft-dev.blr1.cdn.digitaloceanspaces.com"
 # SendGrid
 SENDGRID_API_KEY="SG.xxx"
 SENDGRID_FROM_EMAIL="orders@giftcraft.in"
-SENDGRID_FROM_NAME="GiftCraft"
+SENDGRID_FROM_NAME="GIVOO"
 
 # WhatsApp
 WHATSAPP_API_KEY="xxx"

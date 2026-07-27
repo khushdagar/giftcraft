@@ -81,7 +81,7 @@ async function sendEmailAction(
     return;
   }
 
-  const resolvedSubject = interpolate(subject || 'Update from GiftCraft', context);
+  const resolvedSubject = interpolate(subject || 'Update from GIVOO', context);
   // `template`/`body` is free-form copy entered by an admin; render line breaks.
   const copy = interpolate(body || template || '', context);
   const html = `
@@ -90,7 +90,7 @@ async function sendEmailAction(
         .split(/\n{2,}/)
         .map((p) => `<p style="font-size:15px;line-height:1.6;color:#3F3F46;">${p.replace(/\n/g, '<br/>')}</p>`)
         .join('')}
-      <p style="font-size:13px;color:#A1A1AA;margin-top:24px;">— The GiftCraft Team</p>
+      <p style="font-size:13px;color:#A1A1AA;margin-top:24px;">— The GIVOO Team</p>
     </div>
   `;
 

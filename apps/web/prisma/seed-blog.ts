@@ -46,7 +46,7 @@ const POSTS: SeedPost[] = [
     tags: ['strategy', 'client-gifting', 'research'],
     cover: img('1513885535751-8b9238bd345a'),
     coverAlt: 'Wrapped gift boxes tied with ribbon on a pale surface',
-    metaTitle: 'The Psychology of Corporate Gifting | GiftCraft',
+    metaTitle: 'The Psychology of Corporate Gifting | GIVOO',
     metaDescription:
       'Why a well-chosen gift outperforms a discount, and what reciprocity research tells us about building durable business relationships.',
     featured: true,
@@ -114,7 +114,7 @@ const POSTS: SeedPost[] = [
     tags: ['diwali', 'festivals', 'client-gifting'],
     cover: img('1607083206869-4c7672e72a8a'),
     coverAlt: 'Lit diyas arranged for Diwali celebrations',
-    metaTitle: 'Diwali Corporate Gifting Guide | GiftCraft',
+    metaTitle: 'Diwali Corporate Gifting Guide | GIVOO',
     metaDescription:
       'Timelines, budgets, and etiquette for Diwali corporate gifting in India — plus the mistakes that quietly cost you goodwill.',
     featured: true,
@@ -344,7 +344,7 @@ async function main() {
       tags: p.tags,
       categoryId: categoryIds.get(p.category) ?? null,
       authorId: admin?.id ?? null,
-      authorName: admin?.name ?? 'GiftCraft Team',
+      authorName: admin?.name ?? 'GIVOO Team',
       metaTitle: p.metaTitle ?? null,
       metaDescription: p.metaDescription ?? null,
       readingMinutes: readingMinutes(p.content),

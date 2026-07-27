@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { formatRupees } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { OrdersTable, type OrderRow } from './orders-table';
+import { OrdersSearch } from './orders-search';
 
 export default async function AdminOrdersPage(props: {
   searchParams: { page?: string; status?: string; search?: string; placedBy?: string };
@@ -61,39 +62,30 @@ export default async function AdminOrdersPage(props: {
 
   const pages = Math.ceil(total / limit);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-em-50 text-em-700';
-      case 'mockup_pending':
-      case 'mockup_approved':
-        return 'bg-[#FFF7ED] text-[#EA580C]';
-      case 'production':
-        return 'bg-sky-50 text-sky-700';
-      case 'quality_check':
-        return 'bg-[#F5F3FF] text-[#8B5CF6]';
-      case 'packed':
-        return 'bg-violet-50 text-violet-700';
-      case 'shipped':
-      case 'in_transit':
-        return 'bg-indigo-50 text-indigo-700';
-      case 'delivered':
-      case 'completed':
-        return 'bg-em-50 text-em-700';
-      case 'cancelled':
-      case 'refunded':
-        return 'bg-err/10 text-err';
-      default:
-        return 'bg-gray-100 text-gray-700';
-    }
-  };
+  // Shape rows for the table: pull the customer + a derived payment status out
+  // of billingJson so the list reads like a Shopify orders screen.
+  const rows: OrderRow[] = orders.map((order) => {
+    const billing = (order.billingJson as any) || {};
+    const total = Number(order.grandTotal);
+    const amountPaid = Number(billing.amountPaid ?? 0);
 
-  const getStatusLabel = (status: string) => {
-    return status
-      .split('_')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
+    let payment: OrderRow['payment'];
+    if (order.status === 'refunded') payment = 'Refunded';
+    else if (amountPaid >= total && total > 0) payment = 'Paid';
+    else if (amountPaid > 0) payment = 'Partial';
+    else payment = 'Unpaid';
+
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      total,
+      createdAt: new Date(order.createdAt).toISOString(),
+      itemCount: order._count.items,
+      customer: billing.companyName || billing.email || '—',
+      payment,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -111,110 +103,36 @@ export default async function AdminOrdersPage(props: {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 items-end">
-        <div className="flex-1">
-          <label className="text-xs font-normal text-ink-3 block mb-2">Search by Order #</label>
-          <form method="get" className="flex gap-2">
-            <select
-              name="status"
-              defaultValue={status || ''}
-              className="px-3 py-2 rounded-md border border-bdr text-sm"
-            >
-              <option value="">All Statuses</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="production">Production</option>
-              <option value="quality_check">Quality Check</option>
-              <option value="packed">Packed</option>
-              <option value="shipped">Shipped</option>
-              <option value="delivered">Delivered</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <input
-              type="text"
-              name="search"
-              placeholder="GC-2026-0001"
-              defaultValue={search || ''}
-              className="flex-1 px-3 py-2 rounded-md border border-bdr text-sm"
-            />
-            <Button type="submit" variant="em" className="rounded-md">
-              Search
-            </Button>
-          </form>
-        </div>
-      </div>
+      <form method="get" className="flex flex-wrap items-center gap-2">
+        <OrdersSearch defaultValue={search || ''} />
+        <select
+          name="status"
+          defaultValue={status || ''}
+          className="h-9 rounded-md border border-bdr px-3 text-sm"
+        >
+          <option value="">All statuses</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="mockup_pending">Mockup Pending</option>
+          <option value="production">Production</option>
+          <option value="quality_check">Quality Check</option>
+          <option value="packed">Packed</option>
+          <option value="shipped">Shipped</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="refunded">Refunded</option>
+        </select>
+        <Button type="submit" variant="em" className="h-9 rounded-md">
+          Search
+        </Button>
+      </form>
 
       {/* Table */}
-      {orders.length === 0 ? (
-        <div className="rounded-md border-2 border-bdr bg-white p-8 text-center">
+      {rows.length === 0 ? (
+        <div className="rounded-md border border-bdr bg-white p-10 text-center">
           <p className="text-ink-3">No orders found</p>
         </div>
       ) : (
-        <div className="rounded-md border-2 border-bdr bg-white overflow-x-auto">
-          <table className="w-full min-w-[640px]">
-            <thead>
-              <tr className="border-b border-bdr bg-elevated/50">
-                <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">
-                  Order #
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">
-                  Items
-                </th>
-                <th className="px-6 py-4 text-right text-xs font-normal uppercase tracking-wider text-ink-3">
-                  Amount
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">
-                  Date
-                </th>
-                <th className="px-6 py-4 text-left text-xs font-normal uppercase tracking-wider text-ink-3">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id} className="border-b border-bdr hover:bg-elevated/30 transition">
-                  <td className="px-6 py-4">
-                    <Link
-                      href={`/admin/orders/${order.id}`}
-                      className="font-normal text-ink underline underline-offset-2 hover:text-em"
-                    >
-                      #{order.orderNumber}
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-normal ${getStatusColor(order.status)}`}>
-                      {getStatusLabel(order.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-ink-2">{order._count.items} items</p>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <p className="font-normal text-ink tabnum">
-                      {formatRupees(Number(order.grandTotal))}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-ink-2">
-                      {new Date(order.createdAt).toLocaleDateString('en-IN')}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Link
-                      href={`/admin/orders/${order.id}`}
-                      className="text-sm font-normal text-em hover:underline"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <OrdersTable orders={rows} />
       )}
 
       {/* Pagination */}

@@ -16,9 +16,10 @@ import { AlertCircle, GripVertical, Plus, Trash2, X, ArrowLeft } from 'lucide-re
 import { TagCombobox } from '@/components/admin/tag-combobox';
 import { formatRupees } from '@/lib/utils';
 import { toast, useToastStore } from '@/lib/stores/toast-store';
-import { resolveSwatchHex } from '@/lib/color-name';
 import { SearchableMultiSelect } from './searchable-multi-select';
 import { SearchableSelect } from './searchable-select';
+import { ProductMedia } from './product-media';
+import { ProductVariants } from './product-variants';
 
 const ProductSchema = z.object({
   name: z.string().min(1, 'Name required'),
@@ -162,7 +163,6 @@ export function ProductForm({
   const [categories, setCategories] = useState<Array<{ id: string; name: string; parentId?: string | null }>>([]);
   const [occasions, setOccasions] = useState<Array<{ id: string; name: string; icon?: string }>>([]);
   const [variants, setVariants] = useState<Array<{ id?: string; kind: string; value: string; hexColor?: string; imageUrl?: string; price?: number; sortOrder: number }>>([]);
-  const [newVariant, setNewVariant] = useState({ kind: 'color', value: '', hexColor: '', customKind: '', price: '' });
   const [vendorOptions, setVendorOptions] = useState<VendorOption[]>([]);
   const [vendorLinks, setVendorLinks] = useState<VendorLink[]>([]);
 
@@ -617,10 +617,24 @@ export function ProductForm({
           }
         : {};
 
+      // Images are uploaded immediately by <ProductMedia> (create mode keeps
+      // them as URLs, no File). Send those URLs with the primary/cover first so
+      // the API flags index 0 as primary.
+      const orderedImageUrls = (() => {
+        const arr = [...images];
+        const pIdx = arr.findIndex((i) => i.isPrimary);
+        if (pIdx > 0) {
+          const [p] = arr.splice(pIdx, 1);
+          if (p) arr.unshift(p);
+        }
+        return arr.map((i) => i.url).filter((u): u is string => !!u && /^https?:\/\//.test(u));
+      })();
+
       // Add product data with variants - ensure proper data types
       const dataWithVariants = {
         ...data,
         ...packPayload,
+        ...(mode === 'create' && { imageUrls: orderedImageUrls }),
         vendors: vendorsPayload,
         variants: validVariants.length > 0 ? validVariants.map((v, idx) => {
           const variant: any = {
@@ -1100,163 +1114,16 @@ export function ProductForm({
           )}
 
           <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
-            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Images</h2>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-900">
-                Upload product images. First image will be set as primary.
-              </p>
-            </div>
-
-            {/* Upload Area */}
-            <label className="border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-blue-500 transition block text-center">
-              <input
-                key={`file-input-${images.length}`}
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={async (e) => {
-                  const files = Array.from(e.target.files || []);
-
-                  if (files.length === 0) return;
-
-                  // Only upload if in edit mode (product already exists)
-                  if (mode === 'edit' && initialData?.id) {
-                    let uploadingToastId: string | null = null;
-                    try {
-                      // Show uploading toast and capture its ID for later dismissal
-                      uploadingToastId = toast.info('📤 Uploading images...', 0); // No auto-dismiss
-
-                      const formData = new FormData();
-                      files.forEach((file) => {
-                        formData.append('images', file);
-                      });
-
-                      const res = await fetch(`/api/admin/products/${initialData.id}/images`, {
-                        method: 'POST',
-                        body: formData,
-                      });
-
-                      if (!res.ok) {
-                        const error = await res.json();
-                        throw new Error(error.error || 'Upload failed');
-                      }
-
-                      const result = await res.json();
-
-                      // Dismiss the uploading toast
-                      if (uploadingToastId) {
-                        useToastStore.getState().removeToast(uploadingToastId);
-                      }
-
-                      // Replace local images state with all images from server
-                      // (result.images already contains ALL images, not just new ones)
-                      setImages(
-                        result.images.map((img: any) => ({
-                          id: img.id,
-                          url: img.url,
-                          isPrimary: img.isPrimary,
-                          altText: img.altText || '',
-                        }))
-                      );
-
-                      // Show result toast
-                      if (result.uploadedCount > 0) {
-                        toast.success(`✅ ${result.uploadedCount} image(s) saved to database!`);
-                      }
-                      if (result.failedCount > 0) {
-                        toast.error(`⚠️ Failed: ${result.failedImages.join(', ')}`);
-                      }
-                    } catch (err) {
-                      // Dismiss the uploading toast on error
-                      if (uploadingToastId) {
-                        useToastStore.getState().removeToast(uploadingToastId);
-                      }
-
-                      const errorMsg = err instanceof Error ? err.message : 'Upload failed';
-                      toast.error(`❌ Error: ${errorMsg}`);
-                    }
-                  } else if (mode === 'create') {
-                    // For create mode, just add to local state (will be uploaded on save)
-                    let loadedCount = 0;
-
-                    files.forEach((file) => {
-                      // Validate file size (5MB)
-                      if (file.size > 5 * 1024 * 1024) {
-                        toast.error(`❌ ${file.name} exceeds 5MB limit`);
-                        return;
-                      }
-
-                      const reader = new FileReader();
-                      reader.onload = (event) => {
-                        setImages((prev) => [
-                          ...prev,
-                          {
-                            url: event.target?.result as string,
-                            isPrimary: prev.length === 0,
-                            file,
-                          },
-                        ]);
-                        loadedCount++;
-                        if (loadedCount === files.length) {
-                          toast.info(`✅ ${files.length} image(s) ready to upload`);
-                        }
-                      };
-                      reader.onerror = () => {
-                        toast.error(`❌ Failed to read ${file.name}`);
-                      };
-                      reader.readAsDataURL(file);
-                    });
-                  }
-                }}
-                className="hidden"
-              />
-              <div>
-                <p className="text-sm font-normal text-gray-900">Click to upload images</p>
-                <p className="text-xs text-gray-500 mt-1">PNG, JPG, WebP up to 5MB each</p>
-              </div>
-            </label>
-
-            {/* Image List — compact thumbnails. Click a thumb to zoom & edit. */}
-            {images.length > 0 && (
-              <div className="space-y-3">
-                <p className="text-sm font-normal text-gray-900">Uploaded Images ({images.length})</p>
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-                  {images.map((img, idx) => (
-                    <div key={idx} className="relative group">
-                      <button
-                        type="button"
-                        onClick={() => setZoomIdx(idx)}
-                        className="block aspect-square w-full rounded-lg overflow-hidden bg-gray-100 border border-gray-200 hover:border-blue-500 transition"
-                        title="Click to zoom & edit"
-                      >
-                        <img
-                          src={img.url}
-                          alt={img.altText || `Product ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-
-                      {/* Single Primary badge — only on the actual primary image */}
-                      {idx === primaryImageIdx && (
-                        <div className="absolute top-1 left-1 bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded font-medium pointer-events-none">
-                          Primary
-                        </div>
-                      )}
-
-                      {/* Quick remove on hover */}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteImage(idx)}
-                        className="absolute top-1 right-1 h-5 w-5 rounded-full bg-red-600 text-white text-xs leading-none opacity-0 group-hover:opacity-100 transition flex items-center justify-center hover:bg-red-700"
-                        title="Remove image"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Media</h2>
+            <ProductMedia
+              images={images}
+              setImages={setImages}
+              mode={mode}
+              productId={initialData?.id}
+              primaryImageIdx={primaryImageIdx}
+              onZoom={setZoomIdx}
+              onDelete={handleDeleteImage}
+            />
           </section>
 
           {!isPack && (
@@ -1413,358 +1280,18 @@ export function ProductForm({
 
           <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
             <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Variants</h2>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-900 font-normal">
-                💡 Add product variants like color, size, material, etc. You can add multiple values at once by separating them with commas (e.g., "Small, Medium, Large"). Use the "Custom" type to add any variant type you want (e.g., Brand, Design, Collection).
-              </p>
-            </div>
+            <p className="text-sm text-gray-500">
+              Add options like size or colour. Each option can have multiple values —
+              colours get a swatch, sizes can carry a per-box price, and any value can have its own image.
+            </p>
 
-            {/* Add New Variant Form */}
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-              <h3 className="text-sm font-normal text-gray-900">Add New Variant</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">Type *</label>
-                  <select
-                    value={newVariant.kind}
-                    onChange={(e) => {
-                      setNewVariant({ ...newVariant, kind: e.target.value, customKind: '' });
-                    }}
-                    className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-                  >
-                    <option value="color">Color</option>
-                    <option value="size">Size</option>
-                    <option value="material">Material</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">Value *</label>
-                  <Input
-                    type="text"
-                    placeholder={
-                      newVariant.kind === 'color'
-                        ? 'e.g. Red, Blue, Green'
-                        : newVariant.kind === 'size'
-                        ? 'e.g. Small, Medium, Large, XL'
-                        : newVariant.kind === 'material'
-                        ? 'e.g. Cotton, Polyester, Wool'
-                        : 'e.g. Nike, Adidas, Puma'
-                    }
-                    value={newVariant.value}
-                    onChange={(e) => setNewVariant({ ...newVariant, value: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">💡 Separate multiple values with commas to add them all at once</p>
-                </div>
-              </div>
-
-              {/* Custom Variant Type Input */}
-              {newVariant.kind === 'custom' && (
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">Custom Type Name *</label>
-                  <Input
-                    type="text"
-                    placeholder="e.g. Brand, Design, Pattern, Collection"
-                    value={newVariant.customKind}
-                    onChange={(e) => setNewVariant({ ...newVariant, customKind: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">What would you like to call this variant type?</p>
-                </div>
-              )}
-
-              {newVariant.kind === 'color' && (
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">Color Code</label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="color"
-                      value={newVariant.hexColor || '#000000'}
-                      onChange={(e) => setNewVariant({ ...newVariant, hexColor: e.target.value })}
-                      className="w-16 h-10 p-1 border border-gray-300 rounded-lg cursor-pointer"
-                    />
-                    <Input
-                      type="text"
-                      placeholder="#000000"
-                      value={newVariant.hexColor}
-                      onChange={(e) => setNewVariant({ ...newVariant, hexColor: e.target.value })}
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Size variants can carry a price — used by packaging designs in
-                  the gift builder (Small/Medium/Large each cost differently). */}
-              {newVariant.kind === 'size' && (
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">Price (₹) — optional</label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1"
-                    placeholder="e.g. 180"
-                    value={newVariant.price}
-                    onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Applied to each size added. For packaging boxes this is the per-box price.
-                  </p>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  // Determine the actual kind to use
-                  const actualKind = newVariant.kind === 'custom' ? newVariant.customKind : newVariant.kind;
-
-                  // Validation
-                  if (newVariant.kind === 'custom') {
-                    const customKindTrimmed = actualKind.trim();
-                    if (!customKindTrimmed) {
-                      toast.error('❌ Please enter a custom variant type name', 3000);
-                      return;
-                    }
-                  }
-
-                  const rawValue = newVariant.value.trim();
-                  if (!rawValue) {
-                    toast.error('❌ Please enter a variant value', 3000);
-                    return;
-                  }
-
-                  // Split by comma to support multiple values (e.g., "Small, Medium, Large")
-                  const values = rawValue
-                    .split(',')
-                    .map((v) => v.trim())
-                    .filter((v) => v.length > 0);
-
-                  if (values.length === 0) {
-                    toast.error('❌ Please enter at least one variant value', 3000);
-                    return;
-                  }
-
-                  // Validate hex color only if single color variant
-                  if (newVariant.kind === 'color' && newVariant.hexColor && values.length === 1) {
-                    const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
-                    if (!hexRegex.test(newVariant.hexColor)) {
-                      toast.error('❌ Invalid hex color format (use #RRGGBB)', 3000);
-                      return;
-                    }
-                  }
-
-                  // Check for duplicates
-                  const newVariants: Array<{ id?: string; kind: string; value: string; hexColor?: string; price?: number; sortOrder: number }> = [];
-                  const duplicates: string[] = [];
-
-                  const sizePrice =
-                    newVariant.kind === 'size' && newVariant.price !== '' && !Number.isNaN(Number(newVariant.price))
-                      ? Number(newVariant.price)
-                      : undefined;
-
-                  values.forEach((value) => {
-                    const isDuplicate = variants.some(
-                      (v) => v.kind.toLowerCase() === actualKind.toLowerCase() && v.value.toLowerCase() === value.toLowerCase()
-                    );
-
-                    if (isDuplicate) {
-                      duplicates.push(value);
-                    } else {
-                      newVariants.push({
-                        kind: actualKind,
-                        value,
-                        hexColor: newVariant.kind === 'color' && newVariant.hexColor ? newVariant.hexColor : undefined,
-                        price: sizePrice,
-                        sortOrder: variants.length + newVariants.length,
-                      });
-                    }
-                  });
-
-                  if (newVariants.length === 0) {
-                    toast.error(`❌ All values already exist as variants`, 3000);
-                    return;
-                  }
-
-                  setVariants([...variants, ...newVariants]);
-                  setNewVariant({ kind: 'color', value: '', hexColor: '', customKind: '', price: '' });
-
-                  const message =
-                    newVariants.length === 1
-                      ? `✅ 1 variant added`
-                      : `✅ ${newVariants.length} variants added`;
-
-                  if (duplicates.length > 0) {
-                    toast.warning(`${message} (${duplicates.join(', ')} already existed)`, 3000);
-                  } else {
-                    toast.success(message, 2000);
-                  }
-                }}
-                className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white text-sm font-normal py-2 rounded-lg hover:bg-blue-700 transition"
-              >
-                <Plus className="h-4 w-4" /> Add Variant
-              </button>
-            </div>
-
-            {/* Variants List */}
-            {variants.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-normal text-gray-900">Product Variants ({variants.length})</h3>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {variants.map((variant, idx) => (
-                    <div key={idx} className="flex items-center justify-between gap-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
-                      <div className="flex items-center gap-3">
-                        {/* Variant visual — the variant image takes precedence
-                            over the colour swatch. Click to upload. */}
-                        <label className="relative shrink-0 cursor-pointer" title="Upload variant image">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) handleVariantImageUpload(idx, f);
-                              e.target.value = '';
-                            }}
-                          />
-                          {variant.imageUrl ? (
-                            <img
-                              src={variant.imageUrl}
-                              alt={variant.value}
-                              className="w-10 h-10 rounded-md object-cover border border-gray-300"
-                            />
-                          ) : variant.kind === 'color' ? (
-                            <div
-                              className="w-10 h-10 rounded-md border border-gray-300"
-                              style={{ backgroundColor: resolveSwatchHex(variant.value, variant.hexColor) }}
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-md border border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-lg leading-none">
-                              +
-                            </div>
-                          )}
-                        </label>
-                        <div>
-                          <p className="text-xs text-gray-500 font-normal uppercase">{variant.kind}</p>
-                          <p className="text-sm font-medium text-gray-900">{variant.value}</p>
-                          <div className="flex items-center gap-2">
-                            <label className="text-[11px] text-blue-600 hover:underline cursor-pointer">
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const f = e.target.files?.[0];
-                                  if (f) handleVariantImageUpload(idx, f);
-                                  e.target.value = '';
-                                }}
-                              />
-                              {variant.imageUrl ? 'Change image' : 'Add image'}
-                            </label>
-                            {variant.imageUrl && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setVariants(
-                                    variants.map((v, i) => (i === idx ? { ...v, imageUrl: undefined } : v))
-                                  )
-                                }
-                                className="text-[11px] text-red-600 hover:underline"
-                              >
-                                Remove image
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      {/* Inline colour editor for existing colour variants */}
-                      {variant.kind === 'color' && (
-                        <div className="flex items-center gap-1.5 ml-auto">
-                          <input
-                            type="color"
-                            value={resolveSwatchHex(variant.value, variant.hexColor)}
-                            onChange={(e) =>
-                              setVariants(
-                                variants.map((v, i) =>
-                                  i === idx ? { ...v, hexColor: e.target.value } : v
-                                )
-                              )
-                            }
-                            className="w-8 h-8 p-0.5 border border-gray-300 rounded-lg cursor-pointer bg-white shrink-0"
-                            title="Pick colour"
-                          />
-                          <Input
-                            type="text"
-                            placeholder="#000000"
-                            value={variant.hexColor || ''}
-                            onChange={(e) =>
-                              setVariants(
-                                variants.map((v, i) =>
-                                  i === idx ? { ...v, hexColor: e.target.value } : v
-                                )
-                              )
-                            }
-                            className="w-20 text-xs"
-                          />
-                        </div>
-                      )}
-                      {/* Per-size price — used by packaging designs in the builder */}
-                      {variant.kind === 'size' && (
-                        <div className="flex items-center gap-1 ml-auto">
-                          <span className="text-xs text-gray-400">₹</span>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="1"
-                            placeholder="Price"
-                            value={variant.price ?? ''}
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              setVariants(
-                                variants.map((v, i) =>
-                                  i === idx
-                                    ? { ...v, price: raw === '' ? undefined : Number(raw) }
-                                    : v
-                                )
-                              );
-                            }}
-                            className="w-20 text-xs"
-                            title="Price for this size"
-                          />
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            if (mode === 'edit' && variant.id) {
-                              // Delete from API if already saved
-                              const res = await fetch(
-                                `/api/admin/products/${initialData?.id}/variants?variantId=${variant.id}`,
-                                { method: 'DELETE' }
-                              );
-                              if (!res.ok) {
-                                const error = await res.json();
-                                throw new Error(error.error || 'Failed to delete variant');
-                              }
-                            }
-                            // Remove from local list
-                            setVariants(variants.filter((_, i) => i !== idx));
-                            toast.success('✅ Variant removed', 2000);
-                          } catch (err) {
-                            const errorMsg = err instanceof Error ? err.message : 'Failed to remove variant';
-                            toast.error(`❌ Error: ${errorMsg}`, 4000);
-                          }
-                        }}
-                        className="text-red-600 hover:text-red-700 p-1"
-                        title="Remove variant"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <ProductVariants
+              variants={variants}
+              setVariants={setVariants}
+              mode={mode}
+              productId={initialData?.id}
+              onImageUpload={handleVariantImageUpload}
+            />
           </section>
 
           <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">

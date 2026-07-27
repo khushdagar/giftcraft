@@ -259,7 +259,7 @@ export default function AdminOffersPage() {
             )}
             <hr className="my-6 border-gray-200" />
             <p className="text-xs text-gray-400">
-              You're receiving this because you opted in to offers from GiftCraft. Manage your email
+              You're receiving this because you opted in to offers from GIVOO. Manage your email
               preferences.
             </p>
           </div>

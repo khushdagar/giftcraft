@@ -3,7 +3,7 @@
 
 /**
  * Map a Shiprocket shipment status (e.g. "OUT FOR DELIVERY", "DELIVERED") to a
- * GiftCraft OrderStatus. Returns null for unknown/unmapped statuses.
+ * GIVOO OrderStatus. Returns null for unknown/unmapped statuses.
  * Shared by the webhook route and the manual "refresh tracking" action.
  */
 export function mapShiprocketStatus(raw: string): string | null {

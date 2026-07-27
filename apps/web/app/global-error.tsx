@@ -19,7 +19,7 @@ export default function GlobalError({
         <div className="min-h-screen bg-gray-50 py-12 px-4 flex items-center justify-center">
           <div className="max-w-md text-center">
             {/* Logo */}
-            <h1 className="text-4xl font-normal text-gray-900 mb-6">GiftCraft</h1>
+            <h1 className="text-4xl font-normal text-gray-900 mb-6">GIVOO</h1>
 
             {/* Error Icon */}
             <div className="text-6xl mb-6">⚠️</div>

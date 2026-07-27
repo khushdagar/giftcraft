@@ -12,7 +12,7 @@ export async function POST() {
     }
 
     await sendPushToUser(session.user.id, {
-      title: 'GiftCraft 🎁',
+      title: 'GIVOO 🎁',
       body: 'Push notifications are working. You are all set!',
       url: '/dashboard',
       tag: 'test',

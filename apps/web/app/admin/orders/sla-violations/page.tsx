@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 
 export const metadata = {
-  title: 'SLA Violations - GiftCraft Admin',
+  title: 'SLA Violations - GIVOO Admin',
   description: 'Orders with breached SLAs',
 };
 

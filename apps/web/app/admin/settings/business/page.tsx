@@ -27,7 +27,7 @@ export default function BusinessSettingsPage() {
   const [success, setSuccess] = useState(false);
 
   const [settings, setSettings] = useState<BusinessSettings>({
-    companyName: process.env.NEXT_PUBLIC_APP_NAME || 'GiftCraft',
+    companyName: process.env.NEXT_PUBLIC_APP_NAME || 'GIVOO',
     gstin: process.env.NEXT_PUBLIC_SELLER_GSTIN || '',
     pan: '',
     address: '',

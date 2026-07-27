@@ -3,7 +3,7 @@ import { InfoPage, InfoSection, InfoQA } from '@/components/layout/info-page';
 
 export const metadata = {
   title: 'FAQ',
-  description: 'Answers to common questions about ordering branded corporate gifts on GiftCraft.',
+  description: 'Answers to common questions about ordering branded corporate gifts on GIVOO.',
 };
 
 export default function FaqPage() {

@@ -1,5 +1,5 @@
 /**
- * GiftCraft seed script.
+ * GIVOO seed script.
  *
  * Seeds:
  *   · 6 ShippingZones covering all Indian state codes
@@ -23,7 +23,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Seeding GiftCraft…");
+  console.log("🌱 Seeding GIVOO…");
 
   // ── Platform settings ─────────────────────────────────────
   await upsertSetting("razorpay.fee_percentage", 2.0);
@@ -168,7 +168,7 @@ async function main() {
 
   // ── Sample testimonials ──────────────────────────────────
   const testimonials = [
-    { quote: "GiftCraft made our Diwali gifting effortless. 200 branded hampers in 9 days.", authorName: "Priya Sharma", authorRole: "HR Lead", companyName: "TechCorp" },
+    { quote: "GIVOO made our Diwali gifting effortless. 200 branded hampers in 9 days.", authorName: "Priya Sharma", authorRole: "HR Lead", companyName: "TechCorp" },
     { quote: "The mockup approval flow saved us from three disasters.", authorName: "Rohan Mehta", authorRole: "Ops Manager", companyName: "FlipStart" },
     { quote: "Finally a platform that treats corporate gifting like a real product.", authorName: "Anjali Kapoor", authorRole: "Marketing", companyName: "Nykaa" },
     { quote: "Transparent pricing is rare in this space.", authorName: "Vikram Singh", authorRole: "Admin", companyName: "Razorpay" },

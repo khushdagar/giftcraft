@@ -68,7 +68,7 @@ const DUMMY_PRODUCTS: Record<string, ProductData[]> = {
       name: 'Premium Corporate Mug - White',
       slug: 'premium-corporate-mug-white',
       sku: 'MUG-001-WHITE',
-      brand: 'GiftCraft',
+      brand: 'GIVOO',
       descriptionShort: 'Perfect for corporate gifting',
       descriptionLong: 'High-quality ceramic mug with your company logo. Durable and dishwasher safe.',
       material: 'Ceramic',
@@ -99,7 +99,7 @@ const DUMMY_PRODUCTS: Record<string, ProductData[]> = {
       name: 'Custom Printed T-Shirt',
       slug: 'custom-printed-tshirt',
       sku: 'TSH-001-CUSTOM',
-      brand: 'GiftCraft',
+      brand: 'GIVOO',
       descriptionShort: '100% cotton comfort wear',
       descriptionLong: 'Premium 100% cotton t-shirt with full customization. Perfect for team uniforms or branded merchandise.',
       material: 'Cotton',
@@ -130,7 +130,7 @@ const DUMMY_PRODUCTS: Record<string, ProductData[]> = {
       name: 'Stainless Steel Water Bottle',
       slug: 'stainless-steel-water-bottle',
       sku: 'BOT-001-STEEL',
-      brand: 'GiftCraft',
+      brand: 'GIVOO',
       descriptionShort: 'Keep drinks hot or cold for hours',
       descriptionLong: 'Double-wall insulated stainless steel bottle. Keeps beverages at ideal temperature for any occasion.',
       material: 'Stainless Steel',
@@ -163,7 +163,7 @@ const DUMMY_PRODUCTS: Record<string, ProductData[]> = {
       name: 'Premium Polo Shirt',
       slug: 'premium-polo-shirt',
       sku: 'POL-001-PREMIUM',
-      brand: 'GiftCraft',
+      brand: 'GIVOO',
       descriptionShort: 'Professional polo for corporate events',
       descriptionLong: 'High-quality polyester-cotton blend polo shirt. Ideal for corporate gifting and team events.',
       material: 'Polyester-Cotton Blend',
@@ -194,7 +194,7 @@ const DUMMY_PRODUCTS: Record<string, ProductData[]> = {
       name: 'Baseball Cap with Embroidery',
       slug: 'baseball-cap-embroidery',
       sku: 'CAP-001-EMB',
-      brand: 'GiftCraft',
+      brand: 'GIVOO',
       descriptionShort: 'Stylish and adjustable cap',
       descriptionLong: 'Adjustable baseball cap with embroidered logo. Made from durable cotton twill for lasting quality.',
       material: 'Cotton Twill',
@@ -227,7 +227,7 @@ const DUMMY_PRODUCTS: Record<string, ProductData[]> = {
       name: 'Premium Branded Pen Set',
       slug: 'premium-branded-pen-set',
       sku: 'PEN-001-SET',
-      brand: 'GiftCraft',
+      brand: 'GIVOO',
       descriptionShort: 'Luxury pen set for executives',
       descriptionLong: 'High-end pen set with your company branding. Perfect for executive gifts and corporate events.',
       material: 'Metal & Plastic',
@@ -258,7 +258,7 @@ const DUMMY_PRODUCTS: Record<string, ProductData[]> = {
       name: 'Corporate Gift Box Deluxe',
       slug: 'corporate-gift-box-deluxe',
       sku: 'BOX-001-DELUXE',
-      brand: 'GiftCraft',
+      brand: 'GIVOO',
       descriptionShort: 'Premium packaging for corporate gifts',
       descriptionLong: 'Luxury gift box with custom branding. Includes tissue paper and personalization options for a premium unboxing experience.',
       material: 'Cardboard & Velvet',
@@ -395,7 +395,7 @@ async function addProduct(product: ProductData, categoryName: string) {
 }
 
 async function main() {
-  console.log('🌱 GiftCraft Dummy Product Seeder\n');
+  console.log('🌱 GIVOO Dummy Product Seeder\n');
   console.log('📌 Note: Make sure the dev server is running on http://localhost:3000\n');
 
   // Get categories

@@ -21,7 +21,7 @@ export function HomeNav() {
   return (
     <nav className="sticky top-0 z-50 h-14 flex items-center justify-between px-4 md:px-6 bg-white/72 backdrop-blur-xl border-b border-[#D2D2D7]/30">
       <Link href="/" className="text-xl text-[#1A6B4F] font-medium font-serif italic">
-        GiftCraft
+        GIVOO
       </Link>
 
       {/* Desktop Links */}

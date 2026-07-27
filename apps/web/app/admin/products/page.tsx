@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit2 } from 'lucide-react';
 import { ProductDataTable } from '@/components/admin/products/product-data-table';
+import { ProductsSearch } from './products-search';
 
 export const dynamic = 'force-dynamic';
 
@@ -287,6 +288,8 @@ export default async function AdminProductsPage({
           </Button>
         </div>
       </div>
+
+      <ProductsSearch />
 
       <ViewTabs view="products" />
 

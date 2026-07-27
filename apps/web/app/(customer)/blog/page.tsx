@@ -7,7 +7,7 @@ import { Clock } from 'lucide-react';
 export const metadata = {
   title: 'Blog',
   description:
-    'Trends, tips, and stories on the art of thoughtful corporate gifting — from the GiftCraft team.',
+    'Trends, tips, and stories on the art of thoughtful corporate gifting — from the GIVOO team.',
 };
 
 // Short revalidate so a scheduled post appears without a redeploy.
@@ -48,7 +48,7 @@ export default async function BlogPage({ searchParams }: PageProps) {
         {/* Header */}
         <div className="mb-10 text-center">
           <p className="overline text-ink-3">Insights</p>
-          <h1 className="mt-2 text-4xl font-black tracking-tight md:text-5xl">The GiftCraft Blog</h1>
+          <h1 className="mt-2 text-4xl font-black tracking-tight md:text-5xl">The GIVOO Blog</h1>
           <p className="mx-auto mt-4 max-w-xl text-lg text-ink-2">
             Trends, tips, and stories on the art of thoughtful corporate gifting.
           </p>

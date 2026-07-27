@@ -90,8 +90,8 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     image: image ? [image] : undefined,
     datePublished: post.publishedAt?.toISOString(),
     dateModified: post.updatedAt.toISOString(),
-    author: { '@type': 'Person', name: post.authorName || 'GiftCraft' },
-    publisher: { '@type': 'Organization', name: 'GiftCraft', url: SITE },
+    author: { '@type': 'Person', name: post.authorName || 'GIVOO' },
+    publisher: { '@type': 'Organization', name: 'GIVOO', url: SITE },
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE}/blog/${post.slug}` },
     keywords: post.tags.join(', ') || undefined,
   };

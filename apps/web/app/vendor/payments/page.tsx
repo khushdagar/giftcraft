@@ -5,7 +5,7 @@ import { formatRupees } from '@/lib/utils';
 import { DollarSign, CheckCircle } from 'lucide-react';
 
 export const metadata = {
-  title: 'Payments - GiftCraft Vendor',
+  title: 'Payments - GIVOO Vendor',
   description: 'View payment history',
 };
 

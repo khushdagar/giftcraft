@@ -23,7 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Dark sidebar */}
       <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-ink/10 bg-dark text-inv md:flex">
         <Link href="/" className="px-5 py-4 font-display text-base font-normal tracking-tight text-inv">
-          GiftCraft <span className="text-xs font-normal text-inv/40">admin</span>
+          GIVOO <span className="text-xs font-normal text-inv/40">admin</span>
         </Link>
 
         <AdminNav />

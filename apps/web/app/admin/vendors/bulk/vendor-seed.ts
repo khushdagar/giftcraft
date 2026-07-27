@@ -1,4 +1,4 @@
-// Vendors extracted from the GiftCraft Vendor Master PDF (Vendors tab, V001–V043).
+// Vendors extracted from the GIVOO Vendor Master PDF (Vendors tab, V001–V043).
 // V001–V006: onboarded Delhi packaging suppliers (with contacts).
 // V007–V043: suggested brand / manufacturer / service suppliers — status "To Approach".
 

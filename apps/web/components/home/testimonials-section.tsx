@@ -5,7 +5,7 @@ import Image from 'next/image';
 
 const TESTIMONIALS = [
   {
-    text: 'GiftCraft transformed our employee gifting process. 200 customized hampers delivered perfectly.',
+    text: 'GIVOO transformed our employee gifting process. 200 customized hampers delivered perfectly.',
     author: 'Priya Sharma',
     role: 'HR Lead, TechCorp',
     image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',

@@ -62,7 +62,7 @@ export function RazorpayButton({
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
         amount: Math.round(amount * 100), // Convert to paise
         currency: 'INR',
-        name: 'GiftCraft',
+        name: 'GIVOO',
         description: `Gift Pack Order - ${companyName}`,
         prefill: {
           name: companyName,

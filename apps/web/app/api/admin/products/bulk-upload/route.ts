@@ -58,6 +58,8 @@ const ALIASES: Record<string, string> = {
   'long description': 'descriptionLong', descriptionlong: 'descriptionLong',
   slug: 'slug',
   'image urls': 'imageUrls', imageurls: 'imageUrls', images: 'imageUrls', 'image url': 'imageUrls',
+  'image folder': 'imageUrls', imagefolder: 'imageUrls', 'image links': 'imageUrls', 'image link': 'imageUrls',
+  'product images': 'imageUrls', 'product image': 'imageUrls', 'image': 'imageUrls', photo: 'imageUrls', photos: 'imageUrls',
 };
 
 const RANGE_TO_TIER: Record<string, number> = {

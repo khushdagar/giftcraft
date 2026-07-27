@@ -109,7 +109,7 @@ export async function Footer() {
       <div className="container-gc-w">
         <div className="mb-10 grid grid-cols-2 gap-8 lg:grid-cols-[1.8fr_repeat(4,1fr)]">
           <div className="col-span-2 lg:col-span-1">
-            <p className="mb-2.5 font-display text-[22px] italic font-medium text-em-400">GiftCraft</p>
+            <p className="mb-2.5 font-display text-[22px] italic font-medium text-em-400">GIVOO</p>
             <p className="max-w-[260px] text-[13px] leading-relaxed text-white">
               India&apos;s first self-serve bulk gifting platform. Browse, build,
               and order branded corporate gifts with transparent pricing.
@@ -130,7 +130,7 @@ export async function Footer() {
         </div>
 
         <div className="flex flex-col justify-between gap-1.5 border-t border-white/5 pt-5 text-[11px] text-white sm:flex-row">
-          <span>© {new Date().getFullYear()} GiftCraft by Arts Shala. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} GIVOO by Arts Shala. All rights reserved.</span>
           <span>GSTIN {process.env.SELLER_GSTIN ?? "07XXXXXXXXX1Z5"} · Delhi</span>
         </div>
       </div>

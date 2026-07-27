@@ -1,4 +1,4 @@
-/* GiftCraft Web Push service worker.
+/* GIVOO Web Push service worker.
  * Receives push messages and shows a notification; focuses/opens the target
  * URL on click. Payload shape (sent from lib/push.ts):
  *   { title, body, url?, tag? }
@@ -9,10 +9,10 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (e) {
-    data = { title: 'GiftCraft', body: event.data ? event.data.text() : '' };
+    data = { title: 'GIVOO', body: event.data ? event.data.text() : '' };
   }
 
-  const title = data.title || 'GiftCraft';
+  const title = data.title || 'GIVOO';
   const options = {
     body: data.body || '',
     tag: data.tag || undefined,

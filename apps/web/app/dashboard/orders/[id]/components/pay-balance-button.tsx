@@ -62,7 +62,7 @@ export function PayBalanceButton({
         amount: rzp.amount,
         currency: rzp.currency,
         order_id: rzp.razorpayOrderId,
-        name: 'GiftCraft',
+        name: 'GIVOO',
         description: 'Balance payment',
         theme: { color: '#1A6B4F' },
         handler: async (response: any) => {

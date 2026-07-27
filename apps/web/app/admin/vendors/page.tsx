@@ -13,7 +13,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export const metadata = {
-  title: 'Vendors - GiftCraft Admin',
+  title: 'Vendors - GIVOO Admin',
   description: 'Manage vendor accounts',
 };
 

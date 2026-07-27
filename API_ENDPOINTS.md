@@ -1,4 +1,4 @@
-# GiftCraft API Endpoints Audit
+# GIVOO API Endpoints Audit
 
 **Last Updated:** 2026-07-20  
 **Total Endpoints:** 114+ route files (this doc tracks the primary REST surface; some newer routes — blog, gift-packs, notifications, addresses, etc. — are not yet tabled below)

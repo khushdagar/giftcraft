@@ -3,7 +3,7 @@ import { InfoPage, InfoSection } from '@/components/layout/info-page';
 
 export const metadata = {
   title: 'GST Information',
-  description: 'How GST is calculated and invoiced on GiftCraft orders — HSN codes, CGST/SGST, IGST.',
+  description: 'How GST is calculated and invoiced on GIVOO orders — HSN codes, CGST/SGST, IGST.',
 };
 
 const SELLER_GSTIN = process.env.SELLER_GSTIN ?? '07XXXXXXXXX1Z5';
@@ -13,7 +13,7 @@ export default function GstPage() {
     <InfoPage
       eyebrow="Legal"
       title="GST Information"
-      intro="Every GiftCraft order is invoiced under Indian GST law. Here is exactly how the tax on your order is worked out."
+      intro="Every GIVOO order is invoiced under Indian GST law. Here is exactly how the tax on your order is worked out."
     >
       <InfoSection title="Seller details">
         <p>

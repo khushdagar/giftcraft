@@ -155,7 +155,7 @@ export function SpecSheetPDF({ order, clientName }: SpecSheetPDFProps) {
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>GiftCraft</Text>
+          <Text style={styles.logo}>GIVOO</Text>
           <View style={styles.headerMeta}>
             <Text>PRODUCTION SPECIFICATION SHEET</Text>
             <Text>Order: {order.orderNumber}</Text>
@@ -259,7 +259,7 @@ export function SpecSheetPDF({ order, clientName }: SpecSheetPDFProps) {
             </View>
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Labeling</Text>
-              <Text style={styles.specValue}>GiftCraft invoice label on outer carton</Text>
+              <Text style={styles.specValue}>GIVOO invoice label on outer carton</Text>
             </View>
           </View>
         </View>
@@ -289,11 +289,11 @@ export function SpecSheetPDF({ order, clientName }: SpecSheetPDFProps) {
           <View style={styles.specGrid}>
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Shipping Method</Text>
-              <Text style={styles.specValue}>Pickup from GiftCraft / Scheduled delivery</Text>
+              <Text style={styles.specValue}>Pickup from GIVOO / Scheduled delivery</Text>
             </View>
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Destination</Text>
-              <Text style={styles.specValue}>GiftCraft Warehouse, Delhi</Text>
+              <Text style={styles.specValue}>GIVOO Warehouse, Delhi</Text>
             </View>
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Required By</Text>

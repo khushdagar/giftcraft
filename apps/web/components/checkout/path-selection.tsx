@@ -24,7 +24,7 @@ export function PathSelection({
       </h3>
 
       <p className="text-sm text-[#6B6B63] mb-4">
-        At GiftCraft, we create <strong>custom mockups</strong> of your branded products before
+        At GIVOO, we create <strong>custom mockups</strong> of your branded products before
         production. Choose how you'd like to move forward:
       </p>
 

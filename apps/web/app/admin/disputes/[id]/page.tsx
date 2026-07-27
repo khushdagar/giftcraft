@@ -10,7 +10,7 @@ import { DisputeStatusUpdater } from './components/dispute-status-updater';
 import { markAdminNotificationsRead } from '@/lib/admin-notifications';
 
 export const metadata = {
-  title: 'Dispute Details - GiftCraft Admin',
+  title: 'Dispute Details - GIVOO Admin',
   description: 'View and manage dispute ticket',
 };
 

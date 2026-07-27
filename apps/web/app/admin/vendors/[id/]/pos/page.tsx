@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
 export const metadata = {
-  title: 'Vendor POs - GiftCraft Admin',
+  title: 'Vendor POs - GIVOO Admin',
   description: 'Manage vendor purchase orders',
 };
 

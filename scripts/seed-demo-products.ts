@@ -26,7 +26,7 @@ if (fs.existsSync(envFile)) {
 const USD_TO_INR = 83 // Current exchange rate
 
 async function seedDemoProducts() {
-  console.log('🌱 Seeding demo products for GiftCraft...\n')
+  console.log('🌱 Seeding demo products for GIVOO...\n')
 
   try {
     // ═══════════════════════════════════════════════════════════

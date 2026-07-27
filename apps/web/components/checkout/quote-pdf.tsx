@@ -130,7 +130,7 @@ export function QuotePDF({ quoteId, expiresAt, payload, shareToken }: QuotePDFPr
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.logo}>GiftCraft</Text>
+          <Text style={styles.logo}>GIVOO</Text>
           <View style={styles.headerMeta}>
             <View>
               <Text>Quote #{quoteId.slice(0, 8).toUpperCase()}</Text>
@@ -247,7 +247,7 @@ export function QuotePDF({ quoteId, expiresAt, payload, shareToken }: QuotePDFPr
         <View style={styles.footerSection}>
           <Text style={styles.footerText}>Share this quote: {shareUrl}</Text>
           <Text style={styles.footerText}>Questions? Contact us at hello@giftcraft.in</Text>
-          <Text style={styles.footerText}>© GiftCraft 2026. Powered by Arts Shala.</Text>
+          <Text style={styles.footerText}>© GIVOO 2026. Powered by Arts Shala.</Text>
         </View>
       </Page>
     </Document>
