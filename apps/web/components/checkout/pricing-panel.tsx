@@ -223,7 +223,7 @@ export function PricingPanel({
         {/* CTA Button */}
         <button
           onClick={onContinue}
-          className={`w-full h-13 mt-4 rounded-full font-semibold flex items-center justify-center gap-2 transition-all ${
+          className={`w-full h-[38px] mt-4 rounded-full font-semibold flex items-center justify-center gap-2 transition-all ${
             selectedPath === 'mockup'
               ? 'bg-[#1A6B4F] text-white hover:bg-[#145A42] animate-pulse'
               : 'bg-[#C4963C] text-white hover:bg-[#886528]'

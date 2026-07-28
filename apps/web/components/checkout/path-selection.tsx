@@ -143,7 +143,7 @@ export function PathSelection({
           button label + legal note match the panel exactly. */}
       <button
         onClick={onContinue}
-        className={`w-full h-13 rounded-full font-semibold flex items-center justify-center gap-2 transition-all ${
+        className={`w-full h-[38px] rounded-full font-semibold flex items-center justify-center gap-2 transition-all ${
           selectedPath === 'mockup'
             ? 'bg-[#1A6B4F] text-white hover:bg-[#145A42]'
             : 'bg-[#C4963C] text-white hover:bg-[#886528]'

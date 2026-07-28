@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LayoutDashboard, Package, FileText, FolderOpen, Building2, Settings, LogOut, Bell, MapPin } from "lucide-react";
+import { LayoutDashboard, Package, FileText, FolderOpen, User, Settings, LogOut, Bell, MapPin } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DashboardMobileNav } from "@/components/dashboard/dashboard-mobile-nav";
@@ -18,7 +18,7 @@ const NAV = [
   // { href: "/dashboard/quotes", icon: FileText, label: "Quotes" },
   { href: "/dashboard/assets", icon: FolderOpen, label: "Brand Assets" },
   { href: "/dashboard/addresses", icon: MapPin, label: "Saved Addresses" },
-  { href: "/dashboard/company", icon: Building2, label: "Company" },
+  { href: "/dashboard/settings/profile", icon: User, label: "Profile" },
   { href: "/dashboard/settings", icon: Settings, label: "Settings" },
   // { href: "/dashboard/settings/notifications", icon: Bell, label: "Notifications" },
 ];
