@@ -115,7 +115,7 @@ export function RelatedProducts({ products }: { products: SerializedProduct[] })
                   {/* Info */}
                   <div className="px-3 pb-3">
                     {product.brand && <p className="text-[11px] text-ink-3">{product.brand}</p>}
-                    <h3 className="mt-1 line-clamp-2 min-h-[32px] text-sm font-semibold leading-tight">
+                    <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-tight">
                       {product.name}
                     </h3>
                     <p className="mt-2 font-black tabnum text-base">From {formatRupees(price)}</p>

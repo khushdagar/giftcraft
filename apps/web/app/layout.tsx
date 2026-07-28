@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
+import { DM_Sans, Playfair_Display } from "next/font/google";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { Providers } from "@/components/providers";
 import { auth } from "@/auth";
 import "./globals.css";
 
-const roboto = Roboto({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-roboto",
-  weight: ["300", "400", "500", "700", "900"],
-  display: "optional",
+  variable: "--font-dm-sans",
+  display: "swap",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -25,7 +30,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   return (
-    <html lang="en" className={`${roboto.variable}`}>
+    <html lang="en" className={`${dmSans.variable} ${playfair.variable}`}>
       <body>
         <Providers>
           <SessionProvider session={session}>{children}</SessionProvider>
