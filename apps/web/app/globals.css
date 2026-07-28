@@ -1,20 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=optional');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   * {
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
   }
 
   body, p, span, a, button, div, section, article, nav, li, ul, ol {
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6, .font-serif {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: var(--font-playfair), Georgia, serif;
   }
 
   /* Nested spans/em inside headings must inherit Playfair, not the
