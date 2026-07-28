@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import {
-  LayoutDashboard, Package, FileText, FolderOpen, Building2,
+  LayoutDashboard, Package, FileText, FolderOpen, User,
   Settings, LogOut, Bell, Menu, X, MapPin,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -16,7 +16,7 @@ const NAV = [
   { href: '/dashboard/quotes', icon: FileText, label: 'Quotes' },
   { href: '/dashboard/assets', icon: FolderOpen, label: 'Brand Assets' },
   { href: '/dashboard/addresses', icon: MapPin, label: 'Saved Addresses' },
-  { href: '/dashboard/company', icon: Building2, label: 'Company' },
+  { href: '/dashboard/settings/profile', icon: User, label: 'Profile' },
   { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
   { href: '/dashboard/settings/notifications', icon: Bell, label: 'Notifications' },
 ];

@@ -2,7 +2,7 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Bell, Lock, User as UserIcon } from 'lucide-react';
+import { Bell, Lock } from 'lucide-react';
 
 // Per-user data — must render per request, never cache across users.
 export const dynamic = 'force-dynamic';
@@ -26,12 +26,6 @@ export default async function SettingsPage() {
       title: 'Privacy & Consent',
       description: 'Control your data sharing and consent preferences',
       href: '/dashboard/settings/privacy',
-    },
-    {
-      icon: UserIcon,
-      title: 'Profile',
-      description: 'Update your personal information and preferences',
-      href: '/dashboard/settings/profile',
     },
   ];
 
