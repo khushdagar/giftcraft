@@ -242,6 +242,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
       <div className="container-gc-w">
         <ProductTabs
           description={toRichHtml(product.descriptionLong)}
+          keyFeatures={toRichHtml(product.keyFeatures)}
           specifications={toRichHtml(product.specifications)}
           designArtwork={toRichHtml(product.designArtwork)}
           shippingDelivery={toRichHtml(product.shippingDelivery)}

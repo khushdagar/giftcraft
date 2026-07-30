@@ -140,6 +140,13 @@ const config: Config = {
           from: { opacity: "0", transform: "scale(0.92)" },
           to: { opacity: "1", transform: "scale(1)" },
         },
+        // Dialog open animation. Must carry the translate(-50%,-50%) centering
+        // in every frame — a plain scale() keyframe would overwrite the
+        // transform-based centering and shove the dialog off-center.
+        dialogIn: {
+          from: { opacity: "0", transform: "translate(-50%, -48%) scale(0.96)" },
+          to: { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
+        },
         floatB: {
           "0%,100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-8px)" },
@@ -161,6 +168,7 @@ const config: Config = {
         "fade-up": "fadeUp 0.8s cubic-bezier(0.16,1,0.3,1) both",
         "fade-in": "fadeIn 0.5s cubic-bezier(0.16,1,0.3,1) both",
         "scale-in": "scaleIn 0.4s cubic-bezier(0.16,1,0.3,1) both",
+        "dialog-in": "dialogIn 0.4s cubic-bezier(0.16,1,0.3,1) both",
         "float-b": "floatB 4s ease-in-out infinite",
         marquee: "marquee 30s linear infinite",
         "accordion-down": "accordion-down 0.2s ease-out",

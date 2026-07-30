@@ -47,12 +47,15 @@ export interface BuilderState {
     price: number;
     // Auto-picked box size (Small/Medium/Large) for the pack, if any.
     size?: string;
+    // Design image, so summaries can show the actual box (falls back to emoji).
+    imageUrl?: string | null;
   } | null;
 
   addons: Array<{
     id: string;
     name: string;
     price: number;
+    imageUrl?: string | null;
   }>;
 
   // Uploaded logo, persisted to Digital Ocean Spaces + the company brand asset
@@ -141,9 +144,9 @@ export interface BuilderState {
   updateProductQuantity: (productId: string, quantity: number) => void;
   reorderProducts: (productIds: string[]) => void;
 
-  setPackaging: (packaging: { id: string; name: string; price: number; size?: string } | null) => void;
+  setPackaging: (packaging: { id: string; name: string; price: number; size?: string; imageUrl?: string | null } | null) => void;
 
-  addAddon: (addon: { id: string; name: string; price: number }) => void;
+  addAddon: (addon: { id: string; name: string; price: number; imageUrl?: string | null }) => void;
   removeAddon: (addonId: string) => void;
 
   setLogo: (logo: { url: string; name: string } | null) => void;

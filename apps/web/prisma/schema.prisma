@@ -286,6 +286,10 @@ model Product {
   sku               String            @unique
   descriptionShort  String?
   descriptionLong   String?           @db.Text
+  // Rich text (like the other detail tabs). Rendered as its own tab on the
+  // product page, and split back into bullet lines for the Proposal Deck PDF —
+  // so author it as a bullet list.
+  keyFeatures       String?           @db.Text
   // Product-detail tab content (shown on the public product page tabs)
   specifications    String?           @db.Text
   designArtwork     String?           @db.Text
@@ -700,11 +704,48 @@ model Quote {
   payload   Json // snapshot of builder state + pricing
   expiresAt DateTime
 
+  proposal Proposal?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([companyId])
   @@index([shareToken])
+}
+
+// An admin-created quote sent by email to a lead (from enquiries or GoHighLevel).
+// The underlying Quote holds the payload/pricing; this records who it was sent to.
+model Proposal {
+  id             String @id @default(cuid())
+  quoteId        String @unique
+  quote          Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  recipientEmail String
+  recipientName  String?
+  companyName    String?
+  message        String? @db.Text
+  createdById    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Every proposal-deck download from checkout. Logged-in users are captured
+// automatically from their account; anonymous visitors fill a lead-capture
+// dialog (name/email/phone/company) before the download starts.
+model ProposalDownload {
+  id         String  @id @default(cuid())
+  quoteToken String // the quote token/id whose deck was downloaded
+  userId     String? // set when the downloader was logged in
+  name       String
+  email      String
+  phone      String?
+  company    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([quoteToken])
 }
 
 model PriceAuditLog {

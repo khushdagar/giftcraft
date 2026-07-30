@@ -8,6 +8,7 @@ import { ChevronLeft, FileDown, Link as LinkIcon, Check, X } from 'lucide-react'
 import { isImageUrl } from '@/lib/mockup-url';
 import { invoiceLabel } from '@/lib/invoice-status';
 import { PayBalanceButton } from './components/pay-balance-button';
+import { OrderAutoRefresh } from '@/components/orders/order-auto-refresh';
 
 function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
@@ -160,6 +161,7 @@ export default async function OrderDetailPage({
 
   return (
     <div className="max-w-4xl space-y-6">
+      <OrderAutoRefresh status={order.status} />
       {/* Back Button */}
       <Link href="/dashboard/orders" className="inline-flex items-center gap-2 text-sm font-normal text-em hover:underline">
         <ChevronLeft className="w-4 h-4" />

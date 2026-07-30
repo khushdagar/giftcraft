@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { CredentialsLoginForm } from "@/components/auth/credentials-login-form";
+import { BrandLogo } from "@/components/layout/brand-logo";
 
 export const metadata = { title: "Sign in" };
 
@@ -43,9 +44,9 @@ export default async function LoginPage({
 
           <Link
             href="/"
-            className="relative z-10 font-display text-2xl italic text-em"
+            className="relative z-10 inline-block"
           >
-            GIVOO
+            <BrandLogo className="h-11 w-auto rounded-md" />
           </Link>
 
           <div className="relative z-10 space-y-5">
@@ -71,9 +72,9 @@ export default async function LoginPage({
           <div className="w-full max-w-md">
             <Link
               href="/"
-              className="mb-8 inline-block font-display text-2xl italic text-em lg:hidden"
+              className="mb-8 inline-block lg:hidden"
             >
-              GIVOO
+              <BrandLogo className="h-10 w-auto" />
             </Link>
 
             <div className="rounded-md border border-bdr bg-white p-8 shadow-card sm:p-10">

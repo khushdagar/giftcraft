@@ -28,6 +28,7 @@ const ProductSchema = z.object({
   sku: z.string().min(1, 'SKU required'),
   descriptionShort: z.string().nullable().optional(),
   descriptionLong: z.string().nullable().optional(),
+  keyFeatures: z.string().nullable().optional(),
   specifications: z.string().nullable().optional(),
   designArtwork: z.string().nullable().optional(),
   shippingDelivery: z.string().nullable().optional(),
@@ -105,6 +106,7 @@ const COLLECTION_TAG_OPTIONS = [
 // The public product page's detail tabs. Edited one-at-a-time in the admin via a
 // dropdown so the form stays compact. Field names match the Prisma columns.
 const DETAIL_TABS = [
+  { name: 'keyFeatures', label: 'Key Features', placeholder: 'Bullet list of selling points — these become the bullets on this product’s Proposal Deck slide…' },
   { name: 'specifications', label: 'Specifications', placeholder: 'e.g. Material, capacity, finish, certifications…' },
   { name: 'designArtwork', label: 'Design & Artwork', placeholder: 'Branding methods, print area, artwork file requirements…' },
   { name: 'shippingDelivery', label: 'Shipping & Delivery', placeholder: 'Lead times, dispatch info, delivery coverage…' },
@@ -920,6 +922,14 @@ export function ProductForm({
                   )}
                 />
               ))}
+
+              {detailTab === 'keyFeatures' && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Author this as a bullet list. Each bullet also becomes a line on this
+                  product&rsquo;s slide in the Proposal Deck PDF (max 8 shown), so keep them
+                  short.
+                </p>
+              )}
             </div>
 
             {isPack && (

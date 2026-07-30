@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 interface ProductTabsProps {
   description?: string;
+  keyFeatures?: string;
   specifications?: string;
   designArtwork?: string;
   shippingDelivery?: string;
@@ -13,6 +14,7 @@ interface ProductTabsProps {
 
 const TABS = [
   { id: 'description', label: 'Product Description' },
+  { id: 'features', label: 'Key Features' },
   { id: 'specifications', label: 'Specifications' },
   { id: 'design', label: 'Design & Artwork' },
   { id: 'shipping', label: 'Shipping & Delivery' },
@@ -22,6 +24,7 @@ const TABS = [
 
 export function ProductTabs({
   description = '',
+  keyFeatures = '',
   specifications = '',
   designArtwork = '',
   shippingDelivery = '',
@@ -32,6 +35,7 @@ export function ProductTabs({
 
   const content = {
     description,
+    features: keyFeatures,
     specifications,
     design: designArtwork,
     shipping: shippingDelivery,
@@ -39,11 +43,17 @@ export function ProductTabs({
     packaging: packagingAddons,
   };
 
+  // Key Features is newer than the other tabs, so it's hidden rather than shown
+  // empty on the products that predate it.
+  const tabs = keyFeatures.trim()
+    ? TABS
+    : TABS.filter((t) => t.id !== 'features');
+
   return (
     <div className="mt-6 border-t border-bdr pt-8 pb-16">
       {/* Tab navigation */}
       <div className="flex gap-6 border-b border-bdr overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}

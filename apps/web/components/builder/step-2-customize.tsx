@@ -49,6 +49,10 @@ interface StepProps {
 /** Every section on this step is a clean white card. */
 const SECTION = 'rounded-2xl bg-white p-5 md:p-6 shadow-sm';
 
+// Sentinel id for the zero-cost "No Box" packaging choice. Not a real
+// packaging product — the pack simply ships without a gift box.
+const NO_BOX_ID = 'no-box';
+
 export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
   const {
     logo,
@@ -150,8 +154,12 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
       // Dropping the card add-on drops the message that would have gone on it.
       if (cardAddon && addon.id === cardAddon.id) setCardMessage('');
     } else {
-      // Only the fields the store (and pricing) care about — not the imagery.
-      addAddon({ id: addon.id, name: addon.name, price: addon.price });
+      addAddon({
+        id: addon.id,
+        name: addon.name,
+        price: addon.price,
+        imageUrl: addon.imageUrl ?? null,
+      });
     }
   };
 
@@ -162,6 +170,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
   const selectedDesign = packaging
     ? packagingOptions.find((d) => packaging.id.startsWith(d.id + "-"))
     : undefined;
+  const noBoxSelected = packaging?.id === NO_BOX_ID;
 
   // Keep the selected packaging in sync with the auto size: if the pack grows or
   // shrinks into a new size band, re-price the chosen design to the new size.
@@ -169,6 +178,8 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
   // customer picks one of the current designs.
   useEffect(() => {
     if (!packaging) return;
+    // "No Box" is a fixed zero-cost choice — it has no design or size to sync.
+    if (packaging.id === NO_BOX_ID) return;
     const design = packagingOptions.find((d) => packaging.id.startsWith(d.id + "-"));
     if (!design) {
       setPackaging(null);
@@ -176,7 +187,13 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
     }
     const id = packagingId(design.id, autoSize);
     if (packaging.id !== id) {
-      setPackaging({ id, name: design.name, price: priceForSize(design, autoSize), size: autoSize });
+      setPackaging({
+        id,
+        name: design.name,
+        price: priceForSize(design, autoSize),
+        size: autoSize,
+        imageUrl: design.imageUrl ?? null,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSize, packaging?.id, packagingOptions]);
@@ -341,12 +358,14 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
             {/* {!packaging && (
               <p className="text-xs font-semibold text-red-600">Required to continue</p>
             )} */}
-            <span
-              title={`Box size ${autoSize}, set automatically from your pack`}
-              className="flex-shrink-0 rounded-full bg-sky-600 text-white text-[10px] font-black px-2.5 py-1 tracking-wide"
-            >
-              {autoSize.toUpperCase()}
-            </span>
+            {!noBoxSelected && (
+              <span
+                title={`Box size ${autoSize}, set automatically from your pack`}
+                className="flex-shrink-0 rounded-full bg-sky-600 text-white text-[10px] font-black px-2.5 py-1 tracking-wide"
+              >
+                {autoSize.toUpperCase()}
+              </span>
+            )}
           </div>
         </div>
 
@@ -355,6 +374,53 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
         ) : (
           <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
             <div className="flex w-max gap-3">
+              {/* "No Box" — explicit zero-cost choice for buyers who don't
+                  want a gift box. Counts as a selection so the step validates. */}
+              <motion.button
+                onClick={() =>
+                  setPackaging({
+                    id: NO_BOX_ID,
+                    name: 'No Box',
+                    price: 0,
+                    // No size — there's no box, so summaries/PDFs skip the size line.
+                    imageUrl: null,
+                  })
+                }
+                className={`group flex-shrink-0 w-40 rounded-md border-2 overflow-hidden transition-all hover:shadow-lg ${
+                  noBoxSelected
+                    ? 'border-em bg-em-50 shadow-md'
+                    : 'border-bdr bg-white hover:border-em-300'
+                }`}
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="relative aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+                  <div className="text-center">
+                    <div className="text-5xl mb-2">🚫</div>
+                    <p className="text-xs text-gray-500 font-semibold">No Box</p>
+                  </div>
+                  {noBoxSelected && (
+                    <div className="absolute inset-0 bg-em/10 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-em text-white flex items-center justify-center text-lg font-bold">
+                        ✓
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 space-y-2">
+                  <div>
+                    <p className="font-bold text-sm text-ink">No Box</p>
+                    <p className="text-xs text-ink-3 mt-1 line-clamp-2">
+                      Ship the products without a gift box
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-ink-3">Add cost</p>
+                    <p className="text-sm font-black text-em">+{formatRupees(0)}</p>
+                  </div>
+                </div>
+              </motion.button>
+
               {packagingOptions.map((design) => {
                 const isSelected = selectedDesign?.id === design.id;
                 const price = priceForSize(design, autoSize);
@@ -368,6 +434,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                         name: design.name,
                         price,
                         size: autoSize,
+                        imageUrl: design.imageUrl ?? null,
                       })
                     }
                     className={`group flex-shrink-0 w-40 rounded-md border-2 overflow-hidden transition-all hover:shadow-lg ${

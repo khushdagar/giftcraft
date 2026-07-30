@@ -14,9 +14,28 @@ export default async function QuotesPage() {
     redirect('/login');
   }
 
+  // A quote appears here only once its proposal deck was downloaded — one
+  // entry per downloaded pack, NOT one per checkout visit (every "Review
+  // Order" click creates a quote row; listing those directly shows dupes).
+  // Downloads are matched by user id, plus email so decks grabbed while
+  // logged out (via the lead-capture dialog) surface after signing in.
+  const downloads = await prisma.proposalDownload.findMany({
+    where: {
+      OR: [
+        { userId: session.user.id },
+        ...(session.user.email ? [{ email: session.user.email }] : []),
+      ],
+    },
+    select: { quoteToken: true },
+  });
+  const downloadedTokens = [...new Set(downloads.map((d) => d.quoteToken))];
+
   const quotes = await prisma.quote.findMany({
     where: {
-      createdById: session.user.id,
+      shareToken: { in: downloadedTokens },
+      // Own quotes, plus guest-created ones (no owner) reached via their own
+      // download record — never another user's quotes.
+      OR: [{ createdById: session.user.id }, { createdById: null }],
     },
     include: {
       company: {
@@ -32,7 +51,9 @@ export default async function QuotesPage() {
       <div className="mb-8 flex items-center justify-between border-b border-bdr pb-8">
         <div>
           <h1 className="text-3xl font-normal tracking-tight text-ink">My Quotes</h1>
-          <p className="mt-1 text-sm text-ink-2">View and manage your quote requests</p>
+          <p className="mt-1 text-sm text-ink-2">
+            Packs whose proposal deck you&apos;ve downloaded
+          </p>
         </div>
         <Link href="/builder">
           <Button variant="em">Create New Quote</Button>
@@ -41,7 +62,10 @@ export default async function QuotesPage() {
 
       {quotes.length === 0 ? (
         <div className="rounded-md border-2 border-bdr bg-gray-50 p-12 text-center">
-          <p className="text-ink-2">No quotes yet. Start building a gift pack to create one!</p>
+          <p className="text-ink-2">
+            No saved quotes yet. Build a gift pack and download its proposal
+            deck at checkout — it&apos;ll be saved here.
+          </p>
           <Link href="/builder" className="mt-4 inline-block">
             <Button variant="em">Start Building</Button>
           </Link>

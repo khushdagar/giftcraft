@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { signOut } from '@/auth';
 import { Package, DollarSign, User, LogOut } from 'lucide-react';
 import { VendorMobileNav } from '@/components/vendor/vendor-mobile-nav';
+import { BrandLogo } from '@/components/layout/brand-logo';
 
 export const metadata = {
   title: 'Vendor Portal - GIVOO',
@@ -40,8 +41,8 @@ export default async function VendorLayout({
       <div className="hidden w-64 shrink-0 bg-white border-r-2 border-bdr lg:flex flex-col">
         {/* Logo */}
         <Link href="/vendor/dashboard" className="px-6 py-6 border-b-2 border-bdr">
-          <p className="text-lg font-normal text-ink">GIVOO</p>
-          <p className="text-xs text-ink-3">Vendor Portal</p>
+          <BrandLogo className="h-9 w-auto" />
+          <p className="mt-1 text-xs text-ink-3">Vendor Portal</p>
         </Link>
 
         {/* Navigation */}

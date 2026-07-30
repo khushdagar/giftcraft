@@ -291,8 +291,18 @@ export function GiftPackSummary() {
               <div className="space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">Packaging</p>
                 <div className="rounded-md bg-white p-3 flex items-center gap-2 shadow-sm">
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center">
-                    <span className="text-lg">📦</span>
+                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                    {packaging.imageUrl ? (
+                      <Image
+                        src={packaging.imageUrl}
+                        alt={packaging.name}
+                        width={40}
+                        height={40}
+                        className="object-cover w-full h-full"
+                      />
+                    ) : (
+                      <span className="text-lg">📦</span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-ink line-clamp-1">{packaging.name}</p>
@@ -317,8 +327,18 @@ export function GiftPackSummary() {
                       key={addon.id}
                       className="rounded-md bg-white p-3 flex items-center gap-2 shadow-sm"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 flex items-center justify-center">
-                        <span className="text-lg">🎀</span>
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                        {addon.imageUrl ? (
+                          <Image
+                            src={addon.imageUrl}
+                            alt={addon.name}
+                            width={40}
+                            height={40}
+                            className="object-cover w-full h-full"
+                          />
+                        ) : (
+                          <span className="text-lg">🎀</span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-ink line-clamp-1">{addon.name}</p>

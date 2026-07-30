@@ -1,18 +1,23 @@
-import { redirect } from 'next/navigation';
-import { auth } from '@/auth';
-import { prisma } from '@/lib/prisma';
-import { formatRupees } from '@/lib/utils';
-import { combinedGst, splitPaymentFee, shippingTaxable } from '@/lib/pricing-display';
-import { invoiceLabel } from '@/lib/invoice-status';
-import Link from 'next/link';
-import { OrderStatusUpdater } from './components/order-status-updater';
-import { MockupPanel } from './components/mockup-panel';
-import { ShiprocketShipButton } from './components/shiprocket-ship-button';
-import { SlaLogDisplay } from '@/components/admin/orders/sla-log-display';
-import { SendPaymentLinkButton } from './components/send-payment-link-button';
-import { MarkPaidButton } from './components/mark-paid-button';
-import { markAdminNotificationsRead } from '@/lib/admin-notifications';
-import { FileDown } from 'lucide-react';
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { formatRupees } from "@/lib/utils";
+import {
+  combinedGst,
+  splitPaymentFee,
+  shippingTaxable,
+} from "@/lib/pricing-display";
+import { invoiceLabel } from "@/lib/invoice-status";
+import Link from "next/link";
+import { OrderStatusUpdater } from "./components/order-status-updater";
+import { MockupPanel } from "./components/mockup-panel";
+import { ShiprocketShipButton } from "./components/shiprocket-ship-button";
+import { SlaLogDisplay } from "@/components/admin/orders/sla-log-display";
+import { SendPaymentLinkButton } from "./components/send-payment-link-button";
+import { MarkPaidButton } from "./components/mark-paid-button";
+import { markAdminNotificationsRead } from "@/lib/admin-notifications";
+import { FileDown } from "lucide-react";
+import { OrderAutoRefresh } from "@/components/orders/order-auto-refresh";
 
 export default async function AdminOrderDetailPage({
   params,
@@ -20,8 +25,8 @@ export default async function AdminOrderDetailPage({
   params: { id: string };
 }) {
   const session = await auth();
-  if (!session?.user?.id || session.user.role !== 'super_admin') {
-    redirect('/unauthorized');
+  if (!session?.user?.id || session.user.role !== "super_admin") {
+    redirect("/unauthorized");
   }
 
   const order = await prisma.order.findUnique({
@@ -31,19 +36,19 @@ export default async function AdminOrderDetailPage({
         include: { product: { select: { name: true, brand: true } } },
       },
       timeline: {
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: "asc" },
       },
       slaLogs: {
-        orderBy: { enteredAt: 'asc' },
+        orderBy: { enteredAt: "asc" },
       },
       artworkApprovals: {
-        orderBy: { revision: 'desc' },
+        orderBy: { revision: "desc" },
       },
     },
   });
 
   if (!order) {
-    redirect('/admin/orders');
+    redirect("/admin/orders");
   }
 
   // Viewing an order clears its bell notifications (the new-order alert plus any
@@ -51,7 +56,7 @@ export default async function AdminOrderDetailPage({
   await markAdminNotificationsRead(session.user.id, [
     `order-${order.id}`,
     ...order.artworkApprovals
-      .filter((a) => a.status === 'revision_requested')
+      .filter((a) => a.status === "revision_requested")
       .map((a) => `revision-${a.id}`),
   ]);
 
@@ -67,7 +72,7 @@ export default async function AdminOrderDetailPage({
     billingInfo?.pincode,
   ]
     .filter(Boolean)
-    .join(', ');
+    .join(", ");
   const deliveryAddress = [
     shippingInfo?.address1,
     shippingInfo?.address2,
@@ -76,46 +81,47 @@ export default async function AdminOrderDetailPage({
     shippingInfo?.pincode,
   ]
     .filter(Boolean)
-    .join(', ');
+    .join(", ");
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
-      case 'confirmed':
-        return 'bg-em-50 text-em-700';
-      case 'production':
-        return 'bg-sky-50 text-sky-700';
-      case 'quality_check':
-        return 'bg-[#F5F3FF] text-[#8B5CF6]';
-      case 'packed':
-        return 'bg-violet-50 text-violet-700';
-      case 'shipped':
-      case 'in_transit':
-        return 'bg-indigo-50 text-indigo-700';
-      case 'delivered':
-        return 'bg-em-50 text-em-700';
-      case 'cancelled':
-        return 'bg-err/10 text-err';
+      case "confirmed":
+        return "bg-em-50 text-em-700";
+      case "production":
+        return "bg-sky-50 text-sky-700";
+      case "quality_check":
+        return "bg-[#F5F3FF] text-[#8B5CF6]";
+      case "packed":
+        return "bg-violet-50 text-violet-700";
+      case "shipped":
+      case "in_transit":
+        return "bg-indigo-50 text-indigo-700";
+      case "delivered":
+        return "bg-em-50 text-em-700";
+      case "cancelled":
+        return "bg-err/10 text-err";
       default:
-        return 'bg-gray-100 text-gray-700';
+        return "bg-gray-100 text-gray-700";
     }
   };
 
   const getStatusLabel = (status: string) => {
     return status
-      .split('_')
+      .split("_")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+      .join(" ");
   };
 
   return (
     <div className="space-y-6">
+      <OrderAutoRefresh status={order.status} />
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-ink-3">
         <a href="/admin/orders" className="text-em hover:underline">
           Orders
         </a>
         <span>/</span>
-        <span className="font-normal text-ink">{order.orderNumber}</span>
+        <span className="font-normal text-ink">#{order.orderNumber}</span>
       </div>
 
       {/* Two Column Layout */}
@@ -126,94 +132,114 @@ export default async function AdminOrderDetailPage({
           <div className="rounded-md border-2 border-bdr bg-white p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-xs font-normal uppercase tracking-wider text-ink-3">Order</p>
-                <p className="text-2xl font-normal text-ink">{order.orderNumber}</p>
+                <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
+                  Order
+                </p>
+                <p className="text-2xl font-normal text-ink">
+                  #{order.orderNumber}
+                </p>
               </div>
               {(() => {
                 // Derive "Payment Pending" when the mockup is approved but a
                 // balance is still due (matches the customer dashboard).
-                const amountPaid = Number((order.billingJson as any)?.amountPaid ?? 0);
-                const balance = Math.max(0, Number(order.grandTotal) - amountPaid);
-                const showPaymentPending = order.status === 'mockup_approved' && balance > 0;
+                const amountPaid = Number(
+                  (order.billingJson as any)?.amountPaid ?? 0,
+                );
+                const balance = Math.max(
+                  0,
+                  Number(order.grandTotal) - amountPaid,
+                );
+                const showPaymentPending =
+                  order.status === "mockup_approved" && balance > 0;
                 return (
                   <span
                     className={`inline-block px-3 py-1.5 rounded-full text-xs font-normal ${
                       showPaymentPending
-                        ? 'bg-gold-50 text-gold-700'
+                        ? "bg-gold-50 text-gold-700"
                         : getStatusBadgeColor(order.status)
                     }`}
                   >
-                    {showPaymentPending ? 'Payment Pending' : getStatusLabel(order.status)}
+                    {showPaymentPending
+                      ? "Payment Pending"
+                      : getStatusLabel(order.status)}
                   </span>
                 );
               })()}
             </div>
             <p className="text-xs text-ink-2">
-              {new Date(order.createdAt).toLocaleDateString('en-IN', {
-                weekday: 'short',
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
+              {new Date(order.createdAt).toLocaleDateString("en-IN", {
+                weekday: "short",
+                year: "numeric",
+                month: "short",
+                day: "numeric",
               })}
             </p>
           </div>
 
           {/* Billing Details — the company / GST address that prints as
               "Bill To" on the invoice. */}
-          <div className="rounded-md border-2 border-bdr bg-white p-5">
-            <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
-              Billing Details
-            </p>
-            <p className="text-[11px] text-ink-3 mb-3">Appears as “Bill To” on the invoice</p>
-            <div className="space-y-2 text-sm">
+          <div className="rounded-md w-full flex flex-row gap-6 justify-between">
+            <div className="rounded-md space-y-2 text-sm w-[50%] p-5 border-2 border-bdr bg-white">
+              <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
+                Billing Details
+              </p>
+              <p className="text-[11px] text-ink-3 mb-3">
+                Appears as “Bill To” on the invoice
+              </p>
               <div>
                 <p className="text-ink-3 text-xs">Company</p>
-                <p className="font-normal text-ink">{billingInfo?.companyName || '-'}</p>
+                <p className="font-normal text-ink">
+                  {billingInfo?.companyName || "-"}
+                </p>
               </div>
               <div>
                 <p className="text-ink-3 text-xs">Billing Address</p>
-                <p className="text-ink">{billingAddress || '-'}</p>
+                <p className="text-ink">{billingAddress || "-"}</p>
               </div>
               <div>
                 <p className="text-ink-3 text-xs">GSTIN</p>
-                <p className="text-ink">{billingInfo?.gstin || 'Unregistered (B2C)'}</p>
+                <p className="text-ink">
+                  {billingInfo?.gstin || "Unregistered (B2C)"}
+                </p>
               </div>
               <div>
                 <p className="text-ink-3 text-xs">Contact Email</p>
-                <p className="text-ink">{billingInfo?.email || '-'}</p>
+                <p className="text-ink">{billingInfo?.email || "-"}</p>
               </div>
               <div>
                 <p className="text-ink-3 text-xs">Phone</p>
-                <p className="text-ink">{billingInfo?.phone || '-'}</p>
+                <p className="text-ink">{billingInfo?.phone || "-"}</p>
               </div>
             </div>
-          </div>
-
-          {/* Delivery Address — where the gift packs actually ship (from the
-              builder). Separate from billing so ops can pick/pack correctly. */}
-          <div className="rounded-md border-2 border-bdr bg-white p-5">
-            <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
-              Delivery Address
-            </p>
-            <p className="text-[11px] text-ink-3 mb-3">Where the gift packs are shipped</p>
-            {deliveryAddress ? (
-              <div className="space-y-1 text-sm">
-                {shippingInfo?.name && (
-                  <p className="font-normal text-ink">{shippingInfo.name}</p>
-                )}
-                {shippingInfo?.company && <p className="text-ink-2">{shippingInfo.company}</p>}
-                <p className="text-ink">{deliveryAddress}</p>
-                {shippingInfo?.phone && <p className="text-ink-2">📞 {shippingInfo.phone}</p>}
-              </div>
-            ) : (
-              <p className="text-sm text-ink-3">
-                {order.deliveryMode === 'individual'
-                  ? 'Individual delivery — recipients uploaded separately.'
-                  : 'No delivery address on file.'}
+            <div className="rounded-md w-[50%] border-2 border-bdr bg-white p-5">
+              <p className="text-xs font-normal uppercase tracking-wider text-ink-3">
+                Delivery Address
               </p>
-            )}
+              <p className="text-[11px] text-ink-3 mb-3">
+                Where the gift packs are shipped
+              </p>
+              {deliveryAddress ? (
+                <div className="space-y-1 text-sm">
+                  {shippingInfo?.name && (
+                    <p className="font-normal text-ink">{shippingInfo.name}</p>
+                  )}
+                  {shippingInfo?.company && (
+                    <p className="text-ink-2">{shippingInfo.company}</p>
+                  )}
+                  <p className="text-ink">{deliveryAddress}</p>
+                  {shippingInfo?.phone && (
+                    <p className="text-ink-2">📞 {shippingInfo.phone}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-ink-3">
+                  {order.deliveryMode === "individual"
+                    ? "Individual delivery — recipients uploaded separately."
+                    : "No delivery address on file."}
+                </p>
+              )}
+            </div>
           </div>
-
           {/* Order Items */}
           <div className="rounded-md border-2 border-bdr bg-white p-5">
             <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-4">
@@ -222,22 +248,35 @@ export default async function AdminOrderDetailPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-bdr">
-                  <th className="py-2 text-left font-normal text-ink">Product</th>
+                  <th className="py-2 text-left font-normal text-ink">
+                    Product
+                  </th>
                   <th className="py-2 text-center font-normal text-ink">Qty</th>
-                  <th className="py-2 text-right font-normal text-ink">Price</th>
-                  <th className="py-2 text-right font-normal text-ink">Total</th>
+                  <th className="py-2 text-right font-normal text-ink">
+                    Price
+                  </th>
+                  <th className="py-2 text-right font-normal text-ink">
+                    Total
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {order.items.map((item) => (
-                  <tr key={item.id} className="border-b border-bdr last:border-0">
+                  <tr
+                    key={item.id}
+                    className="border-b border-bdr last:border-0"
+                  >
                     <td className="py-3 text-ink-2">
                       {item.product?.name || item.productId}
                       {item.product?.brand && (
-                        <span className="block text-xs text-ink-3">{item.product.brand}</span>
+                        <span className="block text-xs text-ink-3">
+                          {item.product.brand}
+                        </span>
                       )}
                     </td>
-                    <td className="py-3 text-center text-ink-2">{item.quantity}</td>
+                    <td className="py-3 text-center text-ink-2">
+                      {item.quantity}
+                    </td>
                     <td className="py-3 text-right text-ink-2 tabnum">
                       {formatRupees(Number(item.unitPrice))}
                     </td>
@@ -264,7 +303,11 @@ export default async function AdminOrderDetailPage({
                       <div className="h-20 w-20 rounded-md border border-bdr bg-elevated/50 flex items-center justify-center overflow-hidden">
                         {/\.(png|jpe?g|svg)$/i.test(order.logoUrl) ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={order.logoUrl} alt="Customer logo" className="max-h-full max-w-full object-contain p-1" />
+                          <img
+                            src={order.logoUrl}
+                            alt="Customer logo"
+                            className="max-h-full max-w-full object-contain p-1"
+                          />
                         ) : (
                           <FileDown className="h-7 w-7 text-ink-3" />
                         )}
@@ -282,7 +325,9 @@ export default async function AdminOrderDetailPage({
                   </div>
                 )}
                 <div>
-                  <p className="text-ink-3 text-xs mb-1">Special Branding Instructions</p>
+                  <p className="text-ink-3 text-xs mb-1">
+                    Special Branding Instructions
+                  </p>
                   {order.brandingNotes ? (
                     <p className="text-ink whitespace-pre-wrap rounded-md border border-bdr bg-elevated/50 p-3">
                       {order.brandingNotes}
@@ -294,7 +339,9 @@ export default async function AdminOrderDetailPage({
                   )}
                 </div>
                 <div>
-                  <p className="text-ink-3 text-xs mb-1">Thank-You Card Message</p>
+                  <p className="text-ink-3 text-xs mb-1">
+                    Thank-You Card Message
+                  </p>
                   {order.cardMessage ? (
                     <p className="text-ink whitespace-pre-wrap rounded-md border border-bdr bg-elevated/50 p-3">
                       {order.cardMessage}
@@ -319,24 +366,32 @@ export default async function AdminOrderDetailPage({
                 <p className="text-sm text-ink-3">No timeline entries</p>
               ) : (
                 order.timeline.map((entry) => (
-                  <div key={entry.id} className="pb-3 border-b border-bdr last:border-0">
+                  <div
+                    key={entry.id}
+                    className="pb-3 border-b border-bdr last:border-0"
+                  >
                     <div className="flex items-start gap-3">
                       <span
                         className={`inline-block px-2 py-1 rounded text-xs font-normal mt-0.5 ${getStatusBadgeColor(
-                          entry.status
+                          entry.status,
                         )}`}
                       >
                         {getStatusLabel(entry.status)}
                       </span>
                       <div className="flex-1">
-                        {entry.note && <p className="text-sm text-ink">{entry.note}</p>}
+                        {entry.note && (
+                          <p className="text-sm text-ink">{entry.note}</p>
+                        )}
                         <p className="text-xs text-ink-3 mt-1">
-                          {new Date(entry.createdAt).toLocaleDateString('en-IN', {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          {new Date(entry.createdAt).toLocaleDateString(
+                            "en-IN",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
                         </p>
                       </div>
                     </div>
@@ -351,24 +406,30 @@ export default async function AdminOrderDetailPage({
         <div className="lg:sticky lg:top-20 lg:h-fit space-y-4 lg:max-h-[calc(100vh-100px)] lg:overflow-y-auto lg:pr-1">
           {/* Payment-pending notice (derived from mockup_approved + balance) */}
           {(() => {
-            const amountPaid = Number((order.billingJson as any)?.amountPaid ?? 0);
+            const amountPaid = Number(
+              (order.billingJson as any)?.amountPaid ?? 0,
+            );
             const balance = Math.max(0, Number(order.grandTotal) - amountPaid);
-            if (!(order.status === 'mockup_approved' && balance > 0)) return null;
+            if (!(order.status === "mockup_approved" && balance > 0))
+              return null;
             return (
               <div className="rounded-md border-2 border-gold/40 bg-gold-50 p-4">
                 <p className="text-xs font-normal uppercase tracking-wider text-gold-700 mb-1">
                   Payment Pending
                 </p>
                 <p className="text-sm text-ink-2 mb-3">
-                  Mockup approved — awaiting customer balance of{' '}
-                  <span className="font-normal text-ink tabnum">{formatRupees(balance)}</span>.
-                  It moves to Production automatically once paid.
+                  Mockup approved — awaiting customer balance of{" "}
+                  <span className="font-normal text-ink tabnum">
+                    {formatRupees(balance)}
+                  </span>
+                  . It moves to Production automatically once paid.
                 </p>
                 <div className="space-y-2">
                   <SendPaymentLinkButton orderId={order.id} />
                   <MarkPaidButton orderId={order.id} balanceDue={balance} />
                   <p className="text-[11px] text-ink-3">
-                    Use "Mark Paid" when the customer has already paid (e.g. bank transfer).
+                    Use "Mark Paid" when the customer has already paid (e.g.
+                    bank transfer).
                   </p>
                 </div>
               </div>
@@ -397,12 +458,15 @@ export default async function AdminOrderDetailPage({
           {/* SLA Log Display */}
           {order.slaLogs && order.slaLogs.length > 0 && (
             <div className="rounded-md border-2 border-bdr bg-white p-5">
-              <SlaLogDisplay slaLogs={order.slaLogs} currentStatus={order.status} />
+              <SlaLogDisplay
+                slaLogs={order.slaLogs}
+                currentStatus={order.status}
+              />
             </div>
           )}
 
           {/* Shiprocket Shipment */}
-          {order.status === 'packed' && (
+          {order.status === "packed" && (
             <ShiprocketShipButton
               orderId={order.id}
               awbCode={order.awbCode || undefined}
@@ -411,7 +475,7 @@ export default async function AdminOrderDetailPage({
             />
           )}
 
-          {order.status !== 'packed' && order.awbCode && (
+          {order.status !== "packed" && order.awbCode && (
             <ShiprocketShipButton
               orderId={order.id}
               awbCode={order.awbCode}
@@ -422,7 +486,9 @@ export default async function AdminOrderDetailPage({
 
           {/* PDF Downloads */}
           <div className="rounded-md border-2 border-bdr bg-white p-4 space-y-2">
-            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">Download Documents</p>
+            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">
+              Download Documents
+            </p>
             <a
               href={`/api/orders/${order.id}/invoice`}
               target="_blank"
@@ -432,7 +498,7 @@ export default async function AdminOrderDetailPage({
               <FileDown className="w-4 h-4" />
               {invoiceLabel(
                 Number((order.billingJson as any)?.amountPaid ?? 0),
-                Number(order.grandTotal)
+                Number(order.grandTotal),
               )}
             </a>
             {/* Plain anchors, not <Link>: these point at API routes that stream a
@@ -460,7 +526,9 @@ export default async function AdminOrderDetailPage({
 
           {/* Payment Status Card */}
           <div className="rounded-md border-2 border-bdr bg-white p-5">
-            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">Payment</p>
+            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">
+              Payment
+            </p>
             {order.paidAt ? (
               <div className="space-y-2 text-sm">
                 <span className="inline-block px-3 py-1.5 rounded-full text-xs font-normal bg-em-50 text-em-700">
@@ -469,37 +537,50 @@ export default async function AdminOrderDetailPage({
                 <div>
                   <p className="text-ink-3 text-xs">Amount Received</p>
                   <p className="font-normal text-ink tabnum">
-                    {formatRupees(Number((order.billingJson as any)?.amountPaid ?? 0))}
-                    {(order.billingJson as any)?.paymentType === 'full' ? ' (full)' : ' (10% advance)'}
+                    {formatRupees(
+                      Number((order.billingJson as any)?.amountPaid ?? 0),
+                    )}
+                    {(order.billingJson as any)?.paymentType === "full"
+                      ? " (full)"
+                      : " (10% advance)"}
                   </p>
                 </div>
                 <div>
                   <p className="text-ink-3 text-xs">Razorpay Payment ID</p>
-                  <p className="font-mono text-ink text-xs break-all">{order.razorpayPaymentId || '—'}</p>
+                  <p className="font-mono text-ink text-xs break-all">
+                    {order.razorpayPaymentId || "—"}
+                  </p>
                 </div>
                 <div>
                   <p className="text-ink-3 text-xs">Paid On</p>
                   <p className="text-ink">
-                    {new Date(order.paidAt).toLocaleString('en-IN', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
+                    {new Date(order.paidAt).toLocaleString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </p>
                 </div>
 
                 {/* Balance still due → let admin email the payment link */}
                 {(() => {
-                  const amountPaid = Number((order.billingJson as any)?.amountPaid ?? 0);
-                  const balance = Math.max(0, Number(order.grandTotal) - amountPaid);
+                  const amountPaid = Number(
+                    (order.billingJson as any)?.amountPaid ?? 0,
+                  );
+                  const balance = Math.max(
+                    0,
+                    Number(order.grandTotal) - amountPaid,
+                  );
                   if (balance <= 0) return null;
                   return (
                     <div className="pt-2 border-t border-bdr space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-ink-3">Balance Pending</span>
-                        <span className="font-normal text-ink tabnum">{formatRupees(balance)}</span>
+                        <span className="font-normal text-ink tabnum">
+                          {formatRupees(balance)}
+                        </span>
                       </div>
                     </div>
                   );
@@ -511,7 +592,8 @@ export default async function AdminOrderDetailPage({
                   Awaiting Payment
                 </span>
                 <p className="text-xs text-ink-3 mt-2">
-                  Mockup-first order — no payment taken yet. Full payment is collected after mockup approval.
+                  Mockup-first order — no payment taken yet. Full payment is
+                  collected after mockup approval.
                 </p>
               </div>
             )}
@@ -519,22 +601,30 @@ export default async function AdminOrderDetailPage({
 
           {/* Grand Total Card */}
           <div className="rounded-md bg-dark text-inv p-5">
-            <p className="text-xs font-normal uppercase tracking-wider mb-4">Breakdown</p>
+            <p className="text-xs font-normal uppercase tracking-wider mb-4">
+              Breakdown
+            </p>
             <div className="space-y-1 text-sm mb-4">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span className="tabnum">{formatRupees(Number(order.subtotal))}</span>
+                <span className="tabnum">
+                  {formatRupees(Number(order.subtotal))}
+                </span>
               </div>
               {Number(order.packagingAmount) > 0 && (
                 <div className="flex justify-between">
                   <span>Packaging</span>
-                  <span className="tabnum">+{formatRupees(Number(order.packagingAmount))}</span>
+                  <span className="tabnum">
+                    +{formatRupees(Number(order.packagingAmount))}
+                  </span>
                 </div>
               )}
               {Number(order.addonsAmount) > 0 && (
                 <div className="flex justify-between">
                   <span>Add-ons</span>
-                  <span className="tabnum">+{formatRupees(Number(order.addonsAmount))}</span>
+                  <span className="tabnum">
+                    +{formatRupees(Number(order.addonsAmount))}
+                  </span>
                 </div>
               )}
               {/* Shipping at its TAXABLE value — the courier rate is GST-inclusive
@@ -543,7 +633,12 @@ export default async function AdminOrderDetailPage({
               {Number(order.shippingAmount) > 0 && (
                 <div className="flex justify-between">
                   <span>Shipping</span>
-                  <span className="tabnum">+{formatRupees(shippingTaxable(Number(order.shippingAmount)))}</span>
+                  <span className="tabnum">
+                    +
+                    {formatRupees(
+                      shippingTaxable(Number(order.shippingAmount)),
+                    )}
+                  </span>
                 </div>
               )}
               {/* Payment fee (2%), pre-GST — its GST is folded into the combined
@@ -552,17 +647,33 @@ export default async function AdminOrderDetailPage({
                 <div className="flex justify-between">
                   <span>Payment Fee (2%)</span>
                   <span className="tabnum">
-                    +{formatRupees(splitPaymentFee(Number(order.razorpayFee)).base)}
+                    +
+                    {formatRupees(
+                      splitPaymentFee(Number(order.razorpayFee)).base,
+                    )}
                   </span>
                 </div>
               )}
               {/* GST — single all-in line (goods + shipping + payment-fee GST),
                   shown last, below the payment fee. */}
-              {combinedGst(Number(order.cgstAmount), Number(order.sgstAmount), Number(order.igstAmount), Number(order.razorpayFee)) > 0 && (
+              {combinedGst(
+                Number(order.cgstAmount),
+                Number(order.sgstAmount),
+                Number(order.igstAmount),
+                Number(order.razorpayFee),
+              ) > 0 && (
                 <div className="flex justify-between">
                   <span>GST</span>
                   <span className="tabnum">
-                    +{formatRupees(combinedGst(Number(order.cgstAmount), Number(order.sgstAmount), Number(order.igstAmount), Number(order.razorpayFee)))}
+                    +
+                    {formatRupees(
+                      combinedGst(
+                        Number(order.cgstAmount),
+                        Number(order.sgstAmount),
+                        Number(order.igstAmount),
+                        Number(order.razorpayFee),
+                      ),
+                    )}
                   </span>
                 </div>
               )}
@@ -577,32 +688,43 @@ export default async function AdminOrderDetailPage({
             </div>
 
             {/* Advance paid + pending balance (price-lock path) */}
-            {order.paidAt && (() => {
-              const amountPaid = Number((order.billingJson as any)?.amountPaid ?? 0);
-              const isFull = (order.billingJson as any)?.paymentType === 'full';
-              const balance = Math.max(0, Number(order.grandTotal) - amountPaid);
-              return (
-                <div className="mt-3 space-y-1.5 border-t border-inv/20 pt-3 text-sm">
-                  <div className="flex justify-between text-em-200">
-                    <span>Advance Paid ({isFull ? 'full' : '10%'})</span>
-                    <span className="tabnum">−{formatRupees(amountPaid)}</span>
+            {order.paidAt &&
+              (() => {
+                const amountPaid = Number(
+                  (order.billingJson as any)?.amountPaid ?? 0,
+                );
+                const isFull =
+                  (order.billingJson as any)?.paymentType === "full";
+                const balance = Math.max(
+                  0,
+                  Number(order.grandTotal) - amountPaid,
+                );
+                return (
+                  <div className="mt-3 space-y-1.5 border-t border-inv/20 pt-3 text-sm">
+                    <div className="flex justify-between text-em-200">
+                      <span>Advance Paid ({isFull ? "full" : "10%"})</span>
+                      <span className="tabnum">
+                        −{formatRupees(amountPaid)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between font-normal">
+                      <span>Balance Pending</span>
+                      <span className="tabnum">{formatRupees(balance)}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between font-normal">
-                    <span>Balance Pending</span>
-                    <span className="tabnum">{formatRupees(balance)}</span>
-                  </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
           </div>
         </div>
 
         {/* Right Column */}
         <div className="space-y-6">
           {/* E-Invoice Card */}
-          {order.gstBillType === 'B2B' && (
+          {order.gstBillType === "B2B" && (
             <div className="rounded-md border-2 border-bdr bg-white p-5">
-              <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">GST E-Invoice</p>
+              <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">
+                GST E-Invoice
+              </p>
               <div className="rounded-md border border-bdr p-3 bg-elevated/50 text-sm text-ink-2 mb-3">
                 <p>B2B invoice available for e-invoicing</p>
               </div>
@@ -616,15 +738,17 @@ export default async function AdminOrderDetailPage({
           )}
 
           {/* Modifications Section */}
-          <div className="rounded-md border-2 border-bdr bg-white p-5">
-            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">Modifications</p>
+          {/* <div className="rounded-md border-2 border-bdr bg-white p-5">
+            <p className="text-xs font-normal uppercase tracking-wider text-ink-3 mb-3">
+              Modifications
+            </p>
             <Link
               href={`/admin/orders/${order.id}/modifications`}
               className="block w-full px-4 py-2 rounded-md border border-bdr hover:bg-canvas transition text-sm font-normal text-center text-ink"
             >
               View Changes
             </Link>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>

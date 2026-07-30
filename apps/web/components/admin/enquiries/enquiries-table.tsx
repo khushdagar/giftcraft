@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, Mail, Phone } from 'lucide-react';
+import Link from 'next/link';
+import { Trash2, Mail, Phone, FileText } from 'lucide-react';
 
 interface Enquiry {
   id: string;
@@ -120,7 +121,18 @@ export function EnquiriesTable({ initialData }: { initialData: Enquiry[] }) {
                   ))}
                 </select>
               </td>
-              <td className="px-4 py-3 text-right">
+              <td className="px-4 py-3 text-right whitespace-nowrap">
+                <Link
+                  href={`/admin/proposals/new?${new URLSearchParams({
+                    email: e.email,
+                    name: e.contactName,
+                    company: e.companyName,
+                  }).toString()}`}
+                  title="Create proposal"
+                  className="mr-3 inline-flex text-gray-500 hover:text-gray-900"
+                >
+                  <FileText className="h-4 w-4" />
+                </Link>
                 <button
                   onClick={() => remove(e.id)}
                   disabled={busyId === e.id}
