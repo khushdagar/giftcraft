@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Bell, Package, PencilLine, AlertCircle, CheckCheck, X } from 'lucide-react';
+import { Bell, Package, PencilLine, AlertCircle, CheckCheck, X, Star, Mail, Box, Download } from 'lucide-react';
 
 interface NotificationItem {
   id: string;
-  type: 'order' | 'revision' | 'dispute';
+  type: 'order' | 'revision' | 'dispute' | 'review' | 'enquiry' | 'sample' | 'download';
   title: string;
   subtitle: string;
   href: string;
@@ -18,12 +18,20 @@ const ICON = {
   order: Package,
   revision: PencilLine,
   dispute: AlertCircle,
+  review: Star,
+  enquiry: Mail,
+  sample: Box,
+  download: Download,
 } as const;
 
 const ICON_STYLE = {
   order: 'bg-emerald-50 text-em-700',
   revision: 'bg-amber-50 text-amber-700',
   dispute: 'bg-rose-50 text-rose-700',
+  review: 'bg-amber-50 text-amber-700',
+  enquiry: 'bg-sky-50 text-sky-700',
+  sample: 'bg-violet-50 text-violet-700',
+  download: 'bg-gray-100 text-gray-600',
 } as const;
 
 function timeAgo(iso: string): string {
@@ -44,30 +52,31 @@ export function NotificationBell() {
   const [loading, setLoading] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Fetch + poll every 60s.
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/notifications');
+      if (!res.ok) return;
+      const data = await res.json();
+      setItems(data.notifications || []);
+      setCount(data.count || 0);
+    } catch {
+      /* ignore transient errors */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch + poll every 60s; also refresh instantly when something else marks
+  // notifications read (e.g. visiting a section page counts them as seen).
   useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const res = await fetch('/api/admin/notifications');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!active) return;
-        setItems(data.notifications || []);
-        setCount(data.count || 0);
-      } catch {
-        /* ignore transient errors */
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
     load();
     const interval = setInterval(load, 60000);
+    window.addEventListener('admin-notifications-updated', load);
     return () => {
-      active = false;
       clearInterval(interval);
+      window.removeEventListener('admin-notifications-updated', load);
     };
-  }, []);
+  }, [load]);
 
   // Mark the given keys read on the server. Read notifications stay visible in
   // the bell (styled as read) but drop out of the unread badge — they're only
@@ -161,7 +170,7 @@ export function NotificationBell() {
               </div>
             ) : (
               items.map((n) => {
-                const Icon = ICON[n.type];
+                const Icon = ICON[n.type] ?? Bell;
                 return (
                   <div
                     key={n.id}
@@ -181,7 +190,7 @@ export function NotificationBell() {
                         <span className="absolute left-1.5 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-em" />
                       )}
                       <span
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ICON_STYLE[n.type]}`}
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${ICON_STYLE[n.type] ?? 'bg-gray-100 text-gray-600'}`}
                       >
                         <Icon className="h-4 w-4" />
                       </span>

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { Search, Plus, X, Send, Loader2 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
+import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
 
 interface PriceTier {
   minQty: number;
@@ -21,6 +22,21 @@ interface SelectedProduct {
   priceTiers: PriceTier[];
 }
 
+interface BoxOption {
+  id: string;
+  name: string;
+  price: number;
+  sizePrices: Record<string, number>; // e.g. { small: 80, medium: 120 }
+  imageUrl: string | null;
+}
+
+interface AddonOption {
+  id: string;
+  name: string;
+  price: number; // per pack
+  imageUrl: string | null;
+}
+
 /** The tier price that applies at this pack quantity (tier 1 as fallback). */
 function tierPrice(tiers: PriceTier[], qty: number): number {
   const match =
@@ -30,8 +46,11 @@ function tierPrice(tiers: PriceTier[], qty: number): number {
 
 export function ProposalForm({
   prefill,
+  onSent,
 }: {
   prefill: { email: string; name: string; company: string };
+  // Called after a successful send (used by the enquiries popup to close itself).
+  onSent?: () => void;
 }) {
   const router = useRouter();
 
@@ -47,6 +66,49 @@ export function ProposalForm({
   const [results, setResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const [sending, setSending] = useState(false);
+
+  // Box / add-ons / shipping
+  const [boxes, setBoxes] = useState<BoxOption[]>([]);
+  const [addonOptions, setAddonOptions] = useState<AddonOption[]>([]);
+  const [boxId, setBoxId] = useState('');
+  const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch('/api/packaging')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => Array.isArray(d) && setBoxes(d.map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        price: Number(b.price) || 0,
+        sizePrices: b.sizePrices || {},
+        imageUrl: b.imageUrl ?? null,
+      }))))
+      .catch(() => {/* box selector just stays empty */});
+    fetch('/api/addons')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => Array.isArray(d) && setAddonOptions(d.map((a: any) => ({
+        id: a.id,
+        name: a.name,
+        price: Number(a.price) || 0,
+        imageUrl: a.imageUrl ?? null,
+      }))))
+      .catch(() => {/* addons selector just stays empty */});
+  }, []);
+
+  const box = boxes.find((b) => b.id === boxId) || null;
+  // Size is never picked by hand — it follows the product count, exactly like
+  // the builder's customize step (1–2 → Small, 3–4 → Medium, 5+ → Large).
+  const autoSize = packagingSizeForCount(items.length);
+  const boxPrice = box ? priceForSize(box, autoSize) : 0;
+
+  const toggleAddon = (id: string) => {
+    setSelectedAddonIds((prev) =>
+      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
+    );
+  };
+
+  const chosenAddons = addonOptions.filter((a) => selectedAddonIds.includes(a.id));
+  const addonsPerPack = chosenAddons.reduce((sum, a) => sum + a.price, 0);
 
   const handleSearch = async (query: string) => {
     setSearch(query);
@@ -90,7 +152,8 @@ export function ProposalForm({
     setItems((prev) => prev.filter((it) => it.productId !== productId));
   };
 
-  const perPack = items.reduce((sum, it) => sum + tierPrice(it.priceTiers, packQuantity), 0);
+  const productsPerPack = items.reduce((sum, it) => sum + tierPrice(it.priceTiers, packQuantity), 0);
+  const perPack = productsPerPack + boxPrice + addonsPerPack;
   const estSubtotal = Math.max(0, perPack * packQuantity - discount);
 
   const handleSend = async () => {
@@ -115,6 +178,15 @@ export function ProposalForm({
           productIds: items.map((it) => it.productId),
           packQuantity,
           discount: discount || undefined,
+          packaging: box
+            ? {
+                id: box.id,
+                name: box.name,
+                price: boxPrice,
+                size: autoSize.toLowerCase(),
+              }
+            : null,
+          addons: chosenAddons.map((a) => ({ id: a.id, name: a.name, price: a.price })),
         }),
       });
       const data = await res.json();
@@ -124,8 +196,11 @@ export function ProposalForm({
       } else {
         toast.warning('Proposal created, but the email could not be delivered. You can copy the quote link from the proposals list.');
       }
-      router.push('/admin/proposals');
-      router.refresh();
+      if (onSent) {
+        onSent();
+      } else {
+        router.refresh();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to send proposal');
     } finally {
@@ -261,6 +336,56 @@ export function ProposalForm({
             </ul>
           )}
         </section>
+
+        {/* Box & Add-ons */}
+        <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-gray-600">Box &amp; Add-ons</h2>
+
+          <div>
+            <label className="mb-1 block text-xs text-gray-500">Gift box (per pack)</label>
+            <select value={boxId} onChange={(e) => setBoxId(e.target.value)} className={inputCls}>
+              <option value="">No box</option>
+              {boxes.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} — {formatRupees(priceForSize(b, autoSize))}
+                </option>
+              ))}
+            </select>
+            {box && (
+              <p className="mt-2 text-xs text-gray-500">
+                Size auto-selected:{' '}
+                <span className="font-medium text-gray-700">{autoSize}</span>{' '}
+                (based on {items.length} product{items.length === 1 ? '' : 's'} in the pack
+                — same rule as the gift builder). Add or remove products and the size
+                &amp; price update automatically.
+              </p>
+            )}
+          </div>
+
+          <p className="mb-2 mt-5 text-xs font-medium text-gray-500">Add-ons (per pack)</p>
+          {addonOptions.length === 0 ? (
+            <p className="rounded-md border border-dashed border-gray-200 px-3 py-4 text-center text-xs text-gray-400">
+              No add-ons available.
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
+              {addonOptions.map((a) => (
+                <li key={a.id}>
+                  <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      checked={selectedAddonIds.includes(a.id)}
+                      onChange={() => toggleAddon(a.id)}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm text-gray-900">{a.name}</span>
+                    <span className="shrink-0 text-xs text-gray-500 tabular-nums">{formatRupees(a.price)}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
 
       {/* Right column — quantities + summary + send */}
@@ -292,15 +417,39 @@ export function ProposalForm({
 
           <div className="mt-5 space-y-2 border-t border-gray-200 pt-4 text-sm">
             <div className="flex justify-between text-gray-600">
-              <span>Per pack ({items.length} items)</span>
+              <span>Products ({items.length})</span>
+              <span className="tabular-nums">{formatRupees(productsPerPack)}</span>
+            </div>
+            {box && (
+              <div className="flex justify-between text-gray-600">
+                <span>
+                  Box: {box.name} ({autoSize})
+                </span>
+                <span className="tabular-nums">{formatRupees(boxPrice)}</span>
+              </div>
+            )}
+            {chosenAddons.length > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>Add-ons ({chosenAddons.length})</span>
+                <span className="tabular-nums">{formatRupees(addonsPerPack)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-gray-600">
+              <span>Per pack</span>
               <span className="tabular-nums">{formatRupees(perPack)}</span>
+            </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Shipping</span>
+              <span className="text-xs">Calculated at checkout</span>
             </div>
             <div className="flex justify-between font-medium text-gray-900">
               <span>Est. subtotal × {packQuantity}</span>
               <span className="tabular-nums">{formatRupees(estSubtotal)}</span>
             </div>
             <p className="pt-1 text-xs text-gray-400">
-              Final total with GST and payment fee is computed when you send, and shown on the quote page and PDF.
+              Shipping is calculated at checkout once the lead enters their delivery
+              address. Final total with GST and payment fee is computed when you send,
+              and shown on the quote page and PDF.
             </p>
           </div>
         </section>

@@ -18,6 +18,24 @@ const createSchema = z.object({
   productIds: z.array(z.string()).min(1).max(20),
   packQuantity: z.number().int().min(1).max(100000),
   discount: z.number().min(0).optional(),
+  // Box (a Packaging-category product) — price is per pack, already resolved
+  // for the chosen size by the form.
+  packaging: z
+    .object({
+      id: z.string(),
+      name: z.string().max(160),
+      price: z.number().min(0),
+      size: z.string().max(40).optional(),
+    })
+    .nullable()
+    .optional(),
+  // Add-ons — each price is per pack.
+  addons: z
+    .array(z.object({ id: z.string(), name: z.string().max(160), price: z.number().min(0) }))
+    .max(20)
+    .optional(),
+  // Flat shipping for the whole order, quoted manually by the admin.
+  shippingFee: z.number().min(0).max(1000000).optional(),
 });
 
 /** Pick the price tier that applies at this pack quantity (tier 1 as fallback). */
@@ -106,10 +124,10 @@ export async function POST(req: NextRequest) {
         dimensionH: p.dimensionH,
       })),
       packQuantity: body.packQuantity,
-      packaging: null,
-      addons: [],
+      packaging: body.packaging ?? null,
+      addons: body.addons ?? [],
       sleeve: false,
-      shippingZone: { shippingCost: 0 },
+      shippingZone: { shippingCost: body.shippingFee || 0 },
       deliveryMode: 'single',
       discount: body.discount || 0,
       logoUrl: null,

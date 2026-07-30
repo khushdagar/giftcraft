@@ -5,6 +5,7 @@ import { ShopByOccasion } from '@/components/home/shop-by-occasion';
 import { TrendingProducts } from '@/components/home/trending-products';
 import { HowItWorks } from '@/components/home/how-it-works';
 import { Testimonials } from '@/components/home/testimonials';
+import { CustomerReviews } from '@/components/home/customer-reviews';
 import { CuratedCollections } from '@/components/home/curated-collections';
 import { CTASection } from '@/components/home/cta-section';
 import { Footer } from '@/components/layout/footer';
@@ -23,6 +24,7 @@ export default function HomePage() {
         <TrendingProducts />
         <HowItWorks />
         <CuratedCollections />
+        <CustomerReviews />
         <Testimonials />
         <CTASection />
       </div>

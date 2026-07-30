@@ -38,7 +38,7 @@ export function HomeHero() {
   }, []);
 
   return (
-    <section className="relative h-[60vh] min-h-[420px] md:h-[600px] flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[540px] py-20 md:h-[600px] md:py-0 flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0">
         {slides.map((s, i) => (
           <div
@@ -52,7 +52,7 @@ export function HomeHero() {
         <div className="absolute inset-0 bg-black/40" />
       </div>
 
-      <div className="relative z-10 text-center max-w-2xl px-6">
+      <div className="relative z-10 text-center max-w-2xl px-6 pb-14 md:pb-0">
         {(() => {
           const current = slides[slide] ?? slides[0]!;
           return (
@@ -60,7 +60,7 @@ export function HomeHero() {
               <p className="text-sm md:text-base font-semibold uppercase tracking-widest text-[#EDD5A3] mb-4">
                 {current.subtitle}
               </p>
-              <h1 className="text-5xl md:text-7xl text-white mb-4 leading-tight whitespace-pre-line font-serif font-normal">
+              <h1 className="text-4xl sm:text-5xl md:text-7xl text-white mb-4 leading-tight whitespace-pre-line font-serif font-normal">
                 {current.title}
               </h1>
               <p className="text-lg md:text-xl text-white/70 mb-8">
@@ -69,11 +69,11 @@ export function HomeHero() {
             </>
           );
         })()}
-        <div className="flex gap-4 justify-center flex-wrap">
-          <Link href="/builder" className="px-8 py-4 bg-white text-[#1A1A18] rounded-full font-semibold hover:bg-[#1A6B4F] hover:text-white transition">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
+          <Link href="/builder" className="w-full sm:w-auto text-center px-8 py-4 bg-white text-[#1A1A18] rounded-full font-semibold hover:bg-[#1A6B4F] hover:text-white transition">
             Build Your Gift
           </Link>
-          <Link href="/catalog" className="px-8 py-4 border-2 border-white/30 text-white rounded-full font-semibold hover:border-white hover:bg-white/10 transition">
+          <Link href="/catalog" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-white/30 text-white rounded-full font-semibold hover:border-white hover:bg-white/10 transition">
             Browse Catalog
           </Link>
         </div>

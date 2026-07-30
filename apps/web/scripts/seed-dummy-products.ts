@@ -8,8 +8,8 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables from .env.local
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+// Load environment variables from .env
+dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 import { PrismaClient, ProductStatus } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';

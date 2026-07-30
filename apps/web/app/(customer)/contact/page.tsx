@@ -15,11 +15,13 @@ export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     company: '',
     message: '',
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [contact, setContact] = useState(DEFAULT_CONTACT);
 
   useEffect(() => {
@@ -36,13 +38,30 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Saved as an Enquiry — shows up in /admin/enquiries alongside
+      // product quick-quote leads (Product column stays empty for these).
+      const res = await fetch('/api/enquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: formData.company.trim() || formData.name.trim(),
+          contactName: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          message: formData.message.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send your message. Please try again.');
+      }
       setSuccess(true);
-      setFormData({ name: '', email: '', company: '', message: '' });
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (error) {
-      console.error('Error:', error);
+      setFormData({ name: '', email: '', phone: '', company: '', message: '' });
+      setTimeout(() => setSuccess(false), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send your message. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -161,6 +180,12 @@ export default function ContactPage() {
                 </motion.div>
               )}
 
+              {error && (
+                <div className="mb-6 rounded-xl bg-rose-50 border-2 border-rose-200 p-4 text-sm text-rose-700">
+                  {error}
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="grid md:grid-cols-2 gap-5">
                   <div>
@@ -190,16 +215,31 @@ export default function ContactPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-sm font-normal text-slate-700 block mb-2">Company Name</label>
-                  <input
-                    type="text"
-                    value={formData.company}
-                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                    placeholder="Your company"
-                    className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors text-sm"
-                    disabled={loading}
-                  />
+                <div className="grid md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="text-sm font-normal text-slate-700 block mb-2">Phone *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="+91 98765 43210"
+                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors text-sm"
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-normal text-slate-700 block mb-2">Company Name</label>
+                    <input
+                      type="text"
+                      value={formData.company}
+                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      placeholder="Your company"
+                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors text-sm"
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
 
                 <div>

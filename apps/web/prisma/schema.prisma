@@ -203,6 +203,7 @@ model User {
   sampleOrders      SampleOrder[]
   savedAddresses    SavedAddress[]
   blogPosts         BlogPost[]              @relation("BlogPostAuthor")
+  reviews           Review[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -329,6 +330,7 @@ model Product {
   gocOptions    GocOption[]
   sampleOrders  SampleOrder[]
   giftPackItems GiftPackItem[]
+  reviews       Review[]
 
   // ── Curated Pack support ──────────────────────────────────────────────────
   // A pack is a Product (isPack=true) that bundles other products. It gets every
@@ -1487,4 +1489,38 @@ model BlogPost {
   @@index([status, publishedAt])
   @@index([categoryId])
   @@index([isFeatured])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   REVIEWS — Product ratings & reviews
+// ═══════════════════════════════════════════════════════════
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+}
+
+model Review {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rating  Int // 1–5 stars
+  title   String?
+  comment String  @db.Text
+
+  // Only approved reviews are shown publicly; edits send a review back to pending.
+  status ReviewStatus @default(pending)
+  // Set at submit time when the user has a paid order containing this product.
+  isVerifiedBuyer Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One review per user per product (users edit their existing review instead).
+  @@unique([productId, userId])
+  @@index([productId, status])
+  @@index([status])
 }

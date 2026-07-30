@@ -1,7 +1,7 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { EnquiriesTabs } from '@/components/admin/enquiries/enquiries-tabs';
+import { EnquiriesUnifiedTable } from '@/components/admin/enquiries/enquiries-unified-table';
 
 export const revalidate = 0;
 
@@ -36,7 +36,7 @@ export default async function AdminEnquiriesPage() {
       <div className="border-b border-bdr pb-6">
         <h1 className="text-4xl font-normal tracking-tight text-ink">Enquiries</h1>
         <p className="mt-2 text-sm text-ink-2">
-          Quick-quote leads from product pages and GoHighLevel
+          All leads in one place — website enquiries and GoHighLevel, with proposals sent right from the row
           {newCount > 0 && (
             <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
               {newCount} new
@@ -45,7 +45,7 @@ export default async function AdminEnquiriesPage() {
         </p>
       </div>
 
-      <EnquiriesTabs initialData={data} />
+      <EnquiriesUnifiedTable initialData={data} />
     </div>
   );
 }

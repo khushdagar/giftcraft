@@ -13,6 +13,7 @@ import { AddonsSelector } from "@/components/product/addons-selector";
 import { RelatedProducts } from "@/components/product/related-products";
 import { ExpertHelp } from "@/components/product/expert-help";
 import { ProductTabs } from "@/components/product/product-tabs";
+import { ProductReviews } from "@/components/product/product-reviews";
 import { ColorSelector } from "@/components/product/color-selector";
 import { ProductInfoSection } from "@/components/product/product-info-section";
 import { Badge } from "@/components/ui/badge";
@@ -250,6 +251,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
           packagingAddons={toRichHtml(product.packagingAddons)}
         />
       </div>
+
+      {/* Ratings & Reviews — client-fetched so it stays fresh despite the
+          page-level revalidate cache */}
+      <ProductReviews slug={product.slug} />
 
       {/* Related Products */}
       {serializedRelated.length > 0 && <RelatedProducts products={serializedRelated} />}

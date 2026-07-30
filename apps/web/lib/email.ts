@@ -783,9 +783,13 @@ export async function sendProposalEmail(options: {
     .join('');
   const moreCount = options.productNames.length - 8;
 
+  const perPack =
+    options.packQuantity > 0 ? options.grandTotal / options.packQuantity : options.grandTotal;
+
   const summary = card(
     row('Gift packs', String(options.packQuantity)) +
       row('Items per pack', String(options.productNames.length)) +
+      row('Price per pack (incl. GST)', inr(perPack)) +
       `<tr><td colspan="2" style="padding:0;"><div style="border-top:2px solid ${COLORS.border};margin:8px 0 2px;"></div></td></tr>` +
       row('Estimated Total (incl. GST)', `<span style="font-size:16px;">${inr(options.grandTotal)}</span>`, true)
   );
@@ -807,6 +811,7 @@ export async function sendProposalEmail(options: {
         : ''
     }</ul>` +
     summary +
+    `<p style="margin:0 0 20px;font-size:12px;color:${COLORS.muted};">Shipping is not included — it's calculated at checkout based on your delivery address.</p>` +
     button('View Your Proposal', quoteUrl, COLORS.orange) +
     p(
       `This proposal is valid until <strong>${validUntilStr}</strong>. ${
