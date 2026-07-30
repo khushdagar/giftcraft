@@ -201,8 +201,20 @@ export default async function QuotePage({ params }: { params: { token: string } 
                 size="lg"
                 className="w-full rounded-md"
               >
-                <a href={`/api/quotes/${quote.id.split('_')[0]}/pdf`} download>
+                {/* The PDF routes key off the share token, not the quote id. */}
+                <a href={`/api/quotes/${params.token}/pdf`} download>
                   Download PDF
+                </a>
+              </Button>
+              {/* Slide-style proposal deck, generated from the selected products. */}
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="w-full rounded-md"
+              >
+                <a href={`/api/quotes/${params.token}/deck`} download>
+                  Download Proposal Deck
                 </a>
               </Button>
               <Button

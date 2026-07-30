@@ -256,10 +256,10 @@ export function PricingBlock({
             : "All prices include standard branding. "}
           Prices exclusive of GST ({gstRate}%), packaging, and shipping.
         </p>
-        <p className="mt-1 text-xs text-ink-3">
+        {/* <p className="mt-1 text-xs text-ink-3">
           GST: {gstRate}%{hsnCode ? ` (HSN ${hsnCode})` : ""} — CGST+SGST or IGST
           applied at checkout based on delivery location.
-        </p>
+        </p> */}
       </div>
 
       {/* Final pricing */}

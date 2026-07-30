@@ -748,3 +748,84 @@ export async function sendOfferEmail(options: {
     category: options.bypassOptOut ? undefined : 'marketing',
   });
 }
+
+/**
+ * Admin-created proposal email: a personalised gift-pack quote sent to a lead.
+ * Links to the shareable quote page (which offers the PDF + proposal deck and
+ * a path to checkout) and attaches the proposal deck PDF when available.
+ */
+export async function sendProposalEmail(options: {
+  to: string;
+  recipientName?: string | null;
+  companyName?: string | null;
+  quoteToken: string;
+  packQuantity: number;
+  productNames: string[];
+  grandTotal: number;
+  validUntil: Date;
+  message?: string | null;
+  attachments?: EmailAttachment[];
+}) {
+  const greeting = options.recipientName ? `Hi ${esc(options.recipientName)},` : 'Hi there,';
+  const quoteUrl = `${APP_URL}/quote/${options.quoteToken}`;
+
+  const intro = options.companyName
+    ? `We've put together a curated gift pack proposal for <strong>${esc(options.companyName)}</strong>. Here's a quick summary — the full details, imagery and pricing breakdown are one click away.`
+    : `We've put together a curated gift pack proposal for you. Here's a quick summary — the full details, imagery and pricing breakdown are one click away.`;
+
+  const personalNote = options.message
+    ? note(esc(options.message).replace(/\n/g, '<br/>'))
+    : '';
+
+  const productList = options.productNames
+    .slice(0, 8)
+    .map((n) => `<li style="margin:0 0 6px;font-size:14px;color:${COLORS.body};">${esc(n)}</li>`)
+    .join('');
+  const moreCount = options.productNames.length - 8;
+
+  const summary = card(
+    row('Gift packs', String(options.packQuantity)) +
+      row('Items per pack', String(options.productNames.length)) +
+      `<tr><td colspan="2" style="padding:0;"><div style="border-top:2px solid ${COLORS.border};margin:8px 0 2px;"></div></td></tr>` +
+      row('Estimated Total (incl. GST)', `<span style="font-size:16px;">${inr(options.grandTotal)}</span>`, true)
+  );
+
+  const validUntilStr = options.validUntil.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const content =
+    `<p style="margin:0 0 16px;font-size:15px;color:${COLORS.muted};">${greeting}</p>` +
+    p(intro) +
+    personalNote +
+    `<p style="margin:0 0 8px;font-size:14px;font-weight:700;color:${COLORS.ink};">What's inside</p>` +
+    `<ul style="margin:0 0 20px;padding-left:20px;">${productList}${
+      moreCount > 0
+        ? `<li style="margin:0 0 6px;font-size:14px;color:${COLORS.muted};">+ ${moreCount} more</li>`
+        : ''
+    }</ul>` +
+    summary +
+    button('View Your Proposal', quoteUrl, COLORS.orange) +
+    p(
+      `This proposal is valid until <strong>${validUntilStr}</strong>. ${
+        options.attachments?.length
+          ? 'We’ve also attached the full proposal deck as a PDF for easy sharing with your team.'
+          : ''
+      }`
+    ) +
+    p(`Questions or want to tweak the pack? Just reply to this email — we're happy to adjust.`);
+
+  return sendEmail({
+    to: options.to,
+    subject: `Your GIVOO gift pack proposal${options.companyName ? ` for ${options.companyName}` : ''}`,
+    html: renderEmail({
+      heading: 'Your Gift Pack Proposal 🎁',
+      preheader: `A curated gifting proposal — ${options.packQuantity} packs, valid until ${validUntilStr}`,
+      contentHtml: content,
+    }),
+    category: 'quotes',
+    attachments: options.attachments,
+  });
+}

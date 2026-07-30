@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { Package, DollarSign, User, LogOut, Menu, X } from 'lucide-react';
+import { BrandLogo } from '@/components/layout/brand-logo';
 
 const NAV = [
   { href: '/vendor/dashboard', label: 'Dashboard', icon: null, emoji: '📊' },
@@ -40,8 +41,9 @@ export function VendorMobileNav({ userName }: Props) {
 
   return (
     <header className="sticky top-0 z-[60] flex h-14 items-center justify-between border-b-2 border-bdr bg-white px-4 lg:hidden">
-      <Link href="/vendor/dashboard" className="font-normal text-ink">
-        GIVOO <span className="text-xs text-ink-3">Vendor</span>
+      <Link href="/vendor/dashboard" className="flex items-center gap-2">
+        <BrandLogo className="h-8 w-auto" />
+        <span className="text-xs text-ink-3">Vendor</span>
       </Link>
       <button
         type="button"
@@ -62,8 +64,8 @@ export function VendorMobileNav({ userName }: Props) {
           <aside className="absolute left-0 top-0 flex h-full w-[280px] max-w-[85vw] flex-col bg-white shadow-float">
             <div className="flex items-center justify-between border-b-2 border-bdr px-6 py-5">
               <div>
-                <p className="text-lg font-normal text-ink">GIVOO</p>
-                <p className="text-xs text-ink-3">Vendor Portal</p>
+                <BrandLogo className="h-8 w-auto" />
+                <p className="mt-1 text-xs text-ink-3">Vendor Portal</p>
               </div>
               <button
                 type="button"

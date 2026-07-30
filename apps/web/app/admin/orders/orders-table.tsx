@@ -90,7 +90,7 @@ export function OrdersTable({ orders }: { orders: OrderRow[] }) {
                 className="cursor-pointer border-b border-bdr last:border-0 hover:bg-elevated/40"
               >
                 <td className="whitespace-nowrap px-4 py-3">
-                  <span className="font-semibold text-ink">#{o.orderNumber}</span>
+                  <span className="font-semibold text-ink hover:underline">#{o.orderNumber}</span>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-ink-2">{formatDate(o.createdAt)}</td>
                 <td className="max-w-[220px] truncate px-4 py-3 text-ink-2">{o.customer}</td>

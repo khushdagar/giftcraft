@@ -132,6 +132,8 @@ const CreateProductSchema = z.object({
   sampleAvailable: z.boolean().default(false),
   recipientTags: z.array(z.string()).nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
+  // Rich-text detail tab; also drives the Proposal Deck PDF bullets.
+  keyFeatures: z.string().nullable().optional(),
   isFeatured: z.boolean().default(false),
   hsnCode: z.string().nullable().optional(),
   hsnId: z.string().nullable().optional(), // legacy: an HsnCode id
@@ -279,6 +281,7 @@ export async function POST(request: NextRequest) {
         sampleAvailable: data.sampleAvailable,
         ...(data.recipientTags?.length && { recipientTags: data.recipientTags }),
         ...(data.tags?.length && { tags: data.tags }),
+        keyFeatures: data.keyFeatures,
         isFeatured: data.isFeatured,
 
         // Curated pack: flag, parent collection, and member products.

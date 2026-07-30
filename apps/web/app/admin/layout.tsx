@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { NotificationBell } from "@/components/admin/notification-bell";
+import { BrandLogo } from "@/components/layout/brand-logo";
 
 // Admin pages are session-gated and render live operational data. Force
 // per-request dynamic rendering so nothing under /admin is statically cached.
@@ -22,8 +23,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="grid min-h-screen bg-white md:grid-cols-[256px_1fr]">
       {/* Dark sidebar */}
       <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-ink/10 bg-dark text-inv md:flex">
-        <Link href="/" className="px-5 py-4 font-display text-base font-normal tracking-tight text-inv">
-          GIVOO <span className="text-xs font-normal text-inv/40">admin</span>
+        <Link href="/" className="flex items-center gap-2 px-5 py-4">
+          <BrandLogo className="h-10 w-auto" />
+          <span className="text-xs font-normal text-inv/40">admin</span>
         </Link>
 
         <AdminNav />

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { useSession } from 'next-auth/react';
+import { useSession, signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { CheckoutNav } from '@/components/checkout/checkout-nav';
 import { OrderSummary } from '@/components/checkout/order-summary';
@@ -12,6 +12,14 @@ import { ContactForm, type ContactFormData } from '@/components/checkout/contact
 import { PathSelection } from '@/components/checkout/path-selection';
 import { PricingPanel } from '@/components/checkout/pricing-panel';
 import { ProcessTimeline } from '@/components/checkout/process-timeline';
+import { ProposalDownloadButton } from '@/components/checkout/proposal-download-button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import type { PricingBreakdown } from '@giftcraft/types';
 import { computePricing } from '@giftcraft/pricing';
 import { computeOrderShipping } from '@/lib/shipping';
@@ -95,6 +103,7 @@ function CheckoutContent() {
   const { data: session } = useSession();
 
   const [selectedPath, setSelectedPath] = useState<'mockup' | 'lock'>('mockup');
+  const [showSignIn, setShowSignIn] = useState(false);
 
   const [billingData, setBillingData] = useState<BillingFormData>({
     companyName: '',
@@ -114,6 +123,23 @@ function CheckoutContent() {
     email: '',
     phone: '',
   });
+
+  // Restore form data saved just before the guest was sent to Google sign-in,
+  // so nothing they typed is lost across the OAuth redirect.
+  useEffect(() => {
+    if (!quoteId) return;
+    try {
+      const raw = sessionStorage.getItem(`checkout-form-${quoteId}`);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved.billingData) setBillingData(saved.billingData);
+      if (saved.contactData) setContactData(saved.contactData);
+      if (saved.selectedPath) setSelectedPath(saved.selectedPath);
+      sessionStorage.removeItem(`checkout-form-${quoteId}`);
+    } catch {
+      /* corrupted/unavailable storage — start with empty forms */
+    }
+  }, [quoteId]);
 
   const {
     data: quote,
@@ -353,6 +379,21 @@ function CheckoutContent() {
   // Single entrypoint from the pricing panel; branches on the selected path.
   const handleContinue = async () => {
     if (submitting) return;
+    // Guests sign in at the payment step (orders are always tied to an
+    // account). Save what they've typed so it's restored when Google brings
+    // them back to this exact page.
+    if (!session) {
+      try {
+        sessionStorage.setItem(
+          `checkout-form-${quoteId}`,
+          JSON.stringify({ billingData, contactData, selectedPath })
+        );
+      } catch {
+        /* storage unavailable — they'll just re-type after signing in */
+      }
+      setShowSignIn(true);
+      return;
+    }
     if (!validateForms()) return;
     if (selectedPath === 'lock') return handlePayAndLock();
     return handleMockupConfirm();
@@ -516,6 +557,27 @@ function CheckoutContent() {
     <>
       {/* <CheckoutNav /> */}
 
+      {/* Guest tried to place the order — orders need an account, so prompt a
+          Google sign-in that returns straight back to this checkout. */}
+      <Dialog open={showSignIn} onOpenChange={setShowSignIn}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sign in to place your order</DialogTitle>
+            <DialogDescription>
+              Your pack and everything you&apos;ve typed are saved — sign in
+              with Google and you&apos;ll come right back here to finish.
+            </DialogDescription>
+          </DialogHeader>
+          <button
+            type="button"
+            onClick={() => signIn('google', { callbackUrl: window.location.href })}
+            className="w-full rounded-full bg-[#1A1A18] px-5 py-3 text-sm font-medium text-[#FAFAF7] hover:opacity-90 transition"
+          >
+            Continue with Google
+          </button>
+        </DialogContent>
+      </Dialog>
+
       <main className="bg-[#FAFAF7] min-h-screen">
         <section className="py-8 md:py-12 pb-20">
           <div className="cw">
@@ -543,6 +605,29 @@ function CheckoutContent() {
                   logo={payload.logoUrl || undefined}
                   onEdit={() => router.push('/builder')}
                 />
+
+                {/* Shareable proposal deck — a slide-style PDF of exactly the
+                    products in this pack, for sending on to approvers. */}
+                <div className="bg-white rounded-2xl shadow-sm p-5 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-[#1A1A18]">
+                      Need to share this internally?
+                    </p>
+                    <p className="text-xs text-[#6B6B63] mt-1">
+                      Download a presentation of your pack — one slide per product,
+                      with features and pricing.
+                    </p>
+                  </div>
+                  <ProposalDownloadButton
+                    quoteToken={quoteId}
+                    prefill={{
+                      name: contactData.name,
+                      email: contactData.email,
+                      phone: contactData.phone,
+                      company: billingData.companyName,
+                    }}
+                  />
+                </div>
 
                 <BillingForm data={billingData} onChange={setBillingData} />
 

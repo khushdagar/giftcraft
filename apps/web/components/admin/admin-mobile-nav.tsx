@@ -7,6 +7,7 @@ import { signOut } from 'next-auth/react';
 import { Menu, X, LogOut } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { AdminNav } from '@/components/admin/admin-nav';
+import { BrandLogo } from '@/components/layout/brand-logo';
 
 interface Props {
   userName?: string | null;
@@ -58,8 +59,9 @@ export function AdminMobileNav({ userName, userRole, userImage }: Props) {
           />
           <aside className="absolute left-0 top-0 flex h-full w-[280px] max-w-[85vw] flex-col overflow-y-auto bg-dark text-inv shadow-float">
             <div className="flex items-center justify-between px-5 py-4">
-              <Link href="/" className="font-display text-base font-normal tracking-tight text-inv">
-                GIVOO <span className="text-xs font-normal text-inv/40">admin</span>
+              <Link href="/" className="flex items-center gap-2">
+                <BrandLogo className="h-7 w-auto rounded-md" />
+                <span className="text-xs font-normal text-inv/40">admin</span>
               </Link>
               <button
                 type="button"

@@ -5,13 +5,9 @@ import { nanoid } from 'nanoid';
 
 export async function POST(req: NextRequest) {
   try {
+    // Guests can build a pack and proceed to checkout without logging in —
+    // the quote just isn't attributed to a user account.
     const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const body = await req.json();
     const {
@@ -40,7 +36,7 @@ export async function POST(req: NextRequest) {
     const quote = await prisma.quote.create({
       data: {
         shareToken,
-        createdById: session.user.id,
+        createdById: session?.user?.id ?? null,
         status: 'active',
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         payload: {

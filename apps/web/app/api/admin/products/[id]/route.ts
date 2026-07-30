@@ -38,6 +38,8 @@ const UpdateProductSchema = z.object({
   sampleAvailable: z.boolean().nullable().optional(),
   recipientTags: z.array(z.string()).nullable().optional(),
   tags: z.array(z.string()).nullable().optional(),
+  // Rich-text detail tab; also drives the Proposal Deck PDF bullets.
+  keyFeatures: z.string().nullable().optional(),
   isFeatured: z.boolean().nullable().optional(),
   metaTitle: z.string().nullable().optional(),
   metaDescription: z.string().nullable().optional(),
@@ -220,6 +222,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           ...(data.sampleAvailable != null && { sampleAvailable: data.sampleAvailable }),
           ...(data.recipientTags !== undefined && { recipientTags: data.recipientTags ?? [] }),
           ...(data.tags !== undefined && { tags: data.tags ?? [] }),
+          ...(data.keyFeatures !== undefined && { keyFeatures: data.keyFeatures }),
           ...(data.isFeatured != null && { isFeatured: data.isFeatured }),
           ...(data.metaTitle !== undefined && { metaTitle: data.metaTitle }),
           ...(data.metaDescription !== undefined && { metaDescription: data.metaDescription }),

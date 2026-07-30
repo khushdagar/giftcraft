@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { OccasionForm } from '@/components/admin/occasions/occasion-form';
 import { OccasionProductManager } from '@/components/admin/occasions/occasion-product-manager';
-import Link from 'next/link';
 
 export default async function EditOccasionPage({ params }: { params: { id: string } }) {
   const session = await auth();
@@ -36,27 +35,15 @@ export default async function EditOccasionPage({ params }: { params: { id: strin
   }
 
   return (
-    <div className="space-y-8">
-      <div className="max-w-2xl">
-        <Link href="/admin/occasions" className="text-em hover:underline text-sm font-medium">
-          ← Back to Occasions
-        </Link>
-        <h1 className="text-3xl font-normal tracking-tight text-ink mt-4">Edit Occasion</h1>
-        <p className="text-sm text-ink-2 mt-2">{occasion.name}</p>
-      </div>
-
-      <div className="max-w-2xl">
-        <OccasionForm mode="edit" occasion={occasion} />
-      </div>
+    <div className="mx-auto max-w-5xl space-y-8">
+      <OccasionForm mode="edit" occasion={occasion} />
 
       {/* Product Manager */}
-      <div>
-        <OccasionProductManager
-          occasionId={occasion.id}
-          occasionName={occasion.name}
-          linkedProducts={occasion.products}
-        />
-      </div>
+      <OccasionProductManager
+        occasionId={occasion.id}
+        occasionName={occasion.name}
+        linkedProducts={occasion.products}
+      />
     </div>
   );
 }

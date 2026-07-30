@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/store/builder";
+import { BrandLogo } from "@/components/layout/brand-logo";
 
 interface NavLink { name: string; slug: string }
 
@@ -94,8 +95,8 @@ export function Navbar() {
           scrolled && "shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.04)]"
         )}
       >
-        <Link href="/" className="font-display text-[22px] italic font-medium text-em">
-          GIVOO
+        <Link href="/" className="flex items-center">
+          <BrandLogo className="h-9 w-auto" />
         </Link>
 
         <ul className="hidden items-center gap-7 lg:flex">
@@ -249,7 +250,7 @@ export function Navbar() {
           <div className="fixed inset-0 z-[799] bg-black/30" onClick={() => setMobileOpen(false)} />
           <div className="fixed right-0 top-0 bottom-0 z-[800] flex w-full max-w-[380px] flex-col bg-white p-6 shadow-float">
             <div className="mb-8 flex items-center justify-between">
-              <span className="font-display text-xl italic text-em">GIVOO</span>
+              <BrandLogo className="h-8 w-auto" />
               <button
                 onClick={() => setMobileOpen(false)}
                 className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-elevated"

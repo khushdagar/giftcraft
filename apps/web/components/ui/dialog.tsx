@@ -37,7 +37,7 @@ const DialogContent = React.forwardRef<
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 rounded-md-s border border-bdr bg-white p-5 shadow-float sm:p-6",
         "max-h-[calc(100dvh-2rem)] overflow-y-auto",
-        "data-[state=open]:animate-scale-in",
+        "data-[state=open]:animate-dialog-in",
         className
       )}
       {...props}

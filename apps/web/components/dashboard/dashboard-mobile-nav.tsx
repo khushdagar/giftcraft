@@ -9,11 +9,12 @@ import {
   Settings, LogOut, Bell, Menu, X, MapPin,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { BrandLogo } from '@/components/layout/brand-logo';
 
 const NAV = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
   { href: '/dashboard/orders', icon: Package, label: 'Orders' },
-  { href: '/dashboard/quotes', icon: FileText, label: 'Quotes' },
+  // { href: '/dashboard/quotes', icon: FileText, label: 'Quotes' },
   { href: '/dashboard/assets', icon: FolderOpen, label: 'Brand Assets' },
   { href: '/dashboard/addresses', icon: MapPin, label: 'Saved Addresses' },
   { href: '/dashboard/settings/profile', icon: User, label: 'Profile' },
@@ -50,8 +51,8 @@ export function DashboardMobileNav({ userName, userRole, userImage }: Props) {
 
   return (
     <header className="sticky top-0 z-[60] flex h-14 items-center justify-between border-b border-bdr bg-dark px-4 text-inv lg:hidden">
-      <Link href="/" className="font-display text-lg italic text-em-400">
-        GIVOO
+      <Link href="/" className="flex items-center">
+        <BrandLogo className="h-8 w-auto rounded-md" />
       </Link>
       <button
         type="button"
@@ -72,7 +73,7 @@ export function DashboardMobileNav({ userName, userRole, userImage }: Props) {
           <aside className="absolute left-0 top-0 flex h-full w-[280px] max-w-[85vw] flex-col bg-dark text-inv shadow-float">
             <div className="flex items-center justify-between px-5 pt-5 pb-4">
               <div>
-                <span className="font-display text-xl italic text-em-400">GIVOO</span>
+                <BrandLogo className="h-8 w-auto rounded-md" />
                 <p className="mt-1 text-[10px] uppercase tracking-wider text-white">Customer Portal</p>
               </div>
               <button
