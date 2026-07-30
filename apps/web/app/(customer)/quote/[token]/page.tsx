@@ -143,10 +143,12 @@ export default async function QuotePage({ params }: { params: { token: string } 
             {shippingZone && (
               <div className="rounded-md border-2 border-sky-200 bg-sky-50 p-5">
                 <p className="text-xs text-sky-700 font-normal mb-2">
-                  {shippingZone.zoneName} · Shipping (incl. GST)
+                  {shippingZone.zoneName ? `${shippingZone.zoneName} · ` : ''}Shipping (incl. GST)
                 </p>
                 <p className="text-lg font-normal text-sky-900 tabnum">
-                  {(pricing.shipping ?? 0) > 0 ? formatRupees(pricing.shipping) : 'FREE'}
+                  {(pricing.shipping ?? 0) > 0
+                    ? formatRupees(pricing.shipping)
+                    : 'Calculated at checkout'}
                 </p>
               </div>
             )}

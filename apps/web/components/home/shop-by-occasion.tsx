@@ -4,6 +4,7 @@ import { useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cdnSrcSet, clearSrcSetOnError } from '@/lib/cdn-srcset';
 
 export function ShopByOccasion() {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -27,6 +28,7 @@ export function ShopByOccasion() {
       if (!res.ok) throw new Error('Failed to fetch occasions');
       return res.json();
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   // Group into pages of 4 — each page renders as a 2x2 grid, so a swipe
@@ -71,6 +73,10 @@ export function ShopByOccasion() {
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={occ.image}
+          srcSet={cdnSrcSet(occ.image)}
+          sizes="(min-width: 768px) 25vw, 50vw"
+          decoding="async"
+          onError={clearSrcSetOnError}
           alt={occ.name}
           className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-600"
         />

@@ -110,7 +110,7 @@ export async function Footer() {
       <div className="container-gc-w">
         <div className="mb-10 grid grid-cols-2 gap-8 lg:grid-cols-[1.8fr_repeat(4,1fr)]">
           <div className="col-span-2 lg:col-span-1">
-            <BrandLogo className="mb-2.5 h-10 w-auto rounded-md" />
+            <BrandLogo className="mb-2.5 h-10 w-auto" />
             <p className="max-w-[260px] text-[13px] leading-relaxed text-white">
               India&apos;s first self-serve bulk gifting platform. Browse, build,
               and order branded corporate gifts with transparent pricing.

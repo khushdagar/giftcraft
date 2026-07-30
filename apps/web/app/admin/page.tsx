@@ -3,6 +3,7 @@ import { formatRupees } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, ShoppingBag, Users, FileText, Package, Clock } from "lucide-react";
 import { SlaAlertWidget } from "@/components/admin/dashboard/sla-alert-widget";
+import { NeedsAttentionWidget } from "@/components/admin/dashboard/needs-attention-widget";
 
 // Orders that represent real (non-cancelled, placed) business — used for
 // revenue and order metrics. Excludes draft/quote_sent/cancelled/refunded.
@@ -159,6 +160,9 @@ export default async function AdminDashboard() {
 
       {/* SLA Alert Widget */}
       <SlaAlertWidget />
+
+      {/* Everything from the customer side that still needs action */}
+      <NeedsAttentionWidget />
 
       {/* Pipeline kanban */}
       <div className="rounded-md bg-white p-5 shadow-card">

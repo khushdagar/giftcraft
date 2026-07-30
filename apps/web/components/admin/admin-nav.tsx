@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Send, Download } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Download, Star } from 'lucide-react';
 
 const NAV = [
   { section: "Overview", items: [
@@ -15,7 +15,6 @@ const NAV = [
     { href: "/admin/goc", icon: Sparkles, label: "GOC Campaigns" },
     { href: "/admin/samples", icon: Box, label: "Samples" },
     { href: "/admin/enquiries", icon: Mail, label: "Enquiries" },
-    { href: "/admin/proposals", icon: Send, label: "Proposals" },
     { href: "/admin/proposal-downloads", icon: Download, label: "Deck Downloads" },
     { href: "/admin/clients", icon: Users, label: "Clients" },
     { href: "/admin/vendors", icon: Truck, label: "Vendors" },
@@ -23,6 +22,7 @@ const NAV = [
   { section: "Content", items: [
     { href: "/admin/categories", icon: Tag, label: "Categories" },
     { href: "/admin/occasions", icon: Gift, label: "Occasions" },
+    { href: "/admin/reviews", icon: Star, label: "Reviews" },
     { href: "/admin/blog", icon: FileText, label: "Blog" },
   ]},
   { section: "Marketing", items: [
@@ -42,7 +42,7 @@ export function AdminNav() {
   const pathname = usePathname();
   const [ordersCount, setOrdersCount] = useState(0);
 
-  // Live count of active orders for the Orders badge (polls every 60s).
+  // Live count of UNSEEN new orders for the Orders badge (polls every 60s).
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -62,6 +62,43 @@ export function AdminNav() {
       clearInterval(interval);
     };
   }, []);
+
+  // Reaching a section counts as "seen" for its notifications — they're marked
+  // read on arrival (not on click), so the bell/dashboard clear only after the
+  // admin actually visited the page.
+  useEffect(() => {
+    const SECTION_TYPE: Array<[string, string]> = [
+      ['/admin/orders', 'order'],
+      ['/admin/reviews', 'review'],
+      ['/admin/enquiries', 'enquiry'],
+      ['/admin/samples', 'sample'],
+      ['/admin/proposal-downloads', 'download'],
+      ['/admin/disputes', 'dispute'],
+    ];
+    const match = SECTION_TYPE.find(
+      ([prefix]) => pathname === prefix || pathname.startsWith(prefix + '/')
+    );
+    if (!match) return;
+    let active = true;
+    (async () => {
+      try {
+        await fetch('/api/admin/notifications/read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: match[1] }),
+        });
+        if (active && match[1] === 'order') setOrdersCount(0);
+        // Tell the bell + dashboard widget to refresh right away instead of
+        // waiting for their next 60s poll.
+        window.dispatchEvent(new Event('admin-notifications-updated'));
+      } catch {
+        /* ignore — clears on next poll */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 

@@ -15,7 +15,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [newOrders, revisionRequests, openDisputes, navOrdersCount, readRows] = await Promise.all([
+    const [
+      newOrders,
+      revisionRequests,
+      openDisputes,
+      pendingReviews,
+      newEnquiries,
+      sampleRequests,
+      deckDownloads,
+      confirmedOrders,
+      readRows,
+    ] = await Promise.all([
       // Newly placed orders awaiting action.
       prisma.order.findMany({
         where: { status: 'confirmed' },
@@ -47,9 +57,56 @@ export async function GET() {
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
-      // Active orders (not in a terminal state) — drives the Orders nav badge.
-      prisma.order.count({
-        where: { status: { notIn: ['delivered', 'completed', 'cancelled', 'refunded'] } },
+      // Product reviews awaiting moderation.
+      prisma.review.findMany({
+        where: { status: 'pending' },
+        select: {
+          id: true,
+          rating: true,
+          createdAt: true,
+          product: { select: { name: true } },
+          user: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      // Fresh enquiries (product quick-quotes + contact page).
+      prisma.enquiry.findMany({
+        where: { status: 'new' },
+        select: {
+          id: true,
+          companyName: true,
+          contactName: true,
+          productName: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      // Sample requests awaiting approval.
+      prisma.sampleOrder.findMany({
+        where: { status: 'requested' },
+        select: {
+          id: true,
+          createdAt: true,
+          product: { select: { name: true } },
+          user: { select: { name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      // Proposal deck downloads (lead signals) from the last 7 days.
+      prisma.proposalDownload.findMany({
+        where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+        select: { id: true, name: true, company: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      // All NEW (confirmed, unprocessed) orders — the nav badge counts the ones
+      // this admin hasn't seen yet, and hides once they're viewed.
+      prisma.order.findMany({
+        where: { status: 'confirmed' },
+        select: { id: true },
       }),
       // Notifications this admin has already read or cleared.
       prisma.adminNotificationRead.findMany({
@@ -87,6 +144,38 @@ export async function GET() {
         href: `/admin/disputes/${d.id}`,
         createdAt: d.createdAt.toISOString(),
       })),
+      ...pendingReviews.map((r) => ({
+        id: `review-${r.id}`,
+        type: 'review' as const,
+        title: `New ${r.rating}★ review on ${r.product.name}`,
+        subtitle: `by ${r.user?.name || 'a customer'} — awaiting approval`,
+        href: '/admin/reviews?status=pending',
+        createdAt: r.createdAt.toISOString(),
+      })),
+      ...newEnquiries.map((e) => ({
+        id: `enquiry-${e.id}`,
+        type: 'enquiry' as const,
+        title: `New enquiry from ${e.companyName}`,
+        subtitle: e.productName ? `About ${e.productName}` : `${e.contactName} — via contact page`,
+        href: '/admin/enquiries',
+        createdAt: e.createdAt.toISOString(),
+      })),
+      ...sampleRequests.map((s) => ({
+        id: `sample-${s.id}`,
+        type: 'sample' as const,
+        title: `Sample request: ${s.product.name}`,
+        subtitle: `by ${s.user?.name || 'a customer'} — awaiting approval`,
+        href: '/admin/samples',
+        createdAt: s.createdAt.toISOString(),
+      })),
+      ...deckDownloads.map((d) => ({
+        id: `download-${d.id}`,
+        type: 'download' as const,
+        title: `Proposal deck downloaded`,
+        subtitle: `${d.name}${d.company ? ` — ${d.company}` : ''}`,
+        href: '/admin/proposal-downloads',
+        createdAt: d.createdAt.toISOString(),
+      })),
     ]
       // Hide only cleared notifications; read-but-not-cleared ones stay visible.
       .filter((n) => !dismissedKeys.has(n.id))
@@ -95,6 +184,12 @@ export async function GET() {
 
     // Badge reflects UNREAD notifications only.
     const unreadCount = notifications.filter((n) => !n.read).length;
+
+    // Orders nav badge: new orders this admin hasn't seen yet. Viewing the
+    // Orders page marks them seen, which hides the badge.
+    const navOrdersCount = confirmedOrders.filter(
+      (o) => !readKeys.has(`order-${o.id}`) && !dismissedKeys.has(`order-${o.id}`)
+    ).length;
 
     return NextResponse.json({
       count: unreadCount,
