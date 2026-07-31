@@ -131,7 +131,9 @@ export function RelatedProducts({
                           src={product.images[0].url}
                           alt={product.name}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          // contain (not cover) so tall bottles/mugs are shown
+                          // whole instead of being cropped top and bottom.
+                          className="object-contain p-3 group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
                         <div className="flex items-center justify-center h-full text-5xl opacity-60">📦</div>

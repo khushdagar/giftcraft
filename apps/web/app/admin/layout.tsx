@@ -63,7 +63,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <NotificationBell />
         </header>
 
-        <main className="min-h-[calc(100vh-64px)] bg-gray-50 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-h-[calc(100vh-64px)] bg-gray-50 p-4">{children}</main>
       </div>
     </div>
   );

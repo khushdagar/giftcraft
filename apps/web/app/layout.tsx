@@ -25,6 +25,11 @@ export const metadata: Metadata = {
   description:
     "Browse products, build branded gift packs, and get instant transparent pricing. By GIVOO, Delhi.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
