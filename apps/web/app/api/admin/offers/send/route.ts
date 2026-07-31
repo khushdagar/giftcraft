@@ -7,11 +7,22 @@ import { z } from 'zod';
 const sendSchema = z.object({
   subject: z.string().min(1, 'Subject is required'),
   headline: z.string().min(1, 'Headline is required'),
-  body: z.string().min(1, 'Body is required'),
+  // Rich text (HTML) from the offer composer. An "empty" editor still emits
+  // "<p></p>", so require actual text or a visual element.
+  body: z
+    .string()
+    .min(1, 'Body is required')
+    .refine(
+      (v) =>
+        v.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0 ||
+        /<(img|hr|table)\b/i.test(v),
+      'Body is required'
+    ),
   ctaLabel: z.string().optional(),
   ctaUrl: z.string().url().optional().or(z.literal('')),
   imageUrl: z.string().url().optional().or(z.literal('')),
   testEmail: z.string().email().optional(), // send a single preview to this address only
+  recipientIds: z.array(z.string()).optional(), // limit send to these opted-in users
 });
 
 // Customers who opted into marketing emails (prefsJson.marketing === true).
@@ -20,7 +31,8 @@ async function getRecipients() {
     where: {
       notificationPref: { prefsJson: { path: ['marketing'], equals: true } },
     },
-    select: { email: true, name: true },
+    select: { id: true, email: true, name: true },
+    orderBy: { name: 'asc' },
   });
 }
 
@@ -31,7 +43,10 @@ export async function GET() {
   }
 
   const recipients = await getRecipients();
-  return NextResponse.json({ success: true, data: { recipientCount: recipients.length } });
+  return NextResponse.json({
+    success: true,
+    data: { recipientCount: recipients.length, recipients },
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -72,7 +87,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const recipients = await getRecipients();
+    let recipients = await getRecipients();
+
+    // Selected-customers mode: only send to the chosen subset. Filtering against
+    // the opted-in list means a stale/forged id can never email an opted-out user.
+    if (parsed.recipientIds && parsed.recipientIds.length > 0) {
+      const wanted = new Set(parsed.recipientIds);
+      recipients = recipients.filter((r) => wanted.has(r.id));
+      if (recipients.length === 0) {
+        return NextResponse.json(
+          { error: 'None of the selected customers are opted into marketing emails' },
+          { status: 400 }
+        );
+      }
+    }
 
     let sent = 0;
     let skipped = 0;

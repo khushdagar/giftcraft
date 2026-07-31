@@ -416,6 +416,81 @@
   border-top: 2px solid #e8e8e3;
   margin: 2.5em 0;
 }
+.blog-content h1 {
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  font-size: 2.125rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  color: #1a1a18;
+}
+.blog-content h4 {
+  margin-top: 1.5em;
+  margin-bottom: 0.4em;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #1a1a18;
+}
+.blog-content h5,
+.blog-content h6 {
+  margin-top: 1.4em;
+  margin-bottom: 0.35em;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #1a1a18;
+}
+.blog-content h6 {
+  font-size: 0.9375rem;
+  color: #52525b;
+}
+.blog-content mark {
+  border-radius: 3px;
+  padding: 0.05em 0.2em;
+  background-color: #fef08a;
+  color: inherit;
+}
+/* Tables — the wrapper is added by TipTap inside the editor only. */
+.blog-content .tableWrapper {
+  overflow-x: auto;
+}
+.blog-content table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+.blog-content th,
+.blog-content td {
+  position: relative;
+  border: 1px solid #e8e8e3;
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+}
+.blog-content th {
+  background: #f7f7f4;
+  font-weight: 700;
+  text-align: left;
+  color: #1a1a18;
+}
+.blog-content .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 107, 79, 0.12);
+  pointer-events: none;
+}
+.blog-content .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: -2px;
+  width: 4px;
+  background: #1a6b4f;
+  pointer-events: none;
+}
 /* TipTap renders the placeholder on the first empty paragraph. */
 .blog-content p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);

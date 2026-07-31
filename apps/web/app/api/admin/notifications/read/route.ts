@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { markAdminNotificationsRead } from '@/lib/admin-notifications';
+import { fetchGhlLeads, recentLeads } from '@/lib/ghl';
 
 /**
  * POST /api/admin/notifications/read
@@ -28,11 +29,15 @@ async function keysForType(type: string): Promise<string[]> {
       return rows.map((r) => `review-${r.id}`);
     }
     case 'enquiry': {
-      const rows = await prisma.enquiry.findMany({
-        where: { status: 'new' },
-        select: { id: true },
-      });
-      return rows.map((r) => `enquiry-${r.id}`);
+      // The Enquiries page shows website enquiries AND GHL leads, so visiting
+      // it clears both.
+      const [rows, ghl] = await Promise.all([
+        prisma.enquiry.findMany({ where: { status: 'new' }, select: { id: true } }),
+        fetchGhlLeads().catch(() => ({ status: 'error' as const })),
+      ]);
+      const ghlKeys =
+        ghl.status === 'ok' ? recentLeads(ghl.leads).map((l) => `ghl-${l.id}`) : [];
+      return [...rows.map((r) => `enquiry-${r.id}`), ...ghlKeys];
     }
     case 'sample': {
       const rows = await prisma.sampleOrder.findMany({

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { fetchGhlLeads, recentLeads } from '@/lib/ghl';
 
 /**
  * GET /api/admin/notifications
@@ -25,6 +26,7 @@ export async function GET() {
       deckDownloads,
       confirmedOrders,
       readRows,
+      ghlResult,
     ] = await Promise.all([
       // Newly placed orders awaiting action.
       prisma.order.findMany({
@@ -113,7 +115,12 @@ export async function GET() {
         where: { userId: session.user.id },
         select: { key: true, dismissed: true },
       }),
+      // GoHighLevel leads (30s-cached). Never block the bell on a CRM outage.
+      fetchGhlLeads().catch(() => ({ status: 'error' as const, error: 'unavailable' })),
     ]);
+
+    const ghlLeads =
+      ghlResult.status === 'ok' ? recentLeads(ghlResult.leads).slice(0, 10) : [];
 
     // A row means "read"; a dismissed row means "cleared" (hidden entirely).
     const readKeys = new Set(readRows.map((r) => r.key));
@@ -159,6 +166,16 @@ export async function GET() {
         subtitle: e.productName ? `About ${e.productName}` : `${e.contactName} — via contact page`,
         href: '/admin/enquiries',
         createdAt: e.createdAt.toISOString(),
+      })),
+      ...ghlLeads.map((l) => ({
+        id: `ghl-${l.id}`,
+        type: 'enquiry' as const,
+        title: `New GHL lead${l.name ? ` from ${l.name}` : ''}`,
+        subtitle: [l.companyName, l.productName, l.formName ? `via ${l.formName}` : null]
+          .filter(Boolean)
+          .join(' — ') || l.email || 'GoHighLevel',
+        href: '/admin/enquiries',
+        createdAt: l.dateAdded as string,
       })),
       ...sampleRequests.map((s) => ({
         id: `sample-${s.id}`,

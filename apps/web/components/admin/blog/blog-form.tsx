@@ -9,7 +9,7 @@ import { Loader2, Upload, X, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { RichTextEditor } from './rich-text-editor';
+import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { slugify, parseTags, autoExcerpt, readingMinutes, stripHtml } from '@/lib/blog';
 
 export interface BlogCategoryOption {
@@ -225,7 +225,12 @@ export function BlogForm({
         </Section>
 
         <Section title="Body" hint={form.content ? `${wordCount} words · ~${minutes} min read` : undefined}>
-          <RichTextEditor value={form.content} onChange={(html) => set('content', html)} />
+          <RichTextEditor
+            value={form.content}
+            onChange={(html) => set('content', html)}
+            placeholder="Write your post…"
+            uploadFolder="blog"
+          />
         </Section>
 
         <Section title="SEO" hint="Overrides the defaults taken from the title and excerpt.">

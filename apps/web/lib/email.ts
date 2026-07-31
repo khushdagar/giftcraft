@@ -1,6 +1,8 @@
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
 import { invoiceLabel } from '@/lib/invoice-status';
+import { COLORS, FONT, esc } from './email-theme';
+import { richTextToEmailHtml } from './email-rich-text';
 
 const resend = new Resend(process.env.RESEND_API_KEY || '');
 
@@ -108,32 +110,10 @@ export async function sendCustomEmail(options: {
 //   (Gmail, Outlook, Apple Mail). Brand palette from CLAUDE.md.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const COLORS = {
-  navy: '#1A3C6E',
-  ink: '#1A1A1A',
-  body: '#3F3F46',
-  muted: '#71717A',
-  faint: '#A1A1AA',
-  border: '#E4E4E7',
-  surface: '#FAFAFA',
-  page: '#F4F4F5',
-  orange: '#F97316',
-  emerald: '#10B981',
-  amber: '#F59E0B',
-};
-
-const FONT = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif`;
-
 const inr = (n: number) =>
   `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
-
-const esc = (s: string) =>
-  String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
 
 /** A paragraph styled for email body copy. */
 function p(text: string): string {
@@ -726,10 +706,14 @@ export async function sendOfferEmail(options: {
     ? `<img src="${options.imageUrl}" alt="${esc(options.headline)}" width="536" style="display:block;width:100%;max-width:536px;height:auto;border-radius:12px;margin:0 0 20px;" />`
     : '';
 
-  const bodyHtml = esc(options.body)
-    .split(/\n{2,}/)
-    .map((para) => p(para.replace(/\n/g, '<br/>')))
-    .join('');
+  // The composer sends rich text; older plain-text bodies still render as paragraphs.
+  const isRichText = /<(p|h[1-6]|ul|ol|blockquote|pre|table|img|hr|div|br)\b/i.test(options.body);
+  const bodyHtml = isRichText
+    ? richTextToEmailHtml(options.body)
+    : esc(options.body)
+        .split(/\n{2,}/)
+        .map((para) => p(para.replace(/\n/g, '<br/>')))
+        .join('');
 
   const cta =
     options.ctaLabel && options.ctaUrl ? button(options.ctaLabel, options.ctaUrl, COLORS.orange) : '';

@@ -31,6 +31,23 @@ export default async function AdminEnquiriesPage() {
 
   const newCount = data.filter((e) => e.status === 'new').length;
 
+  // Deck downloads share this screen as a tab — same lead pool, different signal.
+  const proposalDownloads = await prisma.proposalDownload.findMany({
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+  });
+
+  const downloads = proposalDownloads.map((d) => ({
+    id: d.id,
+    name: d.name,
+    email: d.email,
+    phone: d.phone,
+    company: d.company,
+    isAccount: !!d.userId,
+    quoteToken: d.quoteToken,
+    createdAt: d.createdAt.toISOString(),
+  }));
+
   return (
     <div className="space-y-6">
       <div className="border-b border-bdr pb-6">
@@ -45,7 +62,7 @@ export default async function AdminEnquiriesPage() {
         </p>
       </div>
 
-      <EnquiriesUnifiedTable initialData={data} />
+      <EnquiriesUnifiedTable initialData={data} downloads={downloads} />
     </div>
   );
 }
