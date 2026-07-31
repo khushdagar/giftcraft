@@ -72,14 +72,14 @@ export function ProcessTimeline({ selectedPath, advance10, balance90, grand }: P
               {idx < steps.length - 1 && (
                 <div
                   className="absolute left-3.5 top-8 bottom-0 w-0.5"
-                  style={{ backgroundColor: '#E8E8E3' }}
+                  style={{ backgroundColor: '#E5DFD4' }}
                 />
               )}
 
               {/* Dot */}
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 relative z-10 ${
-                  isNext ? 'bg-[#1A6B4F] text-white' : 'bg-[#ECECE6] text-[#9B9B93]'
+                  isNext ? 'bg-[#800020] text-white' : 'bg-[#E5DFD4] text-[#8F8A82]'
                 }`}
               >
                 {step.number}
@@ -88,16 +88,16 @@ export function ProcessTimeline({ selectedPath, advance10, balance90, grand }: P
               {/* Content */}
               <div className="flex-1 pt-0.5">
                 <div className="flex items-baseline justify-between gap-3">
-                  <h4 className="text-sm font-semibold text-[#1A1A18] mb-1">{step.title}</h4>
+                  <h4 className="text-sm font-semibold text-[#222222] mb-1">{step.title}</h4>
                   <span
                     className={`text-[11px] font-semibold flex-shrink-0 ${
-                      isNext ? 'text-[#1A6B4F]' : 'text-[#9B9B93]'
+                      isNext ? 'text-[#800020]' : 'text-[#8F8A82]'
                     }`}
                   >
                     {isNext ? 'Next' : 'Upcoming'}
                   </span>
                 </div>
-                <p className="text-xs text-[#6B6B63] leading-relaxed">{step.desc}</p>
+                <p className="text-xs text-[#5C5852] leading-relaxed">{step.desc}</p>
               </div>
             </div>
           );

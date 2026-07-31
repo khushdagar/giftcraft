@@ -76,7 +76,7 @@ export function PricingPanel({
         <div className="space-y-2 text-xs">
           {/* Products */}
           {products.map((p, i) => (
-            <div key={`${p.name}-${i}`} className="flex justify-between text-[#6B6B63]">
+            <div key={`${p.name}-${i}`} className="flex justify-between text-[#5C5852]">
               <span>
                 {p.name}
                 <br />
@@ -89,28 +89,28 @@ export function PricingPanel({
           ))}
 
           {/* Packaging */}
-          <div className="flex justify-between text-[#6B6B63]">
+          <div className="flex justify-between text-[#5C5852]">
             <span>{packagingName || 'Packaging'}</span>
             <span className="font-medium tabular-nums">{formatRupees(pricing.packaging)}</span>
           </div>
 
           {/* Add-ons (incl. sleeve, itemised) */}
           {addons.map((addon, i) => (
-            <div key={`${addon.name}-${i}`} className="flex justify-between text-[#6B6B63]">
+            <div key={`${addon.name}-${i}`} className="flex justify-between text-[#5C5852]">
               <span>{addon.name}</span>
               <span className="font-medium tabular-nums">{formatRupees(addon.total)}</span>
             </div>
           ))}
 
           {/* Subtotal */}
-          <div className="flex justify-between border-t border-[#E8E8E3] pt-2 mt-2 text-xs font-semibold text-[#1A1A18]">
+          <div className="flex justify-between border-t border-[#E5DFD4] pt-2 mt-2 text-xs font-semibold text-[#222222]">
             <span>Subtotal (before shipping, GST)</span>
             <span className="tabular-nums">{formatRupees(pricing.itemsSubtotal)}</span>
           </div>
 
           {/* Discount */}
           {pricing.discount > 0 && (
-            <div className="flex justify-between text-[#1A6B4F]">
+            <div className="flex justify-between text-[#800020]">
               <span className="text-xs">Discount</span>
               <span className="font-medium tabular-nums text-xs">
                 −{formatRupees(pricing.discount)}
@@ -119,7 +119,7 @@ export function PricingPanel({
           )}
 
           {/* Shipping — taxable value; its GST is disclosed in the GST line below */}
-          <div className="flex justify-between text-[#6B6B63]">
+          <div className="flex justify-between text-[#5C5852]">
             <span className="text-xs">
               Shipping
               <br />
@@ -130,7 +130,7 @@ export function PricingPanel({
 
           {/* Payment Processing Fee — shown PRE-GST (2%); its GST is folded into
               the single combined GST line below. */}
-          <div className="flex justify-between text-[#6B6B63]">
+          <div className="flex justify-between text-[#5C5852]">
             <span className="text-xs">
               Payment Processing Fee
               <br />
@@ -146,10 +146,10 @@ export function PricingPanel({
               <button
                 type="button"
                 onClick={() => setGstOpen((o) => !o)}
-                className="w-full flex justify-between items-center text-xs text-[#1A1A18]"
+                className="w-full flex justify-between items-center text-xs text-[#222222]"
                 aria-expanded={gstOpen}
               >
-                <span className="flex items-center gap-1 text-[#6B6B63]">
+                <span className="flex items-center gap-1 text-[#5C5852]">
 
                   GST
                   <ChevronDown
@@ -166,7 +166,7 @@ export function PricingPanel({
                     return (
                       <div
                         key={`${line.hsnCode}-${i}`}
-                        className="flex justify-between text-[#6B6B63] text-[11px]"
+                        className="flex justify-between text-[#5C5852] text-[11px]"
                       >
                         <span>
                           {gstLineLabel(line.hsnCode, line.gstRate)}
@@ -185,20 +185,20 @@ export function PricingPanel({
           )}
 
           {/* Grand Total */}
-          <div className="flex justify-between border-t-2 border-[#D4D4CF] pt-3 mt-2 text-lg font-bold">
+          <div className="flex justify-between border-t-2 border-[#D3CBBC] pt-3 mt-2 text-lg font-bold">
             <span>Grand Total</span>
             <span className="tabular-nums">{formatRupees(pricing.grandTotal)}</span>
           </div>
 
           {/* Per Unit */}
-          <div className="flex justify-between text-[#1A6B4F] font-semibold text-xs italic">
+          <div className="flex justify-between text-[#800020] font-semibold text-xs italic">
             <span>{formatRupees(pricing.perPack)} per gift pack</span>
           </div>
         </div>
 
         {/* Path-specific info */}
         {selectedPath === 'mockup' && (
-          <div className="bg-[#E8F5EF] border-l-3 border-[#1A6B4F] px-3 py-2.5 rounded-lg text-xs text-[#0F4934] mt-4">
+          <div className="bg-[#FBF4F5] border-l-3 border-[#800020] px-3 py-2.5 rounded-lg text-xs text-[#560015] mt-4">
             No payment required now. Confirm your order and we'll create mockups for your approval
             first.
           </div>
@@ -206,15 +206,15 @@ export function PricingPanel({
 
         {selectedPath === 'lock' && (
           <div className="space-y-2 mt-4 text-xs">
-            <div className="flex justify-between bg-[#FBF5E9] px-3 py-2.5 rounded-lg font-semibold text-[#886528]">
+            <div className="flex justify-between bg-[#F5F1EB] px-3 py-2.5 rounded-lg font-semibold text-[#222222]">
               <span>10% Advance Payment</span>
               <span className="tabular-nums">{formatRupees(advance10)}</span>
             </div>
-            <div className="flex justify-between px-3 py-2 text-[#6B6B63] italic">
+            <div className="flex justify-between px-3 py-2 text-[#5C5852] italic">
               <span>Balance due after mockup approval</span>
               <span className="font-semibold tabular-nums">{formatRupees(balance90)}</span>
             </div>
-            <div className="bg-[#FBF5E9] border-l-3 border-[#C4963C] px-3 py-2.5 rounded-lg text-[#886528]">
+            <div className="bg-[#F5F1EB] border-l-3 border-[#3A3A3A] px-3 py-2.5 rounded-lg text-[#222222]">
               Prices locked for 30 days from advance payment date.
             </div>
           </div>
@@ -225,8 +225,8 @@ export function PricingPanel({
           onClick={onContinue}
           className={`w-full h-[38px] mt-4 rounded-full font-semibold flex items-center justify-center gap-2 transition-all ${
             selectedPath === 'mockup'
-              ? 'bg-[#1A6B4F] text-white hover:bg-[#145A42] animate-pulse'
-              : 'bg-[#C4963C] text-white hover:bg-[#886528]'
+              ? 'bg-[#800020] text-white hover:bg-[#6B001B] animate-pulse'
+              : 'bg-[#3A3A3A] text-white hover:bg-[#222222]'
           }`}
         >
           {selectedPath === 'mockup'
@@ -235,7 +235,7 @@ export function PricingPanel({
         </button>
 
         {/* Legal */}
-        <p className="text-[11px] text-[#9B9B93] text-center mt-3 leading-relaxed">
+        <p className="text-[11px] text-[#8F8A82] text-center mt-3 leading-relaxed">
           By confirming, you agree to our Terms of Service, Privacy Policy, and Refund Policy.
           GST-compliant invoice will be generated upon payment.
         </p>

@@ -25,21 +25,21 @@ export function ExpertHelp({ productName, productId }: ExpertHelpProps) {
             rel="noopener noreferrer"
             className="flex items-center gap-2 rounded-full border border-bdr bg-white px-4 py-2 text-xs font-medium text-ink transition hover:bg-elevated"
           >
-            <MessageCircle className="h-4 w-4" style={{ color: '#1A6B4F' }} />
+            <MessageCircle className="h-4 w-4" style={{ color: '#800020' }} />
             WhatsApp
           </a>
           <a
             href="tel:+919876543210"
             className="flex items-center gap-2 rounded-full border border-bdr bg-white px-4 py-2 text-xs font-medium text-ink transition hover:bg-elevated"
           >
-            <Phone className="h-4 w-4" style={{ color: '#1A6B4F' }} />
+            <Phone className="h-4 w-4" style={{ color: '#800020' }} />
             Call
           </a>
           <button
             onClick={() => setIsEnquiryOpen(!isEnquiryOpen)}
             className="flex items-center gap-2 rounded-full border border-bdr bg-white px-4 py-2 text-xs font-medium text-ink transition hover:bg-elevated"
           >
-            <Mail className="h-4 w-4" style={{ color: '#1A6B4F' }} />
+            <Mail className="h-4 w-4" style={{ color: '#800020' }} />
             Enquiry Form
           </button>
         </div>

@@ -130,7 +130,7 @@ function button(label: string, url: string, color: string = COLORS.orange): stri
 }
 
 /** Coloured status pill. */
-function badge(text: string, fg: string = COLORS.navy, bg: string = '#E0E7FF'): string {
+function badge(text: string, fg: string = COLORS.brand, bg: string = '#E0E7FF'): string {
   return `<span style="display:inline-block;padding:5px 14px;border-radius:999px;background-color:${bg};color:${fg};font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">${esc(text)}</span>`;
 }
 
@@ -237,9 +237,9 @@ function renderEmail(opts: {
     <tr><td align="center" style="padding:28px 12px;">
       <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${COLORS.border};font-family:${FONT};">
         <!-- Header -->
-        <tr><td style="background-color:${COLORS.navy};padding:26px 32px;">
+        <tr><td style="background-color:${COLORS.brand};padding:26px 32px;">
           <span style="font-size:23px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">🎁 GIVOO</span>
-          <span style="display:block;font-size:12px;color:#A9C0E0;margin-top:3px;">Corporate gifting, made effortless</span>
+          <span style="display:block;font-size:12px;color:#E3B8C1;margin-top:3px;">Corporate gifting, made effortless</span>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:34px 32px 28px;">
@@ -250,7 +250,7 @@ function renderEmail(opts: {
         <tr><td style="padding:22px 32px;background-color:${COLORS.surface};border-top:1px solid ${COLORS.border};">
           ${footerNote ? `<p style="margin:0 0 12px;font-size:12px;line-height:1.5;color:${COLORS.faint};">${footerNote}</p>` : ''}
           <p style="margin:0;font-size:13px;font-weight:700;color:#52525B;">GIVOO</p>
-          <p style="margin:4px 0 0;font-size:12px;color:${COLORS.faint};">Delhi, India &middot; <a href="${APP_URL}" style="color:${COLORS.navy};text-decoration:none;">giftcraft.in</a></p>
+          <p style="margin:4px 0 0;font-size:12px;color:${COLORS.faint};">Delhi, India &middot; <a href="${APP_URL}" style="color:${COLORS.brand};text-decoration:none;">giftcraft.in</a></p>
         </td></tr>
       </table>
       <p style="margin:16px 0 0;font-size:11px;color:${COLORS.faint};font-family:${FONT};">&copy; GIVOO &middot; You're receiving this because you have an account or placed an order with us.</p>
@@ -294,7 +294,7 @@ const STATUS_BLURBS: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, { fg: string; bg: string }> = {
-  confirmed: { fg: '#1A3C6E', bg: '#E0E7FF' },
+  confirmed: { fg: '#800020', bg: '#F6E6E9' },
   mockup_pending: { fg: '#5B21B6', bg: '#EDE9FE' },
   mockup_approved: { fg: '#047857', bg: '#D1FAE5' },
   payment_pending: { fg: '#92400E', bg: '#FEF3C7' },
@@ -353,7 +353,7 @@ export async function sendRevisionReceivedEmail(
     p(`Customer <strong>${esc(customerName)}</strong> has requested revisions on order <strong>${esc(orderId)}</strong>.`) +
     `<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:${COLORS.muted};text-transform:uppercase;letter-spacing:0.05em;">Revision notes</p>` +
     `<div style="background-color:${COLORS.surface};border:1px solid ${COLORS.border};border-radius:12px;padding:14px 18px;margin:0 0 20px;font-size:14px;line-height:1.6;color:${COLORS.body};">${esc(revisionNotes).replace(/\n/g, '<br/>')}</div>` +
-    button('View Order', `${APP_URL}/admin/orders/${orderId}`, COLORS.navy);
+    button('View Order', `${APP_URL}/admin/orders/${orderId}`, COLORS.brand);
 
   return sendEmail({
     to: adminEmail,

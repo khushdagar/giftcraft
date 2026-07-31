@@ -5,7 +5,7 @@ const styles = StyleSheet.create({
     padding: 40,
     fontFamily: 'Helvetica',
     fontSize: 10,
-    color: '#1A1A18',
+    color: '#222222',
   },
   header: {
     marginBottom: 30,
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 12,
-    color: '#1A1A18',
+    color: '#222222',
     textTransform: 'uppercase',
     letterSpacing: 1,
     borderBottom: 1,
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   },
   specValue: {
     flex: 0.6,
-    color: '#1A1A18',
+    color: '#222222',
     fontSize: 10,
   },
   table: {
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   tableRowHeader: {
-    borderBottomColor: '#1A1A18',
+    borderBottomColor: '#222222',
     borderBottomWidth: 2,
     fontWeight: 'bold',
     backgroundColor: '#FAFAFA',

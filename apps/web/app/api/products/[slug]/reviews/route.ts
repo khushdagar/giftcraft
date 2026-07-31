@@ -22,7 +22,7 @@ export async function GET(
 
     const session = await auth();
 
-    const [reviews, distribution, ownReview] = await Promise.all([
+    const [reviews, distribution, ownReview, eligibleOrder] = await Promise.all([
       prisma.review.findMany({
         where: { productId: product.id, status: 'approved' },
         include: { user: { select: { name: true, image: true } } },
@@ -38,6 +38,18 @@ export async function GET(
             where: {
               productId_userId: { productId: product.id, userId: session.user.id },
             },
+          })
+        : Promise.resolve(null),
+      // Gates the whole section: only a buyer whose order for this product was
+      // delivered sees it at all.
+      session?.user?.id
+        ? prisma.order.findFirst({
+            where: {
+              placedById: session.user.id,
+              status: { in: ['delivered', 'completed'] },
+              items: { some: { productId: product.id } },
+            },
+            select: { id: true },
           })
         : Promise.resolve(null),
     ]);
@@ -67,6 +79,8 @@ export async function GET(
           total,
           counts,
         },
+        // Drives whether the UI offers the write/edit review button at all.
+        canReview: !!eligibleOrder,
         // The viewer's own review in any status, so the UI can show
         // "pending approval" and pre-fill the edit form.
         ownReview: ownReview
@@ -130,15 +144,24 @@ export async function POST(
       );
     }
 
-    // Verified Buyer = has a paid order that contains this product.
-    const paidOrder = await prisma.order.findFirst({
+    // Hard gate: only a buyer with a delivered order for this product may review
+    // it. The UI hides the button, but this is the check that actually enforces
+    // it — a client can POST here directly.
+    const deliveredOrder = await prisma.order.findFirst({
       where: {
         placedById: session.user.id,
-        paidAt: { not: null },
+        status: { in: ['delivered', 'completed'] },
         items: { some: { productId: product.id } },
       },
       select: { id: true },
     });
+
+    if (!deliveredOrder) {
+      return NextResponse.json(
+        { error: 'You can only review a product after your order for it has been delivered' },
+        { status: 403 }
+      );
+    }
 
     // One review per user per product — an edit overwrites and goes back to
     // pending so it re-enters moderation.
@@ -152,14 +175,14 @@ export async function POST(
         rating,
         title: title || null,
         comment,
-        isVerifiedBuyer: !!paidOrder,
+        isVerifiedBuyer: true,
       },
       update: {
         rating,
         title: title || null,
         comment,
         status: 'pending',
-        isVerifiedBuyer: !!paidOrder,
+        isVerifiedBuyer: true,
       },
     });
 

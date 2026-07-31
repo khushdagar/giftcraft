@@ -10,15 +10,15 @@ export function ShopByOccasion() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const occasionColors: { [key: string]: string } = {
-    'Diwali': 'linear-gradient(135deg, #C4963C 0%, #8B6F47 100%)',
-    'Holi': 'linear-gradient(135deg, #E94B9D 0%, #F5C842 50%, #2FA877 100%)',
-    'Christmas & New Year': 'linear-gradient(135deg, #6B1B1B 0%, #2B5A3B 100%)',
-    'Women\'s Day': 'linear-gradient(135deg, #D946A6 0%, #A855A8 100%)',
-    'Employee Onboarding': 'linear-gradient(135deg, #0F766E 0%, #1E40AF 100%)',
-    'Client Appreciation': 'linear-gradient(135deg, #3F3F46 0%, #1F2937 100%)',
-    'Birthday': 'linear-gradient(135deg, #7C3AED 0%, #DC2626 50%, #EA580C 100%)',
-    'Work Anniversary': 'linear-gradient(135deg, #B8860B 0%, #654321 100%)',
-    'Farewell': 'linear-gradient(135deg, #0F766E 0%, #059669 100%)',
+    'Diwali': 'linear-gradient(135deg, #800020 0%, #3D000F 100%)',
+    'Holi': 'linear-gradient(135deg, #B04057 0%, #800020 50%, #560015 100%)',
+    'Christmas & New Year': 'linear-gradient(135deg, #560015 0%, #000000 100%)',
+    'Women\'s Day': 'linear-gradient(135deg, #B04057 0%, #6B001B 100%)',
+    'Employee Onboarding': 'linear-gradient(135deg, #222222 0%, #800020 100%)',
+    'Client Appreciation': 'linear-gradient(135deg, #3A3A3A 0%, #000000 100%)',
+    'Birthday': 'linear-gradient(135deg, #800020 0%, #B04057 50%, #D9A0AB 100%)',
+    'Work Anniversary': 'linear-gradient(135deg, #6B001B 0%, #222222 100%)',
+    'Farewell': 'linear-gradient(135deg, #222222 0%, #5C5852 100%)',
   };
 
   const { data: occasions, isLoading } = useQuery({
@@ -95,12 +95,12 @@ export function ShopByOccasion() {
   );
 
   return (
-    <section className="py-16 md:py-24 bg-[#FAFAF7]">
+    <section className="py-16 md:py-24 bg-[#F5F1EB]">
       <div className="container">
         <h2 className="text-4xl md:text-5xl text-center mb-2 font-serif font-normal">
-          Shop by <span className="italic text-[#1A6B4F]">occasion.</span>
+          Shop by <span className="italic text-[#800020]">occasion.</span>
         </h2>
-        <p className="text-center text-[#6B6B63] text-sm mb-12">
+        <p className="text-center text-[#5C5852] text-sm mb-12">
           Find the perfect gift for every moment that matters.
         </p>
 
@@ -108,7 +108,7 @@ export function ShopByOccasion() {
         <div className="hidden md:grid md:grid-cols-4 gap-3 sm:gap-4">
           {isLoading
             ? Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="rounded-2xl aspect-[3/2] bg-[#E8E8E3] animate-pulse" />
+                <div key={i} className="rounded-2xl aspect-[3/2] bg-[#E5DFD4] animate-pulse" />
               ))
             : occasions?.map((occ: any) => renderCard(occ))}
         </div>
@@ -123,7 +123,7 @@ export function ShopByOccasion() {
               {isLoading ? (
                 <div className="flex-shrink-0 w-full snap-start grid grid-cols-2 grid-rows-2 gap-3">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="rounded-2xl h-40 bg-[#E8E8E3] animate-pulse" />
+                    <div key={i} className="rounded-2xl h-40 bg-[#E5DFD4] animate-pulse" />
                   ))}
                 </div>
               ) : (
@@ -152,7 +152,7 @@ export function ShopByOccasion() {
                 aria-label="Previous occasions"
                 className="absolute left-1 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-white/90 shadow-md flex items-center justify-center active:scale-95 transition"
               >
-                <ChevronLeft className="h-5 w-5 text-[#1A6B4F]" />
+                <ChevronLeft className="h-5 w-5 text-[#800020]" />
               </button>
               <button
                 type="button"
@@ -160,7 +160,7 @@ export function ShopByOccasion() {
                 aria-label="Next occasions"
                 className="absolute right-1 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-white/90 shadow-md flex items-center justify-center active:scale-95 transition"
               >
-                <ChevronRight className="h-5 w-5 text-[#1A6B4F]" />
+                <ChevronRight className="h-5 w-5 text-[#800020]" />
               </button>
             </>
           )}

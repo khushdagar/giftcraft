@@ -47,10 +47,10 @@ export function Testimonials() {
   }, [testimonials.length]);
 
   return (
-    <section className="bg-[#F5F5F0] py-20">
+    <section className="bg-[#FAFAFA] py-20">
       <div className="container">
         <h2 className="text-5xl md:text-6xl font-serif font-normal text-center">
-          Loved by teams <span className="italic text-[#1A6B4F]">across India.</span>
+          Loved by teams <span className="italic text-[#800020]">across India.</span>
         </h2>
 
         <div className="max-w-2xl mx-auto mt-16">
@@ -64,7 +64,7 @@ export function Testimonials() {
               <p className="text-6xl text-center text-[#fac85c] leading-none">❝</p>
               <p className="text-2xl font-serif italic text-center mb-8">{t.text}</p>
               <p className="text-center font-semibold">{t.name}</p>
-              <p className="text-center text-sm text-[#9B9B93]">{t.role}</p>
+              <p className="text-center text-sm text-[#8F8A82]">{t.role}</p>
             </div>
           ))}
         </div>
@@ -75,7 +75,7 @@ export function Testimonials() {
               key={i}
               onClick={() => setSlide(i)}
               className={`transition-all ${
-                slide === i ? 'w-6 h-2 bg-[#1A6B4F]' : 'w-2 h-2 bg-[#D4D4CF]'
+                slide === i ? 'w-6 h-2 bg-[#800020]' : 'w-2 h-2 bg-[#D3CBBC]'
               } rounded-full`}
             />
           ))}

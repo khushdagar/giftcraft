@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { CredentialsLoginForm } from "@/components/auth/credentials-login-form";
-import { BrandLogo } from "@/components/layout/brand-logo";
+import Image from "next/image";
 
 export const metadata = { title: "Sign in" };
 
@@ -30,7 +30,7 @@ export default async function LoginPage({
           className="relative hidden flex-col justify-between overflow-hidden p-10 lg:flex"
           style={{
             background:
-              "linear-gradient(135deg, #FBF5E9 0%, #E8F5EF 50%, #FBF5E9 100%)",
+              "linear-gradient(135deg, #F5F1EB 0%, #FBF4F5 50%, #F5F1EB 100%)",
           }}
         >
           {/* Floating gift-box echo from homepage hero */}
@@ -46,8 +46,7 @@ export default async function LoginPage({
             href="/"
             className="relative z-10 inline-block"
           >
-            <BrandLogo className="h-11 w-auto rounded-md" />
-          </Link>
+<Image src="/footer_logo.png" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />          </Link>
 
           <div className="relative z-10 space-y-5">
             <p className="overline text-em-700">By Arts Shala · Delhi</p>
@@ -74,8 +73,7 @@ export default async function LoginPage({
               href="/"
               className="mb-8 inline-block lg:hidden"
             >
-              <BrandLogo className="h-10 w-auto" />
-            </Link>
+<Image src="/footer_logo.png" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />            </Link>
 
             <div className="rounded-md border border-bdr bg-white p-8 shadow-card sm:p-10">
               <p className="overline text-ink-3">Welcome back</p>

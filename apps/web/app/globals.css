@@ -24,34 +24,34 @@
 
 @layer base {
   :root {
-    /* shadcn mapping onto GIVOO palette */
-    --background: 60 20% 98%;          /* canvas #FAFAF7 */
-    --foreground: 60 4% 10%;           /* ink #1A1A18 */
+    /* shadcn mapping onto the GIVOO logo palette */
+    --background: 36 33% 94%;          /* canvas — Warm Ivory #F5F1EB */
+    --foreground: 0 0% 13%;            /* ink — Dark Graphite #222222 */
 
     --card: 0 0% 100%;
-    --card-foreground: 60 4% 10%;
+    --card-foreground: 0 0% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 60 4% 10%;
+    --popover-foreground: 0 0% 13%;
 
-    --primary: 159 61% 26%;            /* emerald #1A6B4F */
-    --primary-foreground: 60 20% 98%;
+    --primary: 345 100% 25%;           /* Burgundy #800020 */
+    --primary-foreground: 0 0% 98%;    /* Soft White #FAFAFA */
 
-    --secondary: 60 8% 92%;
-    --secondary-foreground: 60 4% 10%;
+    --secondary: 36 25% 90%;
+    --secondary-foreground: 0 0% 13%;
 
-    --muted: 60 8% 92%;
-    --muted-foreground: 60 3% 42%;
+    --muted: 36 25% 90%;
+    --muted-foreground: 34 6% 34%;     /* ink-2 #5C5852 */
 
-    --accent: 159 50% 94%;             /* em-50 */
-    --accent-foreground: 159 65% 17%;
+    --accent: 345 43% 97%;             /* em-50 #FBF4F5 */
+    --accent-foreground: 345 100% 17%; /* em-700 #560015 */
 
     --destructive: 11 63% 47%;         /* #C4402A */
-    --destructive-foreground: 60 20% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 48 14% 90%;              /* #E8E8E3 */
-    --input: 48 14% 86%;
-    --ring: 159 61% 26%;
+    --border: 36 28% 86%;              /* bdr #E5DFD4 */
+    --input: 34 22% 78%;               /* bdr-2 #D3CBBC */
+    --ring: 345 100% 25%;
 
     --radius: 0.75rem;
   }
@@ -107,8 +107,8 @@
   .btn-hero:active { transform: scale(0.97); }
   .btn-hero-white { @apply btn-hero bg-white text-ink; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
   .btn-hero-white:hover { @apply bg-em text-white shadow-glow; transform: translateY(-2px); }
-  .btn-hero-outline { @apply btn-hero bg-transparent text-white/85; border: 1.5px solid rgba(250,250,247,0.3); }
-  .btn-hero-outline:hover { background: rgba(255,255,255,0.08); border-color: rgba(250,250,247,0.6); color: #fff; }
+  .btn-hero-outline { @apply btn-hero bg-transparent text-white/85; border: 1.5px solid rgba(245,241,235,0.3); }
+  .btn-hero-outline:hover { background: rgba(255,255,255,0.08); border-color: rgba(245,241,235,0.6); color: #fff; }
 
   /* Tabular nums for prices */
   .tabnum { font-variant-numeric: tabular-nums; }
@@ -158,20 +158,20 @@
   .form-group { @apply mb-3.5; }
 
   .form-label {
-    @apply block text-xs font-semibold text-[#6B6B63] mb-1.5;
+    @apply block text-xs font-semibold text-[#5C5852] mb-1.5;
   }
 
   .form-label .optional {
-    @apply font-normal text-[#9B9B93] italic;
+    @apply font-normal text-[#8F8A82] italic;
   }
 
   .form-input {
-    @apply w-full h-[46px] px-3.5 border-[1.5px] border-[#D4D4CF] rounded-[1.25rem] bg-white text-sm text-[#1A1A18] font-sans outline-none transition-all duration-200;
+    @apply w-full h-[46px] px-3.5 border-[1.5px] border-[#D3CBBC] rounded-[1.25rem] bg-white text-sm text-[#222222] font-sans outline-none transition-all duration-200;
   }
 
   .form-input:focus {
-    @apply border-[#1A6B4F];
-    box-shadow: 0 0 0 3px rgba(26, 107, 79, 0.06);
+    @apply border-[#800020];
+    box-shadow: 0 0 0 3px rgba(128, 0, 32, 0.06);
   }
 
   .form-input.error {
@@ -179,7 +179,7 @@
   }
 
   .form-input-hint {
-    @apply text-xs text-[#9B9B93] mt-0.5 italic;
+    @apply text-xs text-[#8F8A82] mt-0.5 italic;
   }
 
   .form-input-error {
@@ -188,18 +188,18 @@
 
   .form-select {
     @apply appearance-none pr-9;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239B9B93' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238F8A82' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
     cursor: pointer;
   }
 
   .checkbox-row {
-    @apply flex items-center gap-2 text-sm text-[#6B6B63] cursor-pointer mt-1.5;
+    @apply flex items-center gap-2 text-sm text-[#5C5852] cursor-pointer mt-1.5;
   }
 
   .checkbox-row input {
-    accent-color: #1A6B4F;
+    accent-color: #800020;
     @apply w-4 h-4 cursor-pointer;
   }
 
@@ -224,8 +224,8 @@
   }
 
   @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 16px rgba(26, 107, 79, 0.12); }
-    50% { box-shadow: 0 0 32px rgba(26, 107, 79, 0.25); }
+    0%, 100% { box-shadow: 0 0 16px rgba(128, 0, 32, 0.12); }
+    50% { box-shadow: 0 0 32px rgba(128, 0, 32, 0.25); }
   }
 
   .rv {
@@ -292,7 +292,7 @@
   width: 20px;
   height: 20px;
   border-radius: 9999px;
-  background: #1a6b4f;
+  background: #800020;
   border: 3px solid #ffffff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   cursor: pointer;
@@ -305,7 +305,7 @@
   width: 20px;
   height: 20px;
   border-radius: 9999px;
-  background: #1a6b4f;
+  background: #800020;
   border: 3px solid #ffffff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
   cursor: pointer;
@@ -337,7 +337,7 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.25;
-  color: #1a1a18;
+  color: #222222;
 }
 .blog-content h3 {
   margin-top: 1.6em;
@@ -346,23 +346,23 @@
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.3;
-  color: #1a1a18;
+  color: #222222;
 }
 .blog-content p {
   margin: 0;
 }
 .blog-content strong {
   font-weight: 700;
-  color: #1a1a18;
+  color: #222222;
 }
 .blog-content a {
-  color: #1a6b4f;
+  color: #800020;
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .blog-content a:hover {
-  color: #145a42;
+  color: #6B001B;
 }
 .blog-content ul,
 .blog-content ol {
@@ -381,7 +381,7 @@
   margin: 0;
 }
 .blog-content blockquote {
-  border-left: 3px solid #1a6b4f;
+  border-left: 3px solid #800020;
   padding-left: 1.25rem;
   font-style: italic;
   color: #52525b;
@@ -394,8 +394,8 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .blog-content pre {
-  background: #1a1a18;
-  color: #fafaf7;
+  background: #222222;
+  color: #F5F1EB;
   border-radius: 8px;
   padding: 1rem 1.25rem;
   overflow-x: auto;
@@ -413,7 +413,7 @@
 }
 .blog-content hr {
   border: 0;
-  border-top: 2px solid #e8e8e3;
+  border-top: 2px solid #E5DFD4;
   margin: 2.5em 0;
 }
 .blog-content h1 {
@@ -423,7 +423,7 @@
   font-weight: 800;
   letter-spacing: -0.025em;
   line-height: 1.2;
-  color: #1a1a18;
+  color: #222222;
 }
 .blog-content h4 {
   margin-top: 1.5em;
@@ -431,7 +431,7 @@
   font-size: 1.125rem;
   font-weight: 700;
   line-height: 1.35;
-  color: #1a1a18;
+  color: #222222;
 }
 .blog-content h5,
 .blog-content h6 {
@@ -440,7 +440,7 @@
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.4;
-  color: #1a1a18;
+  color: #222222;
 }
 .blog-content h6 {
   font-size: 0.9375rem;
@@ -465,7 +465,7 @@
 .blog-content th,
 .blog-content td {
   position: relative;
-  border: 1px solid #e8e8e3;
+  border: 1px solid #E5DFD4;
   padding: 0.5rem 0.75rem;
   vertical-align: top;
 }
@@ -473,13 +473,13 @@
   background: #f7f7f4;
   font-weight: 700;
   text-align: left;
-  color: #1a1a18;
+  color: #222222;
 }
 .blog-content .selectedCell::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(26, 107, 79, 0.12);
+  background: rgba(128, 0, 32, 0.12);
   pointer-events: none;
 }
 .blog-content .column-resize-handle {
@@ -488,7 +488,7 @@
   right: -2px;
   bottom: -2px;
   width: 4px;
-  background: #1a6b4f;
+  background: #800020;
   pointer-events: none;
 }
 /* TipTap renders the placeholder on the first empty paragraph. */

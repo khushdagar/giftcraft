@@ -148,7 +148,7 @@ function Toolbar({
         {/* Colours */}
         <ColorButton
           title="Font colour"
-          value={(editor.getAttributes('textStyle').color as string) || '#1a1a18'}
+          value={(editor.getAttributes('textStyle').color as string) || '#222222'}
           onPick={(c) => editor.chain().focus().setColor(c).run()}
         >
           <Palette className="h-4 w-4" />

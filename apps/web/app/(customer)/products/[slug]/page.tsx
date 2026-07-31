@@ -257,7 +257,9 @@ export default async function ProductPage({ params }: { params: { slug: string }
       <ProductReviews slug={product.slug} />
 
       {/* Related Products */}
-      {serializedRelated.length > 0 && <RelatedProducts products={serializedRelated} />}
+      {serializedRelated.length > 0 && (
+        <RelatedProducts products={serializedRelated} canAddToPack={!isPack} />
+      )}
     </div>
   );
 }

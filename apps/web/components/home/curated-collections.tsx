@@ -17,7 +17,7 @@ export function CuratedCollections() {
   // Diagonal gradients (brighter top-left → deeper bottom-right) per card.
   const gradients = [
     'linear-gradient(145deg, #D7AC55 0%, #9A6E2E 55%, #6F4D1E 100%)', // gold
-    'linear-gradient(145deg, #34332F 0%, #1A1A18 55%, #0C0C0B 100%)', // charcoal
+    'linear-gradient(145deg, #34332F 0%, #222222 55%, #0C0C0B 100%)', // charcoal
     'linear-gradient(145deg, #3FA978 0%, #1F8A5C 45%, #134E36 100%)', // emerald
     'linear-gradient(145deg, #4A90D9 0%, #2D5A9E 55%, #1A3C6E 100%)', // navy/blue
   ];
@@ -28,9 +28,9 @@ export function CuratedCollections() {
     <section className="py-16 md:py-24 bg-white">
       <div className="container">
         <h2 className="text-4xl md:text-5xl text-center mb-2 font-serif font-normal">
-          Curated <span className="italic text-[#1A6B4F]">collections.</span>
+          Curated <span className="italic text-[#800020]">collections.</span>
         </h2>
-        <p className="text-center text-[#6B6B63] text-sm mb-12">
+        <p className="text-center text-[#5C5852] text-sm mb-12">
           Hand-picked gifts for every budget and occasion.
         </p>
 
@@ -39,8 +39,8 @@ export function CuratedCollections() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {isLoading ? (
             <>
-              <div className="rounded-3xl h-48 md:h-64 bg-[#E8E8E3] animate-pulse" />
-              <div className="rounded-3xl h-48 md:h-64 bg-[#E8E8E3] animate-pulse" />
+              <div className="rounded-3xl h-48 md:h-64 bg-[#E5DFD4] animate-pulse" />
+              <div className="rounded-3xl h-48 md:h-64 bg-[#E5DFD4] animate-pulse" />
             </>
           ) : (
             collections?.map((col: any, idx: number) => {

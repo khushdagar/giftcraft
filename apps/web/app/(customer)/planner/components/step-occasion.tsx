@@ -19,12 +19,12 @@ interface ApiOccasion {
 const TILE_BG = [
   'bg-em-50',
   'bg-gold-50',
-  'bg-[#EEF2FF]',
-  'bg-[#FFF1F2]',
-  'bg-[#F0FDFA]',
-  'bg-[#F0F9FF]',
-  'bg-[#FFF7ED]',
-  'bg-[#F5F3FF]',
+  'bg-em-100',
+  'bg-[#EDE7DC]',
+  'bg-[#FAFAFA]',
+  'bg-[#F3E9EB]',
+  'bg-[#DED7CA]',
+  'bg-[#EFEAE2]',
 ];
 
 export function StepOccasion({ onSelect }: StepOccasionProps) {

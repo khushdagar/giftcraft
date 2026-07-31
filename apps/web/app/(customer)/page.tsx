@@ -13,7 +13,7 @@ import { Footer } from '@/components/layout/footer';
 export default function HomePage() {
   return (
     <HomePageWrapper>
-      <div className="bg-[#FAFAF7] min-h-screen overflow-x-hidden">
+      <div className="bg-[#F5F1EB] min-h-screen overflow-x-hidden">
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=optional');
         `}</style>
@@ -25,7 +25,7 @@ export default function HomePage() {
         <HowItWorks />
         <CuratedCollections />
         <CustomerReviews />
-        <Testimonials />
+        {/* <Testimonials /> */}
         <CTASection />
       </div>
     </HomePageWrapper>

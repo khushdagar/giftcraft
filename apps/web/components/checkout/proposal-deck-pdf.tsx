@@ -88,9 +88,9 @@ function registerFonts() {
 // Deliberately restrained: this document goes to a client's procurement team,
 // so it follows the reference deck (near-black text, warm neutral blocks, a
 // single mint accent) rather than the vibrant Bento styling of the storefront.
-const INK = "#1A1A18";
+const INK = "#222222";
 const INK_2 = "#44443E";
-const INK_3 = "#6B6B63";
+const INK_3 = "#5C5852";
 const HAIRLINE = "#E4E4DE";
 const NEUTRAL = "#F0EEEA"; // image / card background block
 const PEACH = "#FBE3C7"; // cover block

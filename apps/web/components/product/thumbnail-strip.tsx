@@ -35,7 +35,7 @@ export function ThumbnailStrip({ children }: { children: ReactNode }) {
     el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: 'smooth' });
   };
 
-  const arrow = 'absolute top-1/2 z-10 flex -translate-y-1/2 items-center justify-center rounded-full bg-[#1a6b4f] p-1 shadow-md backdrop-blur transition hover:bg-white lg:hidden';
+  const arrow = 'absolute top-1/2 z-10 flex -translate-y-1/2 items-center justify-center rounded-full bg-[#800020] p-1 shadow-md backdrop-blur transition hover:bg-white lg:hidden';
 
   return (
     <div className="relative">

@@ -123,7 +123,7 @@ export function BillingForm({ data, onChange }: BillingFormProps) {
         </div>
       </div>
 
-      <div className="border-t border-[#E8E8E3] pt-4 mb-4">
+      <div className="border-t border-[#E5DFD4] pt-4 mb-4">
         <label className="form-label mb-3">Company Address</label>
 
         <div className="form-group">

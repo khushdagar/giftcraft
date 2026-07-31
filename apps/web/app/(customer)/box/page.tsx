@@ -726,7 +726,7 @@ export default function BuildYourBoxPage() {
                       type="checkbox"
                       checked={fitOnly}
                       onChange={(e) => setFitOnly(e.target.checked)}
-                      className="h-4 w-4 rounded border-2 border-bdr accent-[#1A6B4F]"
+                      className="h-4 w-4 rounded border-2 border-bdr accent-[#800020]"
                     />
                     Only show items that fit my remaining budget
                   </label>

@@ -4,6 +4,7 @@ import { auth, signIn } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { RegisterForm } from "@/components/auth/register-form";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import Image from "next/image";
 
 export const metadata = { title: "Create your account" };
 
@@ -27,7 +28,7 @@ export default async function RegisterPage({
         <aside
           className="relative hidden flex-col justify-between overflow-hidden p-10 lg:flex"
           style={{
-            background: "linear-gradient(135deg, #FBF5E9 0%, #E8F5EF 50%, #FBF5E9 100%)",
+            background: "linear-gradient(135deg, #F5F1EB 0%, #FBF4F5 50%, #F5F1EB 100%)",
           }}
         >
           <div className="absolute inset-0 flex items-center justify-center opacity-60">
@@ -39,7 +40,7 @@ export default async function RegisterPage({
           </div>
 
           <Link href="/" className="relative z-10 inline-block">
-            <BrandLogo className="h-11 w-auto rounded-md" />
+            <Image src="/footer_logo.png" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />
           </Link>
 
           <div className="relative z-10 space-y-5">
@@ -64,8 +65,7 @@ export default async function RegisterPage({
         <section className="flex items-center justify-center px-6 py-16 lg:px-12">
           <div className="w-full max-w-md">
             <Link href="/" className="mb-8 inline-block lg:hidden">
-              <BrandLogo className="h-10 w-auto" />
-            </Link>
+<Image src="/footer_logo.png" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />            </Link>
 
             <div className="rounded-md border border-bdr bg-white p-8 shadow-card sm:p-10">
               <p className="overline text-ink-3">Get started</p>

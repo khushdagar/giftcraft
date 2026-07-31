@@ -189,7 +189,7 @@ export default async function AdminDashboard() {
           <h2 className="mb-3 text-[15px] font-normal">Revenue · last 30 days</h2>
           <div className="relative h-44 overflow-hidden rounded-md bg-gradient-to-b from-em-50 to-transparent">
             <svg viewBox="0 0 400 120" className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
-              <path d={areaPath} fill="rgba(26,107,79,0.15)" stroke="#1A6B4F" strokeWidth="2" />
+              <path d={areaPath} fill="rgba(128, 0, 32,0.15)" stroke="#800020" strokeWidth="2" />
             </svg>
           </div>
         </div>

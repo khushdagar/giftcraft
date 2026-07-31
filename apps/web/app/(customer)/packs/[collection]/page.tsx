@@ -64,22 +64,22 @@ export default async function CollectionDetailPage({
   }));
 
   return (
-    <div className="min-h-screen" style={{ background: '#FAFAF7' }}>
+    <div className="min-h-screen" style={{ background: '#F5F1EB' }}>
       <div className="py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-4 md:px-10">
-          <p className="text-xs" style={{ color: '#9B9B93' }}>
-            <Link href="/" style={{ color: '#1A6B4F' }}>
+          <p className="text-xs" style={{ color: '#8F8A82' }}>
+            <Link href="/" style={{ color: '#800020' }}>
               Home
             </Link>{' '}
             /{' '}
-            <Link href="/packs" style={{ color: '#1A6B4F' }}>
+            <Link href="/packs" style={{ color: '#800020' }}>
               Curated Packs
             </Link>{' '}
             / <span>{collection.name}</span>
           </p>
           <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{collection.name}</h1>
           {collection.description && (
-            <p className="mt-2 text-base max-w-2xl" style={{ color: '#6B6B63' }}>
+            <p className="mt-2 text-base max-w-2xl" style={{ color: '#5C5852' }}>
               {collection.description}
             </p>
           )}

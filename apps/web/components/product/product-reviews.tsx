@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Star, BadgeCheck, Loader2 } from 'lucide-react';
 import {
@@ -32,6 +30,7 @@ interface OwnReview {
 interface ReviewsPayload {
   reviews: ReviewItem[];
   summary: { average: number; total: number; counts: Record<number, number> };
+  canReview: boolean;
   ownReview: OwnReview | null;
 }
 
@@ -49,7 +48,6 @@ function Stars({ rating, size = 'h-4 w-4' }: { rating: number; size?: string }) 
 }
 
 export function ProductReviews({ slug }: { slug: string }) {
-  const { data: session } = useSession();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
 
@@ -115,6 +113,12 @@ export function ProductReviews({ slug }: { slug: string }) {
   const summary = data?.summary;
   const reviews = data?.reviews || [];
   const ownReview = data?.ownReview;
+  const canReview = !!data?.canReview;
+
+  // The entire section is private to buyers: it renders only for a signed-in
+  // user with a delivered order containing this product. Everyone else — logged
+  // out, or logged in but never ordered it — sees nothing at all.
+  if (isLoading || !canReview) return null;
 
   return (
     <div className="border-t border-bdr bg-white py-12">
@@ -126,22 +130,13 @@ export function ProductReviews({ slug }: { slug: string }) {
               Ratings &amp; Reviews
             </h2>
           </div>
-          {session ? (
-            <button
-              type="button"
-              onClick={openForm}
-              className="rounded-gc-p bg-em px-6 py-3 text-sm font-semibold text-white transition hover:bg-em-600"
-            >
-              {ownReview ? 'Edit your review' : 'Write a review'}
-            </button>
-          ) : (
-            <Link
-              href="/login"
-              className="rounded-gc-p border-2 border-bdr px-6 py-3 text-sm font-semibold text-ink-2 transition hover:border-em hover:text-em"
-            >
-              Sign in to write a review
-            </Link>
-          )}
+          <button
+            type="button"
+            onClick={openForm}
+            className="rounded-gc-p bg-em px-6 py-3 text-sm font-semibold text-white transition hover:bg-em-600"
+          >
+            {ownReview ? 'Edit your review' : 'Write a review'}
+          </button>
         </div>
 
         {/* Own review pending note */}

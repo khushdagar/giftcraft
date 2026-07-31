@@ -50,7 +50,7 @@ const DEFAULT_PACK_QTY = 25;
 
 const FALLBACK_GRADIENTS = [
   'linear-gradient(145deg, #D7AC55 0%, #9A6E2E 55%, #6F4D1E 100%)',
-  'linear-gradient(145deg, #34332F 0%, #1A1A18 55%, #0C0C0B 100%)',
+  'linear-gradient(145deg, #34332F 0%, #222222 55%, #0C0C0B 100%)',
   'linear-gradient(145deg, #3FA978 0%, #1F8A5C 45%, #134E36 100%)',
   'linear-gradient(145deg, #4A90D9 0%, #2D5A9E 55%, #1A3C6E 100%)',
 ];
@@ -275,20 +275,20 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
   };
 
   return (
-    <div className="min-h-screen" style={{ background: '#FAFAF7' }}>
+    <div className="min-h-screen" style={{ background: '#F5F1EB' }}>
       {/* Header */}
       <div className="py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-4 md:px-10">
-          <p className="text-xs" style={{ color: '#9B9B93' }}>
-            <Link href="/" style={{ color: '#1A6B4F' }}>
+          <p className="text-xs" style={{ color: '#8F8A82' }}>
+            <Link href="/" style={{ color: '#800020' }}>
               Home
             </Link>{' '}
             / <span>Curated Packs</span>
           </p>
           <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">
-            Curated <span className="italic" style={{ color: '#1A6B4F' }}>Packs.</span>
+            Curated <span className="italic" style={{ color: '#800020' }}>Packs.</span>
           </h1>
-          <p className="mt-2 text-base" style={{ color: '#6B6B63' }}>
+          <p className="mt-2 text-base" style={{ color: '#5C5852' }}>
             Hand-picked gift assortments for every budget and style.
           </p>
 
@@ -296,7 +296,7 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
           <div className="mt-6 inline-flex gap-1 rounded-full bg-[#EFEFE9] p-1">
             <Link
               href="/catalog"
-              className="px-6 py-2 rounded-full text-sm font-medium text-[#6B6B63] hover:text-ink transition"
+              className="px-6 py-2 rounded-full text-sm font-medium text-[#5C5852] hover:text-ink transition"
             >
               All Products
             </Link>
@@ -379,7 +379,7 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                 type="button"
                 onClick={backToCollections}
                 className="inline-flex items-center gap-1.5 text-sm font-medium mb-4 transition hover:opacity-80"
-                style={{ color: '#1A6B4F' }}
+                style={{ color: '#800020' }}
               >
                 ← All Collections
               </button>
@@ -499,11 +499,11 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                       const span = Math.max(rMax - rMin, 1)
                       const leftPct = ((vMin - rMin) / span) * 100
                       const rightPct = ((vMax - rMin) / span) * 100
-                      const thumb = "appearance-none pointer-events-none absolute inset-0 h-4 w-full bg-transparent focus:outline-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#1A6B4F] [&::-webkit-slider-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#1A6B4F] [&::-moz-range-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-moz-range-thumb]:cursor-pointer"
+                      const thumb = "appearance-none pointer-events-none absolute inset-0 h-4 w-full bg-transparent focus:outline-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#800020] [&::-webkit-slider-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#800020] [&::-moz-range-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-moz-range-thumb]:cursor-pointer"
                       return (
                         <div className="relative h-4">
                           <div className="absolute left-[7px] right-[7px] top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-gray-200">
-                            <div className="absolute inset-y-0 rounded-full bg-[#1A6B4F]" style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }} />
+                            <div className="absolute inset-y-0 rounded-full bg-[#800020]" style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }} />
                           </div>
                           <input
                             type="range"

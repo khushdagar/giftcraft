@@ -15,31 +15,71 @@ const config: Config = {
       screens: { "2xl": "1400px" },
     },
     extend: {
-      // ── Surfaces & Canvas (from HTML --canvas / --surface system) ──
+      // ── Surfaces & Canvas ──
+      // Brand palette, taken from the GIVOO logo:
+      //   Jet Black #000000 · Burgundy #800020
+      //   Warm Ivory #F5F1EB · Soft White #FAFAFA · Dark Graphite #222222
       colors: {
-        canvas: "#FAFAF7",
-        surface: "#FFFFFF",
-        elevated: "#F5F5F0",
-        recessed: "#EEEDE8",
-        dark: { DEFAULT: "#1A1A18", 2: "#2A2A28" },
-        ink: { DEFAULT: "#1A1A18", 2: "#6B6B63", 3: "#9B9B93" },
-        inv: "#FAFAF7",
+        canvas: "#F5F1EB",      // Warm Ivory — page background
+        surface: "#FFFFFF",     // cards sit crisp on the ivory canvas
+        elevated: "#FAFAFA",    // Soft White
+        recessed: "#EDE7DC",    // deeper ivory for inset panels
+        dark: { DEFAULT: "#000000", 2: "#222222" },   // Jet Black / Dark Graphite
+        ink: { DEFAULT: "#222222", 2: "#5C5852", 3: "#8F8A82" },
+        inv: "#F5F1EB",
 
-        // Primary — Emerald
+        // Primary — Burgundy
         em: {
-          DEFAULT: "#1A6B4F",
-          50: "#E8F5EF",
-          400: "#2DA366",
-          600: "#145A42",
-          700: "#0F4934",
+          DEFAULT: "#800020",
+          50: "#FBF4F5",
+          100: "#F6E6E9",
+          200: "#EBC9D0",
+          300: "#D9A0AB",
+          400: "#B04057",
+          600: "#6B001B",
+          700: "#560015",
+          800: "#3D000F",
         },
 
-        // Accent — Gold
+        // Tailwind's built-in `emerald`/`teal` palettes are still used in ~46
+        // files from the old green theme. Rather than rewrite every call site,
+        // remap the scale onto Burgundy so `bg-emerald-600` etc. land on brand.
+        emerald: {
+          50: "#FBF4F5",
+          100: "#F6E6E9",
+          200: "#EBC9D0",
+          300: "#D9A0AB",
+          400: "#B04057",
+          500: "#940025",
+          600: "#800020",
+          700: "#6B001B",
+          800: "#560015",
+          900: "#3D000F",
+          950: "#26000A",
+        },
+        teal: {
+          50: "#FBF4F5",
+          100: "#F6E6E9",
+          200: "#EBC9D0",
+          300: "#D9A0AB",
+          400: "#B04057",
+          500: "#940025",
+          600: "#800020",
+          700: "#6B001B",
+          800: "#560015",
+          900: "#3D000F",
+          950: "#26000A",
+        },
+
+        // Accent — Graphite / Ivory neutral tier
         gold: {
-          DEFAULT: "#C4963C",
-          50: "#FBF5E9",
-          200: "#EDD5A3",
-          700: "#886528",
+          DEFAULT: "#3A3A3A",
+          50: "#F5F1EB",
+          200: "#DED7CA",
+          300: "#C9C0AF",
+          700: "#222222",
+          800: "#111111",
+          900: "#000000",
         },
 
         // Functional
@@ -48,7 +88,7 @@ const config: Config = {
         warn: "#D4872A",
 
         // Borders
-        bdr: { DEFAULT: "#E8E8E3", 2: "#D4D4CF" },
+        bdr: { DEFAULT: "#E5DFD4", 2: "#D3CBBC" },
 
         // shadcn-compatible tokens
         border: "hsl(var(--border))",
@@ -119,7 +159,7 @@ const config: Config = {
         card: "0 2px 8px rgba(0,0,0,0.05), 0 4px 24px rgba(0,0,0,0.04)",
         hover: "0 8px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)",
         float: "0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.04)",
-        glow: "0 0 20px rgba(26,107,79,0.25), 0 0 60px rgba(26,107,79,0.10)",
+        glow: "0 0 20px rgba(128,0,32,0.25), 0 0 60px rgba(128,0,32,0.10)",
       },
 
       transitionTimingFunction: {

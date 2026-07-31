@@ -131,7 +131,7 @@ export function ProposalDownloadButton({ quoteToken, prefill }: Props) {
   };
 
   const inputClass =
-    'w-full rounded-xl border border-[#E5E5DF] bg-white px-4 py-2.5 text-sm text-[#1A1A18] placeholder:text-[#A3A39B] focus:outline-none focus:border-[#1A1A18] transition';
+    'w-full rounded-xl border border-[#E5E5DF] bg-white px-4 py-2.5 text-sm text-[#222222] placeholder:text-[#A3A39B] focus:outline-none focus:border-[#222222] transition';
 
   return (
     <>
@@ -139,7 +139,7 @@ export function ProposalDownloadButton({ quoteToken, prefill }: Props) {
         type="button"
         onClick={handleClick}
         disabled={busy}
-        className="shrink-0 inline-flex items-center justify-center rounded-full border border-[#1A1A18] px-5 py-2.5 text-sm font-medium text-[#1A1A18] hover:bg-[#1A1A18] hover:text-[#FAFAF7] transition disabled:opacity-60"
+        className="shrink-0 inline-flex items-center justify-center rounded-full border border-[#222222] px-5 py-2.5 text-sm font-medium text-[#222222] hover:bg-[#222222] hover:text-[#F5F1EB] transition disabled:opacity-60"
       >
         {busy ? 'Preparing…' : 'Download Proposal Deck'}
       </button>
@@ -186,7 +186,7 @@ export function ProposalDownloadButton({ quoteToken, prefill }: Props) {
             <button
               type="submit"
               disabled={busy}
-              className="w-full rounded-full bg-[#1A1A18] px-5 py-3 text-sm font-medium text-[#FAFAF7] hover:opacity-90 transition disabled:opacity-60"
+              className="w-full rounded-full bg-[#222222] px-5 py-3 text-sm font-medium text-[#F5F1EB] hover:opacity-90 transition disabled:opacity-60"
             >
               {busy ? 'Starting download…' : 'Download Deck'}
             </button>

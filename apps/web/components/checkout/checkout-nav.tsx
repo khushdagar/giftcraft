@@ -9,10 +9,10 @@ export function CheckoutNav() {
       <Link href="/" className="flex items-center">
         <BrandLogo className="h-8 w-auto" />
       </Link>
-      <span className="text-sm text-[#6B6B63] flex items-center gap-1.5">
+      <span className="text-sm text-[#5C5852] flex items-center gap-1.5">
         🔒 Secure Checkout
       </span>
-      <Link href="/builder" className="text-sm text-[#1A6B4F] font-medium hover:opacity-70 transition">
+      <Link href="/builder" className="text-sm text-[#800020] font-medium hover:opacity-70 transition">
         ← Back to Builder
       </Link>
     </nav>

@@ -96,7 +96,7 @@ export function TrendingProducts() {
           <h2 className="text-4xl md:text-5xl font-serif font-normal">
             Trending <span className="italic">now.</span>
           </h2>
-          <Link href="/catalog" className="text-sm font-semibold text-[#1A6B4F] hover:opacity-70">
+          <Link href="/catalog" className="text-sm font-semibold text-[#800020] hover:opacity-70">
             See All →
           </Link>
         </div>
@@ -105,12 +105,12 @@ export function TrendingProducts() {
           <div className="flex gap-6 pb-4 min-w-min">
             {isLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-72 bg-white border border-[#E8E8E3] rounded-2xl overflow-hidden">
-                  <div className="aspect-square bg-[#E8E8E3] animate-pulse" />
+                <div key={i} className="flex-shrink-0 w-72 bg-white border border-[#E5DFD4] rounded-2xl overflow-hidden">
+                  <div className="aspect-square bg-[#E5DFD4] animate-pulse" />
                   <div className="p-5 space-y-3">
-                    <div className="h-4 bg-[#E8E8E3] rounded w-20 animate-pulse" />
-                    <div className="h-4 bg-[#E8E8E3] rounded animate-pulse" />
-                    <div className="h-8 bg-[#E8E8E3] rounded animate-pulse" />
+                    <div className="h-4 bg-[#E5DFD4] rounded w-20 animate-pulse" />
+                    <div className="h-4 bg-[#E5DFD4] rounded animate-pulse" />
+                    <div className="h-8 bg-[#E5DFD4] rounded animate-pulse" />
                   </div>
                 </div>
               ))
@@ -133,11 +133,11 @@ export function TrendingProducts() {
                     key={p.id}
                     onMouseEnter={() => setHoveredCard(p.id)}
                     onMouseLeave={() => setHoveredCard(null)}
-                    className="flex-shrink-0 w-72 bg-white border border-[#E8E8E3] rounded-2xl overflow-hidden hover:shadow-lg transition-shadow"
+                    className="flex-shrink-0 w-72 bg-white border border-[#E5DFD4] rounded-2xl overflow-hidden hover:shadow-lg transition-shadow"
                   >
                     {/* Image + details link to the product page */}
                     <Link href={`/products/${p.slug}`} className="block group">
-                      <div className="aspect-square bg-[#F5F5F0] flex items-center justify-center relative overflow-hidden">
+                      <div className="aspect-square bg-[#FAFAFA] flex items-center justify-center relative overflow-hidden">
                         {displayUrl ? (
                           <Image
                             src={displayUrl}
@@ -149,19 +149,19 @@ export function TrendingProducts() {
                           <span className="text-6xl">📦</span>
                         )}
                         {(p.moq ?? p.priceTiers?.[0]?.minQty) && (
-                          <span className="absolute top-4 left-4 text-xs font-bold bg-[#FBF5E9] text-[#886528] px-2 py-1 rounded-full">
+                          <span className="absolute top-4 left-4 text-xs font-bold bg-[#F5F1EB] text-[#222222] px-2 py-1 rounded-full">
                             Min {p.moq ?? p.priceTiers[0].minQty}
                           </span>
                         )}
                         {p.isEcoCertified && (
-                          <span className="absolute top-4 right-4 text-xs font-bold bg-[#E8F5EF] text-[#0F4934] px-2 py-1 rounded-full">
+                          <span className="absolute top-4 right-4 text-xs font-bold bg-[#FBF4F5] text-[#560015] px-2 py-1 rounded-full">
                             🍃 Eco
                           </span>
                         )}
                       </div>
                       <div className="px-5 pt-5">
-                        <p className="text-xs text-[#9B9B93] mb-1">{p.brand || 'Brand'}</p>
-                        <h3 className="text-sm font-medium mb-3 leading-snug line-clamp-2 group-hover:text-[#1A6B4F] transition-colors">
+                        <p className="text-xs text-[#8F8A82] mb-1">{p.brand || 'Brand'}</p>
+                        <h3 className="text-sm font-medium mb-3 leading-snug line-clamp-2 group-hover:text-[#800020] transition-colors">
                           {p.name}
                         </h3>
                         <p className="text-lg font-bold">₹{Math.round(price).toLocaleString()}</p>
@@ -182,7 +182,7 @@ export function TrendingProducts() {
                             onClick={() =>
                               setVariantImg((m) => ({ ...m, [p.id]: v.imageUrl || null }))
                             }
-                            className="h-5 w-5 rounded-full border border-[#E8E8E3] transition hover:scale-110"
+                            className="h-5 w-5 rounded-full border border-[#E5DFD4] transition hover:scale-110"
                             style={{ backgroundColor: resolveSwatchHex(v.value, v.hexColor) }}
                           />
                         ))}
@@ -193,7 +193,7 @@ export function TrendingProducts() {
                       <button
                         onClick={() => toggleProduct({ ...p, sellPrice: price })}
                         className={`w-full py-2 rounded-full font-semibold text-sm transition ${
-                          inCart ? 'bg-[#1A6B4F] text-white' : 'bg-[#1A6B4F] text-white hover:bg-[#145A42]'
+                          inCart ? 'bg-[#800020] text-white' : 'bg-[#800020] text-white hover:bg-[#6B001B]'
                         }`}
                       >
                         {inCart ? '✓ In Cart' : 'Add to Pack'}

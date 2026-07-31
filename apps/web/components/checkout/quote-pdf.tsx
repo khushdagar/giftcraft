@@ -7,7 +7,7 @@ const styles = StyleSheet.create({
     padding: 40,
     fontFamily: 'Helvetica',
     fontSize: 10,
-    color: '#1A1A18',
+    color: '#222222',
   },
   header: {
     marginBottom: 30,
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 10,
-    color: '#1A1A18',
+    color: '#222222',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   tableRowHeader: {
-    borderBottomColor: '#1A1A18',
+    borderBottomColor: '#222222',
     borderBottomWidth: 2,
     fontWeight: 'bold',
     backgroundColor: '#FAFAFA',
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   },
   totalRow: {
     borderTop: 2,
-    borderTopColor: '#1A1A18',
+    borderTopColor: '#222222',
     paddingVertical: 8,
     fontWeight: 'bold',
     fontSize: 11,
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   grandTotal: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1A1A18',
+    color: '#222222',
   },
   footerSection: {
     marginTop: 30,

@@ -16,7 +16,7 @@ import { SearchableMultiSelect } from '@/components/admin/products/searchable-mu
 // Rich diagonal gradients matching the customer "Curated Packs" card design.
 export const PACK_GRADIENTS: Array<{ name: string; value: string }> = [
   { name: 'Gold', value: 'linear-gradient(145deg, #D7AC55 0%, #9A6E2E 55%, #6F4D1E 100%)' },
-  { name: 'Charcoal', value: 'linear-gradient(145deg, #34332F 0%, #1A1A18 55%, #0C0C0B 100%)' },
+  { name: 'Charcoal', value: 'linear-gradient(145deg, #34332F 0%, #222222 55%, #0C0C0B 100%)' },
   { name: 'Emerald', value: 'linear-gradient(145deg, #3FA978 0%, #1F8A5C 45%, #134E36 100%)' },
   { name: 'Orange', value: 'linear-gradient(145deg, #F0A85A 0%, #D9781F 55%, #9A4E12 100%)' },
   { name: 'Ocean', value: 'linear-gradient(145deg, #4FB0C6 0%, #2D6F9E 55%, #1A3C6E 100%)' },
