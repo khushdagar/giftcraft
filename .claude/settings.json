@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"exit: $?\")",
+      "Bash(node -e ' *)",
+      "Bash(npm run *)"
+    ]
+  }
+}

@@ -82,17 +82,35 @@ export interface CatalogPackContext {
   builderHref: string;
 }
 
-export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
+export function CatalogClient({
+  pack,
+  initialProducts,
+  initialFilters,
+}: {
+  pack?: CatalogPackContext;
+  /** Server-fetched products — makes the grid render in the initial HTML (SEO). */
+  initialProducts?: Product[];
+  initialFilters?: { categories: Category[]; occasions: Occasion[] };
+} = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const addProduct = useBuilderStore((state) => state.addProduct);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('featured');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [occasions, setOccasions] = useState<Occasion[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Seed from server-rendered data when provided (applying the pack scope the
+  // same way the fetch path does), so there is no empty-grid first paint.
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (!initialProducts) return [];
+    if (!pack) return initialProducts;
+    const order = new Map(pack.productIds.map((id, i) => [id, i]));
+    return initialProducts
+      .filter((p) => order.has(p.id))
+      .sort((a, b) => order.get(a.id)! - order.get(b.id)!);
+  });
+  const [categories, setCategories] = useState<Category[]>(initialFilters?.categories ?? []);
+  const [occasions, setOccasions] = useState<Occasion[]>(initialFilters?.occasions ?? []);
+  const [loading, setLoading] = useState(!initialProducts);
   // Per-card image override when a colour swatch is hovered/selected.
   const [variantImg, setVariantImg] = useState<Record<string, string | null>>({});
   // Which card is currently hovered (to show its second image).
@@ -105,8 +123,18 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
   const [selectedRecipients, setSelectedRecipients] = useState<Set<string>>(new Set());
   const [ecoOnly, setEcoOnly] = useState(false);
   const [brandingOnly, setBrandingOnly] = useState(false);
-  const [priceMin, setPriceMin] = useState<number | null>(null);
-  const [priceMax, setPriceMax] = useState<number | null>(null);
+  const [priceMin, setPriceMin] = useState<number | null>(() => {
+    const prices = (initialProducts ?? [])
+      .map((p) => p.priceTiers?.[0]?.sellPrice || 0)
+      .filter((n) => n > 0);
+    return prices.length > 0 ? 0 : null;
+  });
+  const [priceMax, setPriceMax] = useState<number | null>(() => {
+    const prices = (initialProducts ?? [])
+      .map((p) => p.priceTiers?.[0]?.sellPrice || 0)
+      .filter((n) => n > 0);
+    return prices.length > 0 ? Math.max(...prices) : null;
+  });
 
   // Seed the sidebar filters from the URL query params (e.g. when arriving from a
   // nav "Occasions" dropdown link or a homepage category tile). Categories link by
@@ -146,8 +174,10 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, searchParams, categories, occasions]);
 
-  // Fetch products and categories from API
+  // Fetch products and categories from API (skipped when the server already
+  // provided them — the /catalog page passes initialProducts/initialFilters).
   useEffect(() => {
+    if (initialProducts) return;
     const fetchData = async () => {
       try {
         setLoading(true);

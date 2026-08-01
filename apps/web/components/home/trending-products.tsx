@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { useBuilderStore } from '@/store/builder';
 import { resolveSwatchHex } from '@/lib/color-name';
 
-export function TrendingProducts() {
+export function TrendingProducts({ initialData }: { initialData?: { products: any[] } }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   const { addProduct, removeProduct, products: cartProducts } = useBuilderStore();
@@ -24,6 +24,10 @@ export function TrendingProducts() {
       if (!res.ok) throw new Error('Failed to fetch products');
       return res.json();
     },
+    // Server-rendered on the homepage so the cards (and their product links)
+    // are in the initial HTML for search engines.
+    initialData,
+    staleTime: 60 * 1000,
   });
 
   const toggleProduct = (product: any) => {

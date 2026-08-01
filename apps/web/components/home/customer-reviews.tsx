@@ -169,7 +169,7 @@ function MarqueeColumn({
   );
 }
 
-export function CustomerReviews() {
+export function CustomerReviews({ initialData }: { initialData?: ReviewCard[] }) {
   const reduceMotion = useReducedMotion();
 
   const { data: realReviews } = useQuery<ReviewCard[]>({
@@ -191,6 +191,9 @@ export function CustomerReviews() {
         isReal: true,
       }));
     },
+    // Server-rendered on the homepage so real review copy is in the HTML.
+    initialData,
+    staleTime: 60 * 1000,
   });
 
   // Real approved reviews first; seed reviews fill the remaining slots.

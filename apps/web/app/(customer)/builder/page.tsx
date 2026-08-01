@@ -1,8 +1,17 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { BuilderLayout } from '@/components/builder/builder-layout';
 import { BuilderContent } from '@/components/builder/builder-content';
 import { BuilderReset } from '@/components/builder/builder-reset';
+
+export const metadata: Metadata = {
+  // Root template appends "· GIVOO"
+  title: 'Gift Pack Builder — Instant Transparent Pricing',
+  description:
+    'Build a branded corporate gift pack in minutes: pick products, add your logo, and see live per-unit pricing with GST — no sales calls.',
+  alternates: { canonical: '/builder' },
+};
 
 // Server-side self-fetch must target THIS running server, whatever port it's on
 // (dev may land on :3001 if :3000 is taken). Derive the origin from the incoming

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cdnSrcSet, clearSrcSetOnError } from '@/lib/cdn-srcset';
 
-export function ShopByOccasion() {
+export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const occasionColors: { [key: string]: string } = {
@@ -28,6 +28,8 @@ export function ShopByOccasion() {
       if (!res.ok) throw new Error('Failed to fetch occasions');
       return res.json();
     },
+    // Server-rendered on the homepage so occasion links are crawlable.
+    initialData,
     staleTime: 5 * 60 * 1000,
   });
 

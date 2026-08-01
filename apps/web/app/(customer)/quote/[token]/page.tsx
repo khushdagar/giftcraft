@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params: { token: string } }
   });
 
   if (!quote) {
-    return { title: 'Quote Not Found' };
+    return { title: 'Quote Not Found', robots: { index: false, follow: false } };
   }
 
   const payload = quote.payload as any;
@@ -23,6 +23,8 @@ export async function generateMetadata({ params }: { params: { token: string } }
   return {
     title: `GIVOO Quote - ${productNames}`,
     description: `View this curated gift pack quote. Total: ${formatRupees(payload.pricing?.grandTotal || 0)}`,
+    // Private share-token URL — must never be indexed.
+    robots: { index: false, follow: false },
   };
 }
 

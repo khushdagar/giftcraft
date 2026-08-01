@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 
-export function CuratedCollections() {
+export function CuratedCollections({ initialData }: { initialData?: any[] }) {
   const { data: collections, isLoading } = useQuery({
     queryKey: ['collections', 'homepage'],
     queryFn: async () => {
@@ -12,6 +12,9 @@ export function CuratedCollections() {
       if (!res.ok) throw new Error('Failed to fetch collections');
       return res.json();
     },
+    // Server-rendered on the homepage so collection links are crawlable.
+    initialData,
+    staleTime: 60 * 1000,
   });
 
   // Diagonal gradients (brighter top-left → deeper bottom-right) per card.

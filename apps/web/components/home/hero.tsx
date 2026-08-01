@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export function HomeHero() {
   const [slide, setSlide] = useState(0);
@@ -43,11 +44,23 @@ export function HomeHero() {
         {slides.map((s, i) => (
           <div
             key={i}
-            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${
+            className={`absolute inset-0 transition-opacity duration-1000 ${
               slide === i ? 'opacity-100' : 'opacity-0'
             }`}
-            style={{ background: s.bg, backgroundImage: `url(${s.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-          />
+            style={{ background: s.bg }}
+          >
+            {/* First slide is the LCP — priority preloads it instead of the
+                late-discovered CSS background-image it used to be. */}
+            <Image
+              src={s.image}
+              alt=""
+              fill
+              sizes="100vw"
+              priority={i === 0}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              className="object-cover"
+            />
+          </div>
         ))}
         <div className="absolute inset-0 bg-black/40" />
       </div>
