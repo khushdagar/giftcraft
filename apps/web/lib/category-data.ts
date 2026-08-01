@@ -107,6 +107,27 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
   }
 }
 
+/**
+ * Lightweight list of categories that have live products — id, name, slug only.
+ *
+ * Use this for navigation (sibling links, sitemap). getCategorySummaries() scans
+ * the whole catalogue to build counts and image collages, which is far too heavy
+ * to run on every category page render.
+ */
+export async function getCategoryNav(): Promise<Array<{ id: string; name: string; slug: string }>> {
+  try {
+    const categories = await prisma.category.findMany({
+      where: { products: { some: { product: { status: 'active', isPack: false } } } },
+      select: { id: true, name: true, slug: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+    return categories.filter((c) => !isHiddenCategory(c));
+  } catch (error) {
+    console.error('getCategoryNav failed:', error);
+    return [];
+  }
+}
+
 /** Slugs for generateStaticParams — every catalog-visible category. */
 export async function getCategorySlugs(): Promise<string[]> {
   try {

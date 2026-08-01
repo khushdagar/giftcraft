@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Search, ArrowRight } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
 import { useTopLoading } from '@/components/ui/top-loading-bar';
@@ -82,32 +82,90 @@ export interface CatalogPackContext {
   builderHref: string;
 }
 
+// When `category` is passed, the catalog renders scoped to a single category:
+// only that category's products are shown, every sidebar facet derives from
+// just those products, and the header swaps to the category name + copy. Used
+// by the /categories/[slug] landing pages.
+export interface CatalogCategoryContext {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+}
+
+type UrlFilterParams = { category?: string; occasion?: string; recipient?: string };
+
+/**
+ * Reads the filter query params and hands them to the catalog.
+ *
+ * This is a separate component on purpose: useSearchParams() opts its entire
+ * client subtree out of static HTML, so calling it inside CatalogClient would
+ * strip the product grid from the prerendered markup of /categories/[slug] —
+ * exactly the links search engines need. Isolated here (behind Suspense) the
+ * grid still renders server-side and only this empty node is client-only.
+ */
+function CatalogUrlParams({ onChange }: { onChange: (params: UrlFilterParams) => void }) {
+  const searchParams = useSearchParams();
+  const category = searchParams.get('category') ?? undefined;
+  const occasion = searchParams.get('occasion') ?? undefined;
+  const recipient = searchParams.get('recipient') ?? undefined;
+
+  useEffect(() => {
+    onChange({ category, occasion, recipient });
+  }, [category, occasion, recipient, onChange]);
+
+  return null;
+}
+
+/**
+ * Narrow the full catalogue to the active scope. Hoisted out of the component
+ * so the state initialisers below can all share it.
+ */
+function applyScope(
+  list: Product[],
+  pack?: CatalogPackContext,
+  category?: CatalogCategoryContext
+): Product[] {
+  if (pack) {
+    // Keep the admin's arrangement order for a curated pack.
+    const order = new Map(pack.productIds.map((id, i) => [id, i]));
+    return list
+      .filter((p) => order.has(p.id))
+      .sort((a, b) => order.get(a.id)! - order.get(b.id)!);
+  }
+  if (category) {
+    return list.filter((p) => p.categories?.some((c) => c.categoryId === category.id));
+  }
+  return list;
+}
+
+function tierOnePrices(list: Product[]): number[] {
+  return list.map((p) => p.priceTiers?.[0]?.sellPrice || 0).filter((n) => n > 0);
+}
+
 export function CatalogClient({
   pack,
+  category,
   initialProducts,
   initialFilters,
 }: {
   pack?: CatalogPackContext;
+  category?: CatalogCategoryContext;
   /** Server-fetched products — makes the grid render in the initial HTML (SEO). */
   initialProducts?: Product[];
   initialFilters?: { categories: Category[]; occasions: Occasion[] };
 } = {}) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const addProduct = useBuilderStore((state) => state.addProduct);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('featured');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Seed from server-rendered data when provided (applying the pack scope the
-  // same way the fetch path does), so there is no empty-grid first paint.
-  const [products, setProducts] = useState<Product[]>(() => {
-    if (!initialProducts) return [];
-    if (!pack) return initialProducts;
-    const order = new Map(pack.productIds.map((id, i) => [id, i]));
-    return initialProducts
-      .filter((p) => order.has(p.id))
-      .sort((a, b) => order.get(a.id)! - order.get(b.id)!);
-  });
+  // Seed from server-rendered data when provided (applying the same scope the
+  // fetch path does), so there is no empty-grid first paint.
+  const scopedInitial = useMemo(
+    () => applyScope(initialProducts ?? [], pack, category),
+    [initialProducts, pack, category]
+  );
+  const [products, setProducts] = useState<Product[]>(() => scopedInitial);
   const [categories, setCategories] = useState<Category[]>(initialFilters?.categories ?? []);
   const [occasions, setOccasions] = useState<Occasion[]>(initialFilters?.occasions ?? []);
   const [loading, setLoading] = useState(!initialProducts);
@@ -123,18 +181,21 @@ export function CatalogClient({
   const [selectedRecipients, setSelectedRecipients] = useState<Set<string>>(new Set());
   const [ecoOnly, setEcoOnly] = useState(false);
   const [brandingOnly, setBrandingOnly] = useState(false);
-  const [priceMin, setPriceMin] = useState<number | null>(() => {
-    const prices = (initialProducts ?? [])
-      .map((p) => p.priceTiers?.[0]?.sellPrice || 0)
-      .filter((n) => n > 0);
-    return prices.length > 0 ? 0 : null;
-  });
+  const [priceMin, setPriceMin] = useState<number | null>(() =>
+    tierOnePrices(scopedInitial).length > 0 ? 0 : null
+  );
   const [priceMax, setPriceMax] = useState<number | null>(() => {
-    const prices = (initialProducts ?? [])
-      .map((p) => p.priceTiers?.[0]?.sellPrice || 0)
-      .filter((n) => n > 0);
+    const prices = tierOnePrices(scopedInitial);
     return prices.length > 0 ? Math.max(...prices) : null;
   });
+
+  // Filter params lifted out of the URL by <CatalogUrlParams> below. Held as
+  // plain strings so the seeding effect depends on primitives, not on the
+  // searchParams object identity.
+  const [urlParams, setUrlParams] = useState<UrlFilterParams>({});
+  const { category: categoryParam, occasion: occasionParam, recipient: recipientParam } = urlParams;
+  // Stable identity — CatalogUrlParams effect depends on this callback.
+  const handleUrlParams = useCallback((params: UrlFilterParams) => setUrlParams(params), []);
 
   // Seed the sidebar filters from the URL query params (e.g. when arriving from a
   // nav "Occasions" dropdown link or a homepage category tile). Categories link by
@@ -145,7 +206,6 @@ export function CatalogClient({
   useEffect(() => {
     if (loading) return;
 
-    const categoryParam = searchParams.get('category');
     if (categoryParam) {
       const cat = categories.find(
         (c) =>
@@ -156,7 +216,6 @@ export function CatalogClient({
       setSelectedCats(new Set([cat ? cat.id : categoryParam]));
     }
 
-    const occasionParam = searchParams.get('occasion');
     if (occasionParam) {
       const occ = occasions.find(
         (o) =>
@@ -167,12 +226,11 @@ export function CatalogClient({
       if (occ) setSelectedOccasions(new Set([occ.id]));
     }
 
-    const recipientParam = searchParams.get('recipient');
     if (recipientParam) {
       setSelectedRecipients(new Set([recipientParam]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, searchParams, categories, occasions]);
+  }, [loading, categoryParam, occasionParam, recipientParam, categories, occasions]);
 
   // Fetch products and categories from API (skipped when the server already
   // provided them — the /catalog page passes initialProducts/initialFilters).
@@ -188,24 +246,15 @@ export function CatalogClient({
 
         if (productsRes.ok) {
           const productsData = await productsRes.json();
-          let prods = productsData.products || [];
-
-          // Scoped to a curated pack: keep only the pack's products, in the
-          // order the admin arranged them. Everything downstream (filter facets,
-          // grid, counts) then reflects just this pack.
-          if (pack) {
-            const order = new Map(pack.productIds.map((id, i) => [id, i]));
-            prods = prods
-              .filter((p: Product) => order.has(p.id))
-              .sort((a: Product, b: Product) => (order.get(a.id)! - order.get(b.id)!));
-          }
+          // Scoped to a curated pack or a category: keep only that scope's
+          // products. Everything downstream (filter facets, grid, counts) then
+          // reflects just this scope.
+          const prods = applyScope(productsData.products || [], pack, category);
 
           setProducts(prods);
 
           // Set initial price range based on actual product prices
-          const prices = prods
-            .map((p: Product) => p.priceTiers?.[0]?.sellPrice || 0)
-            .filter((p: number) => p > 0);
+          const prices = tierOnePrices(prods);
           if (prices.length > 0) {
             setPriceMin(0);
             setPriceMax(Math.max(...prices));
@@ -397,6 +446,14 @@ export function CatalogClient({
 
   return (
     <div className="min-h-screen" style={{ background: '#F5F1EB' }}>
+      {/* Query-param filters. Only the unscoped catalog is reachable via
+          ?category=/?occasion=/?recipient= links, and keeping this out of the
+          scoped pages preserves their fully server-rendered HTML. */}
+      {!pack && !category && (
+        <Suspense fallback={null}>
+          <CatalogUrlParams onChange={handleUrlParams} />
+        </Suspense>
+      )}
 
       <div className="py-8 md:py-12" style={{ background: '#F5F1EB' }}>
         <div className="max-w-7xl mx-auto px-4 md:px-10">
@@ -428,6 +485,23 @@ export function CatalogClient({
                   Customise this Pack <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
+            </>
+          ) : category ? (
+            <>
+              <p className="text-xs" style={{ color: '#8F8A82' }}>
+                <Link href="/" style={{ color: '#800020' }}>Home</Link> /{' '}
+                <Link href="/categories" style={{ color: '#800020' }}>Categories</Link> /{' '}
+                <span>{category.name}</span>
+              </p>
+              <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{category.name}</h1>
+              {category.description && (
+                <p className="mt-2 text-base max-w-3xl" style={{ color: '#5C5852' }}>
+                  {category.description}
+                </p>
+              )}
+              <p className="mt-2 text-sm" style={{ color: '#8F8A82' }}>
+                {products.length} product{products.length === 1 ? '' : 's'} available for bulk order
+              </p>
             </>
           ) : (
             <>
@@ -521,8 +595,8 @@ export function CatalogClient({
                 <button className="lg:hidden text-2xl" onClick={() => setSidebarOpen(false)}>✕</button>
               </div>
 
-              {/* Categories */}
-              {categoryFacets.length > 0 && (
+              {/* Categories — hidden when the page is already scoped to one. */}
+              {!category && categoryFacets.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Categories</h4>
                   <div className="space-y-2">

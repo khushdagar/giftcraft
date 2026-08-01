@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma';
 import { publishedPostWhere } from '@/lib/blog';
 import { getHiddenCategoryIds } from '@/lib/catalog-visibility';
-import { getCategorySummaries } from '@/lib/category-data';
+import { getCategoryNav } from '@/lib/category-data';
 import { SITE_URL } from '@/lib/site';
 
 // Rendered at request time, never at build: build-time prerendering runs
@@ -36,9 +36,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const hiddenCategoryIds = await getHiddenCategoryIds();
 
     const [categories, products, collections, posts] = await Promise.all([
-      // Category landing pages — only those with live products (getCategorySummaries
+      // Category landing pages — only those with live products (getCategoryNav
       // already drops empty ones, which are noindex and must not be submitted).
-      getCategorySummaries(),
+      getCategoryNav(),
       // Every live product + curated pack gets a sitemap entry — this is
       // Google's main discovery path for PDPs. (Product images reach Google
       // via og:image + Product JSON-LD on the PDP itself; Next 14.2's sitemap
