@@ -21,22 +21,14 @@ import { Button } from "@/components/ui/button";
 import { JsonLd } from "@/components/seo/json-ld";
 import { productSchema, breadcrumbSchema } from "@/lib/schema";
 
+// ISR: rendered on demand, then served from cache for an hour.
+//
+// Deliberately NO generateStaticParams: the root layout calls `await auth()`,
+// so every route is dynamic and build-time prerendering emits no static HTML —
+// it only opened ~150 concurrent Postgres connections during the build, which
+// exhausted the pool and failed it. On-demand rendering keeps the same ISR
+// caching without the build-time storm.
 export const revalidate = 3600;
-
-/** Pre-render live products at build time; new SKUs render on demand (ISR). */
-export async function generateStaticParams() {
-  try {
-    const products = await prisma.product.findMany({
-      where: { status: "active" },
-      select: { slug: true },
-      take: 500,
-    });
-    return products.map((p) => ({ slug: p.slug }));
-  } catch {
-    // No DB at build time → render everything on demand instead of failing the build.
-    return [];
-  }
-}
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const product = await prisma.product.findUnique({

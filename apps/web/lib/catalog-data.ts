@@ -9,7 +9,11 @@ import { isHiddenCategory, getHiddenCategoryIds } from '@/lib/catalog-visibility
  * while the client keeps hydrating from the same API shapes.
  */
 
-export async function getCatalogProducts(limit = 1000) {
+export async function getCatalogProducts(
+  limit = 1000,
+  /** Narrow to one category — the /categories/[slug] pages only need theirs. */
+  categoryId?: string
+) {
   try {
     const hiddenCategoryIds = await getHiddenCategoryIds();
 
@@ -18,6 +22,7 @@ export async function getCatalogProducts(limit = 1000) {
         status: 'active',
         // Packs are bundles, not catalog SKUs — never list them among products.
         isPack: false,
+        ...(categoryId ? { categories: { some: { categoryId } } } : {}),
         ...(hiddenCategoryIds.length > 0 && {
           AND: [{ categories: { none: { categoryId: { in: hiddenCategoryIds } } } }],
         }),
@@ -60,8 +65,8 @@ export async function getCatalogProducts(limit = 1000) {
 
 export async function getCatalogFilters() {
   try {
-    const hiddenCategoryIds = await getHiddenCategoryIds();
-
+    // Hidden categories are filtered by name/slug below (isHiddenCategory), so
+    // no separate id lookup is needed here.
     const [categoriesRaw, occasions] = await Promise.all([
       prisma.category.findMany({
         where: { parentId: null },
