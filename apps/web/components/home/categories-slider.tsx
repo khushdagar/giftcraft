@@ -73,7 +73,7 @@ export function CategoriesSlider({ categories }: CategoriesSliderProps) {
                 style={{ width: `${100 / VISIBLE_COUNT}%` }}
                 whileHover={{ y: -6 }}
               >
-                <Link href={`/catalog?category=${cat.id}`}>
+                <Link href={`/categories/${cat.slug}`}>
                   <div className="group bg-white rounded-2xl border-2 border-slate-100 overflow-hidden cursor-pointer hover:border-em hover:shadow-lg transition-all h-full mx-2">
                     {/* Image Container */}
                     <div className="relative h-56 bg-slate-100 overflow-hidden">

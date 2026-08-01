@@ -116,6 +116,38 @@ export function itemListSchema(items: Array<{ name: string; path: string }>) {
   };
 }
 
+/**
+ * CollectionPage for a category landing page, with its products as an inline
+ * ItemList. Google uses this to understand the page as a category rather than
+ * a single product, and to pick up the breadcrumb trail alongside it.
+ */
+export function collectionPageSchema(params: {
+  name: string;
+  description: string;
+  path: string;
+  items: Array<{ name: string; path: string }>;
+}) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': absoluteUrl(params.path),
+    name: params.name,
+    description: params.description,
+    url: absoluteUrl(params.path),
+    isPartOf: { '@id': `${SITE_URL}/#website` },
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: params.items.length,
+      itemListElement: params.items.map((item, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: item.name,
+        url: absoluteUrl(item.path),
+      })),
+    },
+  };
+}
+
 export function faqPageSchema(faqs: Array<{ question: string; answer: string }>) {
   return {
     '@context': 'https://schema.org',

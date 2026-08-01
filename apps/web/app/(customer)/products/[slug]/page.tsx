@@ -163,6 +163,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   const categoryName = product.categories?.[0]?.category?.name || "Products";
   const categoryId = product.categories?.[0]?.categoryId;
+  // Breadcrumbs point at the indexable category landing page (not a filtered
+  // ?categoryId= URL), so the trail Google sees matches a real page.
+  const categorySlug = product.categories?.[0]?.category?.slug;
+  const categoryHref = categorySlug ? `/categories/${categorySlug}` : "/catalog";
 
   // Related: for a pack show sibling packs (same collection) with a derived
   // "from" price; for a normal product show same-category products (never packs).
@@ -259,7 +263,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const breadcrumbJsonLd = breadcrumbSchema([
     { name: "Home", path: "/" },
     { name: "Catalog", path: "/catalog" },
-    { name: categoryName, path: categoryId ? `/catalog?categoryId=${categoryId}` : "/catalog" },
+    { name: categoryName, path: categoryHref },
     { name: product.name, path: `/products/${product.slug}` },
   ]);
 
@@ -278,7 +282,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
             Catalog
           </Link>
           {" / "}
-          <Link href={`/catalog?categoryId=${categoryId}`} className="hover:text-ink">
+          <Link href={categoryHref} className="hover:text-ink">
             {categoryName}
           </Link>
           {" / "}

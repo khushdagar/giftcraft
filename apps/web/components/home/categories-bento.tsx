@@ -46,7 +46,7 @@ export function CategoriesBento({ categories }: CategoriesBentoProps) {
             transition={{ delay: idx * 0.08 }}
             whileHover={{ y: -12, boxShadow: '0 25px 50px rgba(0,0,0,0.12)' }}
           >
-            <Link href={`/catalog?category=${cat.id}`}>
+            <Link href={`/categories/${cat.slug}`}>
               <div
                 className={`group h-96 rounded-3xl p-8 cursor-pointer flex flex-col justify-between
                 ${colorScheme.bg} border-2 ${colorScheme.border}

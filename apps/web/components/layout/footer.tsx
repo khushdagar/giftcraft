@@ -24,7 +24,12 @@ const COL_COMPANY: FooterLink[] = [
 async function getFooterData() {
   try {
     const [rawCategories, collections, occasionRows, hiddenCategoryIds] = await Promise.all([
-      prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
+      // Only categories with at least one live catalog product — the category
+      // landing page for an empty category is noindex, so never link to it.
+      prisma.category.findMany({
+        where: { products: { some: { product: { status: "active", isPack: false } } } },
+        orderBy: { sortOrder: "asc" },
+      }),
       prisma.giftCollection.findMany({
         where: { isActive: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
@@ -95,7 +100,9 @@ export async function Footer() {
 
   const productLinks: FooterLink[] = [
     ["/catalog", "All Products"],
-    ...categories.map((c): FooterLink => [`/catalog?category=${c.slug}`, c.name]),
+    ["/categories", "All Categories"],
+    // Indexable category landing pages, not filtered ?category= URLs.
+    ...categories.map((c): FooterLink => [`/categories/${c.slug}`, c.name]),
   ];
   const packLinks: FooterLink[] = [
     ["/packs", "All Packs"],

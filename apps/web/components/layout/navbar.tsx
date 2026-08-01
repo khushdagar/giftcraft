@@ -109,12 +109,19 @@ export function Navbar() {
                 {categories.map((c) => (
                   <Link
                     key={c.slug}
-                    href={`/catalog?category=${c.slug}`}
+                    // Indexable category landing page, not a filtered ?category= URL.
+                    href={`/categories/${c.slug}`}
                     className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
                   >
                     {c.name}
                   </Link>
                 ))}
+                <Link
+                  href="/categories"
+                  className="col-span-4 mt-1 border-t border-bdr px-3 pt-2 text-[13px] font-semibold text-em transition hover:underline"
+                >
+                  All categories →
+                </Link>
               </div>
             )}
           </li>
@@ -257,7 +264,7 @@ export function Navbar() {
               >✕</button>
             </div>
             {[
-              ["/", "Home"], ["/catalog", "Products"],
+              ["/", "Home"], ["/catalog", "Products"], ["/categories", "Categories"],
               ["/packs", "Curated Box"], ["/box", "Build Your Box"], ["/blog", "Blog"], ["/contact", "Contact"],
               ["/dashboard", "Dashboard"],
             ].map(([href, label]) => (
