@@ -82,17 +82,35 @@ export interface CatalogPackContext {
   builderHref: string;
 }
 
-export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
+export function CatalogClient({
+  pack,
+  initialProducts,
+  initialFilters,
+}: {
+  pack?: CatalogPackContext;
+  /** Server-fetched products — makes the grid render in the initial HTML (SEO). */
+  initialProducts?: Product[];
+  initialFilters?: { categories: Category[]; occasions: Occasion[] };
+} = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const addProduct = useBuilderStore((state) => state.addProduct);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('featured');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [occasions, setOccasions] = useState<Occasion[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Seed from server-rendered data when provided (applying the pack scope the
+  // same way the fetch path does), so there is no empty-grid first paint.
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (!initialProducts) return [];
+    if (!pack) return initialProducts;
+    const order = new Map(pack.productIds.map((id, i) => [id, i]));
+    return initialProducts
+      .filter((p) => order.has(p.id))
+      .sort((a, b) => order.get(a.id)! - order.get(b.id)!);
+  });
+  const [categories, setCategories] = useState<Category[]>(initialFilters?.categories ?? []);
+  const [occasions, setOccasions] = useState<Occasion[]>(initialFilters?.occasions ?? []);
+  const [loading, setLoading] = useState(!initialProducts);
   // Per-card image override when a colour swatch is hovered/selected.
   const [variantImg, setVariantImg] = useState<Record<string, string | null>>({});
   // Which card is currently hovered (to show its second image).
@@ -105,8 +123,18 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
   const [selectedRecipients, setSelectedRecipients] = useState<Set<string>>(new Set());
   const [ecoOnly, setEcoOnly] = useState(false);
   const [brandingOnly, setBrandingOnly] = useState(false);
-  const [priceMin, setPriceMin] = useState<number | null>(null);
-  const [priceMax, setPriceMax] = useState<number | null>(null);
+  const [priceMin, setPriceMin] = useState<number | null>(() => {
+    const prices = (initialProducts ?? [])
+      .map((p) => p.priceTiers?.[0]?.sellPrice || 0)
+      .filter((n) => n > 0);
+    return prices.length > 0 ? 0 : null;
+  });
+  const [priceMax, setPriceMax] = useState<number | null>(() => {
+    const prices = (initialProducts ?? [])
+      .map((p) => p.priceTiers?.[0]?.sellPrice || 0)
+      .filter((n) => n > 0);
+    return prices.length > 0 ? Math.max(...prices) : null;
+  });
 
   // Seed the sidebar filters from the URL query params (e.g. when arriving from a
   // nav "Occasions" dropdown link or a homepage category tile). Categories link by
@@ -146,8 +174,10 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, searchParams, categories, occasions]);
 
-  // Fetch products and categories from API
+  // Fetch products and categories from API (skipped when the server already
+  // provided them — the /catalog page passes initialProducts/initialFilters).
   useEffect(() => {
+    if (initialProducts) return;
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -366,15 +396,15 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
   if (loading) return null;
 
   return (
-    <div className="min-h-screen" style={{ background: '#FAFAF7' }}>
+    <div className="min-h-screen" style={{ background: '#F5F1EB' }}>
 
-      <div className="py-8 md:py-12" style={{ background: '#FAFAF7' }}>
+      <div className="py-8 md:py-12" style={{ background: '#F5F1EB' }}>
         <div className="max-w-7xl mx-auto px-4 md:px-10">
           {pack ? (
             <>
-              <p className="text-xs" style={{ color: '#9B9B93' }}>
-                <Link href="/" style={{ color: '#1A6B4F' }}>Home</Link> /{' '}
-                <Link href="/packs" style={{ color: '#1A6B4F' }}>Curated Packs</Link> /{' '}
+              <p className="text-xs" style={{ color: '#8F8A82' }}>
+                <Link href="/" style={{ color: '#800020' }}>Home</Link> /{' '}
+                <Link href="/packs" style={{ color: '#800020' }}>Curated Packs</Link> /{' '}
                 <span>{pack.name}</span>
               </p>
               <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -386,7 +416,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                     {pack.name}
                   </h1>
                   {pack.description && (
-                    <p className="mt-2 text-base" style={{ color: '#6B6B63' }}>
+                    <p className="mt-2 text-base" style={{ color: '#5C5852' }}>
                       {pack.description}
                     </p>
                   )}
@@ -401,11 +431,11 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
             </>
           ) : (
             <>
-              <p className="text-xs" style={{ color: '#9B9B93' }}><Link href="/" style={{ color: '#1A6B4F' }}>Home</Link> / <span>Products</span></p>
+              <p className="text-xs" style={{ color: '#8F8A82' }}><Link href="/" style={{ color: '#800020' }}>Home</Link> / <span>Products</span></p>
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">
-                The <span className="italic" style={{ color: '#1A6B4F' }}>Catalog.</span>
+                The <span className="italic" style={{ color: '#800020' }}>Catalog.</span>
               </h1>
-              <p className="mt-2 text-base" style={{ color: '#6B6B63' }}>
+              <p className="mt-2 text-base" style={{ color: '#5C5852' }}>
                 {products.length}+ products for every occasion.
               </p>
 
@@ -416,7 +446,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                 </span>
                 <Link
                   href="/packs"
-                  className="px-6 py-2 rounded-full text-sm font-medium text-[#6B6B63] hover:text-ink transition"
+                  className="px-6 py-2 rounded-full text-sm font-medium text-[#5C5852] hover:text-ink transition"
                 >
                   Curated Packs
                 </Link>
@@ -431,11 +461,11 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
         {/* Toolbar */}
         <div className="flex flex-col md:flex-row gap-3 mb-4 items-stretch">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-3 h-4 w-4" style={{ color: '#9B9B93' }} />
-            <input type="text" placeholder="Search products by name, brand, or category..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full h-11 pl-10 pr-4 rounded-full text-sm border" style={{ borderColor: '#D4D4CF', background: '#FFF' }} />
+            <Search className="absolute left-3 top-3 h-4 w-4" style={{ color: '#8F8A82' }} />
+            <input type="text" placeholder="Search products by name, brand, or category..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full h-11 pl-10 pr-4 rounded-full text-sm border" style={{ borderColor: '#D3CBBC', background: '#FFF' }} />
           </div>
-          <button className="md:hidden h-11 px-4 rounded-full border flex items-center gap-2" style={{ borderColor: '#E8E8E3', color: '#1A1A18' }} onClick={() => setSidebarOpen(!sidebarOpen)}>☰ Filters</button>
-          <select value={sort} onChange={(e) => setSort(e.target.value)} className="h-11 px-4 rounded-full border text-sm font-medium" style={{ borderColor: '#E8E8E3', background: '#FFF', color: '#1A1A18' }}>
+          <button className="md:hidden h-11 px-4 rounded-full border flex items-center gap-2" style={{ borderColor: '#E5DFD4', color: '#222222' }} onClick={() => setSidebarOpen(!sidebarOpen)}>☰ Filters</button>
+          <select value={sort} onChange={(e) => setSort(e.target.value)} className="h-11 px-4 rounded-full border text-sm font-medium" style={{ borderColor: '#E5DFD4', background: '#FFF', color: '#222222' }}>
             <option value="featured">Sort: Featured</option>
             <option value="price_asc">Price: Low → High</option>
             <option value="price_desc">Price: High → Low</option>
@@ -449,38 +479,38 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
             {Array.from(selectedCats).map(catId => {
               const cat = categories.find(c => c.id === catId);
               return (
-                <button key={catId} onClick={() => handleCatChange(catId)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>
+                <button key={catId} onClick={() => handleCatChange(catId)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>
                   {cat?.name} ✕
                 </button>
               );
             })}
             {Array.from(selectedBrands).map(brand => (
-              <button key={brand} onClick={() => handleBrandChange(brand)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>
+              <button key={brand} onClick={() => handleBrandChange(brand)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>
                 Brand: {brand} ✕
               </button>
             ))}
             {Array.from(selectedOccasions).map(occId => {
               const occ = occasions.find(o => o.id === occId);
               return (
-                <button key={occId} onClick={() => toggleSetValue(setSelectedOccasions, occId)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>
+                <button key={occId} onClick={() => toggleSetValue(setSelectedOccasions, occId)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>
                   {occ?.name} ✕
                 </button>
               );
             })}
             {Array.from(selectedRecipients).map(tag => (
-              <button key={tag} onClick={() => toggleSetValue(setSelectedRecipients, tag)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>
+              <button key={tag} onClick={() => toggleSetValue(setSelectedRecipients, tag)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>
                 {tag} ✕
               </button>
             ))}
-            {ecoOnly && <button onClick={() => setEcoOnly(false)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>Eco-Friendly ✕</button>}
-            {brandingOnly && <button onClick={() => setBrandingOnly(false)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>Branding Available ✕</button>}
-            {(priceMin !== null && priceMax !== null && (priceMin > (priceRange.min || 0) || priceMax < (priceRange.max || 3500))) && <button onClick={() => { setPriceMin(priceRange.min || null); setPriceMax(priceRange.max || null); }} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>Price: {formatPrice(priceMin)}–{formatPrice(priceMax)} ✕</button>}
-            {search && <button onClick={() => setSearch('')} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#E8F5EF', color: '#0F4934' }}>Search: "{search}" ✕</button>}
-            <button onClick={clearAll} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#F5F5F0', color: '#6B6B63' }}>Clear All</button>
+            {ecoOnly && <button onClick={() => setEcoOnly(false)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>Eco-Friendly ✕</button>}
+            {brandingOnly && <button onClick={() => setBrandingOnly(false)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>Branding Available ✕</button>}
+            {(priceMin !== null && priceMax !== null && (priceMin > (priceRange.min || 0) || priceMax < (priceRange.max || 3500))) && <button onClick={() => { setPriceMin(priceRange.min || null); setPriceMax(priceRange.max || null); }} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>Price: {formatPrice(priceMin)}–{formatPrice(priceMax)} ✕</button>}
+            {search && <button onClick={() => setSearch('')} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>Search: "{search}" ✕</button>}
+            <button onClick={clearAll} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FAFAFA', color: '#5C5852' }}>Clear All</button>
           </div>
         )}
 
-        <p className="text-xs mb-4" style={{ color: '#9B9B93' }}>Showing {filtered.length} product{filtered.length !== 1 ? 's' : ''}</p>
+        <p className="text-xs mb-4" style={{ color: '#8F8A82' }}>Showing {filtered.length} product{filtered.length !== 1 ? 's' : ''}</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
@@ -498,9 +528,9 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                   <div className="space-y-2">
                     {categoryFacets.map(cat => (
                       <label key={cat.id} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
-                        <input type="checkbox" checked={selectedCats.has(cat.id)} onChange={() => handleCatChange(cat.id)} style={{ accentColor: '#1A6B4F' }} />
+                        <input type="checkbox" checked={selectedCats.has(cat.id)} onChange={() => handleCatChange(cat.id)} style={{ accentColor: '#800020' }} />
                         {cat.name}
-                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({cat.count})</span>
+                        <span className="text-xs ml-auto" style={{ color: '#8F8A82' }}>({cat.count})</span>
                       </label>
                     ))}
                   </div>
@@ -523,11 +553,11 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                     const span = Math.max(rMax - rMin, 1)
                     const leftPct = ((vMin - rMin) / span) * 100
                     const rightPct = ((vMax - rMin) / span) * 100
-                    const thumb = "appearance-none pointer-events-none absolute inset-0 h-4 w-full bg-transparent focus:outline-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#1A6B4F] [&::-webkit-slider-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#1A6B4F] [&::-moz-range-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-moz-range-thumb]:cursor-pointer"
+                    const thumb = "appearance-none pointer-events-none absolute inset-0 h-4 w-full bg-transparent focus:outline-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#800020] [&::-webkit-slider-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#800020] [&::-moz-range-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-moz-range-thumb]:cursor-pointer"
                     return (
                       <div className="relative h-4">
                         <div className="absolute left-[7px] right-[7px] top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-gray-200">
-                          <div className="absolute inset-y-0 rounded-full bg-[#1A6B4F]" style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }} />
+                          <div className="absolute inset-y-0 rounded-full bg-[#800020]" style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }} />
                         </div>
                         <input type="range" min={rMin} max={rMax} value={vMin} onChange={(e) => setPriceMin(Math.min(parseInt(e.target.value), vMax - 100))} className={thumb} style={{ zIndex: vMin > rMax - 100 ? 4 : 3 }} />
                         <input type="range" min={rMin} max={rMax} value={vMax} onChange={(e) => setPriceMax(Math.max(parseInt(e.target.value), vMin + 100))} className={thumb} style={{ zIndex: 4 }} />
@@ -544,9 +574,9 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                   <div className="space-y-1">
                     {brandFacets.map(({ name, count }) => (
                       <label key={name} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
-                        <input type="checkbox" checked={selectedBrands.has(name)} onChange={() => handleBrandChange(name)} style={{ accentColor: '#1A6B4F' }} />
+                        <input type="checkbox" checked={selectedBrands.has(name)} onChange={() => handleBrandChange(name)} style={{ accentColor: '#800020' }} />
                         {name}
-                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({count})</span>
+                        <span className="text-xs ml-auto" style={{ color: '#8F8A82' }}>({count})</span>
                       </label>
                     ))}
                   </div>
@@ -560,9 +590,9 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                   <div className="space-y-2">
                     {occasionFacets.map(occ => (
                       <label key={occ.id} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
-                        <input type="checkbox" checked={selectedOccasions.has(occ.id)} onChange={() => toggleSetValue(setSelectedOccasions, occ.id)} style={{ accentColor: '#1A6B4F' }} />
+                        <input type="checkbox" checked={selectedOccasions.has(occ.id)} onChange={() => toggleSetValue(setSelectedOccasions, occ.id)} style={{ accentColor: '#800020' }} />
                         {occ.name}
-                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({occ.count})</span>
+                        <span className="text-xs ml-auto" style={{ color: '#8F8A82' }}>({occ.count})</span>
                       </label>
                     ))}
                   </div>
@@ -576,9 +606,9 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                   <div className="space-y-2">
                     {recipientFacets.map(({ tag, count }) => (
                       <label key={tag} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
-                        <input type="checkbox" checked={selectedRecipients.has(tag)} onChange={() => toggleSetValue(setSelectedRecipients, tag)} style={{ accentColor: '#1A6B4F' }} />
+                        <input type="checkbox" checked={selectedRecipients.has(tag)} onChange={() => toggleSetValue(setSelectedRecipients, tag)} style={{ accentColor: '#800020' }} />
                         {tag}
-                        <span className="text-xs ml-auto" style={{ color: '#9B9B93' }}>({count})</span>
+                        <span className="text-xs ml-auto" style={{ color: '#8F8A82' }}>({count})</span>
                       </label>
                     ))}
                   </div>
@@ -588,7 +618,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
               {/* Eco Toggle */}
               {(ecoCount > 0 || ecoOnly) && (
                 <div className="mb-4 pb-3 border-b flex justify-between items-center">
-                  <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">🍃 Eco-Friendly Only <span className="text-xs" style={{ color: '#9B9B93' }}>({ecoCount})</span></label>
+                  <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">🍃 Eco-Friendly Only <span className="text-xs" style={{ color: '#8F8A82' }}>({ecoCount})</span></label>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={ecoOnly} onChange={(e) => setEcoOnly(e.target.checked)} className="sr-only peer" />
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
@@ -599,7 +629,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
               {/* Branding Toggle */}
               {(brandingCount > 0 || brandingOnly) && (
                 <div className="flex justify-between items-center">
-                  <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">🎨 Branding Available <span className="text-xs" style={{ color: '#9B9B93' }}>({brandingCount})</span></label>
+                  <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">🎨 Branding Available <span className="text-xs" style={{ color: '#8F8A82' }}>({brandingCount})</span></label>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={brandingOnly} onChange={(e) => setBrandingOnly(e.target.checked)} className="sr-only peer" />
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
@@ -610,7 +640,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
               {sidebarOpen && (
                 <div className="flex gap-2 mt-6">
                   <button onClick={() => setSidebarOpen(false)} className="flex-1 h-11 bg-emerald-700 text-white rounded-full font-semibold text-sm">Show Results</button>
-                  <button onClick={clearAll} className="h-11 px-4 border rounded-full text-sm" style={{ borderColor: '#E8E8E3' }}>Clear</button>
+                  <button onClick={clearAll} className="h-11 px-4 border rounded-full text-sm" style={{ borderColor: '#E5DFD4' }}>Clear</button>
                 </div>
               )}
             </div>
@@ -622,7 +652,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
               <div className="text-center py-20">
                 <p className="text-4xl mb-4">📦</p>
                 <h3 className="font-serif text-xl mb-2">No products match your filters.</h3>
-                <p className="text-sm mb-6" style={{ color: '#6B6B63' }}>Try adjusting your search or clearing some filters.</p>
+                <p className="text-sm mb-6" style={{ color: '#5C5852' }}>Try adjusting your search or clearing some filters.</p>
                 <div className="flex gap-3 justify-center">
                   <button onClick={clearAll} className="px-6 h-10 bg-emerald-700 text-white rounded-full font-semibold text-sm">Clear All Filters</button>
                 </div>
@@ -676,7 +706,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                       className="bg-white rounded-md shadow hover:shadow-lg hover:translate-y-[-4px] transition overflow-hidden flex flex-col"
                     >
                       <Link href={`/products/${p.slug}`} className="block cursor-pointer flex-1">
-                        <div className="relative aspect-square m-2.5 rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: '#F5F5F0' }}>
+                        <div className="relative aspect-square m-2.5 rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: '#FAFAFA' }}>
                           {displayUrl ? (
                             <img
                               src={displayUrl}
@@ -686,17 +716,17 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                           ) : (
                             <span className="text-5xl opacity-70 transition hover:scale-110">{p.icon || '📦'}</span>
                           )}
-                          {p.moq && <span className="absolute top-2 left-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#FBF5E9', color: '#886528' }}>Min {p.moq}</span>}
-                          {p.isEcoCertified && <span className="absolute top-2 right-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#E8F5EF', color: '#0F4934' }}>🍃 Eco</span>}
-                          {p.printingTechnique && <span className="absolute bottom-2 right-2 text-[8px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: 'rgba(26,107,79,.08)', color: '#0F4934' }}>{TECH_BADGES[p.printingTechnique] || '🎨 ' + p.printingTechnique}</span>}
+                          {p.moq && <span className="absolute top-2 left-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#F5F1EB', color: '#222222' }}>Min {p.moq}</span>}
+                          {p.isEcoCertified && <span className="absolute top-2 right-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#FBF4F5', color: '#560015' }}>🍃 Eco</span>}
+                          {p.printingTechnique && <span className="absolute bottom-2 right-2 text-[8px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: 'rgba(128, 0, 32,.08)', color: '#560015' }}>{TECH_BADGES[p.printingTechnique] || '🎨 ' + p.printingTechnique}</span>}
                         </div>
                         <div className="px-3.5 pb-3.5">
-                          {p.brand && <p className="text-[11px]" style={{ color: '#9B9B93' }}>{p.brand}</p>}
+                          {p.brand && <p className="text-[11px]" style={{ color: '#8F8A82' }}>{p.brand}</p>}
                           <h4 className="text-sm font-medium line-clamp-2 my-1">{p.name}</h4>
                           {p.priceTiers && p.priceTiers[0] && (
-                            <p className="text-sm font-semibold font-mono"><span className="text-[11px] font-normal" style={{ color: '#9B9B93' }}>From </span>{formatPrice(p.priceTiers[0].sellPrice)}</p>
+                            <p className="text-sm font-semibold font-mono"><span className="text-[11px] font-normal" style={{ color: '#8F8A82' }}>From </span>{formatPrice(p.priceTiers[0].sellPrice)}</p>
                           )}
-                          {p.printingTechnique && <p className="text-[10px] uppercase tracking-widest mt-1" style={{ color: '#9B9B93' }}>{TECH_BADGES[p.printingTechnique] || p.printingTechnique}</p>}
+                          {p.printingTechnique && <p className="text-[10px] uppercase tracking-widest mt-1" style={{ color: '#8F8A82' }}>{TECH_BADGES[p.printingTechnique] || p.printingTechnique}</p>}
                         </div>
                       </Link>
                       {/* Colour swatches — hover/tap swaps the card image */}
@@ -713,7 +743,7 @@ export function CatalogClient({ pack }: { pack?: CatalogPackContext } = {}) {
                               onClick={() =>
                                 setVariantImg((m) => ({ ...m, [p.id]: v.imageUrl || null }))
                               }
-                              className="h-4 w-4 rounded-full border border-[#E8E8E3] transition hover:scale-110"
+                              className="h-4 w-4 rounded-full border border-[#E5DFD4] transition hover:scale-110"
                               style={{ backgroundColor: resolveSwatchHex(v.value, v.hexColor || undefined) }}
                             />
                           ))}

@@ -18,24 +18,68 @@ import { ColorSelector } from "@/components/product/color-selector";
 import { ProductInfoSection } from "@/components/product/product-info-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { JsonLd } from "@/components/seo/json-ld";
+import { productSchema, breadcrumbSchema } from "@/lib/schema";
 
 export const revalidate = 3600;
+
+/** Pre-render live products at build time; new SKUs render on demand (ISR). */
+export async function generateStaticParams() {
+  try {
+    const products = await prisma.product.findMany({
+      where: { status: "active" },
+      select: { slug: true },
+      take: 500,
+    });
+    return products.map((p) => ({ slug: p.slug }));
+  } catch {
+    // No DB at build time → render everything on demand instead of failing the build.
+    return [];
+  }
+}
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const product = await prisma.product.findUnique({
     where: { slug: params.slug },
-    select: { name: true, descriptionShort: true, images: { where: { isPrimary: true }, take: 1 } },
+    select: {
+      name: true,
+      descriptionShort: true,
+      status: true,
+      // Primary image first, else the first by sort order.
+      images: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1, select: { url: true } },
+    },
   });
 
-  if (!product) return { title: "Product not found" };
+  if (!product || product.status !== "active")
+    return { title: "Product not found", robots: { index: false, follow: false } };
+
+  const description =
+    product.descriptionShort ||
+    `Order ${product.name} in bulk with your branding. Transparent per-unit pricing on GIVOO.`;
+  const url = `/products/${params.slug}`;
+  // Every product must have SOME preview image — fall back to the branded
+  // site card so link previews never render blank.
+  const ogImage = product.images?.[0]?.url || "/opengraph-image";
 
   return {
-    title: `${product.name} | GIVOO`,
-    description: product.descriptionShort || "Corporate gifting made simple.",
+    // Root template appends "· GIVOO" — don't add the brand here.
+    title: product.name,
+    description,
+    alternates: { canonical: url },
     openGraph: {
+      type: "website",
+      url,
       title: product.name,
-      description: product.descriptionShort || undefined,
-      images: product.images?.[0]?.url ? [{ url: product.images[0].url }] : [],
+      description,
+      siteName: "GIVOO",
+      locale: "en_IN",
+      images: [{ url: ogImage, alt: product.name }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description,
+      images: [ogImage],
     },
   };
 }
@@ -119,6 +163,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   const categoryName = product.categories?.[0]?.category?.name || "Products";
   const categoryId = product.categories?.[0]?.categoryId;
+  // Breadcrumbs point at the indexable category landing page (not a filtered
+  // ?categoryId= URL), so the trail Google sees matches a real page.
+  const categorySlug = product.categories?.[0]?.category?.slug;
+  const categoryHref = categorySlug ? `/categories/${categorySlug}` : "/catalog";
 
   // Related: for a pack show sibling packs (same collection) with a derived
   // "from" price; for a normal product show same-category products (never packs).
@@ -184,8 +232,45 @@ export default async function ProductPage({ params }: { params: { slug: string }
     (isPack ? derivedTiers[0]?.minQty : product.priceTiers?.[0]?.minQty) ||
     25;
 
+  // ── Structured data (server-rendered) ──────────────────────────────────────
+  // Real approved-review aggregate only — never fabricated (Google penalizes).
+  const reviewAgg = await prisma.review.aggregate({
+    where: { productId: product.id, status: "approved" },
+    _avg: { rating: true },
+    _count: true,
+  });
+  const tier1Price = isPack
+    ? derivedTiers[0]?.sellPrice ?? 0
+    : Number(product.priceTiers?.[0]?.sellPrice ?? 0);
+  const schemaImages = (isPack ? memberImages : product.images.map((im) => im.url)).filter(Boolean);
+  const productJsonLd = productSchema({
+    name: product.name,
+    slug: product.slug,
+    description: product.descriptionShort,
+    sku: product.sku,
+    brand: product.brand,
+    images: schemaImages,
+    price: tier1Price,
+    inStock: true, // status === "active" is enforced above
+    aggregateRating:
+      reviewAgg._count > 0 && reviewAgg._avg.rating
+        ? {
+            ratingValue: Math.round(reviewAgg._avg.rating * 10) / 10,
+            reviewCount: reviewAgg._count,
+          }
+        : undefined,
+  });
+  const breadcrumbJsonLd = breadcrumbSchema([
+    { name: "Home", path: "/" },
+    { name: "Catalog", path: "/catalog" },
+    { name: categoryName, path: categoryHref },
+    { name: product.name, path: `/products/${product.slug}` },
+  ]);
+
   return (
     <div className="bg-canvas pb-24 lg:pb-0">
+      <JsonLd data={productJsonLd} />
+      <JsonLd data={breadcrumbJsonLd} />
       {/* Breadcrumb */}
       <div className="container-gc-w pt-6">
         <p className="text-xs text-ink-3">
@@ -197,7 +282,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
             Catalog
           </Link>
           {" / "}
-          <Link href={`/catalog?categoryId=${categoryId}`} className="hover:text-ink">
+          <Link href={categoryHref} className="hover:text-ink">
             {categoryName}
           </Link>
           {" / "}
@@ -257,7 +342,9 @@ export default async function ProductPage({ params }: { params: { slug: string }
       <ProductReviews slug={product.slug} />
 
       {/* Related Products */}
-      {serializedRelated.length > 0 && <RelatedProducts products={serializedRelated} />}
+      {serializedRelated.length > 0 && (
+        <RelatedProducts products={serializedRelated} canAddToPack={!isPack} />
+      )}
     </div>
   );
 }

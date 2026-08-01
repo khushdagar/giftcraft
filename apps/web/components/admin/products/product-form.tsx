@@ -878,6 +878,7 @@ export function ProductForm({
                     onChange={field.onChange}
                     placeholder="Detailed product description"
                     minHeight={180}
+                    uploadFolder="products"
                   />
                 )}
               />
@@ -918,6 +919,7 @@ export function ProductForm({
                       onChange={field.onChange}
                       placeholder={tab.placeholder}
                       minHeight={160}
+                      uploadFolder="products"
                     />
                   )}
                 />

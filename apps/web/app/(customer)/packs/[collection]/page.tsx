@@ -2,18 +2,42 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { formatRupees } from '@/lib/utils';
+import { JsonLd } from '@/components/seo/json-ld';
+import { itemListSchema, breadcrumbSchema } from '@/lib/schema';
 
-export const dynamic = 'force-dynamic';
+// ISR: cacheable HTML for crawlers + users, refreshed hourly.
+export const revalidate = 3600;
 
 export async function generateMetadata({ params }: { params: { collection: string } }) {
   const collection = await prisma.giftCollection.findUnique({
     where: { slug: params.collection },
-    select: { name: true, description: true },
+    select: { name: true, description: true, isActive: true, image: true },
   });
-  if (!collection) return { title: 'Collection | GIVOO' };
+  if (!collection || !collection.isActive)
+    return { title: 'Collection not found', robots: { index: false, follow: false } };
+  const description =
+    collection.description || `Curated corporate gift packs in the ${collection.name} collection.`;
+  const ogImage = collection.image || '/opengraph-image';
   return {
-    title: `${collection.name} | GIVOO`,
-    description: collection.description || `Gift packs in the ${collection.name} collection.`,
+    // Root template appends "· GIVOO"
+    title: `${collection.name} Gift Packs`,
+    description,
+    alternates: { canonical: `/packs/${params.collection}` },
+    openGraph: {
+      type: 'website',
+      url: `/packs/${params.collection}`,
+      title: `${collection.name} Gift Packs`,
+      description,
+      siteName: 'GIVOO',
+      locale: 'en_IN',
+      images: [{ url: ogImage, alt: `${collection.name} gift packs` }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${collection.name} Gift Packs`,
+      description,
+      images: [ogImage],
+    },
   };
 }
 
@@ -64,22 +88,32 @@ export default async function CollectionDetailPage({
   }));
 
   return (
-    <div className="min-h-screen" style={{ background: '#FAFAF7' }}>
+    <div className="min-h-screen" style={{ background: '#F5F1EB' }}>
+      <JsonLd
+        data={itemListSchema(packs.map((p) => ({ name: p.name, path: `/products/${p.slug}` })))}
+      />
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: 'Home', path: '/' },
+          { name: 'Curated Packs', path: '/packs' },
+          { name: collection.name, path: `/packs/${params.collection}` },
+        ])}
+      />
       <div className="py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-4 md:px-10">
-          <p className="text-xs" style={{ color: '#9B9B93' }}>
-            <Link href="/" style={{ color: '#1A6B4F' }}>
+          <p className="text-xs" style={{ color: '#8F8A82' }}>
+            <Link href="/" style={{ color: '#800020' }}>
               Home
             </Link>{' '}
             /{' '}
-            <Link href="/packs" style={{ color: '#1A6B4F' }}>
+            <Link href="/packs" style={{ color: '#800020' }}>
               Curated Packs
             </Link>{' '}
             / <span>{collection.name}</span>
           </p>
           <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{collection.name}</h1>
           {collection.description && (
-            <p className="mt-2 text-base max-w-2xl" style={{ color: '#6B6B63' }}>
+            <p className="mt-2 text-base max-w-2xl" style={{ color: '#5C5852' }}>
               {collection.description}
             </p>
           )}

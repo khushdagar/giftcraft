@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { X, Upload, ArrowLeft, ImageIcon, Package } from 'lucide-react';
+import { RichTextField } from '@/components/admin/rich-text-field';
 
 interface CategoryProduct {
   product: {
@@ -203,14 +204,13 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
               onChange={(e) => setFormData((p) => ({ ...p, slug: e.target.value }))}
               placeholder="corporate-gifts" />
 
-            <label htmlFor="description" className="mb-1.5 mt-4 block text-sm font-medium text-ink">Description</label>
-            <textarea
-              id="description"
+            <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">Description</label>
+            <RichTextField
               value={formData.description}
-              onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-              rows={5}
+              onChange={(html) => setFormData((p) => ({ ...p, description: html }))}
               placeholder="Describe this category for shoppers…"
-              className="w-full rounded-lg border border-bdr px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-em"
+              minHeight={130}
+              uploadFolder="categories"
             />
           </div>
 

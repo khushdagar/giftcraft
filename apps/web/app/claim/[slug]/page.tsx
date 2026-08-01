@@ -202,7 +202,7 @@ export default function GocClaimPage({ params }: PageProps) {
         style={
           campaign.heroImage
             ? undefined
-            : { background: 'linear-gradient(135deg, #FBF5E9 0%, #E8F5EF 50%, #FBF5E9 100%)' }
+            : { background: 'linear-gradient(135deg, #F5F1EB 0%, #FBF4F5 50%, #F5F1EB 100%)' }
         }
       >
         {campaign.heroImage && (

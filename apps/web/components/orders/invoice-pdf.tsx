@@ -1,7 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
-  page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#1A1A18' },
+  page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#222222' },
   header: {
     marginBottom: 20,
     borderBottom: 2,
@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: '#1A1A18',
+    color: '#222222',
     marginBottom: 6,
   },
   table: { display: 'flex', flexDirection: 'column', borderTop: 1, borderTopColor: '#E4E4E7' },
@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   tableRowHeader: {
-    borderBottomColor: '#1A1A18',
+    borderBottomColor: '#222222',
     borderBottomWidth: 2,
     fontWeight: 'bold',
     backgroundColor: '#FAFAFA',
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
   cGstRate: { flex: 0.6, paddingHorizontal: 4, fontSize: 8, textAlign: 'center' },
   cTax: { flex: 1.05, paddingHorizontal: 4, fontSize: 8, textAlign: 'right' },
   cTotal: { flex: 1.25, paddingHorizontal: 4, fontSize: 8, textAlign: 'right' },
-  cGrandRow: { backgroundColor: '#FAFAFA', borderTop: 1, borderTopColor: '#1A1A18' },
+  cGrandRow: { backgroundColor: '#FAFAFA', borderTop: 1, borderTopColor: '#222222' },
   cBold: { fontWeight: 'bold' },
   totals: { marginTop: 12, marginLeft: 'auto', width: '55%' },
   row: {
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   },
   grandRow: {
     borderTop: 2,
-    borderTopColor: '#1A1A18',
+    borderTopColor: '#222222',
     paddingVertical: 8,
     paddingHorizontal: 6,
     marginTop: 6,
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   sumRowHeader: {
-    borderBottomColor: '#1A1A18',
+    borderBottomColor: '#222222',
     borderBottomWidth: 1,
     backgroundColor: '#FAFAFA',
     fontWeight: 'bold',

@@ -8,6 +8,9 @@ export const metadata = {
   title: 'Blog',
   description:
     'Trends, tips, and stories on the art of thoughtful corporate gifting — from the GIVOO team.',
+  // Faceted variants (?category=, ?tag=) canonicalize to the clean listing —
+  // relative canonicals resolve against the pathname, dropping query params.
+  alternates: { canonical: '/blog' },
 };
 
 // Short revalidate so a scheduled post appears without a redeploy.

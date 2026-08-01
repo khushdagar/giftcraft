@@ -2,8 +2,8 @@ import { prisma } from '../apps/web/lib/prisma'
 import fs from 'fs'
 import path from 'path'
 
-// Load .env.local manually
-const envFile = path.resolve(__dirname, '../.env.local')
+// Load the web app's env manually (single source of truth for DATABASE_URL)
+const envFile = path.resolve(__dirname, '../apps/web/.env')
 if (fs.existsSync(envFile)) {
   const content = fs.readFileSync(envFile, 'utf-8')
   content.split('\n').forEach(line => {

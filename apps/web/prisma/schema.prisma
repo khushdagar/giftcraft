@@ -1396,8 +1396,21 @@ model WhiteLabelStore {
 enum EnquiryStatus {
   new
   contacted
-  quoted
+  quoted // shown as "Proposal sent"
+  pending
   closed
+}
+
+// Pipeline status for a GoHighLevel lead. GHL stays the source of truth for the
+// lead itself (nothing is copied here); this only records how far WE have taken
+// it. Keyed by the synthetic lead id from lib/ghl.ts — "sub-<submissionId>" for
+// a form submission, "contact-<contactId>" for a CRM-only contact.
+model GhlLeadStatus {
+  id        String        @id @default(cuid())
+  leadId    String        @unique
+  status    EnquiryStatus @default(new)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }
 
 model Enquiry {

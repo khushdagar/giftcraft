@@ -126,7 +126,7 @@ export default async function AdminProductsPage({
                           <div className="flex items-center gap-3">
                             <div
                               className="w-12 h-9 rounded-md flex-shrink-0 overflow-hidden bg-gray-100"
-                              style={{ background: c.image ? undefined : c.gradient || '#E8E8E3' }}
+                              style={{ background: c.image ? undefined : c.gradient || '#E5DFD4' }}
                             >
                               {c.image && (
                                 // eslint-disable-next-line @next/next/no-img-element

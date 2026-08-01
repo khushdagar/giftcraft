@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export function HomeHero() {
   const [slide, setSlide] = useState(0);
@@ -11,21 +12,21 @@ export function HomeHero() {
       subtitle: 'India\'s First Gifting Studio',
       title: 'Bulk Gifting.\nPerfectly Crafted.',
       desc: 'Custom branded gifts for your team, delivered in 10 days.',
-      bg: 'linear-gradient(135deg, #2a1f14 0%, #1a1510 20%, #12100d 50%, #1a1510 80%, #2a1f14 100%)',
+      bg: 'linear-gradient(135deg, #222222 0%, #111111 20%, #000000 50%, #111111 80%, #222222 100%)',
       image: '/home-banners/Banners-01.png',
     },
     {
       subtitle: 'Festive Season 2026',
       title: 'Diwali Gifting\nMade Simple.',
       desc: 'Premium branded gifts for the season of lights.',
-      bg: 'linear-gradient(135deg, #5C2D0E 0%, #8B4513 50%, #D4872A 100%)',
+      bg: 'linear-gradient(135deg, #3D000F 0%, #800020 50%, #B04057 100%)',
       image: '/home-banners/Banners-02.png',
     },
     {
       subtitle: 'Employee Onboarding',
       title: 'Welcome Kits\nThat Wow.',
       desc: 'Make every new hire feel valued from day one.',
-      bg: 'linear-gradient(135deg, #0A3726 0%, #1A6B4F 50%, #2A7EC4 100%)',
+      bg: 'linear-gradient(135deg, #000000 0%, #800020 50%, #B04057 100%)',
       image: '/home-banners/Banners-03.png',
     },
   ];
@@ -43,11 +44,23 @@ export function HomeHero() {
         {slides.map((s, i) => (
           <div
             key={i}
-            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${
+            className={`absolute inset-0 transition-opacity duration-1000 ${
               slide === i ? 'opacity-100' : 'opacity-0'
             }`}
-            style={{ background: s.bg, backgroundImage: `url(${s.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-          />
+            style={{ background: s.bg }}
+          >
+            {/* First slide is the LCP — priority preloads it instead of the
+                late-discovered CSS background-image it used to be. */}
+            <Image
+              src={s.image}
+              alt=""
+              fill
+              sizes="100vw"
+              priority={i === 0}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              className="object-cover"
+            />
+          </div>
         ))}
         <div className="absolute inset-0 bg-black/40" />
       </div>
@@ -57,7 +70,7 @@ export function HomeHero() {
           const current = slides[slide] ?? slides[0]!;
           return (
             <>
-              <p className="text-sm md:text-base font-semibold uppercase tracking-widest text-[#EDD5A3] mb-4">
+              <p className="text-sm md:text-base font-semibold uppercase tracking-widest text-[#DED7CA] mb-4">
                 {current.subtitle}
               </p>
               <h1 className="text-4xl sm:text-5xl md:text-7xl text-white mb-4 leading-tight whitespace-pre-line font-serif font-normal">
@@ -70,10 +83,10 @@ export function HomeHero() {
           );
         })()}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
-          <Link href="/builder" className="w-full sm:w-auto text-center px-8 py-4 bg-white text-[#1A1A18] rounded-full font-semibold hover:bg-[#1A6B4F] hover:text-white transition">
+          <Link href="/builder" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-[#800020] bg-[#800020] text-white rounded-full font-semibold hover:bg-transparent hover:border-white hover:text-white transition">
             Build Your Gift
           </Link>
-          <Link href="/catalog" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-white/30 text-white rounded-full font-semibold hover:border-white hover:bg-white/10 transition">
+          <Link href="/catalog" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-white bg-white text-[#222222] rounded-full font-semibold hover:bg-transparent hover:border-white hover:text-white transition">
             Browse Catalog
           </Link>
         </div>

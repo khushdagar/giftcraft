@@ -109,12 +109,19 @@ export function Navbar() {
                 {categories.map((c) => (
                   <Link
                     key={c.slug}
-                    href={`/catalog?category=${c.slug}`}
+                    // Indexable category landing page, not a filtered ?category= URL.
+                    href={`/categories/${c.slug}`}
                     className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
                   >
                     {c.name}
                   </Link>
                 ))}
+                <Link
+                  href="/categories"
+                  className="col-span-4 mt-1 border-t border-bdr px-3 pt-2 text-[13px] font-semibold text-em transition hover:underline"
+                >
+                  All categories →
+                </Link>
               </div>
             )}
           </li>
@@ -218,14 +225,14 @@ export function Navbar() {
             // that skipped the page and lost the "return here afterwards" target.
             <Link
               href={`/login?from=${encodeURIComponent(pathname || "/")}`}
-              className="flex border border-[#135A42] h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink"
+              className="flex border border-[#800020] h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink"
               aria-label="Sign in"
             >
               <UserIcon className="h-5 w-5" />
             </Link>
           )}
 
-          <Link href="/builder" className="relative border border-[#135A42] flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink" aria-label="Gift Pack">
+          <Link href="/builder" className="relative border border-[#800020] flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink" aria-label="Gift Pack">
             <ShoppingBag className="h-5 w-5" />
             {productCount > 0 && (
               <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-em text-white text-[10px] font-bold">
@@ -257,7 +264,7 @@ export function Navbar() {
               >✕</button>
             </div>
             {[
-              ["/", "Home"], ["/catalog", "Products"],
+              ["/", "Home"], ["/catalog", "Products"], ["/categories", "Categories"],
               ["/packs", "Curated Box"], ["/box", "Build Your Box"], ["/blog", "Blog"], ["/contact", "Contact"],
               ["/dashboard", "Dashboard"],
             ].map(([href, label]) => (

@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Trash2, Mail, Phone, FileText, RefreshCw, Send } from 'lucide-react';
+import { Fragment, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Trash2, Mail, Phone, FileText, RefreshCw, Send, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { ProposalDialog } from './proposal-dialog';
 
 interface WebsiteEnquiry {
@@ -25,13 +26,23 @@ interface GhlLead {
   companyName: string | null;
   tags: string[];
   dateAdded: string | null;
+  // 'form' = a form submission (one row per enquiry), 'contact' = CRM contact
+  origin: 'form' | 'contact';
+  formName: string | null;
+  status: string;
+  message: string | null;
+  productName: string | null;
+  quantity: number | null;
+  // Everything else the lead submitted — form answers, custom fields, address…
+  detail: { label: string; value: string }[];
 }
 
 // One row shape for both sources.
 interface Row {
   key: string;
   source: 'website' | 'ghl';
-  enquiryId: string | null; // only website rows can update status / be deleted
+  enquiryId: string | null; // only website rows can be deleted
+  leadId: string | null; // GHL rows — status is stored against this id
   companyName: string | null;
   contactName: string | null;
   email: string | null;
@@ -42,6 +53,30 @@ interface Row {
   tags: string[];
   status: string | null;
   createdAt: string | null;
+  formName: string | null;
+  detail: { label: string; value: string }[];
+}
+
+interface DeckDownload {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  company: string | null;
+  isAccount: boolean;
+  quoteToken: string;
+  createdAt: string;
+}
+
+type Tab = 'website' | 'ghl' | 'downloads';
+
+const GHL_KEY = ['admin', 'ghl-leads'] as const;
+const PROPOSALS_KEY = ['admin', 'proposals'] as const;
+
+interface GhlResult {
+  leads: GhlLead[];
+  missingScopes: string[];
+  note: string | null; // set when the tab can't show leads (not configured / API error)
 }
 
 interface ProposalInfo {
@@ -51,12 +86,22 @@ interface ProposalInfo {
   shareToken: string;
 }
 
-const STATUS_OPTIONS = ['new', 'contacted', 'quoted', 'closed'] as const;
+const STATUS_OPTIONS = ['new', 'contacted', 'quoted', 'pending', 'closed'] as const;
+
+// 'quoted' is the stored value; admins think of it as "proposal sent".
+const STATUS_LABELS: Record<string, string> = {
+  new: 'New',
+  contacted: 'Contacted',
+  quoted: 'Proposal sent',
+  pending: 'Pending',
+  closed: 'Closed',
+};
 
 const STATUS_STYLES: Record<string, string> = {
   new: 'bg-amber-100 text-amber-700',
   contacted: 'bg-sky-100 text-sky-700',
   quoted: 'bg-indigo-100 text-indigo-700',
+  pending: 'bg-violet-100 text-violet-700',
   closed: 'bg-gray-100 text-gray-600',
 };
 
@@ -72,44 +117,79 @@ const fmtDate = (iso: string | null) =>
     ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : '—';
 
-export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnquiry[] }) {
+// GHL leads can arrive minutes apart — the time keeps repeat enquiries distinct.
+const fmtTime = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+
+export function EnquiriesUnifiedTable({
+  initialData,
+  downloads = [],
+}: {
+  initialData: WebsiteEnquiry[];
+  downloads?: DeckDownload[];
+}) {
   const [websiteRows, setWebsiteRows] = useState(initialData);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>('website');
 
-  // GHL leads — pulled live from the GoHighLevel API, nothing stored locally.
-  const [ghlLeads, setGhlLeads] = useState<GhlLead[]>([]);
-  const [ghlNote, setGhlNote] = useState<string | null>('Loading GoHighLevel leads…');
+  const queryClient = useQueryClient();
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // Latest proposal per lead email (lowercased) so each row can show its status.
-  const [proposals, setProposals] = useState<Record<string, ProposalInfo>>({});
+  const toggleDetail = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const [dialog, setDialog] = useState<{
     open: boolean;
+    leadId: string | null; // set when the dialog was opened from a GHL row
     prefill: { email: string; name: string; company: string };
-  }>({ open: false, prefill: { email: '', name: '', company: '' } });
+  }>({ open: false, leadId: null, prefill: { email: '', name: '', company: '' } });
 
-  const loadGhl = async () => {
-    setGhlNote('Loading GoHighLevel leads…');
-    try {
+  // GHL leads — pulled live from the GoHighLevel API, nothing stored locally.
+  // Cached for the whole browser session: switching tabs or navigating away and
+  // back reuses the cache. Fresh data comes from the Refresh button or a reload.
+  const ghlQuery = useQuery({
+    queryKey: GHL_KEY,
+    queryFn: async (): Promise<GhlResult> => {
       const res = await fetch('/api/admin/ghl/leads');
       const data = await res.json();
       if (data.error === 'not_configured') {
-        setGhlNote('GoHighLevel is not connected — add GHL_API_KEY and GHL_LOCATION_ID to include GHL leads here.');
-      } else if (!res.ok || !data.success) {
-        setGhlNote(data.error || 'Failed to load GoHighLevel leads.');
-      } else {
-        setGhlLeads(data.data);
-        setGhlNote(null);
+        return {
+          leads: [],
+          missingScopes: [],
+          note: 'GoHighLevel is not connected — add GHL_API_KEY and GHL_LOCATION_ID to include GHL leads here.',
+        };
       }
-    } catch {
-      setGhlNote('Failed to reach the server for GoHighLevel leads.');
-    }
-  };
+      if (!res.ok || !data.success) {
+        return { leads: [], missingScopes: [], note: data.error || 'Failed to load GoHighLevel leads.' };
+      }
+      return { leads: data.data as GhlLead[], missingScopes: data.missingScopes || [], note: null };
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnMount: false,
+    retry: false,
+  });
 
-  const loadProposals = async () => {
-    try {
+  const ghlLeads = ghlQuery.data?.leads ?? [];
+  // Scopes the token is missing — the tab still works, just with less detail.
+  const missingScopes = ghlQuery.data?.missingScopes ?? [];
+  const ghlNote = ghlQuery.isFetching
+    ? 'Loading GoHighLevel leads…'
+    : ghlQuery.isError
+      ? 'Failed to reach the server for GoHighLevel leads.'
+      : ghlQuery.data?.note ?? null;
+
+  // Latest proposal per lead email (lowercased) so each row can show its status.
+  const { data: proposals = {} } = useQuery({
+    queryKey: PROPOSALS_KEY,
+    queryFn: async () => {
       const res = await fetch('/api/admin/proposals');
-      if (!res.ok) return;
+      if (!res.ok) return {} as Record<string, ProposalInfo>;
       const data = await res.json();
       const map: Record<string, ProposalInfo> = {};
       // API returns newest first — keep the latest proposal per email.
@@ -124,16 +204,13 @@ export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnq
           };
         }
       });
-      setProposals(map);
-    } catch {
-      /* proposal statuses are non-critical — rows still render */
-    }
-  };
-
-  useEffect(() => {
-    loadGhl();
-    loadProposals();
-  }, []);
+      return map;
+    },
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnMount: false,
+    retry: false,
+  });
 
   const updateStatus = async (id: string, status: string) => {
     setBusyId(id);
@@ -148,6 +225,29 @@ export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnq
       if (!res.ok) throw new Error();
     } catch {
       setWebsiteRows(prev); // revert on failure
+      alert('Failed to update status.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // GHL leads live in GoHighLevel — only their pipeline status is stored here.
+  const updateGhlStatus = async (leadId: string, status: string) => {
+    setBusyId(leadId);
+    const prev = queryClient.getQueryData<GhlResult>(GHL_KEY);
+    // optimistic — write straight into the cache so it survives navigation too
+    queryClient.setQueryData<GhlResult>(GHL_KEY, (old) =>
+      old ? { ...old, leads: old.leads.map((l) => (l.id === leadId ? { ...l, status } : l)) } : old
+    );
+    try {
+      const res = await fetch('/api/admin/ghl/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId, status }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      if (prev) queryClient.setQueryData<GhlResult>(GHL_KEY, prev); // revert on failure
       alert('Failed to update status.');
     } finally {
       setBusyId(null);
@@ -171,6 +271,7 @@ export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnq
   const openProposal = (row: Row) => {
     setDialog({
       open: true,
+      leadId: row.leadId,
       prefill: {
         email: row.email || '',
         name: row.contactName || '',
@@ -180,11 +281,12 @@ export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnq
   };
 
   // ── Merge both sources into one list, newest first ──────────────────────
-  const rows: Row[] = [
+  const allRows: Row[] = [
     ...websiteRows.map((e) => ({
       key: `web-${e.id}`,
       source: 'website' as const,
       enquiryId: e.id,
+      leadId: null,
       companyName: e.companyName,
       contactName: e.contactName,
       email: e.email,
@@ -195,42 +297,146 @@ export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnq
       tags: [],
       status: e.status,
       createdAt: e.createdAt,
+      formName: null,
+      detail: [],
     })),
     ...ghlLeads.map((l) => ({
       key: `ghl-${l.id}`,
       source: 'ghl' as const,
       enquiryId: null,
+      leadId: l.id,
       companyName: l.companyName,
       contactName: l.name,
       email: l.email,
       phone: l.phone,
-      productName: null,
-      quantity: null,
-      message: null,
+      productName: l.productName,
+      quantity: l.quantity,
+      message: l.message,
       tags: l.tags,
-      status: null,
+      status: l.status || 'new',
       createdAt: l.dateAdded,
+      formName: l.formName,
+      detail: l.detail || [],
     })),
   ].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
+  const rows = allRows.filter((r) => r.source === tab);
+
+  const TABS: { id: Tab; label: string; count: number }[] = [
+    { id: 'website', label: 'Enquiries', count: websiteRows.length },
+    { id: 'ghl', label: 'GHL Entries', count: ghlLeads.length },
+    { id: 'downloads', label: 'Deck Downloads', count: downloads.length },
+  ];
+
   return (
     <div className="space-y-3">
-      {ghlNote && (
+      <div className="flex items-center gap-1 border-b border-gray-200">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm transition-colors ${
+              tab === t.id
+                ? 'border-gray-900 font-medium text-gray-900'
+                : 'border-transparent text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            {t.label}
+            <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+              {t.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {ghlNote && tab === 'ghl' && (
         <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs text-gray-600">
           <span>{ghlNote}</span>
           <button
-            onClick={loadGhl}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-100"
+            onClick={() => ghlQuery.refetch()}
+            disabled={ghlQuery.isFetching}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-50"
           >
             <RefreshCw className="h-3 w-3" /> Retry
           </button>
         </div>
       )}
 
-      {rows.length === 0 ? (
+      {tab === 'ghl' && !ghlNote && missingScopes.length > 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
+          Showing contact details only. To pull the full enquiry (form answers, custom
+          fields), add these scopes to the GHL private integration and paste the new token
+          into GHL_API_KEY: <strong>{missingScopes.join(', ')}</strong>
+        </div>
+      )}
+
+      {tab === 'downloads' ? (
+        downloads.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
+            <Download className="mx-auto mb-3 h-8 w-8 text-gray-300" />
+            <p className="text-sm text-gray-500">
+              No downloads yet. They&apos;ll appear here as soon as someone downloads a proposal deck.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full min-w-[880px]">
+              <thead className="border-b border-gray-200 bg-gray-50">
+                <tr>
+                  {['Name', 'Reach', 'Company', 'Type', 'Quote', 'Downloaded'].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-normal uppercase text-gray-600">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {downloads.map((d) => (
+                  <tr key={d.id} className="align-top hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{d.name}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <a href={`mailto:${d.email}`} className="flex items-center gap-1 text-emerald-700 hover:underline">
+                        <Mail className="h-3 w-3" /> {d.email}
+                      </a>
+                      {d.phone && (
+                        <a href={`tel:${d.phone}`} className="mt-1 flex items-center gap-1 text-gray-600 hover:underline">
+                          <Phone className="h-3 w-3" /> {d.phone}
+                        </a>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{d.company || '—'}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
+                          d.isAccount ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                        }`}
+                      >
+                        {d.isAccount ? 'Account' : 'Guest lead'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <a
+                        href={`/quote/${d.quoteToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-emerald-700 hover:underline"
+                      >
+                        View quote
+                      </a>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{fmtDate(d.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : rows.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
           <Mail className="mx-auto mb-3 h-8 w-8 text-gray-300" />
-          <p className="text-sm text-gray-500">No enquiries yet.</p>
+          <p className="text-sm text-gray-500">
+            {tab === 'ghl' ? 'No GoHighLevel leads.' : 'No enquiries yet.'}
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-200">
@@ -248,7 +454,8 @@ export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnq
               {rows.map((row) => {
                 const proposal = row.email ? proposals[row.email.toLowerCase()] : undefined;
                 return (
-                  <tr key={row.key} className="align-top hover:bg-gray-50">
+                  <Fragment key={row.key}>
+                  <tr className="align-top hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <span
                         className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -259,6 +466,9 @@ export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnq
                       >
                         {row.source === 'website' ? 'Website' : 'GHL'}
                       </span>
+                      {row.formName && (
+                        <p className="mt-1 text-xs text-gray-500">{row.formName}</p>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-sm font-medium text-gray-900">{row.companyName || '—'}</p>
@@ -282,37 +492,66 @@ export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnq
                     <td className="px-4 py-3 text-sm text-gray-700">{row.quantity ?? '—'}</td>
                     <td className="px-4 py-3 max-w-xs text-sm text-gray-600">
                       {row.source === 'ghl' ? (
-                        row.tags.length === 0 ? (
-                          <span className="text-gray-400">—</span>
-                        ) : (
-                          <div className="flex max-w-xs flex-wrap gap-1">
-                            {row.tags.slice(0, 4).map((t) => (
-                              <span key={t} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                                {t}
-                              </span>
-                            ))}
-                          </div>
-                        )
+                        <div className="space-y-1.5">
+                          {row.message && (
+                            <span className="line-clamp-2 block" title={row.message}>
+                              {row.message}
+                            </span>
+                          )}
+                          {row.tags.length > 0 && (
+                            <div className="flex max-w-xs flex-wrap gap-1">
+                              {row.tags.slice(0, 4).map((t) => (
+                                <span key={t} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {row.detail.length > 0 ? (
+                            <button
+                              onClick={() => toggleDetail(row.key)}
+                              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 hover:underline"
+                            >
+                              {expanded.has(row.key) ? (
+                                <ChevronUp className="h-3 w-3" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3" />
+                              )}
+                              {expanded.has(row.key)
+                                ? 'Hide details'
+                                : `All details (${row.detail.length})`}
+                            </button>
+                          ) : (
+                            !row.message && row.tags.length === 0 && <span className="text-gray-400">—</span>
+                          )}
+                        </div>
                       ) : (
                         <span className="line-clamp-2" title={row.message || ''}>{row.message || '—'}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{fmtDate(row.createdAt)}</td>
-                    <td className="px-4 py-3">
-                      {row.source === 'website' && row.enquiryId ? (
-                        <select
-                          value={row.status ?? 'new'}
-                          disabled={busyId === row.enquiryId}
-                          onChange={(ev) => updateStatus(row.enquiryId!, ev.target.value)}
-                          className={`rounded-full border-0 px-2.5 py-1 text-xs font-medium capitalize ${STATUS_STYLES[row.status ?? ''] ?? 'bg-gray-100 text-gray-600'}`}
-                        >
-                          {STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-sm text-gray-400">—</span>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
+                      {fmtDate(row.createdAt)}
+                      {row.source === 'ghl' && row.createdAt && (
+                        <span className="block text-gray-400">{fmtTime(row.createdAt)}</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={row.status ?? 'new'}
+                        disabled={busyId === (row.enquiryId ?? row.leadId)}
+                        onChange={(ev) =>
+                          row.enquiryId
+                            ? updateStatus(row.enquiryId, ev.target.value)
+                            : updateGhlStatus(row.leadId!, ev.target.value)
+                        }
+                        className={`rounded-full border-0 px-2.5 py-1 text-xs font-medium ${STATUS_STYLES[row.status ?? ''] ?? 'bg-gray-100 text-gray-600'}`}
+                      >
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>
+                            {STATUS_LABELS[s]}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-4 py-3">
                       {proposal ? (
@@ -354,6 +593,26 @@ export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnq
                       )}
                     </td>
                   </tr>
+                  {expanded.has(row.key) && row.detail.length > 0 && (
+                    <tr className="bg-gray-50">
+                      <td colSpan={10} className="px-4 py-4">
+                        {row.formName && (
+                          <p className="mb-2 text-xs uppercase tracking-wide text-gray-500">
+                            Submitted via {row.formName}
+                          </p>
+                        )}
+                        <dl className="grid gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {row.detail.map((d) => (
+                            <div key={`${d.label}-${d.value}`} className="min-w-0">
+                              <dt className="text-xs text-gray-500">{d.label}</dt>
+                              <dd className="break-words text-sm text-gray-900">{d.value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -366,8 +625,10 @@ export function EnquiriesUnifiedTable({ initialData }: { initialData: WebsiteEnq
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
         prefill={dialog.prefill}
         onSent={() => {
+          // Sending a proposal moves a GHL lead to "Proposal sent" on its own.
+          if (dialog.leadId) updateGhlStatus(dialog.leadId, 'quoted');
           setDialog((d) => ({ ...d, open: false }));
-          loadProposals(); // refresh proposal status column
+          queryClient.invalidateQueries({ queryKey: PROPOSALS_KEY }); // refresh proposal status column
         }}
       />
     </div>

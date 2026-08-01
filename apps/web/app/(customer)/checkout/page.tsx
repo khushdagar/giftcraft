@@ -458,7 +458,7 @@ function CheckoutContent() {
           email: contactData.email,
           contact: contactData.phone,
         },
-        theme: { color: '#1A6B4F' },
+        theme: { color: '#800020' },
         handler: async (response: any) => {
           // 3. Payment succeeded — create the order with the verified payment.
           try {
@@ -522,10 +522,10 @@ function CheckoutContent() {
     return (
       <>
         {/* <CheckoutNav /> */}
-        <main className="bg-[#FAFAF7] min-h-screen">
+        <main className="bg-[#F5F1EB] min-h-screen">
           <section className="py-8 md:py-12 pb-20">
             <div className="cw">
-              <div className="h-10 w-48 bg-[#ECECE6] rounded-lg animate-pulse mb-6" />
+              <div className="h-10 w-48 bg-[#E5DFD4] rounded-lg animate-pulse mb-6" />
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                 <div className="lg:col-span-2 space-y-4">
                   <div className="h-40 bg-white rounded-2xl shadow-sm animate-pulse" />
@@ -571,14 +571,14 @@ function CheckoutContent() {
           <button
             type="button"
             onClick={() => signIn('google', { callbackUrl: window.location.href })}
-            className="w-full rounded-full bg-[#1A1A18] px-5 py-3 text-sm font-medium text-[#FAFAF7] hover:opacity-90 transition"
+            className="w-full rounded-full bg-[#222222] px-5 py-3 text-sm font-medium text-[#F5F1EB] hover:opacity-90 transition"
           >
             Continue with Google
           </button>
         </DialogContent>
       </Dialog>
 
-      <main className="bg-[#FAFAF7] min-h-screen">
+      <main className="bg-[#F5F1EB] min-h-screen">
         <section className="py-8 md:py-12 pb-20">
           <div className="cw">
             <h1 className="text-4xl md:text-5xl font-serif font-normal mb-2">Checkout.</h1>
@@ -610,10 +610,10 @@ function CheckoutContent() {
                     products in this pack, for sending on to approvers. */}
                 <div className="bg-white rounded-2xl shadow-sm p-5 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-[#1A1A18]">
+                    <p className="text-sm font-medium text-[#222222]">
                       Need to share this internally?
                     </p>
-                    <p className="text-xs text-[#6B6B63] mt-1">
+                    <p className="text-xs text-[#5C5852] mt-1">
                       Download a presentation of your pack — one slide per product,
                       with features and pricing.
                     </p>
@@ -667,10 +667,10 @@ function CheckoutContent() {
         </section>
       </main>
 
-      <footer className="bg-[#1A1A18] text-[#FAFAF7] py-8 mt-12">
+      <footer className="bg-[#222222] text-[#F5F1EB] py-8 mt-12">
         <div className="cw">
           <p className="text-sm mb-2 font-serif italic text-opacity-40">GIVOO</p>
-          <div className="flex justify-between text-xs text-[#6B6B63]">
+          <div className="flex justify-between text-xs text-[#5C5852]">
             <span>© 2026 GIVOO. All Rights Reserved.</span>
             <span>Made with ♥ in Delhi</span>
           </div>
@@ -684,13 +684,13 @@ function EmptyState({ title, message }: { title: string; message: string }) {
   return (
     <>
       {/* <CheckoutNav /> */}
-      <main className="bg-[#FAFAF7] min-h-screen flex items-center justify-center">
+      <main className="bg-[#F5F1EB] min-h-screen flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center max-w-md mx-4">
           <p className="text-2xl font-serif mb-2">{title}</p>
-          <p className="text-sm text-[#6B6B63] mb-6">{message}</p>
+          <p className="text-sm text-[#5C5852] mb-6">{message}</p>
           <Link
             href="/builder"
-            className="inline-flex items-center justify-center rounded-full bg-[#1A6B4F] text-white px-6 py-3 font-semibold hover:bg-[#145A42] transition"
+            className="inline-flex items-center justify-center rounded-full bg-[#800020] text-white px-6 py-3 font-semibold hover:bg-[#6B001B] transition"
           >
             Build a Gift
           </Link>
@@ -702,7 +702,7 @@ function EmptyState({ title, message }: { title: string; message: string }) {
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={<div className="bg-[#FAFAF7] min-h-screen" />}>
+    <Suspense fallback={<div className="bg-[#F5F1EB] min-h-screen" />}>
       <CheckoutContent />
     </Suspense>
   );

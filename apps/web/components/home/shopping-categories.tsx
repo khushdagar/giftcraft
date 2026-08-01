@@ -55,11 +55,11 @@ export function ShoppingCategories({ categories }: ShoppingCategoriesProps) {
                 transition={{ delay: idx * 0.08 }}
                 whileHover={{ scale: 1.1 }}
               >
-                <Link href={`/catalog?category=${cat.id}`}>
+                <Link href={`/categories/${cat.slug}`}>
                   <div className="flex flex-col items-center cursor-pointer group">
                     {/* Circular Image Container */}
                     <motion.div
-                      whileHover={{ boxShadow: '0 30px 60px rgba(26, 107, 79, 0.25)' }}
+                      whileHover={{ boxShadow: '0 30px 60px rgba(128, 0, 32, 0.25)' }}
                       className="relative w-40 sm:w-52 h-40 sm:h-52 mb-6 rounded-full overflow-hidden
                       bg-gradient-to-br from-em/10 to-emerald-100 border-4 border-em/20
                       hover:border-em transition-all duration-300 shadow-xl group-hover:shadow-2xl"

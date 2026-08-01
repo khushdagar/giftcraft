@@ -55,7 +55,7 @@ export default function CheckoutSuccessPage() {
           pointer-events: none;
           animation: confetti-fall 3s ease-out forwards;
         }
-        .confetti:nth-child(1) { left: 10%; background: #C4963C; animation-delay: 0s; }
+        .confetti:nth-child(1) { left: 10%; background: #3A3A3A; animation-delay: 0s; }
         .confetti:nth-child(2) { left: 20%; background: #10B981; animation-delay: 0.1s; }
         .confetti:nth-child(3) { left: 30%; background: #6366F1; animation-delay: 0.2s; }
         .confetti:nth-child(4) { left: 40%; background: #F59E0B; animation-delay: 0.3s; }
@@ -63,7 +63,7 @@ export default function CheckoutSuccessPage() {
         .confetti:nth-child(6) { left: 60%; background: #0EA5E9; animation-delay: 0.5s; }
         .confetti:nth-child(7) { left: 70%; background: #8B5CF6; animation-delay: 0.6s; }
         .confetti:nth-child(8) { left: 80%; background: #14B8A6; animation-delay: 0.7s; }
-        .confetti:nth-child(9) { left: 90%; background: #C4963C; animation-delay: 0.8s; }
+        .confetti:nth-child(9) { left: 90%; background: #3A3A3A; animation-delay: 0.8s; }
         .confetti:nth-child(10) { left: 15%; background: #10B981; animation-delay: 0.9s; }
       `}</style>
       {Array.from({ length: 10 }).map((_, i) => (

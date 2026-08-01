@@ -91,11 +91,11 @@ function ConfirmationContent() {
   // ── Loading ───────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <main className="bg-[#FAFAF7] min-h-screen py-12 md:py-16">
+      <main className="bg-[#F5F1EB] min-h-screen py-12 md:py-16">
         <div className="cn text-center max-w-2xl">
-          <div className="w-20 h-20 bg-[#ECECE6] rounded-full mx-auto mb-6 animate-pulse" />
-          <div className="h-9 w-64 bg-[#ECECE6] rounded-lg animate-pulse mx-auto mb-3" />
-          <div className="h-5 w-40 bg-[#ECECE6] rounded-lg animate-pulse mx-auto mb-6" />
+          <div className="w-20 h-20 bg-[#E5DFD4] rounded-full mx-auto mb-6 animate-pulse" />
+          <div className="h-9 w-64 bg-[#E5DFD4] rounded-lg animate-pulse mx-auto mb-3" />
+          <div className="h-5 w-40 bg-[#E5DFD4] rounded-lg animate-pulse mx-auto mb-6" />
           <div className="h-48 bg-white rounded-2xl shadow-sm animate-pulse mb-6" />
           <div className="h-64 bg-white rounded-2xl shadow-sm animate-pulse" />
         </div>
@@ -155,7 +155,7 @@ function ConfirmationContent() {
   const STATE_STYLE = {
     done: { status: 'Done', statusColor: 'text-[#2D8B56]', dotColor: 'bg-[#2D8B56]' },
     current: { status: 'In progress', statusColor: 'text-[#D4872A]', dotColor: 'bg-[#D4872A]' },
-    pending: { status: 'Pending', statusColor: 'text-[#9B9B93]', dotColor: 'bg-[#D4D4CF]' },
+    pending: { status: 'Pending', statusColor: 'text-[#8F8A82]', dotColor: 'bg-[#D3CBBC]' },
   } as const;
 
   // Canonical milestones; `i` is the index used by the status mapping above.
@@ -180,10 +180,10 @@ function ConfirmationContent() {
 
   return (
     <>
-      <main className="bg-[#FAFAF7] min-h-screen py-12 md:py-16">
+      <main className="bg-[#F5F1EB] min-h-screen py-12 md:py-16">
         <div className="cn text-center max-w-2xl">
           {/* Confirmation Icon */}
-          <div className="w-20 h-20 bg-[#1A6B4F] text-white rounded-full flex items-center justify-center text-4xl mx-auto mb-6 animate-scale-in">
+          <div className="w-20 h-20 bg-[#800020] text-white rounded-full flex items-center justify-center text-4xl mx-auto mb-6 animate-scale-in">
             ✓
           </div>
 
@@ -191,18 +191,18 @@ function ConfirmationContent() {
             {selectedPath === 'lock' ? 'Payment Received!' : 'Order Confirmed!'}
           </h2>
 
-          <p className="text-lg font-medium text-[#6B6B63] mb-2">
+          <p className="text-lg font-medium text-[#5C5852] mb-2">
             Order <strong className="font-mono tabular-nums">#{order.orderNumber}</strong>
           </p>
 
-          <p className="text-base text-[#6B6B63] mb-6">
+          <p className="text-base text-[#5C5852] mb-6">
             {selectedPath === 'lock'
               ? `Your 10% advance of ${formatRupees(advance10)} has been received. Prices are locked for 30 days.`
               : `Your order for ${quantity} gift packs has been confirmed. No payment taken yet.`}
           </p>
 
           {/* Next Steps Notice */}
-          <div className="bg-[#E8F5EF] border-l-4 border-[#1A6B4F] px-4 py-3 rounded-lg text-left text-sm text-[#0F4934] mb-6">
+          <div className="bg-[#FBF4F5] border-l-4 border-[#800020] px-4 py-3 rounded-lg text-left text-sm text-[#560015] mb-6">
             <p className="font-semibold mb-1">📬 What happens now?</p>
             <p>
               Our design team will create branded mockups of your products within <strong>1–2 business days</strong>.
@@ -216,7 +216,7 @@ function ConfirmationContent() {
 
             <div className="space-y-3 mb-4">
               {order.items.map((p) => (
-                <div key={p.id} className="flex items-center justify-between gap-3 pb-3 border-b border-[#E8E8E3] last:border-0 last:pb-0">
+                <div key={p.id} className="flex items-center justify-between gap-3 pb-3 border-b border-[#E5DFD4] last:border-0 last:pb-0">
                   <div className="flex items-center gap-3 min-w-0">
                     {p.image ? (
                       <img
@@ -229,7 +229,7 @@ function ConfirmationContent() {
                     )}
                     <div className="min-w-0">
                       <p className="font-medium text-sm truncate">{p.name}</p>
-                      <p className="text-xs text-[#6B6B63] tabular-nums">
+                      <p className="text-xs text-[#5C5852] tabular-nums">
                         {formatRupees(p.unitPrice)} × {quantity}
                       </p>
                     </div>
@@ -242,21 +242,21 @@ function ConfirmationContent() {
             </div>
 
             {/* Price Breakdown — same line items as the checkout panel */}
-            <div className="space-y-2 text-sm border-t border-[#E8E8E3] pt-4">
+            <div className="space-y-2 text-sm border-t border-[#E5DFD4] pt-4">
               {order.packagingAmount > 0 && (
-                <div className="flex justify-between text-[#6B6B63]">
+                <div className="flex justify-between text-[#5C5852]">
                   <span>Packaging</span>
                   <span className="tabular-nums">{formatRupees(order.packagingAmount)}</span>
                 </div>
               )}
               {order.addonsAmount > 0 && (
-                <div className="flex justify-between text-[#6B6B63]">
+                <div className="flex justify-between text-[#5C5852]">
                   <span>Add-ons</span>
                   <span className="tabular-nums">{formatRupees(order.addonsAmount)}</span>
                 </div>
               )}
 
-              <div className="flex justify-between border-t border-[#E8E8E3] pt-2 mt-1 font-semibold text-[#1A1A18]">
+              <div className="flex justify-between border-t border-[#E5DFD4] pt-2 mt-1 font-semibold text-[#222222]">
                 <span>Subtotal (before shipping, GST)</span>
                 <span className="tabular-nums">{formatRupees(itemsSubtotal)}</span>
               </div>
@@ -264,7 +264,7 @@ function ConfirmationContent() {
               {/* Shipping at its TAXABLE value — the courier rate is GST-inclusive
                   and that GST is disclosed in the combined GST line below. Showing
                   the inclusive amount here would double-count shipping's GST. */}
-              <div className="flex justify-between text-[#6B6B63]">
+              <div className="flex justify-between text-[#5C5852]">
                 <span>Shipping</span>
                 <span className="tabular-nums">
                   {order.shippingAmount > 0 ? formatRupees(shippingTaxable(order.shippingAmount)) : 'FREE'}
@@ -274,10 +274,10 @@ function ConfirmationContent() {
               {/* Payment fee (2%), shown PRE-GST — its GST is part of the
                   combined GST line below. */}
               {paymentFeeBase > 0 && (
-                <div className="flex justify-between text-[#6B6B63]">
+                <div className="flex justify-between text-[#5C5852]">
                   <span>
                     Payment Processing Fee
-                    <span className="block text-[11px] italic text-[#9B9B93]">Razorpay 2%</span>
+                    <span className="block text-[11px] italic text-[#8F8A82]">Razorpay 2%</span>
                   </span>
                   <span className="tabular-nums">{formatRupees(paymentFeeBase)}</span>
                 </div>
@@ -286,14 +286,14 @@ function ConfirmationContent() {
               {/* GST — single all-in line (goods + shipping + payment-fee GST),
                   shown last, below the payment fee. */}
               {gstTotal > 0 && (
-                <div className="flex justify-between text-[#6B6B63]">
+                <div className="flex justify-between text-[#5C5852]">
                   <span>GST</span>
                   <span className="tabular-nums">{formatRupees(gstTotal)}</span>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-between pt-3 mt-2 border-t-2 border-[#D4D4CF] font-bold">
+            <div className="flex justify-between pt-3 mt-2 border-t-2 border-[#D3CBBC] font-bold">
               <span>Grand Total</span>
               <span className="tabular-nums">{formatRupees(grand)}</span>
             </div>
@@ -308,12 +308,12 @@ function ConfirmationContent() {
                   <span>Advance Paid (10%)</span>
                   <span className="tabular-nums">{formatRupees(advance10)}</span>
                 </div>
-                <div className="flex justify-between py-2 text-sm text-[#6B6B63]">
+                <div className="flex justify-between py-2 text-sm text-[#5C5852]">
                   <span>Balance Due (after mockup approval)</span>
                   <span className="font-semibold tabular-nums">{formatRupees(balance90)}</span>
                 </div>
                 {order.razorpayPaymentId && (
-                  <div className="flex justify-between py-1 text-xs text-[#9B9B93]">
+                  <div className="flex justify-between py-1 text-xs text-[#8F8A82]">
                     <span>Payment ID</span>
                     <span className="font-mono">{order.razorpayPaymentId}</span>
                   </div>
@@ -341,7 +341,7 @@ function ConfirmationContent() {
           <div className="space-y-3 max-w-xs mx-auto mb-8">
             <Link
               href={`/orders/${order.id}/track`}
-              className="flex items-center justify-center gap-2 h-12 bg-[#1A6B4F] text-white rounded-full font-semibold text-base hover:bg-[#145A42] transition"
+              className="flex items-center justify-center gap-2 h-12 bg-[#800020] text-white rounded-full font-semibold text-base hover:bg-[#6B001B] transition"
             >
               📦 Track Your Order
             </Link>
@@ -349,25 +349,25 @@ function ConfirmationContent() {
               href={`/api/orders/${order.id}/invoice`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center w-full h-11 border-2 border-[#D4D4CF] rounded-full font-medium text-sm text-[#1A1A18] hover:bg-[#F5F5F0] transition"
+              className="flex items-center justify-center w-full h-11 border-2 border-[#D3CBBC] rounded-full font-medium text-sm text-[#222222] hover:bg-[#FAFAFA] transition"
             >
               📄 Download {invoiceLabel(order.amountPaid, order.grandTotal)}
             </a>
             <Link
               href="/"
-              className="flex items-center justify-center h-11 text-sm text-[#1A6B4F] font-medium hover:underline"
+              className="flex items-center justify-center h-11 text-sm text-[#800020] font-medium hover:underline"
             >
               ← Back to Home
             </Link>
           </div>
 
           {/* Notifications */}
-          <div className="bg-[#F5F5F0] rounded-lg p-4 text-left text-sm text-[#6B6B63] mb-6">
+          <div className="bg-[#FAFAFA] rounded-lg p-4 text-left text-sm text-[#5C5852] mb-6">
             <p className="font-semibold mb-2">📲 Notifications sent to:</p>
             <p className="mb-1">✉️ Confirmation email with order details and quote PDF</p>
           </div>
 
-          <p className="text-xs text-[#9B9B93]">
+          <p className="text-xs text-[#8F8A82]">
             Order reference: {order.orderNumber} · Placed{' '}
             {new Date(order.createdAt).toLocaleDateString('en-IN', {
               day: 'numeric',
@@ -379,10 +379,10 @@ function ConfirmationContent() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#1A1A18] text-[#FAFAF7] py-8 mt-12">
+      <footer className="bg-[#222222] text-[#F5F1EB] py-8 mt-12">
         <div className="cw">
           <p className="text-sm mb-2 font-serif italic text-opacity-40">GIVOO</p>
-          <div className="flex justify-between text-xs text-[#6B6B63]">
+          <div className="flex justify-between text-xs text-[#5C5852]">
             <span>© 2026 GIVOO. All Rights Reserved.</span>
             <span>Made with ♥ in Delhi</span>
           </div>
@@ -395,13 +395,13 @@ function ConfirmationContent() {
 function EmptyState({ title, message }: { title: string; message: string }) {
   return (
     <>
-      <main className="bg-[#FAFAF7] min-h-screen flex items-center justify-center">
+      <main className="bg-[#F5F1EB] min-h-screen flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow-sm p-10 text-center max-w-md mx-4">
           <p className="text-2xl font-serif mb-2">{title}</p>
-          <p className="text-sm text-[#6B6B63] mb-6">{message}</p>
+          <p className="text-sm text-[#5C5852] mb-6">{message}</p>
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-full bg-[#1A6B4F] text-white px-6 py-3 font-semibold hover:bg-[#145A42] transition"
+            className="inline-flex items-center justify-center rounded-full bg-[#800020] text-white px-6 py-3 font-semibold hover:bg-[#6B001B] transition"
           >
             Back to Home
           </Link>
@@ -413,7 +413,7 @@ function EmptyState({ title, message }: { title: string; message: string }) {
 
 export default function ConfirmationPage() {
   return (
-    <Suspense fallback={<div className="bg-[#FAFAF7] min-h-screen" />}>
+    <Suspense fallback={<div className="bg-[#F5F1EB] min-h-screen" />}>
       <ConfirmationContent />
     </Suspense>
   );

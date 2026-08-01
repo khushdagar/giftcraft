@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { BrandLogo } from "@/components/layout/brand-logo";
 import { isHiddenCategory, getHiddenCategoryIds } from "@/lib/catalog-visibility";
+import Image from "next/image";
 
 type FooterLink = [href: string, label: string];
 
@@ -24,7 +24,12 @@ const COL_COMPANY: FooterLink[] = [
 async function getFooterData() {
   try {
     const [rawCategories, collections, occasionRows, hiddenCategoryIds] = await Promise.all([
-      prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
+      // Only categories with at least one live catalog product — the category
+      // landing page for an empty category is noindex, so never link to it.
+      prisma.category.findMany({
+        where: { products: { some: { product: { status: "active", isPack: false } } } },
+        orderBy: { sortOrder: "asc" },
+      }),
       prisma.giftCollection.findMany({
         where: { isActive: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
@@ -95,7 +100,9 @@ export async function Footer() {
 
   const productLinks: FooterLink[] = [
     ["/catalog", "All Products"],
-    ...categories.map((c): FooterLink => [`/catalog?category=${c.slug}`, c.name]),
+    ["/categories", "All Categories"],
+    // Indexable category landing pages, not filtered ?category= URLs.
+    ...categories.map((c): FooterLink => [`/categories/${c.slug}`, c.name]),
   ];
   const packLinks: FooterLink[] = [
     ["/packs", "All Packs"],
@@ -110,7 +117,7 @@ export async function Footer() {
       <div className="container-gc-w">
         <div className="mb-10 grid grid-cols-2 gap-8 lg:grid-cols-[1.8fr_repeat(4,1fr)]">
           <div className="col-span-2 lg:col-span-1">
-            <BrandLogo className="mb-2.5 h-10 w-auto" />
+            <Image src="/footer_logo.png" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />
             <p className="max-w-[260px] text-[13px] leading-relaxed text-white">
               India&apos;s first self-serve bulk gifting platform. Browse, build,
               and order branded corporate gifts with transparent pricing.

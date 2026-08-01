@@ -63,7 +63,7 @@ export function PackBundle({ pack }: PackBundleProps) {
       {/* Products in this pack (read-only) */}
       <div className="lg:col-span-2">
         <div className="flex items-center gap-2 mb-4">
-          <Package className="w-5 h-5" style={{ color: '#1A6B4F' }} />
+          <Package className="w-5 h-5" style={{ color: '#800020' }} />
           <h2 className="text-lg font-medium text-ink">
             What&apos;s inside ({pack.items.length} product{pack.items.length === 1 ? '' : 's'})
           </h2>
@@ -175,7 +175,7 @@ export function PackBundle({ pack }: PackBundleProps) {
           <ul className="space-y-2 mb-6">
             {pack.items.map((it) => (
               <li key={it.id} className="flex items-start gap-2 text-sm text-ink">
-                <Check className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#1A6B4F' }} />
+                <Check className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#800020' }} />
                 <span className="flex-1">
                   {it.name}
                   {it.quantity > 1 && <span className="text-ink-3"> ×{it.quantity}</span>}

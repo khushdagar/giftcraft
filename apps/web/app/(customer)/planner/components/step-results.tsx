@@ -35,7 +35,7 @@ interface StepResultsProps {
   onBack: () => void;
 }
 
-const bgColors = ['bg-em-50', 'bg-gold-50', 'bg-[#F5F3FF]', 'bg-[#EEF2FF]', 'bg-[#FFF1F2]', 'bg-[#F0F9FF]'];
+const bgColors = ['bg-em-50', 'bg-gold-50', 'bg-em-100', 'bg-[#EDE7DC]', 'bg-[#FAFAFA]', 'bg-[#EFEAE2]'];
 
 export function StepResults({ formData, onBack }: StepResultsProps) {
   const router = useRouter();

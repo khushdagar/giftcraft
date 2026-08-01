@@ -7,6 +7,10 @@ out
 .env
 .env.local
 .env.*.local
+# Backup/scratch copies of env files — these previously slipped past the rules
+# above (e.g. .env.local.bak) and leaked live secrets into git history.
+.env*
+*.bak
 .DS_Store
 *.log
 .vercel

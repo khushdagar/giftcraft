@@ -18,7 +18,7 @@ interface ColorSelectorProps {
 const DEFAULT_COLORS: ColorOption[] = [
   { name: 'Matte Black', hex: '#1a1a1a' },
   { name: 'Silver', hex: '#c0c0c0' },
-  { name: 'Forest Green', hex: '#1a6b4f' },
+  { name: 'Forest Green', hex: '#800020' },
   { name: 'Rose Gold', hex: '#b76e79' },
 ];
 

@@ -64,7 +64,7 @@ export function PayBalanceButton({
         order_id: rzp.razorpayOrderId,
         name: 'GIVOO',
         description: 'Balance payment',
-        theme: { color: '#1A6B4F' },
+        theme: { color: '#800020' },
         handler: async (response: any) => {
           try {
             const v = await fetch(`/api/orders/${orderId}/balance/verify`, {
@@ -110,7 +110,7 @@ export function PayBalanceButton({
     <button
       onClick={handlePay}
       disabled={loading || !rzpLoaded}
-      className="w-full px-4 py-2.5 rounded-2xl bg-[#C4963C] text-white text-sm font-semibold hover:bg-[#886528] transition disabled:opacity-60"
+      className="w-full px-4 py-2.5 rounded-2xl bg-[#3A3A3A] text-white text-sm font-semibold hover:bg-[#222222] transition disabled:opacity-60"
     >
       {loading ? 'Processing…' : `Pay Balance ${formatRupees(balanceDue)}`}
     </button>

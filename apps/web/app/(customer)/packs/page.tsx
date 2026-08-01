@@ -1,12 +1,14 @@
 import { prisma } from '@/lib/prisma';
 import { PacksBrowser } from '@/components/packs/packs-browser';
 
-export const dynamic = 'force-dynamic';
+// ISR: cacheable HTML for crawlers + users, refreshed hourly.
+export const revalidate = 3600;
 
 export const metadata = {
-  title: 'Curated Packs | GIVOO',
+  title: 'Curated Gift Packs', // root template appends "· GIVOO"
   description:
     'Hand-picked gift assortments curated by our gifting experts. Ready to customise with your branding.',
+  alternates: { canonical: '/packs' },
 };
 
 function uniqueById(list: { id: string; name: string }[]) {

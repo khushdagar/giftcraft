@@ -169,7 +169,7 @@ function MarqueeColumn({
   );
 }
 
-export function CustomerReviews() {
+export function CustomerReviews({ initialData }: { initialData?: ReviewCard[] }) {
   const reduceMotion = useReducedMotion();
 
   const { data: realReviews } = useQuery<ReviewCard[]>({
@@ -191,6 +191,9 @@ export function CustomerReviews() {
         isReal: true,
       }));
     },
+    // Server-rendered on the homepage so real review copy is in the HTML.
+    initialData,
+    staleTime: 60 * 1000,
   });
 
   // Real approved reviews first; seed reviews fill the remaining slots.
@@ -204,7 +207,7 @@ export function CustomerReviews() {
   cards.forEach((card, i) => columns[(i % 3) as 0 | 1 | 2].push(card));
 
   return (
-    <section className="bg-[#FAFAF7] py-20">
+    <section className="bg-[#F5F1EB] py-20">
       <style>{`
         @keyframes reviews-scroll-up {
           from { transform: translateY(0); }
@@ -221,7 +224,7 @@ export function CustomerReviews() {
           <p className="overline text-ink-3">CUSTOMER REVIEWS</p>
           <h2 className="mt-2 text-5xl md:text-6xl font-serif font-normal">
             Rated {average.toFixed(1)}{' '}
-            <span className="italic text-[#1A6B4F]">by gifting teams.</span>
+            <span className="italic text-[#800020]">by gifting teams.</span>
           </h2>
           <div className="mt-4 flex items-center justify-center gap-2">
             <GoldStars rating={Math.round(average)} />

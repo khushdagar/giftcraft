@@ -6,20 +6,43 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
+import { useBuilderStore } from '@/store/builder';
 
-interface SerializedProduct {
+// Extra fields (hsnCode, gstRate, lead time…) ride along untyped and are
+// forwarded to the builder store as-is.
+type SerializedProduct = {
   id: string;
   name: string;
   slug: string;
   brand?: string | null;
   priceTiers?: Array<{ sellPrice: number }>;
   images?: Array<{ url: string }>;
-}
+};
 
-export function RelatedProducts({ products }: { products: SerializedProduct[] }) {
+export function RelatedProducts({
+  products,
+  // Related *packs* are serialized without hsnCode/gstRate/lead time, so adding
+  // them straight to the builder would drop GST data. The page turns this off
+  // for pack pages and only "View details" is offered there.
+  canAddToPack = true,
+}: {
+  products: SerializedProduct[];
+  canAddToPack?: boolean;
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
   const reduceMotion = useReducedMotion();
+  const { addProduct, removeProduct, products: cartProducts } = useBuilderStore();
+
+  // Mirrors the card behaviour on the home/catalog sliders: clicking again
+  // removes the product from the pack.
+  const toggleProduct = (product: SerializedProduct, sellPrice: number) => {
+    if (cartProducts.some((p: { id: string }) => p.id === product.id)) {
+      removeProduct(product.id);
+      return;
+    }
+    addProduct({ ...(product as any), quantity: 1, sellPrice });
+  };
 
   // Scroll roughly one viewport of cards in the given direction.
   const scrollByCards = useCallback(
@@ -91,37 +114,66 @@ export function RelatedProducts({ products }: { products: SerializedProduct[] })
         >
           {products.map((product) => {
             const price = product.priceTiers?.[0]?.sellPrice || 0;
+            const inCart = cartProducts.some((p: { id: string }) => p.id === product.id);
             return (
-              <Link
+              <div
                 key={product.id}
-                href={`/products/${product.slug}`}
-                className="group block w-44 flex-shrink-0 snap-start sm:w-64"
+                className="group w-44 flex-shrink-0 snap-start sm:w-64"
               >
-                <div className="rounded-md overflow-hidden shadow-card hover:shadow-hover transition-shadow">
-                  {/* Image */}
-                  <div className="relative m-2.5 overflow-hidden rounded-md bg-elevated aspect-[4/3]">
-                    {product.images?.[0]?.url ? (
-                      <Image
-                        src={product.images[0].url}
-                        alt={product.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-5xl opacity-60">📦</div>
-                    )}
-                  </div>
+                {/* h-full + flex keeps the buttons bottom-aligned across cards
+                    whose titles wrap to different heights. */}
+                <div className="flex h-full flex-col rounded-md overflow-hidden shadow-card hover:shadow-hover transition-shadow">
+                  <Link href={`/products/${product.slug}`} className="block">
+                    {/* Image */}
+                    <div className="relative m-2.5 overflow-hidden rounded-md bg-elevated aspect-[4/3]">
+                      {product.images?.[0]?.url ? (
+                        <Image
+                          src={product.images[0].url}
+                          alt={product.name}
+                          fill
+                          // contain (not cover) so tall bottles/mugs are shown
+                          // whole instead of being cropped top and bottom.
+                          className="object-contain p-3 group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-5xl opacity-60">📦</div>
+                      )}
+                    </div>
 
-                  {/* Info */}
-                  <div className="px-3 pb-3">
-                    {product.brand && <p className="text-[11px] text-ink-3">{product.brand}</p>}
-                    <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-tight">
-                      {product.name}
-                    </h3>
-                    <p className="mt-2 font-black tabnum text-base">From {formatRupees(price)}</p>
+                    {/* Info */}
+                    <div className="px-3">
+                      {product.brand && <p className="text-[11px] text-ink-3">{product.brand}</p>}
+                      <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-tight">
+                        {product.name}
+                      </h3>
+                      <p className="mt-2 font-black tabnum text-base">From {formatRupees(price)}</p>
+                    </div>
+                  </Link>
+
+                  {/* Actions */}
+                  <div className="mt-auto flex flex-col gap-2 px-3 pb-3 pt-3">
+                    {canAddToPack && (
+                      <button
+                        type="button"
+                        onClick={() => toggleProduct(product, price)}
+                        className={`w-full rounded-full py-2 text-sm font-semibold transition ${
+                          inCart
+                            ? 'bg-em-700 text-white hover:bg-em-800'
+                            : 'bg-em text-white hover:bg-em-600'
+                        }`}
+                      >
+                        {inCart ? '✓ In Pack' : 'Add to Pack'}
+                      </button>
+                    )}
+                    <Link
+                      href={`/products/${product.slug}`}
+                      className="w-full rounded-full border-2 border-bdr py-2 text-center text-sm font-semibold text-ink-2 transition hover:border-em hover:text-em"
+                    >
+                      View Details
+                    </Link>
                   </div>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>

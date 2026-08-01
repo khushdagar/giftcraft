@@ -57,7 +57,7 @@ export default async function EditCategoryPage({ params }: { params: { id: strin
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="mx-auto max-w-5xl px-6">
+      <div className="mx-auto max-w-7xl px-6">
         <CategoryForm mode="edit" parentCategories={parentCategories} category={categoryData} products={products} />
       </div>
     </div>

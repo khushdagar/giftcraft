@@ -32,7 +32,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="grid min-h-screen bg-canvas lg:grid-cols-[240px_1fr]">
       <aside className="sticky top-0 hidden h-screen flex-col bg-dark text-inv lg:flex">
         <div className="px-5 pt-5 pb-4">
-          <Link href="/" className="inline-block"><BrandLogo className="h-9 w-auto rounded-md" /></Link>
+          <Link href="/" className="inline-block"><BrandLogo className="h-9 w-auto" /></Link>
           <p className="mt-1 text-[10px] uppercase tracking-wider text-white">Customer Portal</p>
         </div>
         <nav className="flex-1 space-y-0.5 px-3 py-2 text-[13px]">

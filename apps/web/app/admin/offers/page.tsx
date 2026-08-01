@@ -3,10 +3,16 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { toast } from 'sonner';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Megaphone, Users, Send, Eye } from 'lucide-react';
+import { Megaphone, Users, Send, Eye, Check } from 'lucide-react';
+
+interface Recipient {
+  id: string;
+  email: string;
+  name: string | null;
+}
 
 interface OfferForm {
   subject: string;
@@ -29,6 +35,8 @@ const EMPTY: OfferForm = {
 export default function AdminOffersPage() {
   const [form, setForm] = useState<OfferForm>(EMPTY);
   const [testEmail, setTestEmail] = useState('');
+  const [audienceMode, setAudienceMode] = useState<'all' | 'selected'>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: recipientData } = useQuery({
     queryKey: ['offer-recipients'],
@@ -36,11 +44,22 @@ export default function AdminOffersPage() {
       const res = await fetch('/api/admin/offers/send');
       if (!res.ok) throw new Error('Failed to load recipients');
       const json = await res.json();
-      return json.data as { recipientCount: number };
+      return json.data as { recipientCount: number; recipients: Recipient[] };
     },
   });
 
+  const recipients = recipientData?.recipients ?? [];
   const recipientCount = recipientData?.recipientCount ?? null;
+  const targetCount =
+    audienceMode === 'selected' ? selectedIds.size : recipientCount;
+
+  const toggleRecipient = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const set = (key: keyof OfferForm, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -75,7 +94,11 @@ export default function AdminOffersPage() {
     onError: (err: any) => toast.error(err.message || 'Something went wrong'),
   });
 
-  const canSubmit = form.subject.trim() && form.headline.trim() && form.body.trim();
+  // The editor always emits at least "<p></p>", so check for real content.
+  const hasBody =
+    form.body.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0 ||
+    /<(img|hr|table)\b/i.test(form.body);
+  const canSubmit = Boolean(form.subject.trim() && form.headline.trim() && hasBody);
 
   const handleSend = () => {
     if (!canSubmit) {
@@ -86,13 +109,21 @@ export default function AdminOffersPage() {
       toast.error('No customers have opted into marketing emails yet');
       return;
     }
+    if (audienceMode === 'selected' && selectedIds.size === 0) {
+      toast.error('Select at least one customer to send to');
+      return;
+    }
     if (
       !confirm(
-        `Send this offer to ${recipientCount ?? 'all opted-in'} customer(s)? This cannot be undone.`
+        `Send this offer to ${targetCount ?? 'all opted-in'} customer(s)? This cannot be undone.`
       )
     )
       return;
-    sendMutation.mutate(form);
+    sendMutation.mutate(
+      audienceMode === 'selected'
+        ? { ...form, recipientIds: Array.from(selectedIds) }
+        : form
+    );
   };
 
   const handleTest = () => {
@@ -120,19 +151,107 @@ export default function AdminOffersPage() {
         </p>
       </div>
 
-      {/* Recipient summary */}
-      <div className="flex items-center gap-3 rounded-lg border border-bdr bg-surface px-4 py-3">
-        <Users className="h-5 w-5 text-ink-2" />
-        <p className="text-sm text-ink">
-          {recipientCount === null ? (
-            'Loading audience…'
-          ) : (
-            <>
-              <span className="font-semibold">{recipientCount}</span> customer
-              {recipientCount === 1 ? '' : 's'} opted into marketing emails.
-            </>
-          )}
-        </p>
+      {/* Audience */}
+      <div className="rounded-lg border border-bdr bg-surface">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+          <Users className="h-5 w-5 text-ink-2" />
+          <p className="text-sm text-ink">
+            {recipientCount === null ? (
+              'Loading audience…'
+            ) : (
+              <>
+                <span className="font-semibold">{recipientCount}</span> customer
+                {recipientCount === 1 ? '' : 's'} opted into marketing emails.
+              </>
+            )}
+          </p>
+          <div className="ml-auto flex gap-2">
+            <button
+              type="button"
+              onClick={() => setAudienceMode('all')}
+              className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+                audienceMode === 'all'
+                  ? 'border-ink bg-ink text-white'
+                  : 'border-bdr bg-white text-ink-2 hover:text-ink'
+              }`}
+            >
+              All customers
+            </button>
+            <button
+              type="button"
+              onClick={() => setAudienceMode('selected')}
+              className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+                audienceMode === 'selected'
+                  ? 'border-ink bg-ink text-white'
+                  : 'border-bdr bg-white text-ink-2 hover:text-ink'
+              }`}
+            >
+              Selected customers{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+            </button>
+          </div>
+        </div>
+
+        {audienceMode === 'selected' && (
+          <div className="border-t border-bdr">
+            <div className="flex items-center justify-between px-4 py-2">
+              <p className="text-xs font-medium uppercase tracking-wider text-ink-2">
+                Choose recipients
+              </p>
+              <button
+                type="button"
+                className="text-xs font-medium text-ink-2 underline hover:text-ink"
+                onClick={() =>
+                  setSelectedIds(
+                    selectedIds.size === recipients.length
+                      ? new Set()
+                      : new Set(recipients.map((r) => r.id))
+                  )
+                }
+              >
+                {selectedIds.size === recipients.length ? 'Clear all' : 'Select all'}
+              </button>
+            </div>
+            <div className="max-h-64 divide-y divide-bdr overflow-y-auto border-t border-bdr">
+              {recipients.length === 0 ? (
+                <p className="px-4 py-4 text-sm text-ink-2">
+                  No customers have opted into marketing emails yet.
+                </p>
+              ) : (
+                recipients.map((r) => {
+                  const checked = selectedIds.has(r.id);
+                  return (
+                    <label
+                      key={r.id}
+                      className="flex cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-white"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleRecipient(r.id)}
+                        className="sr-only"
+                      />
+                      <span
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
+                          checked ? 'border-ink bg-ink text-white' : 'border-bdr bg-white'
+                        }`}
+                      >
+                        {checked && <Check className="h-3.5 w-3.5" />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-ink">
+                          {r.name || r.email}
+                        </span>
+                        {r.name && (
+                          <span className="block truncate text-xs text-ink-2">{r.email}</span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">
@@ -158,11 +277,12 @@ export default function AdminOffersPage() {
 
           <div>
             <label className="mb-2 block text-sm font-normal text-ink">Body</label>
-            <Textarea
+            <RichTextEditor
               value={form.body}
-              onChange={(e) => set('body', e.target.value)}
-              placeholder="Write your offer. Leave a blank line between paragraphs."
-              className="h-40"
+              onChange={(html) => set('body', html)}
+              placeholder="Write your offer…"
+              uploadFolder="offers"
+              minHeight={260}
             />
           </div>
 
@@ -225,7 +345,7 @@ export default function AdminOffersPage() {
             <Send className="mr-2 h-4 w-4" />
             {sendMutation.isPending
               ? 'Sending…'
-              : `Send to ${recipientCount ?? ''} customer${recipientCount === 1 ? '' : 's'}`}
+              : `Send to ${targetCount ?? ''} customer${targetCount === 1 ? '' : 's'}`}
           </Button>
         </div>
 
@@ -245,11 +365,13 @@ export default function AdminOffersPage() {
                 className="mb-4 max-h-48 w-full rounded-xl object-cover"
               />
             )}
-            <div className="space-y-3 text-[15px] leading-relaxed text-gray-700">
-              {(form.body || 'Your offer text will appear here.').split(/\n{2,}/).map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
-            </div>
+            <div
+              className="blog-content text-[15px]"
+              // Admin-authored rich text; sanitised again server-side before sending.
+              dangerouslySetInnerHTML={{
+                __html: hasBody ? form.body : '<p>Your offer text will appear here.</p>',
+              }}
+            />
             {form.ctaLabel && form.ctaUrl && (
               <div className="mt-5">
                 <span className="inline-block rounded-xl bg-orange-500 px-7 py-3 font-bold text-white">
