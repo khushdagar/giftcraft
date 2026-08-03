@@ -12,6 +12,19 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://giftcraft.i
   ''
 );
 
+/**
+ * Site-wide noindex kill switch. Set SITE_NOINDEX="true" in the environment to
+ * keep the whole site out of search results (pre-launch, staging, a soft
+ * relaunch). Any other value — or unset — leaves the site indexable.
+ *
+ * This emits `<meta name="robots" content="noindex, nofollow">` on every page
+ * AND keeps robots.txt crawlable on purpose: a `Disallow: /` would stop Google
+ * fetching the pages at all, so it would never SEE the noindex, and URLs already
+ * known to it could linger in the index indefinitely. Allow the crawl, tell it
+ * not to index — that's what actually removes pages.
+ */
+export const SITE_NOINDEX = process.env.SITE_NOINDEX === 'true';
+
 export const SITE_NAME = 'GIVOO';
 
 export const SITE_TAGLINE = "India's First Self-Serve Bulk Corporate Gifting Platform";
