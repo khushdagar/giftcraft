@@ -1,7 +1,15 @@
 import type { MetadataRoute } from 'next';
-import { SITE_URL } from '@/lib/site';
+import { SITE_URL, SITE_NOINDEX } from '@/lib/site';
 
 export default function robots(): MetadataRoute.Robots {
+  // Site-wide noindex (SITE_NOINDEX=true): the meta robots tag from the root
+  // layout does the actual work. Crawling stays ALLOWED — see lib/site.ts — but
+  // the sitemap is dropped, since advertising a list of noindexed URLs is
+  // contradictory and just burns crawl budget.
+  if (SITE_NOINDEX) {
+    return { rules: { userAgent: '*', allow: '/', disallow: ['/admin', '/api/'] } };
+  }
+
   return {
     rules: {
       userAgent: '*',

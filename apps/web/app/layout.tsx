@@ -4,7 +4,7 @@ import { SessionProvider } from "@/components/auth/session-provider";
 import { Providers } from "@/components/providers";
 import { JsonLd } from "@/components/seo/json-ld";
 import { organizationSchema, webSiteSchema } from "@/lib/schema";
-import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION } from "@/lib/site";
+import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, SITE_NOINDEX } from "@/lib/site";
 import { auth } from "@/auth";
 import "./globals.css";
 
@@ -28,6 +28,9 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   alternates: { canonical: "./" },
+  // Site-wide kill switch (SITE_NOINDEX=true). Inherited by every page that
+  // doesn't set its own `robots`, so one env var hides the whole site.
+  ...(SITE_NOINDEX ? { robots: { index: false, follow: false } } : {}),
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
