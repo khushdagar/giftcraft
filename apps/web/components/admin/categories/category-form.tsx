@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { X, Upload, ArrowLeft, ImageIcon, Package } from 'lucide-react';
 import { RichTextField } from '@/components/admin/rich-text-field';
+import { slugify } from '@/lib/slug';
 
 interface CategoryProduct {
   product: {
@@ -30,6 +31,7 @@ interface CategoryFormProps {
     name: string;
     slug: string;
     description: string | null;
+    contentBelow: string | null;
     parentId: string | null;
     sortOrder: number;
     imageUrl: string | null;
@@ -54,14 +56,13 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
     name: category?.name || '',
     slug: category?.slug || '',
     description: category?.description || '',
+    contentBelow: category?.contentBelow || '',
     parentId: category?.parentId || '',
     sortOrder: category?.sortOrder || 0,
     imageUrl: category?.imageUrl || '',
   });
   const [imagePreview, setImagePreview] = useState<string>(category?.imageUrl || '');
 
-  const generateSlug = (name: string) =>
-    name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
@@ -69,7 +70,7 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
       ...prev,
       name,
       // Only auto-fill the slug while creating, so we don't clobber a custom one.
-      slug: mode === 'create' ? generateSlug(name) : prev.slug,
+      slug: mode === 'create' ? slugify(name) : prev.slug,
     }));
   };
 
@@ -123,6 +124,7 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
         name: formData.name,
         slug: formData.slug,
         description: formData.description || null,
+        contentBelow: formData.contentBelow || null,
         parentId: formData.parentId || null,
         sortOrder: formData.sortOrder,
         imageUrl: formData.imageUrl || null,
@@ -204,12 +206,27 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
               onChange={(e) => setFormData((p) => ({ ...p, slug: e.target.value }))}
               placeholder="corporate-gifts" />
 
-            <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">Description</label>
+            <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Description <span className="font-normal text-ink-3">— shows above the product grid</span>
+            </label>
             <RichTextField
               value={formData.description}
               onChange={(html) => setFormData((p) => ({ ...p, description: html }))}
               placeholder="Describe this category for shoppers…"
               minHeight={130}
+              uploadFolder="categories"
+            />
+
+            {/* Long-form SEO copy lives below the grid so it never pushes the
+                products down the page. */}
+            <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Content below products <span className="font-normal text-ink-3">— optional, shows under the product grid</span>
+            </label>
+            <RichTextField
+              value={formData.contentBelow}
+              onChange={(html) => setFormData((p) => ({ ...p, contentBelow: html }))}
+              placeholder="Buying guide, sizing, branding options, FAQs…"
+              minHeight={180}
               uploadFolder="categories"
             />
           </div>

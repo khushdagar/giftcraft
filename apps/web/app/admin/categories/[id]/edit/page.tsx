@@ -17,6 +17,7 @@ export default async function EditCategoryPage({ params }: { params: { id: strin
       name: true,
       slug: true,
       description: true,
+      contentBelow: true,
       parentId: true,
       sortOrder: true,
       imageUrl: true,

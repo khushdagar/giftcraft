@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { slugify } from '@/lib/slug';
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,11 +27,12 @@ export async function GET(request: NextRequest) {
 
 const CreateOccasionSchema = z.object({
   name: z.string().min(1, 'Name required'),
-  slug: z.string().min(1, 'Slug required'),
+  slug: z.string().min(1, 'Slug required').transform(slugify),
   icon: z.string().optional().nullable(),
   imageUrl: z.string().optional().nullable(),
   gradient: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
+  contentBelow: z.string().optional().nullable(),
   sortOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),
   isCollection: z.boolean().default(false),
@@ -64,6 +66,7 @@ export async function POST(request: NextRequest) {
         imageUrl: data.imageUrl || null,
         gradient: data.gradient || 'from-orange-400 to-yellow-400',
         description: data.description,
+        contentBelow: data.contentBelow || null,
         sortOrder: data.sortOrder,
         isActive: data.isActive,
         isCollection: data.isCollection,

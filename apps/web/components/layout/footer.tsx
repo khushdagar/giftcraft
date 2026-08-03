@@ -102,14 +102,14 @@ export async function Footer() {
     ["/catalog", "All Products"],
     ["/categories", "All Categories"],
     // Indexable category landing pages, not filtered ?category= URLs.
-    ...categories.map((c): FooterLink => [`/categories/${c.slug}`, c.name]),
+    ...categories.map((c): FooterLink => [`/category/${c.slug}`, c.name]),
   ];
   const packLinks: FooterLink[] = [
     ["/packs", "All Packs"],
     ...collections.map((c): FooterLink => [`/packs?collection=${c.slug}`, c.name]),
   ];
   const occasionLinks: FooterLink[] = occasions.map(
-    (o): FooterLink => [`/catalog?occasion=${o.slug}`, o.name]
+    (o): FooterLink => [`/occasion/${o.slug}`, o.name]
   );
 
   return (

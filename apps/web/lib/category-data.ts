@@ -3,7 +3,7 @@ import { isHiddenCategory, getHiddenCategoryIds } from '@/lib/catalog-visibility
 
 /**
  * Server-side data for the category landing pages (/categories and
- * /categories/[slug]).
+ * /category/[slug]).
  *
  * Both pages are fully server-rendered so every product link is in the initial
  * HTML — these pages exist to give Google a crawlable path from the site root
@@ -21,6 +21,8 @@ export type CategorySummary = {
   name: string;
   slug: string;
   description: string | null;
+  /** Cover photo set in the admin — the listing card's hero image. */
+  imageUrl: string | null;
   productCount: number;
   /** Up to 4 product images, for the listing card collage. */
   previewImages: string[];
@@ -95,6 +97,7 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
           name: category.name,
           slug: category.slug,
           description: category.description,
+          imageUrl: category.imageUrl,
           productCount: bucket?.count ?? 0,
           previewImages: bucket?.images ?? [],
           fromPrice: bucket?.prices.length ? Math.min(...bucket.prices) : null,
@@ -150,6 +153,7 @@ export async function getCategoryBySlug(slug: string): Promise<{
   name: string;
   slug: string;
   description: string | null;
+  contentBelow: string | null;
   products: CategoryProduct[];
 } | null> {
   try {
@@ -184,6 +188,7 @@ export async function getCategoryBySlug(slug: string): Promise<{
       name: category.name,
       slug: category.slug,
       description: category.description,
+      contentBelow: category.contentBelow,
       products: products.map((product) => ({
         id: product.id,
         name: product.name,

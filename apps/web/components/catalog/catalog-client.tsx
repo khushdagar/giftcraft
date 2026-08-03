@@ -85,12 +85,32 @@ export interface CatalogPackContext {
 // When `category` is passed, the catalog renders scoped to a single category:
 // only that category's products are shown, every sidebar facet derives from
 // just those products, and the header swaps to the category name + copy. Used
-// by the /categories/[slug] landing pages.
+// by the /category/[slug] landing pages.
 export interface CatalogCategoryContext {
   id: string;
   name: string;
   slug: string;
-  description?: string | null;
+  /**
+   * Sanitized HTML — the category description is authored in the admin with a
+   * rich-text editor, so it must be rendered as markup, not printed as a
+   * string. Sanitization happens on the server (lib/rich-text) before it gets
+   * here; this component never receives raw stored HTML.
+   */
+  descriptionHtml?: string | null;
+}
+
+// When `occasion` is passed, the catalog renders scoped to a single occasion or
+// curated collection — used by the /occasion/[slug] landing pages. Membership is
+// resolved server-side (explicit links + tag matches) into `occasionIds` on each
+// product, so the scope filter here is the same test the sidebar facet uses.
+export interface CatalogOccasionContext {
+  id: string;
+  name: string;
+  slug: string;
+  /** True for curated Collections (isCollection) rather than occasion tiles. */
+  isCollection?: boolean;
+  /** Sanitized HTML — see the note on CatalogCategoryContext.descriptionHtml. */
+  descriptionHtml?: string | null;
 }
 
 type UrlFilterParams = { category?: string; occasion?: string; recipient?: string };
@@ -100,7 +120,7 @@ type UrlFilterParams = { category?: string; occasion?: string; recipient?: strin
  *
  * This is a separate component on purpose: useSearchParams() opts its entire
  * client subtree out of static HTML, so calling it inside CatalogClient would
- * strip the product grid from the prerendered markup of /categories/[slug] —
+ * strip the product grid from the prerendered markup of /category/[slug] —
  * exactly the links search engines need. Isolated here (behind Suspense) the
  * grid still renders server-side and only this empty node is client-only.
  */
@@ -124,7 +144,14 @@ function CatalogUrlParams({ onChange }: { onChange: (params: UrlFilterParams) =>
 function applyScope(
   list: Product[],
   pack?: CatalogPackContext,
-  category?: CatalogCategoryContext
+  category?: CatalogCategoryContext,
+  occasion?: CatalogOccasionContext,
+  /**
+   * Extra category/occasion ids ticked in the sidebar on a scoped landing page.
+   * The page's own id is always part of the scope — the URL says so — and these
+   * widen it, so /category/apparel + "Drinkware" shows the union of both.
+   */
+  extras?: Set<string>
 ): Product[] {
   if (pack) {
     // Keep the admin's arrangement order for a curated pack.
@@ -134,7 +161,12 @@ function applyScope(
       .sort((a, b) => order.get(a.id)! - order.get(b.id)!);
   }
   if (category) {
-    return list.filter((p) => p.categories?.some((c) => c.categoryId === category.id));
+    const ids = new Set([category.id, ...(extras ?? [])]);
+    return list.filter((p) => p.categories?.some((c) => ids.has(c.categoryId)));
+  }
+  if (occasion) {
+    const ids = new Set([occasion.id, ...(extras ?? [])]);
+    return list.filter((p) => p.occasionIds?.some((id) => ids.has(id)));
   }
   return list;
 }
@@ -146,11 +178,13 @@ function tierOnePrices(list: Product[]): number[] {
 export function CatalogClient({
   pack,
   category,
+  occasion,
   initialProducts,
   initialFilters,
 }: {
   pack?: CatalogPackContext;
   category?: CatalogCategoryContext;
+  occasion?: CatalogOccasionContext;
   /** Server-fetched products — makes the grid render in the initial HTML (SEO). */
   initialProducts?: Product[];
   initialFilters?: { categories: Category[]; occasions: Occasion[] };
@@ -162,10 +196,24 @@ export function CatalogClient({
   // Seed from server-rendered data when provided (applying the same scope the
   // fetch path does), so there is no empty-grid first paint.
   const scopedInitial = useMemo(
-    () => applyScope(initialProducts ?? [], pack, category),
-    [initialProducts, pack, category]
+    () => applyScope(initialProducts ?? [], pack, category, occasion),
+    [initialProducts, pack, category, occasion]
   );
   const [products, setProducts] = useState<Product[]>(() => scopedInitial);
+  // The UNSCOPED catalogue, kept alongside the scoped list so ticking an extra
+  // category/occasion in the sidebar can widen the scope without another fetch.
+  // On a scoped landing page the server only sends that page's slice, so until
+  // the client fetch below lands this holds just that slice — which is exactly
+  // the current scope, so nothing renders wrong in the meantime.
+  const [catalogAll, setCatalogAll] = useState<Product[]>(initialProducts ?? []);
+  // True once `catalogAll` really holds the whole catalogue. On an unscoped
+  // /catalog render the server already sent everything; on a scoped landing page
+  // it takes the client fetch below. Counts in the scope-nav block stay hidden
+  // until then rather than showing numbers that are only true of the slice.
+  const [hasFullCatalog, setHasFullCatalog] = useState(
+    !pack && !category && !occasion && !!initialProducts
+  );
+  const [scopeExtras, setScopeExtras] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<Category[]>(initialFilters?.categories ?? []);
   const [occasions, setOccasions] = useState<Occasion[]>(initialFilters?.occasions ?? []);
   const [loading, setLoading] = useState(!initialProducts);
@@ -249,8 +297,11 @@ export function CatalogClient({
           // Scoped to a curated pack or a category: keep only that scope's
           // products. Everything downstream (filter facets, grid, counts) then
           // reflects just this scope.
-          const prods = applyScope(productsData.products || [], pack, category);
+          const all = productsData.products || [];
+          const prods = applyScope(all, pack, category, occasion, scopeExtras);
 
+          setCatalogAll(all);
+          setHasFullCatalog(true);
           setProducts(prods);
 
           // Set initial price range based on actual product prices
@@ -276,12 +327,116 @@ export function CatalogClient({
     fetchData();
   }, []);
 
+  // On a scoped landing page (/category/[slug], /occasion/[slug], a pack) the
+  // server only sends that page's own slice, so the sidebar's OTHER categories /
+  // occasions have nothing to widen the scope with — ticking one looked like a
+  // dead checkbox. Pull the whole catalogue once in the background; the scope
+  // effect below re-derives the grid the moment it lands, and the per-option
+  // counts stop being hidden.
+  useEffect(() => {
+    // No initialProducts → the fetch above already loads the whole catalogue.
+    if (hasFullCatalog || !initialProducts) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/products?limit=1000');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setCatalogAll(data.products || []);
+        setHasFullCatalog(true);
+      } catch (error) {
+        console.error('Failed to load full catalog for sidebar filters:', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Widening/narrowing the scope from the sidebar re-derives the product list
+  // from the full catalogue already in memory — no refetch. The price bounds are
+  // reset with it, otherwise a bound left over from the narrower scope would
+  // silently hide the products the visitor just asked to see.
+  // Also depends on `catalogAll` so a box ticked before the fetch lands is
+  // honoured the moment the full catalogue arrives, rather than being dropped.
+  useEffect(() => {
+    const prods = applyScope(catalogAll, pack, category, occasion, scopeExtras);
+    setProducts(prods);
+    const prices = tierOnePrices(prods);
+    if (prices.length > 0) {
+      setPriceMin(0);
+      setPriceMax(Math.max(...prices));
+    }
+    // pack/category/occasion are object props with a fresh identity every
+    // render — listing them here would loop. They never change for a mounted
+    // page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeExtras, catalogAll]);
+
   // Curated collections (isCollection) are hidden from the sidebar — they're
   // surfaced via the homepage section and can still be applied through the
   // ?occasion= URL param.
   const sidebarOccasions = useMemo(
     () => occasions.filter(o => !o.isCollection),
     [occasions]
+  );
+
+  // Product counts for the scope-nav rows, measured against the WHOLE catalogue
+  // rather than the current scope — these rows widen the scope, so what matters
+  // is how many products an option would bring in. Declared before the nav lists
+  // below, which filter themselves on these counts.
+  const scopeNavCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    if (!occasion && !category) return counts;
+    for (const p of catalogAll) {
+      const ids = occasion ? p.occasionIds ?? [] : (p.categories ?? []).map(c => c.categoryId);
+      for (const id of ids) counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    return counts;
+    // occasion/category are object props with a fresh identity each render, but
+    // they never change for a mounted page — only which ONE of them is set.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogAll, occasion, category]);
+
+  // Sibling links for the /occasion/[slug] nav block. A curated Collection page
+  // lists the other Collections, an occasion page lists the other occasions —
+  // mixing the two would send visitors between unrelated kinds of page.
+  // An option with nothing behind it can't widen anything, so it's dropped once
+  // the real counts are known — the page's own scope and anything already ticked
+  // always stay, otherwise the visitor would lose the row they're standing on or
+  // have no way to untick.
+  const occasionNavItems = useMemo(
+    () =>
+      occasion
+        ? occasions.filter(
+            o =>
+              !!o.isCollection === !!occasion.isCollection &&
+              (o.id === occasion.id ||
+                scopeExtras.has(o.id) ||
+                !hasFullCatalog ||
+                (scopeNavCounts.get(o.id) ?? 0) > 0)
+          )
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [occasions, occasion, scopeExtras, hasFullCatalog, scopeNavCounts]
+  );
+
+  const categoryNavItems = useMemo(
+    () =>
+      category
+        ? categories.filter(
+            c =>
+              c.id === category.id ||
+              c.slug === category.slug ||
+              scopeExtras.has(c.id) ||
+              !hasFullCatalog ||
+              (scopeNavCounts.get(c.id) ?? 0) > 0
+          )
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [categories, category, scopeExtras, hasFullCatalog, scopeNavCounts]
   );
 
   // Get price range from products
@@ -429,6 +584,9 @@ export function CatalogClient({
 
   const clearAll = () => {
     setSearch('');
+    // Back to just this page's own category/occasion — never to an empty scope,
+    // which would contradict the URL.
+    setScopeExtras(new Set());
     setSelectedCats(new Set());
     setSelectedBrands(new Set());
     setSelectedOccasions(new Set());
@@ -494,10 +652,36 @@ export function CatalogClient({
                 <span>{category.name}</span>
               </p>
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{category.name}</h1>
-              {category.description && (
-                <p className="mt-2 text-base max-w-3xl" style={{ color: '#5C5852' }}>
-                  {category.description}
-                </p>
+              {category.descriptionHtml && (
+                <div
+                  className="blog-content mt-6 max-w-7xl"
+                  style={{ color: '#5C5852' }}
+                  dangerouslySetInnerHTML={{ __html: category.descriptionHtml }}
+                />
+              )}
+              <p className="mt-2 text-sm" style={{ color: '#8F8A82' }}>
+                {products.length} product{products.length === 1 ? '' : 's'} available for bulk order
+              </p>
+            </>
+          ) : occasion ? (
+            <>
+              <p className="text-xs" style={{ color: '#8F8A82' }}>
+                <Link href="/" style={{ color: '#800020' }}>Home</Link> /{' '}
+                <Link href="/occasions" style={{ color: '#800020' }}>Occasions</Link> /{' '}
+                <span>{occasion.name}</span>
+              </p>
+              {occasion.isCollection && (
+                <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-em-50 px-3 py-1 text-xs font-medium text-em-700">
+                  ✨ Curated Collection
+                </span>
+              )}
+              <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{occasion.name}</h1>
+              {occasion.descriptionHtml && (
+                <div
+                  className="blog-content mt-6 max-w-7xl"
+                  style={{ color: '#5C5852' }}
+                  dangerouslySetInnerHTML={{ __html: occasion.descriptionHtml }}
+                />
               )}
               <p className="mt-2 text-sm" style={{ color: '#8F8A82' }}>
                 {products.length} product{products.length === 1 ? '' : 's'} available for bulk order
@@ -548,8 +732,20 @@ export function CatalogClient({
         </div>
 
         {/* Active Filters */}
-        {(search || selectedCats.size > 0 || selectedBrands.size > 0 || selectedOccasions.size > 0 || selectedRecipients.size > 0 || ecoOnly || brandingOnly || (priceMin !== null && priceMax !== null && (priceMin > (priceRange.min || 0) || priceMax < (priceRange.max || 3500)))) && (
+        {(search || scopeExtras.size > 0 || selectedCats.size > 0 || selectedBrands.size > 0 || selectedOccasions.size > 0 || selectedRecipients.size > 0 || ecoOnly || brandingOnly || (priceMin !== null && priceMax !== null && (priceMin > (priceRange.min || 0) || priceMax < (priceRange.max || 3500)))) && (
           <div className="flex flex-wrap gap-2 mb-4">
+            {/* Widened scope on a landing page — labelled with a + so it reads as
+                "this page, plus Drinkware" rather than a plain filter. */}
+            {Array.from(scopeExtras).map(id => {
+              const name = category
+                ? categories.find(c => c.id === id)?.name
+                : occasions.find(o => o.id === id)?.name;
+              return (
+                <button key={id} onClick={() => toggleSetValue(setScopeExtras, id)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>
+                  + {name} ✕
+                </button>
+              );
+            })}
             {Array.from(selectedCats).map(catId => {
               const cat = categories.find(c => c.id === catId);
               return (
@@ -595,7 +791,78 @@ export function CatalogClient({
                 <button className="lg:hidden text-2xl" onClick={() => setSidebarOpen(false)}>✕</button>
               </div>
 
-              {/* Categories — hidden when the page is already scoped to one. */}
+              {/* Scoped landing pages (/category/[slug], /occasion/[slug]) put
+                  their own group FIRST, since that's the axis the visitor is
+                  browsing on. Ticking others widens the scope to the union, so
+                  Apparel + Drinkware shows both — the page's own entry stays
+                  checked and locked, because the URL and the H1 say it's there.
+                  Only one of these two blocks can render at a time. */}
+              {occasion && occasionNavItems.length > 0 && (
+                <div className="mb-4 pb-3 border-b">
+                  <h4 className="text-sm font-semibold mb-2">
+                    {occasion.isCollection ? 'Collections' : 'Occasion'}
+                  </h4>
+                  <div className="space-y-2">
+                    {occasionNavItems.map(occ => {
+                      const isScope = occ.id === occasion.id;
+                      const count = scopeNavCounts.get(occ.id) ?? 0;
+                      return (
+                        <label
+                          key={occ.id}
+                          className={`flex items-center gap-2 text-sm ${isScope ? 'cursor-default' : 'cursor-pointer hover:text-emerald-700'}`}
+                          style={isScope ? { color: '#560015', fontWeight: 600 } : undefined}
+                          title={isScope ? `You're on the ${occ.name} page` : undefined}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isScope || scopeExtras.has(occ.id)}
+                            disabled={isScope}
+                            onChange={() => toggleSetValue(setScopeExtras, occ.id)}
+                            style={{ accentColor: '#800020' }}
+                          />
+                          {occ.name}
+                          {hasFullCatalog && (
+                            <span className="text-xs ml-auto" style={{ color: '#8F8A82' }}>({count})</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {category && categoryNavItems.length > 0 && (
+                <div className="mb-4 pb-3 border-b">
+                  <h4 className="text-sm font-semibold mb-2">Categories</h4>
+                  <div className="space-y-2">
+                    {categoryNavItems.map(cat => {
+                      const isScope = cat.slug === category.slug || cat.id === category.id;
+                      const count = scopeNavCounts.get(cat.id) ?? 0;
+                      return (
+                        <label
+                          key={cat.id}
+                          className={`flex items-center gap-2 text-sm ${isScope ? 'cursor-default' : 'cursor-pointer hover:text-emerald-700'}`}
+                          style={isScope ? { color: '#560015', fontWeight: 600 } : undefined}
+                          title={isScope ? `You're on the ${cat.name} page` : undefined}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isScope || scopeExtras.has(cat.id)}
+                            disabled={isScope}
+                            onChange={() => toggleSetValue(setScopeExtras, cat.id)}
+                            style={{ accentColor: '#800020' }}
+                          />
+                          {cat.name}
+                          {hasFullCatalog && (
+                            <span className="text-xs ml-auto" style={{ color: '#8F8A82' }}>({count})</span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {!category && categoryFacets.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Categories</h4>
@@ -657,8 +924,9 @@ export function CatalogClient({
                 </div>
               )}
 
-              {/* Occasion */}
-              {occasionFacets.length > 0 && (
+              {/* Occasion — skipped on an occasion page, where the navigation
+                  block above already occupies this axis. */}
+              {!occasion && occasionFacets.length > 0 && (
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Occasion</h4>
                   <div className="space-y-2">

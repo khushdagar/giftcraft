@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { getCategoryBySlug, getCategoryNav } from '@/lib/category-data';
 import { getCatalogProducts, getCatalogFilters } from '@/lib/catalog-data';
 import { categoryCopy, toMetaDescription } from '@/lib/category-content';
+import { toRichHtml } from '@/lib/rich-text';
+import { stripHtml } from '@/lib/strip-html';
 import { CatalogClient } from '@/components/catalog/catalog-client';
 import { JsonLd } from '@/components/seo/json-ld';
 import { breadcrumbSchema, collectionPageSchema } from '@/lib/schema';
@@ -28,12 +30,12 @@ export async function generateMetadata({
   if (!category) return { title: 'Category not found', robots: { index: false, follow: false } };
 
   const copy = categoryCopy(category.slug, category.name);
-  // An admin description wins, but clamped — it's written as page copy, not as
-  // a 155-character meta description.
-  const description = category.description?.trim()
-    ? toMetaDescription(category.description)
-    : copy.meta;
-  const url = `/categories/${category.slug}`;
+  // An admin description wins, but stripped of its markup and clamped — it's
+  // authored as rich text page copy, not as a 155-character meta description,
+  // and raw tags in a SERP snippet look broken.
+  const adminText = stripHtml(category.description);
+  const description = adminText ? toMetaDescription(adminText) : copy.meta;
+  const url = `/category/${category.slug}`;
   // Real product shot when the category has one, else the branded site card —
   // a link preview should never come back blank.
   const ogImage = category.products.find((p) => p.imageUrl)?.imageUrl || '/opengraph-image';
@@ -77,7 +79,14 @@ export default async function CategoryPage({ params }: { params: { slug: string 
     getCategoryNav(),
   ]);
 
+  // The admin description is rich text (HTML) and must be sanitized here, on
+  // the server, before it is handed to a client component to render. The
+  // editorial fallback is plain text, so toRichHtml wraps it in a <p>.
   const intro = category.description?.trim() || categoryCopy(category.slug, category.name).intro;
+  const introHtml = toRichHtml(intro);
+  // JSON-LD takes plain text — schema.org descriptions must not contain markup.
+  const introText = stripHtml(intro);
+  const belowHtml = toRichHtml(category.contentBelow);
   const otherCategories = siblings.filter((c) => c.slug !== category.slug);
 
   return (
@@ -85,8 +94,8 @@ export default async function CategoryPage({ params }: { params: { slug: string 
       <JsonLd
         data={collectionPageSchema({
           name: `${category.name} — Bulk Corporate Gifts`,
-          description: intro,
-          path: `/categories/${category.slug}`,
+          description: introText,
+          path: `/category/${category.slug}`,
           items: category.products.map((p) => ({ name: p.name, path: `/products/${p.slug}` })),
         })}
       />
@@ -94,7 +103,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
         data={breadcrumbSchema([
           { name: 'Home', path: '/' },
           { name: 'Categories', path: '/categories' },
-          { name: category.name, path: `/categories/${category.slug}` },
+          { name: category.name, path: `/category/${category.slug}` },
         ])}
       />
 
@@ -105,11 +114,22 @@ export default async function CategoryPage({ params }: { params: { slug: string 
           id: category.id,
           name: category.name,
           slug: category.slug,
-          description: intro,
+          descriptionHtml: introHtml,
         }}
         initialProducts={products as any[]}
         initialFilters={filters}
       />
+
+      {belowHtml && (
+        <section aria-label={`About ${category.name}`} style={{ background: '#F5F1EB' }}>
+          <div className="max-w-7xl mx-auto px-4 md:px-10 pb-16">
+            <div
+              className="blog-content max-w-7xl border-t border-bdr pt-10"
+              dangerouslySetInnerHTML={{ __html: belowHtml }}
+            />
+          </div>
+        </section>
+      )}
 
       {otherCategories.length > 0 && (
         <section
@@ -124,7 +144,7 @@ export default async function CategoryPage({ params }: { params: { slug: string 
                 {otherCategories.map((sibling) => (
                   <Link
                     key={sibling.id}
-                    href={`/categories/${sibling.slug}`}
+                    href={`/category/${sibling.slug}`}
                     className="rounded-full border-2 border-bdr bg-white px-4 py-1.5 text-sm font-medium text-ink-2 transition hover:border-em hover:text-em"
                   >
                     {sibling.name}

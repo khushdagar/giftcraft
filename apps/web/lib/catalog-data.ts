@@ -11,8 +11,14 @@ import { isHiddenCategory, getHiddenCategoryIds } from '@/lib/catalog-visibility
 
 export async function getCatalogProducts(
   limit = 1000,
-  /** Narrow to one category — the /categories/[slug] pages only need theirs. */
-  categoryId?: string
+  /** Narrow to one category — the /category/[slug] pages only need theirs. */
+  categoryId?: string,
+  /**
+   * Narrow to one occasion/collection — the /occasion/[slug] pages only need
+   * theirs. Membership is either an explicit ProductOccasion link OR a tag
+   * overlap, which is how tag-driven Collections work.
+   */
+  occasion?: { id: string; tags: string[] }
 ) {
   try {
     const hiddenCategoryIds = await getHiddenCategoryIds();
@@ -23,6 +29,14 @@ export async function getCatalogProducts(
         // Packs are bundles, not catalog SKUs — never list them among products.
         isPack: false,
         ...(categoryId ? { categories: { some: { categoryId } } } : {}),
+        ...(occasion
+          ? {
+              OR: [
+                { occasions: { some: { occasionId: occasion.id } } },
+                ...(occasion.tags.length > 0 ? [{ tags: { hasSome: occasion.tags } }] : []),
+              ],
+            }
+          : {}),
         ...(hiddenCategoryIds.length > 0 && {
           AND: [{ categories: { none: { categoryId: { in: hiddenCategoryIds } } } }],
         }),

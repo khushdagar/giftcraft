@@ -8,9 +8,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { X, Upload, ArrowLeft } from 'lucide-react';
+import { RichTextField } from '@/components/admin/rich-text-field';
+import { slugify } from '@/lib/slug';
 
 interface OccasionFormProps {
   mode?: 'create' | 'edit';
@@ -22,6 +23,7 @@ interface OccasionFormProps {
     imageUrl?: string | null;
     gradient: string | null;
     description: string | null;
+    contentBelow?: string | null;
     sortOrder: number;
     isActive: boolean;
     isCollection?: boolean;
@@ -45,6 +47,7 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
     imageUrl: occasion?.imageUrl || '',
     gradient: occasion?.gradient || 'from-orange-400 to-yellow-400',
     description: occasion?.description || '',
+    contentBelow: occasion?.contentBelow || '',
     sortOrder: occasion?.sortOrder || 0,
     isActive: occasion?.isActive ?? true,
     isCollection: occasion?.isCollection ?? false,
@@ -95,20 +98,13 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
     setFormData((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }));
   };
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/^-+|-+$/g, '');
-  };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setFormData((prev) => ({
       ...prev,
       name,
-      slug: mode === 'create' ? generateSlug(name) : prev.slug,
+      slug: mode === 'create' ? slugify(name) : prev.slug,
     }));
   };
 
@@ -217,14 +213,28 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
               onChange={(e) => setFormData((p) => ({ ...p, slug: e.target.value }))}
               placeholder="diwali" />
 
-            <label htmlFor="description" className="mb-1.5 mt-4 block text-sm font-medium text-ink">Description</label>
-            <Textarea
-              id="description"
+            <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Description <span className="font-normal text-ink-3">— shows above the product grid</span>
+            </label>
+            <RichTextField
               value={formData.description}
-              onChange={(e) => setFormData((p) => ({ ...p, description: e.target.value }))}
-              rows={5}
+              onChange={(html) => setFormData((p) => ({ ...p, description: html }))}
               placeholder="e.g., Light up your relationships with Diwali gifts"
-              className="rounded-lg"
+              minHeight={130}
+              uploadFolder="occasions"
+            />
+
+            {/* Long-form SEO copy lives below the grid so it never pushes the
+                products down the page. */}
+            <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Content below products <span className="font-normal text-ink-3">— optional, shows under the product grid</span>
+            </label>
+            <RichTextField
+              value={formData.contentBelow}
+              onChange={(html) => setFormData((p) => ({ ...p, contentBelow: html }))}
+              placeholder="Gifting guide, budget tips, delivery timelines, FAQs…"
+              minHeight={180}
+              uploadFolder="occasions"
             />
           </div>
 

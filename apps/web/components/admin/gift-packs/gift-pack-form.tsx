@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { formatRupees } from '@/lib/utils';
 import { SearchableMultiSelect } from '@/components/admin/products/searchable-multi-select';
+import { slugify } from '@/lib/slug';
 
 // Rich diagonal gradients matching the customer "Curated Packs" card design.
 export const PACK_GRADIENTS: Array<{ name: string; value: string }> = [
@@ -123,12 +124,6 @@ export function GiftPackForm({
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<any[]>([]);
 
-  const generateSlug = (name: string) =>
-    name
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/^-+|-+$/g, '');
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
@@ -136,7 +131,7 @@ export function GiftPackForm({
       ...prev,
       name,
       // Keep auto-slug only while creating (don't clobber an edited slug on edit).
-      slug: mode === 'create' ? generateSlug(name) : prev.slug,
+      slug: mode === 'create' ? slugify(name) : prev.slug,
     }));
   };
 

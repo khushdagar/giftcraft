@@ -50,7 +50,7 @@ export function OccasionsCarousel({ occasions }: OccasionsCarouselProps) {
               transition={{ delay: idx * 0.05 }}
               whileHover={{ y: -8 }}
             >
-              <Link href={`/catalog?occasion=${occ.slug}`}>
+              <Link href={`/occasion/${occ.slug}`}>
                 <div
                   className={`h-56 rounded-3xl p-8 cursor-pointer flex flex-col justify-between
                   bg-gradient-to-br ${occ.bg}
