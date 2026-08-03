@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertCircle } from 'lucide-react';
 import { toast } from '@/lib/stores/toast-store';
+import { slugify } from '@/lib/slug';
 
 // SIMPLIFIED SCHEMA
 const CategorySchema = z.object({
@@ -41,9 +42,6 @@ export function CategoryFormSimplified({
 
   // Auto-generate slug from name
   const nameValue = watch('name');
-  const generateSlug = (name: string) => {
-    return name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  };
 
   const onSubmit = async (data: CategoryFormData) => {
     setLoading(true);
@@ -52,7 +50,7 @@ export function CategoryFormSimplified({
     try {
       const payload = {
         ...data,
-        slug: generateSlug(data.name),
+        slug: slugify(data.name),
       };
 
       const url = mode === 'create'
@@ -116,7 +114,7 @@ export function CategoryFormSimplified({
           URL Slug (auto-generated)
         </label>
         <Input
-          value={generateSlug(nameValue)}
+          value={slugify(nameValue)}
           disabled
           className="text-base bg-gray-50 text-ink-3"
           placeholder="corporate-gifts"

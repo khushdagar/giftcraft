@@ -158,7 +158,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
   // Breadcrumbs point at the indexable category landing page (not a filtered
   // ?categoryId= URL), so the trail Google sees matches a real page.
   const categorySlug = product.categories?.[0]?.category?.slug;
-  const categoryHref = categorySlug ? `/categories/${categorySlug}` : "/catalog";
+  const categoryHref = categorySlug ? `/category/${categorySlug}` : "/catalog";
 
   // Related: for a pack show sibling packs (same collection) with a derived
   // "from" price; for a normal product show same-category products (never packs).

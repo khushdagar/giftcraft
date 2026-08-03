@@ -330,6 +330,13 @@
 .blog-content > * + * {
   margin-top: 1.25em;
 }
+/* The heading rules below set a large top margin so headings breathe between
+   blocks. On the FIRST block that margin has nothing to separate it from — it
+   just pushes the content away from the top of the editor / container, which
+   reads as a rendering bug. */
+.blog-content > *:first-child {
+  margin-top: 0;
+}
 .blog-content h2 {
   margin-top: 2em;
   margin-bottom: 0.6em;

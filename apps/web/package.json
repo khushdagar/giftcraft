@@ -14,6 +14,7 @@
     "db:backfill-tags": "tsx prisma/backfill-collection-tags.ts",
     "db:backfill-packaging-dims": "tsx prisma/backfill-packaging-dims.ts",
     "db:seed-packaging": "tsx prisma/seed-packaging-designs.ts",
+    "db:fix-slugs": "tsx prisma/fix-slugs.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "db:seed-blog": "tsx prisma/seed-blog.ts",

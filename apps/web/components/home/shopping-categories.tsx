@@ -55,7 +55,7 @@ export function ShoppingCategories({ categories }: ShoppingCategoriesProps) {
                 transition={{ delay: idx * 0.08 }}
                 whileHover={{ scale: 1.1 }}
               >
-                <Link href={`/categories/${cat.slug}`}>
+                <Link href={`/category/${cat.slug}`}>
                   <div className="flex flex-col items-center cursor-pointer group">
                     {/* Circular Image Container */}
                     <motion.div

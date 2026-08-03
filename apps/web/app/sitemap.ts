@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { publishedPostWhere } from '@/lib/blog';
 import { getHiddenCategoryIds } from '@/lib/catalog-visibility';
 import { getCategoryNav } from '@/lib/category-data';
+import { getOccasionSlugs } from '@/lib/occasion-data';
 import { SITE_URL } from '@/lib/site';
 
 // Rendered at request time, never at build: build-time prerendering runs
@@ -18,6 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL, lastModified: now, changeFrequency: 'daily', priority: 1 },
     { url: `${SITE_URL}/catalog`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${SITE_URL}/categories`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${SITE_URL}/occasions`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${SITE_URL}/builder`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${SITE_URL}/packs`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${SITE_URL}/pricing`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
@@ -35,10 +37,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const hiddenCategoryIds = await getHiddenCategoryIds();
 
-    const [categories, products, collections, posts] = await Promise.all([
+    const [categories, occasions, products, collections, posts] = await Promise.all([
       // Category landing pages — only those with live products (getCategoryNav
       // already drops empty ones, which are noindex and must not be submitted).
       getCategoryNav(),
+      // Occasion + curated-collection landing pages, both live at /occasion/*.
+      getOccasionSlugs(),
       // Every live product + curated pack gets a sitemap entry — this is
       // Google's main discovery path for PDPs. (Product images reach Google
       // via og:image + Product JSON-LD on the PDP itself; Next 14.2's sitemap
@@ -68,7 +72,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return [
       ...staticRoutes,
       ...categories.map((c) => ({
-        url: `${SITE_URL}/categories/${c.slug}`,
+        url: `${SITE_URL}/category/${c.slug}`,
+        lastModified: now,
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+      })),
+      ...occasions.map((o) => ({
+        url: `${SITE_URL}/occasion/${o.slug}`,
         lastModified: now,
         changeFrequency: 'weekly' as const,
         priority: 0.8,

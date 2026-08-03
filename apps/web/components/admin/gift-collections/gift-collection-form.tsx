@@ -9,6 +9,7 @@ import { Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { PACK_GRADIENTS } from '@/components/admin/gift-packs/gift-pack-form';
+import { slugify } from '@/lib/slug';
 
 interface GiftCollectionFormProps {
   mode?: 'create' | 'edit';
@@ -42,19 +43,13 @@ export function GiftCollectionForm({ mode = 'create', collection }: GiftCollecti
     sortOrder: collection?.sortOrder ?? 0,
   });
 
-  const generateSlug = (name: string) =>
-    name
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/^-+|-+$/g, '');
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setFormData((prev) => ({
       ...prev,
       name,
-      slug: mode === 'create' ? generateSlug(name) : prev.slug,
+      slug: mode === 'create' ? slugify(name) : prev.slug,
     }));
   };
 

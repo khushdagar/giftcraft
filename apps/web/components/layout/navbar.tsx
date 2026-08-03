@@ -110,7 +110,7 @@ export function Navbar() {
                   <Link
                     key={c.slug}
                     // Indexable category landing page, not a filtered ?category= URL.
-                    href={`/categories/${c.slug}`}
+                    href={`/category/${c.slug}`}
                     className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
                   >
                     {c.name}
@@ -152,7 +152,7 @@ export function Navbar() {
                 {occasions.map((o) => (
                   <Link
                     key={o.slug}
-                    href={`/catalog?occasion=${o.slug}`}
+                    href={`/occasion/${o.slug}`}
                     className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
                   >
                     {o.name}

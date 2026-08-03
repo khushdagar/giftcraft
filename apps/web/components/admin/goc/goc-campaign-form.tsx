@@ -7,6 +7,7 @@ import { Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { SearchableMultiSelect } from '@/components/admin/products/searchable-multi-select';
+import { slugify } from '@/lib/slug';
 
 type CampaignStatus = 'draft' | 'active' | 'paused' | 'expired';
 
@@ -70,19 +71,13 @@ export function GocCampaignForm({ mode = 'create', campaign }: GocCampaignFormPr
     };
   }, []);
 
-  const generateSlug = (name: string) =>
-    name
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
-      .replace(/^-+|-+$/g, '');
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setFormData((prev) => ({
       ...prev,
       name,
-      slug: mode === 'create' ? generateSlug(name) : prev.slug,
+      slug: mode === 'create' ? slugify(name) : prev.slug,
     }));
   };
 

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400" role="img" aria-label="GIVOO gift">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F5F1EB"/>
+      <stop offset="1" stop-color="#E5DFD4"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="400" fill="url(#bg)"/>
+  <g fill="none" stroke="#800020" stroke-opacity="0.35" stroke-width="10" stroke-linejoin="round">
+    <rect x="210" y="182" width="180" height="120" rx="8"/>
+    <path d="M198 152h204v30H198z"/>
+    <path d="M300 152v150"/>
+    <path d="M300 152c-14-30-40-42-58-32-16 9-13 32 12 32h46z"/>
+    <path d="M300 152c14-30 40-42 58-32 16 9 13 32-12 32h-46z"/>
+  </g>
+</svg>

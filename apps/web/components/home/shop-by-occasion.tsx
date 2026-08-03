@@ -67,7 +67,7 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
   const renderCard = (occ: any) => (
     <Link
       key={occ.slug}
-      href={`/catalog?occasion=${occ.slug}`}
+      href={`/occasion/${occ.slug}`}
       className="block w-full h-full aspect-[3/2] rounded-3xl overflow-hidden group cursor-pointer relative shadow-md hover:shadow-lg transition-shadow"
     >
       {occ.image ? (

@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { slugify } from '@/lib/slug';
 
 const UpdateOccasionSchema = z.object({
   name: z.string().min(1).optional(),
-  slug: z.string().min(1).optional(),
+  slug: z.string().min(1).transform(slugify).optional(),
   icon: z.string().optional().nullable(),
   imageUrl: z.string().optional().nullable(),
   gradient: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
+  contentBelow: z.string().optional().nullable(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
   isCollection: z.boolean().optional(),
@@ -76,6 +78,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl }),
         ...(data.gradient !== undefined && { gradient: data.gradient }),
         ...(data.description !== undefined && { description: data.description }),
+        ...(data.contentBelow !== undefined && { contentBelow: data.contentBelow || null }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.isCollection !== undefined && { isCollection: data.isCollection }),

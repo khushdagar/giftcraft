@@ -17,6 +17,9 @@ const ALLOWED_TAGS = [
   'p', 'br', 'span', 'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'sub', 'sup',
   'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'blockquote', 'code', 'pre', 'hr',
   'a', 'img',
+  // The admin editor can insert tables — without these the whole table is
+  // stripped on render and the content silently disappears.
+  'table', 'thead', 'tbody', 'tr', 'th', 'td',
 ];
 
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
@@ -25,6 +28,8 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     a: ['href', 'target', 'rel'],
     img: ['src', 'alt'],
     span: ['style'],
+    td: ['colspan', 'rowspan'],
+    th: ['colspan', 'rowspan'],
     '*': ['class'],
   },
   // Only http(s), mailto and protocol-relative links — blocks javascript: URIs.

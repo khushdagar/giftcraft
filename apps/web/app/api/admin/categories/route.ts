@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { slugify } from '@/lib/slug';
 import type { Category } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
@@ -43,8 +44,9 @@ export async function GET(request: NextRequest) {
 
 const CreateCategorySchema = z.object({
   name: z.string().min(1, 'Name required'),
-  slug: z.string().min(1, 'Slug required'),
+  slug: z.string().min(1, 'Slug required').transform(slugify),
   description: z.string().optional().nullable(),
+  contentBelow: z.string().optional().nullable(),
   parentId: z.string().optional().nullable(),
   sortOrder: z.number().int().default(0),
   imageUrl: z.string().url().optional().nullable(),
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
         name: data.name,
         slug: data.slug,
         description: data.description || null,
+        contentBelow: data.contentBelow || null,
         parentId: data.parentId || null,
         sortOrder: data.sortOrder,
         ...(data.imageUrl && { imageUrl: data.imageUrl }),

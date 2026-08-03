@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { slugify } from '@/lib/slug';
 
 const UpdateCategorySchema = z.object({
   name: z.string().min(1).optional(),
-  slug: z.string().regex(/^[a-z0-9-]+$/).optional(),
+  slug: z.string().min(1).transform(slugify).optional(),
   description: z.string().optional().nullable(),
+  contentBelow: z.string().optional().nullable(),
   parentId: z.string().optional().nullable(),
   sortOrder: z.number().optional(),
   imageUrl: z.string().url().optional().nullable(),
@@ -65,6 +67,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ...(data.name && { name: data.name }),
         ...(data.slug && { slug: data.slug }),
         ...(data.description !== undefined && { description: data.description || null }),
+        ...(data.contentBelow !== undefined && { contentBelow: data.contentBelow || null }),
         ...(data.parentId !== undefined && { parentId: data.parentId }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
         ...(data.imageUrl !== undefined && { imageUrl: data.imageUrl || null }),

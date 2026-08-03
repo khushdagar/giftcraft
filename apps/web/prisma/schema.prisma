@@ -414,7 +414,8 @@ model Category {
   id        String             @id @default(cuid())
   name        String
   slug        String             @unique
-  description String?            @db.Text // Shopify-style collection description
+  description String?            @db.Text // Shopify-style collection description — rich text, renders ABOVE the product grid
+  contentBelow String?           @db.Text // Rich text rendered BELOW the product grid (SEO/editorial copy)
   imageUrl  String? // Category cover image (from Unsplash or custom)
   parentId  String?
   parent    Category?          @relation("CategoryTree", fields: [parentId], references: [id])
@@ -819,7 +820,10 @@ model OccasionConfig {
   // When set, the customer UI shows this photo instead of the flat gradient.
   imageUrl     String?
   gradient     String?
-  description  String?
+  // Rich text, rendered ABOVE the product grid on /occasion/[slug].
+  description  String?           @db.Text
+  // Rich text, rendered BELOW the product grid (SEO/editorial copy).
+  contentBelow String?           @db.Text
   sortOrder    Int               @default(0)
   isActive     Boolean           @default(true)
   // When true, this entry is a curated "Collection" (homepage Curated Collections

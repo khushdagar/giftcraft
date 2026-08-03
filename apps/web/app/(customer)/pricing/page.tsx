@@ -130,7 +130,7 @@ export default async function PricingPage() {
                 standard printing/branding technique — no separate "branding cost" line, ever.
               </p>
               <p className="text-em-700 mt-2 text-sm italic">
-                e.g. When you see {inr(sampleUnitPrice)}/unit for a {sampleName}, that already
+                e.g. When you see {inr(sampleUnitPrice)}/pack for a {sampleName}, that already
                 includes {sampleTech} of your logo.
               </p>
             </div>
@@ -194,7 +194,7 @@ export default async function PricingPage() {
                 <h3 className="font-normal text-lg text-gold-900 mb-1">Packaging (Optional)</h3>
                 <p className="text-gold-800">
                   Custom boxes, sleeves, or premium unboxing experiences — typically{' '}
-                  <strong>{inr(pkgMin)}–{inr(pkgMax)}/unit</strong> depending on box type. Charged
+                  <strong>{inr(pkgMin)}–{inr(pkgMax)}/pack</strong> depending on box type. Charged
                   per unit across all packs.
                 </p>
               </div>
