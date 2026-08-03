@@ -116,12 +116,7 @@ export function Navbar() {
                     {c.name}
                   </Link>
                 ))}
-                <Link
-                  href="/categories"
-                  className="col-span-4 mt-1 border-t border-bdr px-3 pt-2 text-[13px] font-semibold text-em transition hover:underline"
-                >
-                  All categories →
-                </Link>
+                
               </div>
             )}
           </li>
