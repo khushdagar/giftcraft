@@ -232,7 +232,7 @@ export function Navbar() {
           <BrandLogo className="h-9 w-auto" />
         </Link>
 
-        <ul className="hidden items-center gap-7 lg:flex">
+        <ul className="hidden items-center gap-7 nav:flex">
           {/* <li><Link href="/" className="text-sm font-medium text-ink-2 hover:text-ink">Home</Link></li> */}
           {/* Products dropdown — all categories in 4 columns */}
           <li className="group relative py-4">
@@ -306,7 +306,7 @@ export function Navbar() {
           <form
             role="search"
             onSubmit={submitSearch}
-            className="relative hidden items-center lg:flex"
+            className="relative hidden items-center nav:flex"
           >
             <Search className="pointer-events-none absolute left-3 h-4 w-4 text-ink-3" />
             <input
@@ -328,13 +328,14 @@ export function Navbar() {
           <a
             href={phoneHref}
             title="Call us"
-            className="hidden bg-em items-center gap-2 lg:inline-flex rounded-sm px-2"
+            className="hidden bg-em items-center gap-2 nav:inline-flex rounded-sm px-2"
           >
             <span className="flex h-8 w-8 shrink-0 m-1 bg-white items-center justify-center rounded-full  text-em">
               <Phone className="h-5 w-5" />
             </span>
-            {/* Below xl the icon alone carries it — the nav is too tight for both. */}
-            <span className="hidden leading-tight xl:block">
+            {/* All or nothing: below 1100px the nav is too tight, so the whole
+                pill hides rather than showing a bare icon. */}
+            <span className="block leading-tight">
               <span className="block text-[10px] text-white">Help is here</span>
               <span className="block text-[13px] font-semibold text-white">{phone}</span>
             </span>
@@ -417,7 +418,7 @@ export function Navbar() {
 
           <button
             onClick={() => setMobileOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-ink lg:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-ink nav:hidden"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />
@@ -427,7 +428,7 @@ export function Navbar() {
 
       {/* Mobile search drop-down (below the bar, above page content) */}
       {mobileSearchOpen && (
-        <div className="sticky top-14 z-[690] border-b border-bdr bg-white px-4 py-3 lg:hidden">
+        <div className="sticky top-14 z-[690] border-b border-bdr bg-white px-4 py-3 nav:hidden">
           <form role="search" onSubmit={submitSearch} className="relative flex items-center">
             <Search className="pointer-events-none absolute left-4 h-4 w-4 text-ink-3" />
             <input

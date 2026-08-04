@@ -15,6 +15,11 @@ const config: Config = {
       screens: { "2xl": "1400px" },
     },
     extend: {
+      // Custom breakpoint for the navbar's "Help is here" call pill: it needs
+      // both the icon AND the number, and 1100px is the narrowest width where
+      // the full pill fits without crowding search + account + cart.
+      screens: { nav: "1100px" },
+
       // ── Surfaces & Canvas ──
       // Brand palette, taken from the GIVOO logo:
       //   Jet Black #000000 · Burgundy #800020

@@ -84,7 +84,7 @@ export function TrendingProducts({ initialData }: { initialData?: { products: an
       }
     }, 3000);
 
-    return () => {
+    return () => { 
       clearInterval(timer);
       el.removeEventListener('mouseenter', pause);
       el.removeEventListener('mouseleave', resume);
