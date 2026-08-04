@@ -4,10 +4,10 @@
  * never hardcode a host anywhere else.
  *
  * NEXT_PUBLIC_APP_URL must be set to the production https origin in prod
- * (e.g. https://giftcraft.in). The fallback keeps robots/sitemap/OG coherent
+ * (e.g. https://givoo.in). The fallback keeps robots/sitemap/OG coherent
  * even if the env var is missing.
  */
-export const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://giftcraft.in').replace(
+export const SITE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://givoo.in').replace(
   /\/$/,
   ''
 );

@@ -4,11 +4,12 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, Clock } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
-import { formatPostDate, publishedPostWhere, autoExcerpt } from '@/lib/blog';
+import { formatPostDate, publishedPostWhere, autoExcerpt, BLOG_AUTHOR } from '@/lib/blog';
+import { BlogComments } from '@/components/blog/comments';
 
 export const revalidate = 300;
 
-const SITE = process.env.NEXT_PUBLIC_APP_URL || 'https://giftcraft.in';
+const SITE = process.env.NEXT_PUBLIC_APP_URL || 'https://givoo.in';
 
 /** Drafts and future-dated posts are 404 to the public, but visible via preview links. */
 async function getPost(slug: string) {
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       url,
       publishedTime: post.publishedAt?.toISOString(),
       modifiedTime: post.updatedAt.toISOString(),
-      authors: post.authorName ? [post.authorName] : undefined,
+      authors: [post.authorName || BLOG_AUTHOR],
       tags: post.tags,
       images: image ? [{ url: image, width: 1200, height: 630, alt: post.coverImageAlt || title }] : undefined,
     },
@@ -90,7 +91,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     image: image ? [image] : undefined,
     datePublished: post.publishedAt?.toISOString(),
     dateModified: post.updatedAt.toISOString(),
-    author: { '@type': 'Person', name: post.authorName || 'GIVOO' },
+    author: { '@type': 'Person', name: post.authorName || BLOG_AUTHOR },
     publisher: { '@type': 'Organization', name: 'GIVOO', url: SITE },
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE}/blog/${post.slug}` },
     keywords: post.tags.join(', ') || undefined,
@@ -132,12 +133,8 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
                 <Clock className="h-3.5 w-3.5" />
                 {post.readingMinutes} min read
               </span>
-              {post.authorName && (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>By {post.authorName}</span>
-                </>
-              )}
+              <span aria-hidden>·</span>
+              <span>By {post.authorName || BLOG_AUTHOR}</span>
             </div>
           </header>
 
@@ -176,9 +173,11 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
           )}
         </div>
 
+        <BlogComments postId={post.id} />
+
         {/* Related */}
         {related.length > 0 && (
-          <div className="mx-auto mt-16 max-w-5xl border-t border-bdr pt-10">
+          <div className="mx-auto mt-16 max-w-7xl border-t border-bdr pt-10">
             <h2 className="text-xl font-black tracking-tight text-ink">Keep reading</h2>
             <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
               {related.map((r) => (
@@ -206,7 +205,10 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
                     <h3 className="text-sm font-bold leading-snug text-ink transition group-hover:text-em">
                       {r.title}
                     </h3>
-                    <p className="mt-1.5 text-xs text-ink-3">{r.readingMinutes} min read</p>
+                    <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink-2">
+                      {r.excerpt || autoExcerpt(r.content, 120)}
+                    </p>
+                    <p className="mt-2.5 text-xs text-ink-3">{r.readingMinutes} min read</p>
                   </div>
                 </Link>
               ))}

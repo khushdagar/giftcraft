@@ -77,6 +77,15 @@ export async function GET() {
       grandTotal: Number(payload?.pricing?.grandTotal) || 0,
       productCount: Array.isArray(payload?.products) ? payload.products.length : 0,
       packQuantity: Number(payload?.packQuantity) || 0,
+      // What was actually in the pack — lets the enquiries table show which
+      // proposal a lead received without opening it.
+      productNames: Array.isArray(payload?.products)
+        ? payload.products.map((pr: any) => String(pr?.name ?? '')).filter(Boolean)
+        : [],
+      packagingName: payload?.packaging?.name ?? null,
+      addonNames: Array.isArray(payload?.addons)
+        ? payload.addons.map((a: any) => String(a?.name ?? '')).filter(Boolean)
+        : [],
     };
   });
 

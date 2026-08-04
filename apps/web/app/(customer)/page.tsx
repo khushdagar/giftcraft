@@ -31,7 +31,7 @@ export default async function HomePage() {
     <HomePageWrapper>
       <div className="bg-[#F5F1EB] min-h-screen overflow-x-hidden">
         <HomeHero />
-        <TrustStrip />
+        {/* <TrustStrip /> */}
         <ShopByOccasion initialData={occasions} />
         <TrendingProducts initialData={featuredProducts} />
         <HowItWorks />

@@ -144,8 +144,8 @@ export default function DisputeFilingPage({ params, searchParams }: PageProps) {
         <div className="mt-8 text-center text-sm text-ink-3">
           <p>
             Questions? Contact us at{' '}
-            <a href="mailto:support@giftcraft.in" className="text-em font-normal hover:underline">
-              support@giftcraft.in
+            <a href="mailto:support@givoo.in" className="text-em font-normal hover:underline">
+              support@givoo.in
             </a>
           </p>
         </div>

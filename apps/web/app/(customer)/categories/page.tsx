@@ -5,6 +5,7 @@ import { categoryCopy } from '@/lib/category-content';
 import { stripHtml } from '@/lib/strip-html';
 import { formatRupees } from '@/lib/utils';
 import { JsonLd } from '@/components/seo/json-ld';
+import { CollapsibleRichText } from '@/components/catalog/collapsible-rich-text';
 import { breadcrumbSchema, collectionPageSchema } from '@/lib/schema';
 
 // Fully server-rendered: this page is the crawlable hub linking the site root
@@ -13,6 +14,13 @@ export const revalidate = 3600;
 
 // Shown when a category has no cover image uploaded in the admin.
 const PLACEHOLDER_IMAGE = '/placeholder-tile.svg';
+
+// Card blurbs are cut to this many words, with a "Read more" back to the
+// category page where the full description lives.
+const BLURB_WORD_LIMIT = 15;
+
+// Page intro, as HTML so CollapsibleRichText can word-count and clamp it.
+const INTRO_HTML = `<p>Every category below is priced per unit with standard branding already included — no separate printing charge, and the rate steps down as your quantity grows. Pick a category to see live pricing, or <a href="/builder" class="font-semibold text-em underline">build a gift pack</a> from across the range.</p>`;
 
 export const metadata: Metadata = {
   // Root template appends "· GIVOO"
@@ -60,20 +68,15 @@ export default async function CategoriesPage() {
           / <span>Categories</span>
         </nav>
 
-        <header className="mt-4 max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-3">Browse</p>
+        <header className="mt-4 max-w-7xl">
           <h1 className="mt-1 font-serif text-4xl font-light tracking-tight text-ink md:text-5xl">
             Shop corporate gifts by category
           </h1>
-          <p className="mt-4 text-base leading-relaxed text-ink-2">
-            Every category below is priced per unit with standard branding already included — no
-            separate printing charge, and the rate steps down as your quantity grows. Pick a
-            category to see live pricing, or{' '}
-            <Link href="/builder" className="font-semibold text-em underline">
-              build a gift pack
-            </Link>{' '}
-            from across the range.
-          </p>
+          {/* Same 15-word "Read more" treatment as the category page intros. */}
+          <CollapsibleRichText
+            className="mt-4 text-base leading-relaxed text-ink-2"
+            html={INTRO_HTML}
+          />
         </header>
 
         {categories.length === 0 ? (
@@ -90,6 +93,13 @@ export default async function CategoriesPage() {
               // plain text, not markup, so strip the tags here.
               const blurb =
                 stripHtml(category.description) || categoryCopy(category.slug, category.name).intro;
+              const words = blurb.split(/\s+/).filter(Boolean);
+              const isTruncated = words.length > BLURB_WORD_LIMIT;
+              const shortBlurb = isTruncated ? `${words.slice(0, BLURB_WORD_LIMIT).join(' ')}…` : blurb;
+              // Cover photo, else the top product's image (featured first), else
+              // the brand tile — so a category never shows a bare placeholder
+              // just because no cover was uploaded in the admin.
+              const cover = category.imageUrl || category.previewImages[0] || PLACEHOLDER_IMAGE;
               return (
                 <Link
                   key={category.id}
@@ -97,12 +107,11 @@ export default async function CategoriesPage() {
                   className="group flex flex-col overflow-hidden rounded-3xl bg-white shadow-md transition hover:-translate-y-1 hover:shadow-lg"
                 >
                   {/* One cover photo — the same image-card treatment as the
-                      homepage tiles. Categories with no cover uploaded fall back
-                      to the brand tile so the grid never goes ragged. */}
+                      homepage tiles. See `cover` above for the fallback chain. */}
                   <div className="relative aspect-[3/2] overflow-hidden bg-elevated">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={category.imageUrl || PLACEHOLDER_IMAGE}
+                      src={cover}
                       alt=""
                       loading="lazy"
                       decoding="async"
@@ -121,7 +130,16 @@ export default async function CategoriesPage() {
                   </div>
 
                   <div className="flex flex-1 flex-col p-5">
-                    <p className="line-clamp-3 flex-1 text-sm leading-relaxed text-ink-2">{blurb}</p>
+                    {/* The whole card is already a Link to the category, so
+                        "Read more" is a span — a nested <a> would be invalid. */}
+                    <p className="flex-1 text-sm leading-relaxed text-ink-2">
+                      {shortBlurb}
+                      {isTruncated && (
+                        <span className="ml-1 font-semibold text-em group-hover:underline">
+                          Read more
+                        </span>
+                      )}
+                    </p>
                     <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-em">
                       Explore {category.name} <span aria-hidden>→</span>
                     </span>

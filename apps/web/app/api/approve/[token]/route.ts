@@ -244,7 +244,7 @@ export async function POST(
       });
 
       // Send email to admin about revision request
-      const adminEmail = process.env.SENDGRID_FROM_EMAIL || 'orders@giftcraft.in';
+      const adminEmail = process.env.SENDGRID_FROM_EMAIL || 'orders@givoo.in';
       await sendRevisionReceivedEmail(
         adminEmail,
         approval.order.orderNumber,

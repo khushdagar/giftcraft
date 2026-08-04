@@ -37,6 +37,22 @@ export const INDIAN_STATES = [
   "Puducherry",
 ];
 
+/**
+ * Public contact details shown until an admin saves the `contact`
+ * PlatformSetting (Admin → Settings → Contact). The phone/WhatsApp numbers are
+ * deliberate placeholders — the real business line isn't live yet, and a
+ * plausible-looking fake number is worse than an obvious blank, because
+ * customers dial it. Every surface that shows a contact number falls back here,
+ * so there is exactly one place to update when the real number arrives.
+ */
+export const PLACEHOLDER_PHONE = "XXXXXXXXXXXX";
+
+export const CONTACT_FALLBACK = {
+  email: "support@givoo.in",
+  phone: PLACEHOLDER_PHONE,
+  whatsapp: PLACEHOLDER_PHONE, // digits only elsewhere; used for wa.me links
+};
+
 export const DELIVERY_RATES = { single: 90, individual: 140 };
 
 // GIVOO / Arts Shala is registered in Delhi. Per SOW, GST is split as

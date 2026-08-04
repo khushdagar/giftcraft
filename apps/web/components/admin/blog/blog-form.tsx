@@ -12,11 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { slugify, parseTags, autoExcerpt, readingMinutes, stripHtml } from '@/lib/blog';
 
-export interface BlogCategoryOption {
-  id: string;
-  name: string;
-}
-
 export interface BlogPostFormData {
   id?: string;
   title: string;
@@ -29,7 +24,7 @@ export interface BlogPostFormData {
   publishedAt: string; // ISO or ''
   isFeatured: boolean;
   tags: string[];
-  categoryId: string;
+  categoryName: string;
   metaTitle: string;
   metaDescription: string;
   canonicalUrl: string;
@@ -39,11 +34,14 @@ export interface BlogPostFormData {
 
 const EMPTY: BlogPostFormData = {
   title: '', slug: '', excerpt: '', content: '', coverImageUrl: '', coverImageAlt: '',
-  status: 'draft', publishedAt: '', isFeatured: false, tags: [], categoryId: '',
+  status: 'draft', publishedAt: '', isFeatured: false, tags: [], categoryName: '',
   metaTitle: '', metaDescription: '', canonicalUrl: '', ogImageUrl: '', noIndex: false,
 };
 
-const SITE = process.env.NEXT_PUBLIC_APP_URL || 'https://giftcraft.in';
+const SITE = process.env.NEXT_PUBLIC_APP_URL || 'https://givoo.in';
+
+/** Sentinel value for the dropdown's "add one" row — never sent to the API. */
+const NEW_CATEGORY = '__new__';
 
 /** `<input type="datetime-local">` needs `YYYY-MM-DDTHH:mm` in LOCAL time. */
 function toLocalInput(iso: string): string {
@@ -84,7 +82,8 @@ export function BlogForm({
 }: {
   mode: 'create' | 'edit';
   post?: BlogPostFormData;
-  categories: BlogCategoryOption[];
+  /** Names already in use — suggestions only; any new name creates a category. */
+  categories: string[];
 }) {
   const router = useRouter();
   const [form, setForm] = useState<BlogPostFormData>(post ?? EMPTY);
@@ -92,6 +91,8 @@ export function BlogForm({
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState<'cover' | 'og' | null>(null);
   const [tagInput, setTagInput] = useState('');
+  // Swaps the dropdown for a free-text box so a new category can be named.
+  const [creatingCategory, setCreatingCategory] = useState(false);
   // Once the user edits the slug by hand, stop deriving it from the title.
   const [slugTouched, setSlugTouched] = useState(mode === 'edit');
   const coverRef = useRef<HTMLInputElement>(null);
@@ -99,6 +100,14 @@ export function BlogForm({
 
   const set = <K extends keyof BlogPostFormData>(key: K, value: BlogPostFormData[K]) =>
     setForm((p) => ({ ...p, [key]: value }));
+
+  // The post's own category may not be in the list yet (it could be the only
+  // post using it), so fold it in rather than silently dropping the selection.
+  const categoryOptions = useMemo(() => {
+    const names = new Set(categories);
+    if (form.categoryName) names.add(form.categoryName);
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [categories, form.categoryName]);
 
   const wordCount = useMemo(() => stripHtml(form.content).split(/\s+/).filter(Boolean).length, [form.content]);
   const minutes = useMemo(() => (form.content ? readingMinutes(form.content) : 0), [form.content]);
@@ -397,17 +406,50 @@ export function BlogForm({
         </Section>
 
         <Section title="Organisation">
-          <Field label="Category">
+          <Field
+            label="Category"
+            hint="Mirrors the shop categories. Add a new name for anything the catalogue doesn't cover — it only shows on the blog once a post uses it."
+          >
             <select
-              value={form.categoryId}
-              onChange={(e) => set('categoryId', e.target.value)}
+              value={creatingCategory ? NEW_CATEGORY : form.categoryName}
+              onChange={(e) => {
+                if (e.target.value === NEW_CATEGORY) {
+                  setCreatingCategory(true);
+                  set('categoryName', '');
+                } else {
+                  setCreatingCategory(false);
+                  set('categoryName', e.target.value);
+                }
+              }}
               className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
             >
               <option value="">Uncategorised</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+              {/* An existing post can hold a category no other post uses. */}
+              {categoryOptions.map((name) => (
+                <option key={name} value={name}>{name}</option>
               ))}
+              <option value={NEW_CATEGORY}>+ New category…</option>
             </select>
+
+            {creatingCategory && (
+              <div className="mt-2 flex gap-2">
+                <Input
+                  autoFocus
+                  value={form.categoryName}
+                  onChange={(e) => set('categoryName', e.target.value.slice(0, 60))}
+                  onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+                  placeholder="New category name"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setCreatingCategory(false); set('categoryName', ''); }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
           </Field>
 
           <Field label="Tags" hint="Press Enter or comma to add.">

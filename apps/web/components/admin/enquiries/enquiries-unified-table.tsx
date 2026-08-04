@@ -2,8 +2,9 @@
 
 import { Fragment, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Trash2, Mail, Phone, FileText, RefreshCw, Send, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Mail, Phone, FileText, RefreshCw, Send, Download, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import { ProposalDialog } from './proposal-dialog';
+import { ProposalPdfPreview } from './proposal-pdf-preview';
 
 interface WebsiteEnquiry {
   id: string;
@@ -84,6 +85,13 @@ interface ProposalInfo {
   createdAt: string;
   quoteStatus: string;
   shareToken: string;
+  productNames: string[];
+  packagingName: string | null;
+  addonNames: string[];
+  packQuantity: number;
+  grandTotal: number;
+  /** How many proposals this lead has been sent in total. */
+  sentCount: number;
 }
 
 const STATUS_OPTIONS = ['new', 'contacted', 'quoted', 'pending', 'closed'] as const;
@@ -117,6 +125,9 @@ const fmtDate = (iso: string | null) =>
     ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : '—';
 
+const fmtMoney = (n: number) =>
+  `₹${Math.round(n).toLocaleString('en-IN')}`;
+
 // GHL leads can arrive minutes apart — the time keeps repeat enquiries distinct.
 const fmtTime = (iso: string | null) =>
   iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
@@ -142,6 +153,9 @@ export function EnquiriesUnifiedTable({
       else next.add(key);
       return next;
     });
+
+  // Proposal deck being previewed, if any.
+  const [preview, setPreview] = useState<{ token: string; title: string } | null>(null);
 
   const [dialog, setDialog] = useState<{
     open: boolean;
@@ -192,17 +206,27 @@ export function EnquiriesUnifiedTable({
       if (!res.ok) return {} as Record<string, ProposalInfo>;
       const data = await res.json();
       const map: Record<string, ProposalInfo> = {};
-      // API returns newest first — keep the latest proposal per email.
+      // API returns newest first — keep the latest proposal per email, but count
+      // the older ones so the row can show "3rd proposal sent".
       (data.data || []).forEach((p: any) => {
         const key = (p.recipientEmail || '').toLowerCase();
-        if (key && !map[key]) {
-          map[key] = {
-            recipientEmail: p.recipientEmail,
-            createdAt: p.createdAt,
-            quoteStatus: p.quoteStatus,
-            shareToken: p.shareToken,
-          };
+        if (!key) return;
+        if (map[key]) {
+          map[key].sentCount += 1;
+          return;
         }
+        map[key] = {
+          recipientEmail: p.recipientEmail,
+          createdAt: p.createdAt,
+          quoteStatus: p.quoteStatus,
+          shareToken: p.shareToken,
+          productNames: p.productNames || [],
+          packagingName: p.packagingName ?? null,
+          addonNames: p.addonNames || [],
+          packQuantity: p.packQuantity || 0,
+          grandTotal: p.grandTotal || 0,
+          sentCount: 1,
+        };
       });
       return map;
     },
@@ -440,10 +464,10 @@ export function EnquiriesUnifiedTable({
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full min-w-[1080px]">
+          <table className="w-full min-w-[1280px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {['Source', 'Company / Contact', 'Reach', 'Product', 'Qty', 'Message', 'Received', 'Status', 'Proposal', ''].map((h) => (
+                {['Source', 'Company / Contact', 'Reach', 'Product', 'Qty', 'Message', 'Received', 'Status', 'Proposal sent', 'Proposal', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-normal uppercase text-gray-600">
                     {h}
                   </th>
@@ -553,6 +577,54 @@ export function EnquiriesUnifiedTable({
                         ))}
                       </select>
                     </td>
+                    {/* What was actually sent, so a proposal can be checked without
+                        digging through the mailbox. */}
+                    <td className="px-4 py-3">
+                      {proposal ? (
+                        <div className="max-w-[240px] space-y-1">
+                          <p className="text-sm text-gray-900" title={proposal.productNames.join(', ')}>
+                            {proposal.productNames.length > 0
+                              ? proposal.productNames.slice(0, 2).join(', ')
+                              : 'Custom pack'}
+                            {proposal.productNames.length > 2 && (
+                              <span className="text-gray-500">
+                                {' '}
+                                +{proposal.productNames.length - 2} more
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {proposal.packQuantity ? `${proposal.packQuantity} packs · ` : ''}
+                            {fmtMoney(proposal.grandTotal)}
+                          </p>
+                          {(proposal.packagingName || proposal.addonNames.length > 0) && (
+                            <p className="text-xs text-gray-400">
+                              {[proposal.packagingName, ...proposal.addonNames]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
+                          )}
+                          <button
+                            onClick={() =>
+                              setPreview({
+                                token: proposal.shareToken,
+                                title: `Proposal for ${row.companyName || row.contactName || row.email}`,
+                              })
+                            }
+                            className="mt-0.5 inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> View PDF
+                          </button>
+                          {proposal.sentCount > 1 && (
+                            <p className="text-xs text-gray-400">
+                              {proposal.sentCount} sent · showing latest
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       {proposal ? (
                         <div className="space-y-1">
@@ -595,7 +667,7 @@ export function EnquiriesUnifiedTable({
                   </tr>
                   {expanded.has(row.key) && row.detail.length > 0 && (
                     <tr className="bg-gray-50">
-                      <td colSpan={10} className="px-4 py-4">
+                      <td colSpan={11} className="px-4 py-4">
                         {row.formName && (
                           <p className="mb-2 text-xs uppercase tracking-wide text-gray-500">
                             Submitted via {row.formName}
@@ -630,6 +702,13 @@ export function EnquiriesUnifiedTable({
           setDialog((d) => ({ ...d, open: false }));
           queryClient.invalidateQueries({ queryKey: PROPOSALS_KEY }); // refresh proposal status column
         }}
+      />
+
+      <ProposalPdfPreview
+        open={!!preview}
+        token={preview?.token ?? ''}
+        title={preview?.title ?? 'Proposal'}
+        onClose={() => setPreview(null)}
       />
     </div>
   );

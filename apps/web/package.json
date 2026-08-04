@@ -18,6 +18,7 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "db:seed-blog": "tsx prisma/seed-blog.ts",
+    "make-watermark": "node scripts/make-watermark.js",
     "images:backfill": "tsx scripts/backfill-images.ts"
   },
   "dependencies": {

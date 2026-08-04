@@ -44,7 +44,7 @@ app.get("/health", (_req: Request, res: Response) => {
   res.json({
     success: true,
     data: {
-      service: "giftcraft-api",
+      service: "givoo-api",
       status: "ok",
       uptime: process.uptime(),
       env: process.env.NODE_ENV ?? "development",

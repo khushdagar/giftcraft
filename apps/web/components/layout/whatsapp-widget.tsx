@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CONTACT_FALLBACK } from "@/lib/constants";
 
 export function WhatsAppWidget() {
-  const number = process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER ?? "919999999999";
+  const number = process.env.NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER ?? CONTACT_FALLBACK.whatsapp;
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {

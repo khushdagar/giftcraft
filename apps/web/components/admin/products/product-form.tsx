@@ -1349,7 +1349,7 @@ export function ProductForm({
 
             <div className="rounded-lg border border-gray-200 p-4">
               <p className="truncate text-xs text-gray-500">
-                {(process.env.NEXT_PUBLIC_APP_URL || 'https://giftcraft.in')}/products/{form.watch('slug') || 'product-handle'}
+                {(process.env.NEXT_PUBLIC_APP_URL || 'https://givoo.in')}/products/{form.watch('slug') || 'product-handle'}
               </p>
               <p className="mt-0.5 truncate text-lg leading-snug text-[#1a0dab]">
                 {form.watch('metaTitle') || form.watch('name') || 'Product title'}

@@ -1,9 +1,9 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { BlogForm } from '@/components/admin/blog/blog-form';
+import { blogCategoryOptions } from '@/lib/blog-categories';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +11,7 @@ export default async function NewBlogPostPage() {
   const session = await auth();
   if (!session || session.user.role !== 'super_admin') redirect('/');
 
-  const categories = await prisma.blogCategory.findMany({
-    select: { id: true, name: true },
-    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
-  });
+  const categories = await blogCategoryOptions();
 
   return (
     <>

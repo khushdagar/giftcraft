@@ -1,12 +1,14 @@
 'use client';
 
+import Image from "next/image";
+
 export function HowItWorks() {
   const steps = [
-    { icon: '🔍', title: 'Browse', desc: 'Explore 500+ curated products' },
-    { icon: '📦', title: 'Build', desc: 'Add & customize your gift pack' },
-    { icon: '🎨', title: 'Brand', desc: 'Upload your logo' },
-    { icon: '💰', title: 'Quote', desc: 'Get instant transparent pricing' },
-    { icon: '🚚', title: 'Order', desc: 'Pay & track delivery' },
+    { icon: '/icons/browse.png', title: 'Browse', desc: 'Explore 500+ curated products' },
+    { icon: '/icons/build.png', title: 'Build', desc: 'Add & customize your gift pack' },
+    { icon: '/icons/brand.png', title: 'Brand', desc: 'Upload your logo' },
+    { icon: '/icons/quote.png', title: 'Quote', desc: 'Get instant transparent pricing' },
+    { icon: '/icons/order.png', title: 'Order', desc: 'Pay & track delivery' },
   ];
 
   return (
@@ -21,7 +23,7 @@ export function HowItWorks() {
           {steps.map((step, i) => (
             <div key={i} className="bg-white border shadow-lg border-[#E5DFD4] rounded-2xl p-5 sm:p-8 text-center">
               <p className="text-xs font-bold text-[#800020] mb-4 tracking-widest">STEP {i + 1}</p>
-              <div className="text-4xl sm:text-5xl mb-4">{step.icon}</div>
+              <Image src={step.icon} alt={step.title} width={72} height={72} className="text-4xl sm:text-5xl mb-4 m-auto" />
               <h3 className="font-serif text-xl mb-2">{step.title}</h3>
               <p className="text-sm text-[#5C5852]">{step.desc}</p>
             </div>

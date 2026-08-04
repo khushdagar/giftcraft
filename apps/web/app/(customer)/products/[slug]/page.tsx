@@ -322,10 +322,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
           description={toRichHtml(product.descriptionLong)}
           keyFeatures={toRichHtml(product.keyFeatures)}
           specifications={toRichHtml(product.specifications)}
-          designArtwork={toRichHtml(product.designArtwork)}
           shippingDelivery={toRichHtml(product.shippingDelivery)}
-          samples={toRichHtml(product.samplesInfo)}
-          packagingAddons={toRichHtml(product.packagingAddons)}
         />
       </div>
 

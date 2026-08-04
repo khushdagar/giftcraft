@@ -13,21 +13,21 @@ export function HomeHero() {
       title: 'Bulk Gifting.\nPerfectly Crafted.',
       desc: 'Custom branded gifts for your team, delivered in 10 days.',
       bg: 'linear-gradient(135deg, #222222 0%, #111111 20%, #000000 50%, #111111 80%, #222222 100%)',
-      image: '/home-banners/Banners-01.png',
+      image: '/home-banners/Banners-01.jpg',
     },
     {
       subtitle: 'Festive Season 2026',
       title: 'Diwali Gifting\nMade Simple.',
       desc: 'Premium branded gifts for the season of lights.',
       bg: 'linear-gradient(135deg, #3D000F 0%, #800020 50%, #B04057 100%)',
-      image: '/home-banners/Banners-02.png',
+      image: '/home-banners/Banners-02.jpg',
     },
     {
       subtitle: 'Employee Onboarding',
       title: 'Welcome Kits\nThat Wow.',
       desc: 'Make every new hire feel valued from day one.',
       bg: 'linear-gradient(135deg, #000000 0%, #800020 50%, #B04057 100%)',
-      image: '/home-banners/Banners-03.png',
+      image: '/home-banners/Banners-03.jpg',
     },
   ];
 
@@ -84,7 +84,7 @@ export function HomeHero() {
         })()}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
           <Link href="/builder" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-[#800020] bg-[#800020] text-white rounded-full font-semibold hover:bg-transparent hover:border-white hover:text-white transition">
-            Build Your Gift
+            Build Your Pack
           </Link>
           <Link href="/catalog" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-white bg-white text-[#222222] rounded-full font-semibold hover:bg-transparent hover:border-white hover:text-white transition">
             Browse Catalog

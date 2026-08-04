@@ -51,7 +51,7 @@ export function CuratedCollections({ initialData }: { initialData?: any[] }) {
               return (
                 <Link
                   key={col.id}
-                  href={`/packs?collection=${col.slug}`}
+                  href={`/curated-packs/${col.slug}`}
                   className={`rounded-3xl p-4 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer relative h-52 md:h-[400px] flex flex-col justify-end ${
                     isLastOdd ? 'md:col-span-2' : ''
                   }`}

@@ -132,7 +132,7 @@ export default function NewAutomationPage() {
             <p className="text-sm font-normal text-ink">Email Configuration</p>
             <input
               type="text"
-              placeholder="Recipient (e.g., customer or admin@giftcraft.in)"
+              placeholder="Recipient (e.g., customer or admin@givoo.in)"
               value={formData.actionConfig.recipientEmail || ''}
               onChange={(e) => handleActionConfigChange('recipientEmail', e.target.value)}
               className="w-full border border-bdr rounded-lg px-4 py-2"

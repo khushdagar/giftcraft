@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { BlogForm, type BlogPostFormData } from '@/components/admin/blog/blog-form';
+import { blogCategoryOptions } from '@/lib/blog-categories';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +13,11 @@ export default async function EditBlogPostPage({ params }: { params: { id: strin
   if (!session || session.user.role !== 'super_admin') redirect('/');
 
   const [post, categories] = await Promise.all([
-    prisma.blogPost.findUnique({ where: { id: params.id } }),
-    prisma.blogCategory.findMany({
-      select: { id: true, name: true },
-      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    prisma.blogPost.findUnique({
+      where: { id: params.id },
+      include: { category: { select: { name: true } } },
     }),
+    blogCategoryOptions(),
   ]);
 
   if (!post) notFound();
@@ -35,7 +36,7 @@ export default async function EditBlogPostPage({ params }: { params: { id: strin
     publishedAt: post.publishedAt ? post.publishedAt.toISOString() : '',
     isFeatured: post.isFeatured,
     tags: post.tags,
-    categoryId: post.categoryId ?? '',
+    categoryName: post.category?.name ?? '',
     metaTitle: post.metaTitle ?? '',
     metaDescription: post.metaDescription ?? '',
     canonicalUrl: post.canonicalUrl ?? '',

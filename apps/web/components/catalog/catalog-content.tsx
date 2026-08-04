@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useCatalogFilters } from '@/hooks/use-catalog-filters';
 import { formatRupees } from '@/lib/utils';
 import Link from 'next/link';
+import { CONTACT_FALLBACK } from '@/lib/constants';
 
 interface Product {
   id: string;
@@ -292,7 +293,7 @@ export function CatalogContent({
                   Clear All Filters
                 </Button>
                 <Button asChild variant="dark" className="rounded-md">
-                  <a href="https://wa.me/919999999999">Get Help on WhatsApp</a>
+                  <a href={`https://wa.me/${CONTACT_FALLBACK.whatsapp}`}>Get Help on WhatsApp</a>
                 </Button>
               </div>
             </div>
@@ -357,7 +358,9 @@ export function CatalogContent({
 
 function ProductCard({ product }: { product: Product }) {
   const reduce = useReducedMotion();
-  const price = product.priceTiers?.[0]?.sellPrice || 0;
+  // "From" price = cheapest tier (highest MOQ slab), not tier 1.
+  const tierPrices = (product.priceTiers ?? []).map((t: any) => t?.sellPrice || 0).filter((n: number) => n > 0);
+  const price = tierPrices.length > 0 ? Math.min(...tierPrices) : 0;
 
   return (
     <motion.div

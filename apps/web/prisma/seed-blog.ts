@@ -1,5 +1,5 @@
 /**
- * Seeds 8 sample blog posts + 4 categories so the blog has something to show.
+ * Seeds 8 sample blog posts + 12 categories so the blog has something to show.
  *
  * These are placeholders. Delete them from Admin → Blog once you publish real
  * posts, or wipe them all with:
@@ -9,18 +9,27 @@
  * Re-running without --clean upserts by slug, so it never creates duplicates.
  */
 import { PrismaClient } from '@prisma/client';
-import { readingMinutes, autoExcerpt } from '../lib/blog';
+import { readingMinutes, autoExcerpt, BLOG_AUTHOR } from '../lib/blog';
 
 const prisma = new PrismaClient();
 
 /** Every URL below returns 200 from images.unsplash.com (whitelisted in next.config.js). */
 const img = (id: string) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=1200&q=80`;
 
+/** Mirrors the product category list so the blog and the catalogue speak the same language. */
 const CATEGORIES = [
-  { slug: 'gifting-strategy', name: 'Gifting Strategy', description: 'How to plan gifting that actually lands.', sortOrder: 0 },
-  { slug: 'sustainability', name: 'Sustainability', description: 'Eco-conscious materials and packaging.', sortOrder: 1 },
-  { slug: 'festivals', name: 'Festivals', description: 'Diwali, Holi, New Year and everything between.', sortOrder: 2 },
-  { slug: 'how-to', name: 'How-To', description: 'Practical guides for running a gifting programme.', sortOrder: 3 },
+  { slug: 'apparel', name: 'Apparel', description: null, sortOrder: 0 },
+  { slug: 'bags-and-travel', name: 'Bags & Travel', description: null, sortOrder: 1 },
+  { slug: 'corporate', name: 'Corporate', description: null, sortOrder: 2 },
+  { slug: 'drinkware', name: 'Drinkware', description: null, sortOrder: 3 },
+  { slug: 'eco-and-sustainable', name: 'Eco & Sustainable', description: null, sortOrder: 4 },
+  { slug: 'gift-cards', name: 'Gift Cards', description: null, sortOrder: 5 },
+  { slug: 'gourmet-and-hampers', name: 'Gourmet & Hampers', description: null, sortOrder: 6 },
+  { slug: 'leather-and-accessories', name: 'Leather & Accessories', description: null, sortOrder: 7 },
+  { slug: 'recognition', name: 'Recognition', description: null, sortOrder: 8 },
+  { slug: 'stationery-and-desk', name: 'Stationery & Desk', description: null, sortOrder: 9 },
+  { slug: 'tech-and-gadgets', name: 'Tech & Gadgets', description: null, sortOrder: 10 },
+  { slug: 'wellness', name: 'Wellness', description: null, sortOrder: 11 },
 ];
 
 interface SeedPost {
@@ -42,7 +51,7 @@ const POSTS: SeedPost[] = [
   {
     slug: 'psychology-of-corporate-gifting',
     title: 'The Psychology of Corporate Gifting',
-    category: 'gifting-strategy',
+    category: 'corporate',
     tags: ['strategy', 'client-gifting', 'research'],
     cover: img('1513885535751-8b9238bd345a'),
     coverAlt: 'Wrapped gift boxes tied with ribbon on a pale surface',
@@ -80,7 +89,7 @@ const POSTS: SeedPost[] = [
   {
     slug: 'sustainable-packaging-trends-2026',
     title: 'Sustainable Packaging Is No Longer a Premium Feature',
-    category: 'sustainability',
+    category: 'eco-and-sustainable',
     tags: ['sustainability', 'packaging', 'eco-friendly'],
     cover: img('1542744173-8e7e53415bb0'),
     coverAlt: 'Brown kraft paper packaging materials arranged on a desk',
@@ -110,7 +119,7 @@ const POSTS: SeedPost[] = [
   {
     slug: 'diwali-corporate-gifting-guide',
     title: 'The Diwali Corporate Gifting Guide',
-    category: 'festivals',
+    category: 'gourmet-and-hampers',
     tags: ['diwali', 'festivals', 'client-gifting'],
     cover: img('1607083206869-4c7672e72a8a'),
     coverAlt: 'Lit diyas arranged for Diwali celebrations',
@@ -146,7 +155,7 @@ const POSTS: SeedPost[] = [
   {
     slug: 'employee-onboarding-kits-that-work',
     title: 'Employee Onboarding Kits That People Actually Keep',
-    category: 'how-to',
+    category: 'recognition',
     tags: ['onboarding', 'employees', 'strategy'],
     cover: img('1517245386807-bb43f82c33c4'),
     coverAlt: 'A tidy desk with a notebook, laptop and coffee cup',
@@ -179,7 +188,7 @@ const POSTS: SeedPost[] = [
   {
     slug: 'how-gst-works-on-corporate-gifts',
     title: 'How GST Actually Works on Corporate Gifts',
-    category: 'how-to',
+    category: 'corporate',
     tags: ['gst', 'compliance', 'finance'],
     cover: img('1554224155-6726b3ff858f'),
     coverAlt: 'A calculator and financial documents on a desk',
@@ -209,7 +218,7 @@ GST           = taxable value × 0.18</code></pre>
   {
     slug: 'choosing-gifts-for-remote-teams',
     title: 'Choosing Gifts for a Fully Remote Team',
-    category: 'gifting-strategy',
+    category: 'corporate',
     tags: ['remote', 'employees', 'logistics'],
     cover: img('1521737604893-d14cc237f11d'),
     coverAlt: 'A distributed team on a video call',
@@ -239,7 +248,7 @@ GST           = taxable value × 0.18</code></pre>
   {
     slug: 'branding-techniques-explained',
     title: 'Screen Print, UV, Laser: Branding Techniques Explained',
-    category: 'how-to',
+    category: 'stationery-and-desk',
     tags: ['branding', 'printing', 'design'],
     cover: img('1556742049-0cfed4f6a45d'),
     coverAlt: 'Close-up of a screen printing press in a workshop',
@@ -268,7 +277,7 @@ GST           = taxable value × 0.18</code></pre>
   {
     slug: 'gifting-budget-per-employee',
     title: 'How Much Should You Spend Per Employee?',
-    category: 'gifting-strategy',
+    category: 'corporate',
     tags: ['budget', 'employees', 'strategy'],
     cover: img('1554224154-26032ffc0d07'),
     coverAlt: 'Coins stacked beside a small notebook and pen',
@@ -313,14 +322,20 @@ async function main() {
     return;
   }
 
-  // Byline: use the first super_admin if one exists.
+  // Author record: the first super_admin if one exists. The public byline is
+  // always BLOG_AUTHOR, regardless of which account owns the row.
   const admin = await prisma.user.findFirst({
     where: { role: 'super_admin' },
     select: { id: true, name: true },
   });
 
+  // Only the categories a post actually uses — a category with no posts is dead
+  // weight in the filter bar.
+  const usedSlugs = new Set(POSTS.map((p) => p.category));
+  const seedCategories = CATEGORIES.filter((c) => usedSlugs.has(c.slug));
+
   const categoryIds = new Map<string, string>();
-  for (const c of CATEGORIES) {
+  for (const c of seedCategories) {
     const row = await prisma.blogCategory.upsert({
       where: { slug: c.slug },
       create: c,
@@ -328,7 +343,7 @@ async function main() {
     });
     categoryIds.set(c.slug, row.id);
   }
-  console.log(`✅ ${CATEGORIES.length} categories`);
+  console.log(`✅ ${seedCategories.length} categories`);
 
   for (const p of POSTS) {
     const publishedAt = new Date(Date.now() - p.daysAgo * 24 * 60 * 60 * 1000);
@@ -344,7 +359,7 @@ async function main() {
       tags: p.tags,
       categoryId: categoryIds.get(p.category) ?? null,
       authorId: admin?.id ?? null,
-      authorName: admin?.name ?? 'GIVOO Team',
+      authorName: BLOG_AUTHOR,
       metaTitle: p.metaTitle ?? null,
       metaDescription: p.metaDescription ?? null,
       readingMinutes: readingMinutes(p.content),

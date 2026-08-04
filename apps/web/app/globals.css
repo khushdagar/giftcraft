@@ -325,7 +325,6 @@
 .blog-content {
   color: #3f3f46;
   font-size: 1.0625rem;
-  line-height: 1.75;
 }
 .blog-content > * + * {
   margin-top: 1.25em;

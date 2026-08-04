@@ -4,7 +4,7 @@ import BoxClient from './box-client';
 
 export const metadata: Metadata = {
   // Root template appends "· GIVOO"
-  title: 'Build Your Gift Box — Pick Products, Packaging & Branding',
+  title: 'Build Your Pack — Pick Products, Packaging & Branding',
   description:
     'Assemble a custom corporate gift box: choose products, packaging and add-ons with live per-unit pricing as you build.',
   alternates: { canonical: '/box' },

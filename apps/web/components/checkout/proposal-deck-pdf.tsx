@@ -57,9 +57,11 @@ function loadPng(name: string): PngSrc {
   return pngCache.get(name)!;
 }
 const givooLogo = () => loadPng("givoo_logo.png");
-// Pre-faded copy (logo blended ~7% toward white). Drawn at FULL opacity as the
-// page watermark — PDF-level alpha on images renders inconsistently across
-// viewers, so the fade is baked into the bitmap instead.
+// Pre-faded copy — the logo at ~8% alpha, background still transparent so it
+// never shows as a pale box. Drawn at FULL opacity as the page watermark:
+// PDF-level alpha on images renders inconsistently across viewers, so the fade
+// is baked into the bitmap instead.
+// Regenerate it from the full-colour logo with `npm run make-watermark`.
 const givooWatermark = () => loadPng("givoo_logo_watermark.png");
 
 let fontsReady = false;

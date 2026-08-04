@@ -1499,6 +1499,8 @@ model BlogPost {
   readingMinutes Int @default(1)
   viewCount      Int @default(0)
 
+  comments BlogComment[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1506,6 +1508,35 @@ model BlogPost {
   @@index([status, publishedAt])
   @@index([categoryId])
   @@index([isFeatured])
+}
+
+enum BlogCommentStatus {
+  pending
+  approved
+  rejected
+}
+
+/// Reader comments on a blog post. Open to anyone, so nothing is public until a
+/// super_admin approves it from the moderation queue.
+model BlogComment {
+  id     String   @id @default(cuid())
+  postId String
+  post   BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  authorName String
+  // Never rendered publicly — kept only so we can reply to or block a commenter.
+  email      String
+  body       String @db.Text
+
+  status BlogCommentStatus @default(pending)
+  // Set when a super_admin approves; drives the public sort order.
+  approvedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([postId, status])
+  @@index([status, createdAt])
 }
 
 // ═══════════════════════════════════════════════════════════

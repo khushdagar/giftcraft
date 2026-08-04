@@ -5,6 +5,7 @@ import { auth, signOut } from "@/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DashboardMobileNav } from "@/components/dashboard/dashboard-mobile-nav";
 import { BrandLogo } from "@/components/layout/brand-logo";
+import Image from "next/image";
 
 // SECURITY: every page under /dashboard renders data scoped to the signed-in
 // user (orders, quotes, addresses, company, assets). Force per-request dynamic
@@ -32,7 +33,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="grid min-h-screen bg-canvas lg:grid-cols-[240px_1fr]">
       <aside className="sticky top-0 hidden h-screen flex-col bg-dark text-inv lg:flex">
         <div className="px-5 pt-5 pb-4">
-          <Link href="/" className="inline-block"><BrandLogo className="h-9 w-auto" /></Link>
+          <Link href="/" className="inline-block"><Image src="/footer_logo.png" alt="Logo" width={80} height={40} className="h-9 w-auto" /></Link>
           <p className="mt-1 text-[10px] uppercase tracking-wider text-white">Customer Portal</p>
         </div>
         <nav className="flex-1 space-y-0.5 px-3 py-2 text-[13px]">

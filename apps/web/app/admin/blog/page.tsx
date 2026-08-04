@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit2, Plus, Star, ExternalLink, EyeOff } from 'lucide-react';
+import { Edit2, Plus, Star, ExternalLink, EyeOff, MessageCircle } from 'lucide-react';
 import { formatPostDate } from '@/lib/blog';
 import { DeletePostButton } from '@/components/admin/blog/delete-post-button';
 
@@ -20,10 +20,13 @@ export default async function AdminBlogPage() {
   const session = await auth();
   if (!session || session.user.role !== 'super_admin') redirect('/');
 
-  const posts = await prisma.blogPost.findMany({
-    include: { category: { select: { name: true } } },
-    orderBy: [{ createdAt: 'desc' }],
-  });
+  const [posts, pendingComments] = await Promise.all([
+    prisma.blogPost.findMany({
+      include: { category: { select: { name: true } } },
+      orderBy: [{ createdAt: 'desc' }],
+    }),
+    prisma.blogComment.count({ where: { status: 'pending' } }),
+  ]);
 
   const published = posts.filter((p) => p.status === 'published').length;
   const drafts = posts.filter((p) => p.status === 'draft').length;
@@ -39,12 +42,26 @@ export default async function AdminBlogPage() {
               {drafts !== 1 ? 's' : ''}
             </p>
           </div>
-          <Button asChild className="rounded-2xl bg-em px-6 py-2 font-normal hover:bg-em-600">
-            <Link href="/admin/blog/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Post
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin/blog/comments"
+              className="inline-flex items-center gap-2 rounded-2xl border border-bdr px-4 py-2 text-sm text-ink-2 transition hover:border-ink hover:text-ink"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Comments
+              {pendingComments > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                  {pendingComments}
+                </span>
+              )}
             </Link>
-          </Button>
+            <Button asChild className="rounded-2xl bg-em px-6 py-2 font-normal hover:bg-em-600">
+              <Link href="/admin/blog/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Post
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 

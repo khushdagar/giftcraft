@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import { prisma } from '@/lib/prisma';
 import { invoiceLabel } from '@/lib/invoice-status';
-import { COLORS, FONT, esc } from './email-theme';
+import { COLORS, FONT, LOGO_URL, esc } from './email-theme';
 import { richTextToEmailHtml } from './email-rich-text';
 
 const resend = new Resend(process.env.RESEND_API_KEY || '');
@@ -9,7 +9,7 @@ const resend = new Resend(process.env.RESEND_API_KEY || '');
 // RESEND_FROM_EMAIL must be an address on a domain you've verified in Resend.
 // Falls back to the legacy SendGrid vars for a smooth migration.
 const FROM_EMAIL =
-  process.env.RESEND_FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || 'orders@giftcraft.in';
+  process.env.RESEND_FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || 'orders@givoo.in';
 const FROM_NAME =
   process.env.RESEND_FROM_NAME || process.env.SENDGRID_FROM_NAME || 'GIVOO';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -120,17 +120,20 @@ function p(text: string): string {
   return `<p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:${COLORS.body};">${text}</p>`;
 }
 
-/** Bulletproof CTA button. */
-function button(label: string, url: string, color: string = COLORS.orange): string {
+/**
+ * Bulletproof CTA button. Always brand burgundy — one button style across every
+ * email, so nothing introduces a colour the website doesn't use.
+ */
+function button(label: string, url: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 20px;">
-    <tr><td align="center" style="border-radius:12px;background-color:${color};">
-      <a href="${url}" target="_blank" style="display:inline-block;padding:14px 30px;font-family:${FONT};font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">${label}</a>
+    <tr><td align="center" style="border-radius:8px;background-color:${COLORS.brand};">
+      <a href="${url}" target="_blank" style="display:inline-block;padding:13px 28px;font-family:${FONT};font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">${label}</a>
     </td></tr>
   </table>`;
 }
 
-/** Coloured status pill. */
-function badge(text: string, fg: string = COLORS.brand, bg: string = '#E0E7FF'): string {
+/** Status pill. */
+function badge(text: string, fg: string = COLORS.brand, bg: string = COLORS.brandTint): string {
   return `<span style="display:inline-block;padding:5px 14px;border-radius:999px;background-color:${bg};color:${fg};font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;">${esc(text)}</span>`;
 }
 
@@ -151,8 +154,8 @@ function card(rowsHtml: string): string {
 
 /** A highlighted note / callout block. */
 function note(html: string): string {
-  return `<div style="background-color:#FFFBEB;border-left:3px solid ${COLORS.amber};border-radius:8px;padding:12px 16px;margin:0 0 20px;">
-    <p style="margin:0;font-size:14px;line-height:1.55;color:#92400E;">${html}</p>
+  return `<div style="background-color:${COLORS.page};border-left:3px solid ${COLORS.brand};border-radius:8px;padding:12px 16px;margin:0 0 20px;">
+    <p style="margin:0;font-size:14px;line-height:1.55;color:${COLORS.body};">${html}</p>
   </div>`;
 }
 
@@ -200,7 +203,7 @@ function priceBreakdownCard(
 
   if (opts?.advancePaid != null && opts.advancePaid > 0) {
     rows += `<tr><td colspan="2" style="padding:0;"><div style="border-top:1px solid ${COLORS.border};margin:8px 0 2px;"></div></td></tr>`;
-    rows += `<tr><td style="padding:7px 0;font-size:14px;color:${COLORS.emerald};font-weight:600;">Advance Paid (10%)</td><td style="padding:7px 0;font-size:14px;text-align:right;color:${COLORS.emerald};font-weight:700;">${inr(opts.advancePaid)}</td></tr>`;
+    rows += `<tr><td style="padding:7px 0;font-size:14px;color:${COLORS.brand};font-weight:600;">Advance Paid (10%)</td><td style="padding:7px 0;font-size:14px;text-align:right;color:${COLORS.brand};font-weight:700;">${inr(opts.advancePaid)}</td></tr>`;
     if (opts.balanceDue != null && opts.balanceDue > 0)
       rows += row('Balance Due (after mockup approval)', inr(opts.balanceDue), true);
   }
@@ -214,7 +217,7 @@ function priceBreakdownCard(
  * The master email shell. Every email is rendered through this so headers,
  * footers, spacing and brand styling stay consistent.
  */
-function renderEmail(opts: {
+export function renderEmail(opts: {
   heading: string;
   contentHtml: string;
   preheader?: string;
@@ -235,25 +238,26 @@ function renderEmail(opts: {
   ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${esc(preheader)}</div>` : ''}
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.page};">
     <tr><td align="center" style="padding:28px 12px;">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${COLORS.border};font-family:${FONT};">
-        <!-- Header -->
-        <tr><td style="background-color:${COLORS.brand};padding:26px 32px;">
-          <span style="font-size:23px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">🎁 GIVOO</span>
-          <span style="display:block;font-size:12px;color:#E3B8C1;margin-top:3px;">Corporate gifting, made effortless</span>
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid ${COLORS.border};font-family:${FONT};">
+        <!-- Header: the real wordmark on white, with a thin brand rule under it -->
+        <tr><td align="center" style="padding:28px 32px 22px;border-bottom:2px solid ${COLORS.brand};">
+          <a href="${APP_URL}" target="_blank" style="text-decoration:none;">
+            <img src="${LOGO_URL}" alt="GIVOO" width="132" style="display:block;width:132px;max-width:132px;height:auto;border:0;" />
+          </a>
         </td></tr>
         <!-- Body -->
-        <tr><td style="padding:34px 32px 28px;">
-          <h1 style="margin:0 0 18px;font-size:23px;font-weight:600;color:${COLORS.ink};letter-spacing:-0.3px;line-height:1.3;">${esc(heading)}</h1>
+        <tr><td style="padding:32px 32px 28px;">
+          <h1 style="margin:0 0 18px;font-size:22px;font-weight:700;color:${COLORS.ink};letter-spacing:-0.2px;line-height:1.35;">${esc(heading)}</h1>
           ${contentHtml}
         </td></tr>
         <!-- Footer -->
-        <tr><td style="padding:22px 32px;background-color:${COLORS.surface};border-top:1px solid ${COLORS.border};">
-          ${footerNote ? `<p style="margin:0 0 12px;font-size:12px;line-height:1.5;color:${COLORS.faint};">${footerNote}</p>` : ''}
-          <p style="margin:0;font-size:13px;font-weight:700;color:#52525B;">GIVOO</p>
-          <p style="margin:4px 0 0;font-size:12px;color:${COLORS.faint};">Delhi, India &middot; <a href="${APP_URL}" style="color:${COLORS.brand};text-decoration:none;">giftcraft.in</a></p>
+        <tr><td align="center" style="padding:22px 32px;background-color:${COLORS.surface};border-top:1px solid ${COLORS.border};">
+          ${footerNote ? `<p style="margin:0 0 12px;font-size:12px;line-height:1.5;color:${COLORS.muted};">${footerNote}</p>` : ''}
+          <p style="margin:0;font-size:13px;font-weight:700;color:${COLORS.ink};">GIVOO</p>
+          <p style="margin:4px 0 0;font-size:12px;color:${COLORS.muted};">Delhi, India &middot; <a href="${APP_URL}" style="color:${COLORS.brand};text-decoration:none;">Visit GIVOO</a></p>
         </td></tr>
       </table>
-      <p style="margin:16px 0 0;font-size:11px;color:${COLORS.faint};font-family:${FONT};">&copy; GIVOO &middot; You're receiving this because you have an account or placed an order with us.</p>
+      <p style="margin:16px 0 0;font-size:11px;color:${COLORS.muted};font-family:${FONT};">&copy; GIVOO &middot; You're receiving this because you have an account or placed an order with us.</p>
     </td></tr>
   </table>
 </body>
@@ -293,20 +297,25 @@ const STATUS_BLURBS: Record<string, string> = {
   refunded: 'Your order has been refunded.',
 };
 
+// Two tones only — brand burgundy for live orders, neutral ivory for ended
+// ones. The site has no separate status palette, so neither does the email.
+const BRAND_PILL = { fg: COLORS.brand, bg: COLORS.brandTint };
+const NEUTRAL_PILL = { fg: COLORS.body, bg: COLORS.recessed };
+
 const STATUS_BADGE: Record<string, { fg: string; bg: string }> = {
-  confirmed: { fg: '#800020', bg: '#F6E6E9' },
-  mockup_pending: { fg: '#5B21B6', bg: '#EDE9FE' },
-  mockup_approved: { fg: '#047857', bg: '#D1FAE5' },
-  payment_pending: { fg: '#92400E', bg: '#FEF3C7' },
-  production: { fg: '#92400E', bg: '#FEF3C7' },
-  quality_check: { fg: '#92400E', bg: '#FEF3C7' },
-  packed: { fg: '#0369A1', bg: '#E0F2FE' },
-  shipped: { fg: '#0369A1', bg: '#E0F2FE' },
-  in_transit: { fg: '#0369A1', bg: '#E0F2FE' },
-  delivered: { fg: '#047857', bg: '#D1FAE5' },
-  completed: { fg: '#047857', bg: '#D1FAE5' },
-  cancelled: { fg: '#9F1239', bg: '#FFE4E6' },
-  refunded: { fg: '#9F1239', bg: '#FFE4E6' },
+  confirmed: BRAND_PILL,
+  mockup_pending: BRAND_PILL,
+  mockup_approved: BRAND_PILL,
+  payment_pending: BRAND_PILL,
+  production: BRAND_PILL,
+  quality_check: BRAND_PILL,
+  packed: BRAND_PILL,
+  shipped: BRAND_PILL,
+  in_transit: BRAND_PILL,
+  delivered: BRAND_PILL,
+  completed: BRAND_PILL,
+  cancelled: NEUTRAL_PILL,
+  refunded: NEUTRAL_PILL,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -325,14 +334,14 @@ export async function sendArtworkApprovalEmail(
   const content =
     p(`Hi ${esc(customerName)},`) +
     p(`Great news — the branded mockup for your order <strong>${esc(orderId)}</strong> is ready for your review and approval.`) +
-    button('Review Your Mockup', approvalUrl, COLORS.emerald) +
+    button('Review Your Mockup', approvalUrl) +
     note(`This approval link expires in <strong>72 hours</strong>. Have questions? Just reply to this email.`);
 
   return sendEmail({
     to: customerEmail,
     subject: `Your GIVOO Mockup is Ready - Order ${orderId}`,
     html: renderEmail({
-      heading: 'Your mockup is ready for approval 🎨',
+      heading: 'Your mockup is ready for approval',
       preheader: 'Review and approve your branded mockup',
       contentHtml: content,
     }),
@@ -353,7 +362,7 @@ export async function sendRevisionReceivedEmail(
     p(`Customer <strong>${esc(customerName)}</strong> has requested revisions on order <strong>${esc(orderId)}</strong>.`) +
     `<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:${COLORS.muted};text-transform:uppercase;letter-spacing:0.05em;">Revision notes</p>` +
     `<div style="background-color:${COLORS.surface};border:1px solid ${COLORS.border};border-radius:12px;padding:14px 18px;margin:0 0 20px;font-size:14px;line-height:1.6;color:${COLORS.body};">${esc(revisionNotes).replace(/\n/g, '<br/>')}</div>` +
-    button('View Order', `${APP_URL}/admin/orders/${orderId}`, COLORS.brand);
+    button('View Order', `${APP_URL}/admin/orders/${orderId}`);
 
   return sendEmail({
     to: adminEmail,
@@ -408,16 +417,16 @@ export async function sendPaymentSuccessEmail(options: {
     p('Our design team will now prepare your branded mockups for approval.') +
     (options.attachments?.length
       ? p(
-          `Your ${invoiceLabel(options.amountPaid, options.grandTotal).toLowerCase()} — with the full item-by-item breakdown, HSN codes and GST — is attached to this email as a PDF. 📄`
+          `Your ${invoiceLabel(options.amountPaid, options.grandTotal).toLowerCase()} — with the full item-by-item breakdown, HSN codes and GST — is attached to this email as a PDF.`
         )
       : '') +
-    button('View Your Order', orderUrl, COLORS.emerald);
+    button('View Your Order', orderUrl);
 
   return sendEmail({
     to: options.customerEmail,
     subject: `Payment Received — Order ${options.orderNumber}`,
     html: renderEmail({
-      heading: 'Payment received — thank you! 🎉',
+      heading: 'Payment received — thank you!',
       preheader: `We received ${inr(options.amountPaid)} for order ${options.orderNumber}`,
       contentHtml: content,
     }),
@@ -447,7 +456,7 @@ export async function sendOrderStatusEmail(options: {
     p(blurb) +
     `<p style="margin:0 0 18px;font-size:15px;color:${COLORS.body};">Order <strong>${esc(options.orderNumber)}</strong> is now ${badge(label, bc.fg, bc.bg)}</p>` +
     (options.note ? note(esc(options.note)) : '') +
-    button('View Your Order', orderUrl, COLORS.emerald);
+    button('View Your Order', orderUrl);
 
   return sendEmail({
     to: options.customerEmail,
@@ -475,9 +484,9 @@ export async function sendBalancePaymentLinkEmail(options: {
 
   const content =
     p(`Hi ${esc(options.customerName)},`) +
-    p(`Thanks for approving the mockup for order <strong>${esc(options.orderNumber)}</strong>! 🎉`) +
+    p(`Thanks for approving the mockup for order <strong>${esc(options.orderNumber)}</strong>!`) +
     p(`To start production, please complete the remaining balance of <strong style="color:${COLORS.ink};">${inr(options.balanceDue)}</strong>.`) +
-    button(`Pay ${inr(options.balanceDue)} Now`, payUrl, COLORS.amber) +
+    button(`Pay ${inr(options.balanceDue)} Now`, payUrl) +
     `<p style="margin:0;font-size:13px;color:${COLORS.muted};">You can also pay anytime from your order page in the GIVOO dashboard.</p>`;
 
   return sendEmail({
@@ -504,14 +513,14 @@ export async function sendShipmentNotificationEmail(
   const content =
     p(`Hi ${esc(customerName)},`) +
     p(`Your GIVOO order <strong>${esc(orderId)}</strong> has been shipped and is on its way to you.`) +
-    (trackingUrl ? button('Track Your Shipment', trackingUrl, COLORS.emerald) : '') +
+    (trackingUrl ? button('Track Your Shipment', trackingUrl) : '') +
     p('Thank you for choosing GIVOO!');
 
   return sendEmail({
     to: customerEmail,
     subject: `Your Order ${orderId} Has Been Shipped`,
     html: renderEmail({
-      heading: 'Your order has shipped! 📦',
+      heading: 'Your order has shipped!',
       preheader: `Order ${orderId} is on its way`,
       contentHtml: content,
     }),
@@ -539,14 +548,14 @@ export async function sendOrderShippedEmail(options: {
     p(`Hi ${esc(options.companyName)},`) +
     p(`Your GIVOO order <strong>${esc(options.orderNumber)}</strong> has been shipped and is on its way to you.`) +
     summary +
-    button('Track Your Shipment', options.trackingUrl, COLORS.emerald) +
+    button('Track Your Shipment', options.trackingUrl) +
     p('Thank you for choosing GIVOO!');
 
   return sendEmail({
     to: options.companyEmail,
     subject: `Your Order ${options.orderNumber} Has Been Shipped - AWB ${options.awbCode}`,
     html: renderEmail({
-      heading: 'Your order has shipped! 📦',
+      heading: 'Your order has shipped!',
       preheader: `AWB ${options.awbCode} · ${options.courierName}`,
       contentHtml: content,
     }),
@@ -606,10 +615,10 @@ export async function sendDisputeStatusEmail(options: {
     closed: 'Your dispute has been closed.',
   };
   const statusBadge: Record<string, { fg: string; bg: string }> = {
-    open: { fg: '#92400E', bg: '#FEF3C7' },
-    under_review: { fg: '#0369A1', bg: '#E0F2FE' },
-    resolved: { fg: '#047857', bg: '#D1FAE5' },
-    closed: { fg: '#3F3F46', bg: COLORS.page },
+    open: BRAND_PILL,
+    under_review: BRAND_PILL,
+    resolved: BRAND_PILL,
+    closed: NEUTRAL_PILL,
   };
   const bc = statusBadge[options.status] || { fg: COLORS.body, bg: COLORS.page };
 
@@ -659,22 +668,22 @@ export async function sendOrderConfirmationEmail(options: {
 
   const content =
     p(`Hi ${esc(options.customerName)},`) +
-    p(`We've received your order <strong>${esc(options.orderNumber)}</strong> for ${options.packQuantity} gift packs and our team is getting started. 🎉`) +
+    p(`We've received your order <strong>${esc(options.orderNumber)}</strong> for ${options.packQuantity} gift packs and our team is getting started.`) +
     itemsCard +
     priceBreakdownCard(options.amounts) +
     p("Our design team will prepare your branded mockups next. We'll email you the moment they're ready for approval.") +
     (options.attachments?.length
       ? p(
-          'Your proforma invoice — with the full item-by-item breakdown, HSN codes and GST — is attached to this email as a PDF. 📄'
+          'Your proforma invoice — with the full item-by-item breakdown, HSN codes and GST — is attached to this email as a PDF.'
         )
       : '') +
-    button('View Your Order', orderUrl, COLORS.emerald);
+    button('View Your Order', orderUrl);
 
   return sendEmail({
     to: options.customerEmail,
     subject: `Order Confirmed — ${options.orderNumber}`,
     html: renderEmail({
-      heading: 'Order confirmed — thank you! 🎉',
+      heading: 'Order confirmed — thank you!',
       preheader: `Order ${options.orderNumber} is confirmed`,
       contentHtml: content,
     }),
@@ -716,7 +725,7 @@ export async function sendOfferEmail(options: {
         .join('');
 
   const cta =
-    options.ctaLabel && options.ctaUrl ? button(options.ctaLabel, options.ctaUrl, COLORS.orange) : '';
+    options.ctaLabel && options.ctaUrl ? button(options.ctaLabel, options.ctaUrl) : '';
 
   const content = `<p style="margin:0 0 16px;font-size:15px;color:${COLORS.muted};">${greeting}</p>` + image + bodyHtml + cta;
 
@@ -796,7 +805,7 @@ export async function sendProposalEmail(options: {
     }</ul>` +
     summary +
     `<p style="margin:0 0 20px;font-size:12px;color:${COLORS.muted};">Shipping is not included — it's calculated at checkout based on your delivery address.</p>` +
-    button('View Your Proposal', quoteUrl, COLORS.orange) +
+    button('View Your Proposal', quoteUrl) +
     p(
       `This proposal is valid until <strong>${validUntilStr}</strong>. ${
         options.attachments?.length
@@ -810,7 +819,7 @@ export async function sendProposalEmail(options: {
     to: options.to,
     subject: `Your GIVOO gift pack proposal${options.companyName ? ` for ${options.companyName}` : ''}`,
     html: renderEmail({
-      heading: 'Your Gift Pack Proposal 🎁',
+      heading: 'Your Gift Pack Proposal',
       preheader: `A curated gifting proposal — ${options.packQuantity} packs, valid until ${validUntilStr}`,
       contentHtml: content,
     }),

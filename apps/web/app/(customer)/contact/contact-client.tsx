@@ -4,12 +4,9 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Mail, Phone, MapPin, MessageCircle, Clock, Users, Zap } from 'lucide-react';
+import { CONTACT_FALLBACK } from '@/lib/constants';
 
-const DEFAULT_CONTACT = {
-  email: 'hello@giftcraft.in',
-  phone: '+91 98765 43210',
-  whatsapp: '919876543210',
-};
+const DEFAULT_CONTACT = CONTACT_FALLBACK;
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -309,15 +306,7 @@ export default function ContactPage() {
         >
           <div className="bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
             <div className="h-96 md:h-[500px] w-full">
-              <iframe
-                title="GIVOO Location"
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3503.5236509933903!2d77.22085!3d28.613939!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390cfd288cf5a6c1%3A0x9a5a5a5a5a5a5a5a!2sNew%20Delhi%2C%20India!5e0!3m2!1sen!2sin!4v1234567890"
-              />
+              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3500.250614971261!2d77.1969448!3d28.682148899999998!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390cfdd968808f37%3A0x7a6d7d7e86a10903!2sArts%20Shala!5e0!3m2!1sen!2sin!4v1785825915526!5m2!1sen!2sin" width="600" height="450" style={{ border: '0' }} allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" className="w-full h-full"></iframe>
             </div>
           </div>
         </motion.div>
