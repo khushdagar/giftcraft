@@ -102,7 +102,8 @@ export default function BulkUploadPage() {
             <h2 className="text-base font-medium text-ink">Download the template</h2>
             <p className="mt-1 text-sm text-ink-2">
               The CSV has a column for every field in the product master sheet — specs, dimensions, MOQ,
-              branding, eco, 6 price tiers, occasions, recipient tags, and vendor sourcing. The first row
+              branding, eco, 6 price tiers, occasions, recipient tags, vendor sourcing, and the product-page
+              content tabs (description, key features, specifications, shipping &amp; delivery). The first row
               is a filled-in example you can replace.
             </p>
             <div className="mt-3 flex flex-wrap gap-3">

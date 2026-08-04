@@ -191,7 +191,7 @@ export function PackBundle({ pack }: PackBundleProps) {
             Add to Pack <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
-            href={`/packs/${pack.collectionSlug}`}
+            href={`/curated-packs/${pack.collectionSlug}`}
             className="mt-3 block text-center text-sm font-medium text-ink-2 hover:text-ink"
           >
             ← Back to {pack.collectionName}

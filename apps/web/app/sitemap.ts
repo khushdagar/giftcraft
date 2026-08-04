@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { prisma } from '@/lib/prisma';
-import { publishedPostWhere } from '@/lib/blog';
+import { publishedPostWhere, POSTS_PER_PAGE } from '@/lib/blog';
 import { getHiddenCategoryIds } from '@/lib/catalog-visibility';
 import { getCategoryNav } from '@/lib/category-data';
 import { getOccasionSlugs } from '@/lib/occasion-data';
@@ -21,7 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/categories`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${SITE_URL}/occasions`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
     { url: `${SITE_URL}/builder`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
-    { url: `${SITE_URL}/packs`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${SITE_URL}/curated-packs`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${SITE_URL}/pricing`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${SITE_URL}/blog`, lastModified: now, changeFrequency: 'weekly', priority: 0.6 },
     { url: `${SITE_URL}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
@@ -37,7 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const hiddenCategoryIds = await getHiddenCategoryIds();
 
-    const [categories, occasions, products, collections, posts] = await Promise.all([
+    const [categories, occasions, products, collections, posts, blogCategories] = await Promise.all([
       // Category landing pages — only those with live products (getCategoryNav
       // already drops empty ones, which are noindex and must not be submitted).
       getCategoryNav(),
@@ -67,7 +67,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         select: { slug: true, updatedAt: true },
         orderBy: { publishedAt: 'desc' },
       }),
+      // Category listings are real content hubs, so they belong in the sitemap.
+      // Tag listings are noindex and deliberately left out.
+      prisma.blogCategory.findMany({
+        where: { posts: { some: { ...publishedPostWhere(), noIndex: false } } },
+        select: { slug: true },
+      }),
     ]);
+
+    // /blog?page=2… — without these, everything past the first page is only
+    // reachable by crawling the pagination links.
+    const blogPages = Array.from(
+      { length: Math.max(0, Math.ceil(posts.length / POSTS_PER_PAGE) - 1) },
+      (_, i) => ({
+        url: `${SITE_URL}/blog?page=${i + 2}`,
+        lastModified: now,
+        changeFrequency: 'weekly' as const,
+        priority: 0.4,
+      })
+    );
 
     return [
       ...staticRoutes,
@@ -90,7 +108,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.8,
       })),
       ...collections.map((c) => ({
-        url: `${SITE_URL}/packs/${c.slug}`,
+        url: `${SITE_URL}/curated-packs/${c.slug}`,
         lastModified: c.updatedAt,
         changeFrequency: 'weekly' as const,
         priority: 0.7,
@@ -101,6 +119,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'monthly' as const,
         priority: 0.6,
       })),
+      ...blogCategories.map((c) => ({
+        url: `${SITE_URL}/blog?category=${c.slug}`,
+        lastModified: now,
+        changeFrequency: 'weekly' as const,
+        priority: 0.5,
+      })),
+      ...blogPages,
     ];
   } catch (error) {
     // A database hiccup shouldn't take the whole sitemap down — but log it,

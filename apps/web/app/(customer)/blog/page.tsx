@@ -1,27 +1,76 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
+import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { formatPostDate, publishedPostWhere } from '@/lib/blog';
+import { formatPostDate, publishedPostWhere, POSTS_PER_PAGE, BLOG_AUTHOR } from '@/lib/blog';
 import { Clock } from 'lucide-react';
-
-export const metadata = {
-  title: 'Blog',
-  description:
-    'Trends, tips, and stories on the art of thoughtful corporate gifting — from the GIVOO team.',
-  // Faceted variants (?category=, ?tag=) canonicalize to the clean listing —
-  // relative canonicals resolve against the pathname, dropping query params.
-  alternates: { canonical: '/blog' },
-};
 
 // Short revalidate so a scheduled post appears without a redeploy.
 export const revalidate = 300;
 
 interface PageProps {
-  searchParams: { category?: string; tag?: string };
+  searchParams: { category?: string; tag?: string; page?: string };
+}
+
+/** `1` for anything that isn't a positive integer, so junk never 404s page 1. */
+function parsePage(raw: string | undefined): number {
+  const n = Number(raw);
+  return Number.isInteger(n) && n > 1 ? n : 1;
+}
+
+/** The canonical path for a given facet + page. Page 1 never carries `?page=`. */
+function listingPath({
+  category,
+  tag,
+  page,
+}: {
+  category?: string;
+  tag?: string;
+  page?: number;
+}): string {
+  const params = new URLSearchParams();
+  if (category) params.set('category', category);
+  if (tag) params.set('tag', tag);
+  if (page && page > 1) params.set('page', String(page));
+  const qs = params.toString();
+  return qs ? `/blog?${qs}` : '/blog';
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const page = parsePage(searchParams.page);
+  const { category, tag } = searchParams;
+
+  const categoryName = category
+    ? (await prisma.blogCategory.findUnique({ where: { slug: category }, select: { name: true } }))
+        ?.name
+    : undefined;
+
+  const base = categoryName
+    ? `${categoryName} — GIVOO Blog`
+    : tag
+      ? `Posts tagged #${tag} — GIVOO Blog`
+      : 'Blog';
+  const title = page > 1 ? `${base} — Page ${page}` : base;
+
+  const description = categoryName
+    ? `${categoryName} articles on corporate gifting from the GIVOO team.`
+    : 'Trends, tips, and stories on the art of thoughtful corporate gifting — from the GIVOO team.';
+
+  return {
+    title,
+    description,
+    // Each page is its own canonical — paginated pages are distinct content, not
+    // duplicates of page 1. Tag views are thin slices of the same posts, so they
+    // stay out of the index while still passing link equity through.
+    alternates: { canonical: listingPath({ category, tag, page }) },
+    robots: tag ? { index: false, follow: true } : undefined,
+  };
 }
 
 export default async function BlogPage({ searchParams }: PageProps) {
   const { category, tag } = searchParams;
+  const page = parsePage(searchParams.page);
 
   const where = {
     ...publishedPostWhere(),
@@ -29,11 +78,14 @@ export default async function BlogPage({ searchParams }: PageProps) {
     ...(tag ? { tags: { has: tag } } : {}),
   };
 
-  const [posts, categories] = await Promise.all([
+  const [total, posts, categories] = await Promise.all([
+    prisma.blogPost.count({ where }),
     prisma.blogPost.findMany({
       where,
       include: { category: { select: { name: true, slug: true } } },
       orderBy: [{ isFeatured: 'desc' }, { publishedAt: 'desc' }],
+      skip: (page - 1) * POSTS_PER_PAGE,
+      take: POSTS_PER_PAGE,
     }),
     prisma.blogCategory.findMany({
       // Only offer a category filter that can actually return something.
@@ -42,8 +94,14 @@ export default async function BlogPage({ searchParams }: PageProps) {
     }),
   ]);
 
-  const [lead, ...rest] = posts;
+  const totalPages = Math.max(1, Math.ceil(total / POSTS_PER_PAGE));
+  // An empty page 3 is a soft 404 to Google — return a real one.
+  if (page > totalPages && total > 0) notFound();
+
   const isFiltered = Boolean(category || tag);
+  // The lead treatment only means something on the first, unfiltered page.
+  const showLead = !isFiltered && page === 1;
+  const [lead, ...rest] = posts;
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -55,6 +113,11 @@ export default async function BlogPage({ searchParams }: PageProps) {
           <p className="mx-auto mt-4 max-w-xl text-lg text-ink-2">
             Trends, tips, and stories on the art of thoughtful corporate gifting.
           </p>
+          {totalPages > 1 && (
+            <p className="mt-3 text-sm text-ink-3">
+              Page {page} of {totalPages}
+            </p>
+          )}
         </div>
 
         {/* Category filters */}
@@ -113,7 +176,7 @@ export default async function BlogPage({ searchParams }: PageProps) {
         ) : (
           <>
             {/* Lead post — only on the unfiltered index, where "latest" means something */}
-            {lead && !isFiltered && (
+            {lead && showLead && (
               <Link
                 href={`/blog/${lead.slug}`}
                 className="group mb-12 grid gap-6 overflow-hidden rounded-md border-2 border-bdr bg-white md:grid-cols-2"
@@ -149,7 +212,7 @@ export default async function BlogPage({ searchParams }: PageProps) {
 
             {/* Grid */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {(isFiltered ? posts : rest).map((post) => (
+              {(showLead ? rest : posts).map((post) => (
                 <Link
                   key={post.id}
                   href={`/blog/${post.slug}`}
@@ -189,10 +252,79 @@ export default async function BlogPage({ searchParams }: PageProps) {
                 </Link>
               ))}
             </div>
+
+            <Pagination page={page} totalPages={totalPages} category={category} tag={tag} />
           </>
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Numbered, crawlable pagination. Every page is a plain <Link>, so a crawler
+ * can walk the whole archive without running JavaScript.
+ */
+function Pagination({
+  page,
+  totalPages,
+  category,
+  tag,
+}: {
+  page: number;
+  totalPages: number;
+  category?: string;
+  tag?: string;
+}) {
+  if (totalPages <= 1) return null;
+
+  // A sliding window around the current page, with the first and last always
+  // reachable — keeps the crawl depth of any page down to two clicks.
+  const window = new Set<number>([1, totalPages, page, page - 1, page + 1]);
+  const pages = Array.from(window)
+    .filter((p) => p >= 1 && p <= totalPages)
+    .sort((a, b) => a - b);
+
+  const linkClass =
+    'inline-flex h-10 min-w-10 items-center justify-center rounded-full border-2 px-3 text-sm font-semibold transition';
+
+  return (
+    <nav aria-label="Blog pagination" className="mt-12 flex flex-wrap items-center justify-center gap-2">
+      {page > 1 && (
+        <Link
+          href={listingPath({ category, tag, page: page - 1 })}
+          rel="prev"
+          className={`${linkClass} border-bdr text-ink-2 hover:border-em`}
+        >
+          Previous
+        </Link>
+      )}
+
+      {pages.map((p, i) => (
+        <span key={p} className="flex items-center gap-2">
+          {i > 0 && p - pages[i - 1]! > 1 && <span className="text-ink-3">…</span>}
+          {p === page ? (
+            <span aria-current="page" className={`${linkClass} border-em bg-em text-white`}>
+              {p}
+            </span>
+          ) : (
+            <Link href={listingPath({ category, tag, page: p })} className={`${linkClass} border-bdr text-ink-2 hover:border-em`}>
+              {p}
+            </Link>
+          )}
+        </span>
+      ))}
+
+      {page < totalPages && (
+        <Link
+          href={listingPath({ category, tag, page: page + 1 })}
+          rel="next"
+          className={`${linkClass} border-bdr text-ink-2 hover:border-em`}
+        >
+          Next
+        </Link>
+      )}
+    </nav>
   );
 }
 
@@ -205,12 +337,8 @@ function PostMeta({ date, minutes, author }: { date: Date; minutes: number; auth
         <Clock className="h-3 w-3" />
         {minutes} min read
       </span>
-      {author && (
-        <>
-          <span aria-hidden>·</span>
-          <span>{author}</span>
-        </>
-      )}
+      <span aria-hidden>·</span>
+      <span>{author || BLOG_AUTHOR}</span>
     </div>
   );
 }

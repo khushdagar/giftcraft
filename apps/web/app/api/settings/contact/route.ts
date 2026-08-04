@@ -1,13 +1,11 @@
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
+import { CONTACT_FALLBACK } from '@/lib/constants';
+
 // Sensible defaults so the contact page always renders, even before an admin
 // sets the `contact` PlatformSetting.
-const DEFAULTS = {
-  email: 'hello@giftcraft.in',
-  phone: '+91 98765 43210',
-  whatsapp: '919876543210', // digits only, used for wa.me links
-};
+const DEFAULTS = CONTACT_FALLBACK;
 
 /**
  * GET /api/settings/contact

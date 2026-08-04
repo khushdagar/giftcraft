@@ -95,13 +95,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {productName && (
-                <div className="rounded-md bg-elevated p-3">
-                  <p className="text-xs text-ink-3">Product</p>
-                  <p className="font-semibold text-ink">{productName}</p>
-                </div>
-              )}
-
+             
               {error && (
                 <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
                   {error}
@@ -206,14 +200,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                 >
                   {submitting ? 'Submitting…' : 'Submit Enquiry'}
                 </button>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  disabled={submitting}
-                  className="rounded-full border border-bdr px-6 py-3 font-semibold text-ink hover:bg-elevated transition disabled:opacity-60"
-                >
-                  Cancel
-                </button>
+                
               </div>
             </form>
           )}

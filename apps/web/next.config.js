@@ -69,6 +69,11 @@ const nextConfig = {
   },
 
   async redirects() {
+    // The curated-pack listing moved from /packs to /curated-packs.
+    const routeRedirects = [
+      { source: "/packs", destination: "/curated-packs", permanent: true },
+    ];
+
     // www → apex (or vice versa) so exactly ONE canonical host serves content.
     // Derived from NEXT_PUBLIC_APP_URL at build time; skipped on localhost.
     let host = "";
@@ -77,10 +82,11 @@ const nextConfig = {
     } catch {
       /* unset/invalid env — no host redirect */
     }
-    if (!host || host === "localhost") return [];
+    if (!host || host === "localhost") return routeRedirects;
     const isWww = host.startsWith("www.");
     const altHost = isWww ? host.slice(4) : `www.${host}`;
     return [
+      ...routeRedirects,
       {
         source: "/:path*",
         has: [{ type: "host", value: altHost }],

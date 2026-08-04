@@ -35,7 +35,10 @@ export async function GET() {
       occasions: 'Onboarding, Events, Festive',
       recipientTags: 'All staff, Trade-show',
       descriptionShort: 'Core staple — large flat surface for clean laser branding.',
-      descriptionLong: '',
+      descriptionLong: 'Double-wall vacuum insulated bottle that keeps drinks hot for 12 hours and cold for 24.',
+      keyFeatures: 'Keeps hot 12h / cold 24h; Leak-proof lid; 304 food-grade steel; Laser-brandable body',
+      specifications: 'Capacity: 750 ml; Material: 304 stainless steel; Weight: 280 g; Dimensions: 7x7x26 cm',
+      shippingDelivery: 'Dispatched in 10-12 working days after artwork approval. Pan-India delivery.',
       imageUrls: '',
       vendorName: 'Milton / Cello',
       vendorSku: '', vendorMoq: '', vendorLeadDays: '', vendorCost: '330',
@@ -54,7 +57,7 @@ export async function GET() {
       status: 200,
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': 'attachment; filename="giftcraft-products-template.csv"',
+        'Content-Disposition': 'attachment; filename="givoo-products-template.csv"',
       },
     });
   } catch (error) {

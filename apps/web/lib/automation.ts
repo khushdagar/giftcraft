@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { AutomationTrigger, AutomationAction } from '@prisma/client';
-import { sendCustomEmail } from '@/lib/email';
+import { sendCustomEmail, renderEmail } from '@/lib/email';
+import { COLORS } from '@/lib/email-theme';
 
 export interface AutomationContext {
   orderId?: string;
@@ -84,15 +85,23 @@ async function sendEmailAction(
   const resolvedSubject = interpolate(subject || 'Update from GIVOO', context);
   // `template`/`body` is free-form copy entered by an admin; render line breaks.
   const copy = interpolate(body || template || '', context);
-  const html = `
-    <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;">
-      ${copy
-        .split(/\n{2,}/)
-        .map((p) => `<p style="font-size:15px;line-height:1.6;color:#3F3F46;">${p.replace(/\n/g, '<br/>')}</p>`)
-        .join('')}
-      <p style="font-size:13px;color:#A1A1AA;margin-top:24px;">— The GIVOO Team</p>
-    </div>
-  `;
+  // Rendered through the shared shell so automation mail carries the same
+  // GIVOO logo, palette and footer as every other email.
+  const contentHtml =
+    copy
+      .split(/\n{2,}/)
+      .map(
+        (para) =>
+          `<p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:${COLORS.body};">${para.replace(/\n/g, '<br/>')}</p>`
+      )
+      .join('') +
+    `<p style="margin:24px 0 0;font-size:13px;color:${COLORS.muted};">— The GIVOO Team</p>`;
+
+  const html = renderEmail({
+    heading: resolvedSubject,
+    preheader: resolvedSubject,
+    contentHtml,
+  });
 
   // Recipient is the customer ⇒ honour their order-status opt-out; an explicit
   // admin/internal address is uncategorised and always sends.

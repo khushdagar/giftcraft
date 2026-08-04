@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { useBuilderStore } from '@/store/builder';
+import { motion } from 'framer-motion';
 
 // Extra fields (hsnCode, gstRate, lead time…) ride along untyped and are
 // forwarded to the builder store as-is.
@@ -83,7 +84,13 @@ export function RelatedProducts({
     <div className="border-t border-bdr bg-white py-12">
       <div className="container-gc-w">
         <div className="mb-6 flex items-center justify-between gap-4">
-          <p className="overline text-ink-3">YOU MAY ALSO LIKE</p>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            className="text-3xl md:text-4xl font-normal text-slate-900 mb-4"
+          >
+            YOU MAY <span className="italic text-em">ALSO LIKE</span>
+          </motion.h2>
           <div className="flex gap-2">
             <button
               type="button"
@@ -114,6 +121,9 @@ export function RelatedProducts({
         >
           {products.map((product) => {
             const price = product.priceTiers?.[0]?.sellPrice || 0;
+            // "From" price = cheapest tier (highest MOQ slab), not tier 1.
+            const tierPrices = (product.priceTiers ?? []).map((t) => t.sellPrice).filter((n) => n > 0);
+            const fromPrice = tierPrices.length > 0 ? Math.min(...tierPrices) : 0;
             const inCart = cartProducts.some((p: { id: string }) => p.id === product.id);
             return (
               <div
@@ -142,11 +152,11 @@ export function RelatedProducts({
 
                     {/* Info */}
                     <div className="px-3">
-                      {product.brand && <p className="text-[11px] text-ink-3">{product.brand}</p>}
+                      {/* {product.brand && <p className="text-[11px] text-ink-3">{product.brand}</p>} */}
                       <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-tight">
                         {product.name}
                       </h3>
-                      <p className="mt-2 font-black tabnum text-base">From {formatRupees(price)}</p>
+                      <p className="mt-2 font-black tabnum text-base">From {formatRupees(fromPrice)}</p>
                     </div>
                   </Link>
 

@@ -12,11 +12,15 @@ const COL_COMPANY: FooterLink[] = [
   ["/sell-with-us", "Sell With Us"],
   ["/contact", "Contact"],
   ["/faq", "FAQ"],
-  ["/shipping", "Shipping"],
-  ["/returns", "Returns"],
-  ["/terms", "Terms"],
-  ["/privacy", "Privacy"],
   ["/gst", "GST Info"],
+];
+
+// Legal links — rendered horizontally in the bottom bar, not in a column.
+const LEGAL_LINKS: FooterLink[] = [
+  ["/privacy", "Privacy Policy"],
+  ["/shipping", "Shipping Policy"],
+  ["/returns", "Refund Policy"],
+  ["/terms", "Terms & Conditions"],
 ];
 
 // Live catalog data for the Products / Curated Packs / Collections columns.
@@ -105,8 +109,8 @@ export async function Footer() {
     ...categories.map((c): FooterLink => [`/category/${c.slug}`, c.name]),
   ];
   const packLinks: FooterLink[] = [
-    ["/packs", "All Packs"],
-    ...collections.map((c): FooterLink => [`/packs?collection=${c.slug}`, c.name]),
+    ["/curated-packs", "All Packs"],
+    ...collections.map((c): FooterLink => [`/curated-packs/${c.slug}`, c.name]),
   ];
   const occasionLinks: FooterLink[] = occasions.map(
     (o): FooterLink => [`/occasion/${o.slug}`, o.name]
@@ -137,9 +141,19 @@ export async function Footer() {
           <FooterColumn title="Company" links={COL_COMPANY} />
         </div>
 
-        <div className="flex flex-col justify-between gap-1.5 border-t border-white/5 pt-5 text-[11px] text-white sm:flex-row">
+        <div className="flex flex-col justify-between gap-3 border-t border-white/5 pt-5 text-[11px] text-white sm:flex-row sm:items-center">
           <span>© {new Date().getFullYear()} GIVOO by Arts Shala. All rights reserved.</span>
-          <span>GSTIN {process.env.SELLER_GSTIN ?? "07XXXXXXXXX1Z5"} · Delhi</span>
+          <nav className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {LEGAL_LINKS.map(([href, label]) => (
+              <Link
+                key={href}
+                href={href}
+                className="text-white underline-offset-2 transition hover:text-white/80 hover:underline"
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </div>
     </footer>

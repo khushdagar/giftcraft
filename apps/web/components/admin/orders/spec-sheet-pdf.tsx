@@ -1,4 +1,5 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { PLACEHOLDER_PHONE } from '@/lib/constants';
 
 const styles = StyleSheet.create({
   page: {
@@ -303,7 +304,7 @@ export function SpecSheetPDF({ order, clientName }: SpecSheetPDFProps) {
             </View>
             <View style={styles.specRow}>
               <Text style={styles.specLabel}>Delivery Contact</Text>
-              <Text style={styles.specValue}>orders@giftcraft.in / +91-XXXXXXXXXX</Text>
+              <Text style={styles.specValue}>orders@givoo.in / {PLACEHOLDER_PHONE}</Text>
             </View>
           </View>
         </View>

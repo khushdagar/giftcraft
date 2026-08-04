@@ -8,6 +8,7 @@ import { useBuilderStore } from '@/store/builder';
 import { useTopLoading } from '@/components/ui/top-loading-bar';
 import { toast } from '@/lib/stores/toast-store';
 import { resolveSwatchHex } from '@/lib/color-name';
+import { CollapsibleRichText } from '@/components/catalog/collapsible-rich-text';
 
 interface ProductImage {
   id: string;
@@ -34,6 +35,10 @@ interface Product {
   printingTechnique?: string;
   leadTimeDays?: number;
   recipientTags?: string[];
+  tags?: string[];
+  sku?: string;
+  material?: string;
+  descriptionShort?: string;
   occasionIds?: string[];
   priceTiers?: Array<{ sellPrice: number }>;
   categories?: Array<{ categoryId: string; category?: { name: string } }>;
@@ -57,15 +62,15 @@ interface Occasion {
 
 // Mapping of printing techniques to badges
 const TECH_BADGES: Record<string, string> = {
-  'screen_print': '🎨 Screen Print',
-  'digital_print': '🎨 Digital Print',
-  'embroidery': '🎨 Embroidery',
-  'uv_print': '🎨 UV Print',
-  'laser_engrave': '🎨 Laser Engraved',
-  'foil_stamp': '🎨 Foil Stamped',
-  'pad_print': '🎨 Pad Printed',
-  'dtf_print': '🎨 DTF Printing',
-  'deboss': '🎨 Debossing',
+  'screen_print': 'Screen Print',
+  'digital_print': 'Digital Print',
+  'embroidery': 'Embroidery',
+  'uv_print': 'UV Print',
+  'laser_engrave': 'Laser Engraved',
+  'foil_stamp': 'Foil Stamped',
+  'pad_print': 'Pad Printed',
+  'dtf_print': 'DTF Printing',
+  'deboss': 'Debossing',
 };
 
 function formatPrice(n: number) {
@@ -113,7 +118,7 @@ export interface CatalogOccasionContext {
   descriptionHtml?: string | null;
 }
 
-type UrlFilterParams = { category?: string; occasion?: string; recipient?: string };
+type UrlFilterParams = { category?: string; occasion?: string; recipient?: string; search?: string };
 
 /**
  * Reads the filter query params and hands them to the catalog.
@@ -129,10 +134,11 @@ function CatalogUrlParams({ onChange }: { onChange: (params: UrlFilterParams) =>
   const category = searchParams.get('category') ?? undefined;
   const occasion = searchParams.get('occasion') ?? undefined;
   const recipient = searchParams.get('recipient') ?? undefined;
+  const search = searchParams.get('search') ?? undefined;
 
   useEffect(() => {
-    onChange({ category, occasion, recipient });
-  }, [category, occasion, recipient, onChange]);
+    onChange({ category, occasion, recipient, search });
+  }, [category, occasion, recipient, search, onChange]);
 
   return null;
 }
@@ -171,8 +177,14 @@ function applyScope(
   return list;
 }
 
+// "From" price = the cheapest tier (highest MOQ slab), not the first tier.
+function minTierPrice(p: Product): number {
+  const prices = (p.priceTiers || []).map((t) => t.sellPrice).filter((n) => n > 0);
+  return prices.length > 0 ? Math.min(...prices) : 0;
+}
+
 function tierOnePrices(list: Product[]): number[] {
-  return list.map((p) => p.priceTiers?.[0]?.sellPrice || 0).filter((n) => n > 0);
+  return list.map(minTierPrice).filter((n) => n > 0);
 }
 
 export function CatalogClient({
@@ -241,9 +253,16 @@ export function CatalogClient({
   // plain strings so the seeding effect depends on primitives, not on the
   // searchParams object identity.
   const [urlParams, setUrlParams] = useState<UrlFilterParams>({});
-  const { category: categoryParam, occasion: occasionParam, recipient: recipientParam } = urlParams;
+  const { category: categoryParam, occasion: occasionParam, recipient: recipientParam, search: searchParam } = urlParams;
   // Stable identity — CatalogUrlParams effect depends on this callback.
   const handleUrlParams = useCallback((params: UrlFilterParams) => setUrlParams(params), []);
+
+  // Seed the search box from ?search= (the navbar search lands here). Kept in its
+  // own effect keyed only on the param so a re-render of the filter data can't
+  // re-fill the box after the user has cleared it.
+  useEffect(() => {
+    if (searchParam) setSearch(searchParam);
+  }, [searchParam]);
 
   // Seed the sidebar filters from the URL query params (e.g. when arriving from a
   // nav "Occasions" dropdown link or a homepage category tile). Categories link by
@@ -442,7 +461,7 @@ export function CatalogClient({
   // Get price range from products
   const priceRange = useMemo(() => {
     const prices = products
-      .map(p => p.priceTiers?.[0]?.sellPrice || 0)
+      .map(minTierPrice)
       .filter(p => p > 0);
     return {
       min: 0,
@@ -454,15 +473,28 @@ export function CatalogClient({
   // every OTHER active filter while ignoring its own. Counting against the fully
   // filtered list instead would zero out every unselected option in a facet the
   // moment you tick one of them, making multi-select impossible.
+  const searchWords = useMemo(
+    () => search.trim().toLowerCase().split(/\s+/).filter(Boolean),
+    [search]
+  );
+
   const predicates = useMemo(() => ({
+    // Every word must appear somewhere in the product's searchable text, so
+    // "eco bottle" narrows while a single word still matches broadly (name,
+    // brand, sku, material, tags, description, category names).
     search: (p: Product) => {
-      if (!search) return true;
-      const q = search.toLowerCase();
-      return (
-        p.name.toLowerCase().includes(q) ||
-        !!p.brand?.toLowerCase().includes(q) ||
-        !!p.categories?.some(c => c.category?.name.toLowerCase().includes(q))
-      );
+      if (!searchWords.length) return true;
+      const haystack = [
+        p.name,
+        p.brand,
+        p.sku,
+        p.material,
+        p.descriptionShort,
+        ...(p.tags ?? []),
+        ...(p.recipientTags ?? []),
+        ...(p.categories?.map(c => c.category?.name) ?? []),
+      ].filter(Boolean).join(' ').toLowerCase();
+      return searchWords.every(w => haystack.includes(w));
     },
     cats: (p: Product) =>
       selectedCats.size === 0 || !!p.categories?.some(c => selectedCats.has(c.categoryId)),
@@ -475,10 +507,10 @@ export function CatalogClient({
     branding: (p: Product) => !brandingOnly || !!p.printingTechnique,
     price: (p: Product) => {
       if (priceMin === null || priceMax === null) return true;
-      const price = p.priceTiers?.[0]?.sellPrice || 0;
+      const price = minTierPrice(p);
       return price >= priceMin && price <= priceMax;
     },
-  }), [search, selectedCats, selectedBrands, selectedOccasions, selectedRecipients, ecoOnly, brandingOnly, priceMin, priceMax]);
+  }), [searchWords, selectedCats, selectedBrands, selectedOccasions, selectedRecipients, ecoOnly, brandingOnly, priceMin, priceMax]);
 
   type FacetKey = keyof typeof predicates;
 
@@ -500,8 +532,8 @@ export function CatalogClient({
     const result = [...productsExcept()];
 
     // Sort
-    if (sort === 'price_asc') result.sort((a, b) => (a.priceTiers?.[0]?.sellPrice || 0) - (b.priceTiers?.[0]?.sellPrice || 0));
-    else if (sort === 'price_desc') result.sort((a, b) => (b.priceTiers?.[0]?.sellPrice || 0) - (a.priceTiers?.[0]?.sellPrice || 0));
+    if (sort === 'price_asc') result.sort((a, b) => minTierPrice(a) - minTierPrice(b));
+    else if (sort === 'price_desc') result.sort((a, b) => minTierPrice(b) - minTierPrice(a));
     else if (sort === 'name') result.sort((a, b) => a.name.localeCompare(b.name));
 
     return result;
@@ -619,7 +651,7 @@ export function CatalogClient({
             <>
               <p className="text-xs" style={{ color: '#8F8A82' }}>
                 <Link href="/" style={{ color: '#800020' }}>Home</Link> /{' '}
-                <Link href="/packs" style={{ color: '#800020' }}>Curated Packs</Link> /{' '}
+                <Link href="/curated-packs" style={{ color: '#800020' }}>Curated Packs</Link> /{' '}
                 <span>{pack.name}</span>
               </p>
               <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -653,10 +685,10 @@ export function CatalogClient({
               </p>
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{category.name}</h1>
               {category.descriptionHtml && (
-                <div
-                  className="blog-content mt-6 max-w-7xl"
+                <CollapsibleRichText
+                  html={category.descriptionHtml}
+                  className="blog-content mt-2 max-w-7xl"
                   style={{ color: '#5C5852' }}
-                  dangerouslySetInnerHTML={{ __html: category.descriptionHtml }}
                 />
               )}
               <p className="mt-2 text-sm" style={{ color: '#8F8A82' }}>
@@ -672,15 +704,15 @@ export function CatalogClient({
               </p>
               {occasion.isCollection && (
                 <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-em-50 px-3 py-1 text-xs font-medium text-em-700">
-                  ✨ Curated Collection
+                   Curated Collection
                 </span>
               )}
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{occasion.name}</h1>
               {occasion.descriptionHtml && (
-                <div
-                  className="blog-content mt-6 max-w-7xl"
+                <CollapsibleRichText
+                  html={occasion.descriptionHtml}
+                  className="blog-content mt-2 max-w-7xl"
                   style={{ color: '#5C5852' }}
-                  dangerouslySetInnerHTML={{ __html: occasion.descriptionHtml }}
                 />
               )}
               <p className="mt-2 text-sm" style={{ color: '#8F8A82' }}>
@@ -703,7 +735,7 @@ export function CatalogClient({
                   All Products
                 </span>
                 <Link
-                  href="/packs"
+                  href="/curated-packs"
                   className="px-6 py-2 rounded-full text-sm font-medium text-[#5C5852] hover:text-ink transition"
                 >
                   Curated Packs
@@ -960,7 +992,7 @@ export function CatalogClient({
               {/* Eco Toggle */}
               {(ecoCount > 0 || ecoOnly) && (
                 <div className="mb-4 pb-3 border-b flex justify-between items-center">
-                  <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">🍃 Eco-Friendly Only <span className="text-xs" style={{ color: '#8F8A82' }}>({ecoCount})</span></label>
+                  <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">Eco-Friendly Only <span className="text-xs" style={{ color: '#8F8A82' }}>({ecoCount})</span></label>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={ecoOnly} onChange={(e) => setEcoOnly(e.target.checked)} className="sr-only peer" />
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
@@ -971,7 +1003,7 @@ export function CatalogClient({
               {/* Branding Toggle */}
               {(brandingCount > 0 || brandingOnly) && (
                 <div className="flex justify-between items-center">
-                  <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">🎨 Branding Available <span className="text-xs" style={{ color: '#8F8A82' }}>({brandingCount})</span></label>
+                  <label className="text-sm font-medium flex items-center gap-2 cursor-pointer">Branding Available <span className="text-xs" style={{ color: '#8F8A82' }}>({brandingCount})</span></label>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" checked={brandingOnly} onChange={(e) => setBrandingOnly(e.target.checked)} className="sr-only peer" />
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
@@ -1059,16 +1091,17 @@ export function CatalogClient({
                             <span className="text-5xl opacity-70 transition hover:scale-110">{p.icon || '📦'}</span>
                           )}
                           {p.moq && <span className="absolute top-2 left-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#F5F1EB', color: '#222222' }}>Min {p.moq}</span>}
-                          {p.isEcoCertified && <span className="absolute top-2 right-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#FBF4F5', color: '#560015' }}>🍃 Eco</span>}
-                          {p.printingTechnique && <span className="absolute bottom-2 right-2 text-[8px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: 'rgba(128, 0, 32,.08)', color: '#560015' }}>{TECH_BADGES[p.printingTechnique] || '🎨 ' + p.printingTechnique}</span>}
+                          {p.isEcoCertified && <span className="absolute top-2 right-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#FBF4F5', color: '#560015' }}>Eco</span>}
+                          {/* Only badge techniques we have a label for — an unmapped value must render nothing, not a fallback. */}
+                          {p.printingTechnique && TECH_BADGES[p.printingTechnique] && <span className="absolute bottom-2 right-2 text-[8px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: 'rgba(128, 0, 32,.08)', color: '#560015' }}>{TECH_BADGES[p.printingTechnique]}</span>}
                         </div>
                         <div className="px-3.5 pb-3.5">
-                          {p.brand && <p className="text-[11px]" style={{ color: '#8F8A82' }}>{p.brand}</p>}
+                          {/* {p.brand && <p className="text-[11px]" style={{ color: '#8F8A82' }}>{p.brand}</p>} */}
                           <h4 className="text-sm font-medium line-clamp-2 my-1">{p.name}</h4>
-                          {p.priceTiers && p.priceTiers[0] && (
-                            <p className="text-sm font-semibold font-mono"><span className="text-[11px] font-normal" style={{ color: '#8F8A82' }}>From </span>{formatPrice(p.priceTiers[0].sellPrice)}</p>
+                          {minTierPrice(p) > 0 && (
+                            <p className="text-sm font-semibold font-mono"><span className="text-[11px] font-normal" style={{ color: '#8F8A82' }}>From </span>{formatPrice(minTierPrice(p))}</p>
                           )}
-                          {p.printingTechnique && <p className="text-[10px] uppercase tracking-widest mt-1" style={{ color: '#8F8A82' }}>{TECH_BADGES[p.printingTechnique] || p.printingTechnique}</p>}
+                          {/* {p.printingTechnique && <p className="text-[10px] uppercase tracking-widest mt-1" style={{ color: '#8F8A82' }}>{TECH_BADGES[p.printingTechnique] || p.printingTechnique}</p>} */}
                         </div>
                       </Link>
                       {/* Colour swatches — hover/tap swaps the card image */}

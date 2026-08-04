@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { readingMinutes, autoExcerpt, slugify } from '@/lib/blog';
+import { readingMinutes, autoExcerpt, slugify, BLOG_AUTHOR } from '@/lib/blog';
+import { resolveCategoryId, pruneEmptyCategories } from '@/lib/blog-categories';
 
 const PostSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
@@ -15,7 +16,8 @@ const PostSchema = z.object({
   publishedAt: z.string().datetime().optional().nullable().or(z.literal('')),
   isFeatured: z.boolean().default(false),
   tags: z.array(z.string()).default([]),
-  categoryId: z.string().optional().nullable().or(z.literal('')),
+  // A free-typed name — matched to an existing category or created on save.
+  categoryName: z.string().max(60).optional().nullable(),
   metaTitle: z.string().max(70).optional().nullable(),
   metaDescription: z.string().max(200).optional().nullable(),
   canonicalUrl: z.string().url().optional().nullable().or(z.literal('')),
@@ -75,6 +77,8 @@ export async function POST(req: NextRequest) {
           ? new Date(body.publishedAt)
           : null;
 
+    const categoryId = await resolveCategoryId(body.categoryName);
+
     const post = await prisma.blogPost.create({
       data: {
         title: body.title,
@@ -87,9 +91,10 @@ export async function POST(req: NextRequest) {
         publishedAt,
         isFeatured: body.isFeatured,
         tags: body.tags,
-        categoryId: nullify(body.categoryId),
+        categoryId,
         authorId: session.user.id,
-        authorName: session.user.name ?? null,
+        // One public byline for the whole blog, regardless of who typed it in.
+        authorName: BLOG_AUTHOR,
         metaTitle: nullify(body.metaTitle),
         metaDescription: nullify(body.metaDescription),
         canonicalUrl: nullify(body.canonicalUrl),
@@ -98,6 +103,8 @@ export async function POST(req: NextRequest) {
         readingMinutes: readingMinutes(body.content),
       },
     });
+
+    await pruneEmptyCategories();
 
     return NextResponse.json({ success: true, data: post }, { status: 201 });
   } catch (error) {

@@ -136,7 +136,7 @@ export default async function LoginPage({
 
             <p className="mt-6 text-center text-xs text-ink-3">
               Need vendor access?{" "}
-              <a href="mailto:hello@giftcraft.in" className="font-normal text-em hover:underline">
+              <a href="mailto:support@givoo.in" className="font-normal text-em hover:underline">
                 Contact us →
               </a>
             </p>

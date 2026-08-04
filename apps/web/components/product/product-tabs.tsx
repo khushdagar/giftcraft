@@ -6,30 +6,21 @@ interface ProductTabsProps {
   description?: string;
   keyFeatures?: string;
   specifications?: string;
-  designArtwork?: string;
   shippingDelivery?: string;
-  samples?: string;
-  packagingAddons?: string;
 }
 
 const TABS = [
   { id: 'description', label: 'Product Description' },
   { id: 'features', label: 'Key Features' },
   { id: 'specifications', label: 'Specifications' },
-  { id: 'design', label: 'Design & Artwork' },
   { id: 'shipping', label: 'Shipping & Delivery' },
-  { id: 'samples', label: 'Samples' },
-  { id: 'packaging', label: 'Packaging & Add-ons' },
 ];
 
 export function ProductTabs({
   description = '',
   keyFeatures = '',
   specifications = '',
-  designArtwork = '',
   shippingDelivery = '',
-  samples = '',
-  packagingAddons = '',
 }: ProductTabsProps) {
   const [activeTab, setActiveTab] = useState('description');
 
@@ -37,10 +28,7 @@ export function ProductTabs({
     description,
     features: keyFeatures,
     specifications,
-    design: designArtwork,
     shipping: shippingDelivery,
-    samples,
-    packaging: packagingAddons,
   };
 
   // Key Features is newer than the other tabs, so it's hidden rather than shown

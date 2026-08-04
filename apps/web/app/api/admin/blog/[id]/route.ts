@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { readingMinutes, autoExcerpt, slugify } from '@/lib/blog';
+import { readingMinutes, autoExcerpt, slugify, BLOG_AUTHOR } from '@/lib/blog';
+import { resolveCategoryId, pruneEmptyCategories } from '@/lib/blog-categories';
 
 const UpdateSchema = z.object({
   title: z.string().min(1).max(200),
@@ -15,7 +16,7 @@ const UpdateSchema = z.object({
   publishedAt: z.string().datetime().optional().nullable().or(z.literal('')),
   isFeatured: z.boolean(),
   tags: z.array(z.string()),
-  categoryId: z.string().optional().nullable().or(z.literal('')),
+  categoryName: z.string().max(60).optional().nullable(),
   metaTitle: z.string().max(70).optional().nullable(),
   metaDescription: z.string().max(200).optional().nullable(),
   canonicalUrl: z.string().url().optional().nullable().or(z.literal('')),
@@ -68,6 +69,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       publishedAt = existing.publishedAt ?? new Date();
     }
 
+    const categoryId = await resolveCategoryId(body.categoryName);
+
     const post = await prisma.blogPost.update({
       where: { id: params.id },
       data: {
@@ -81,7 +84,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         publishedAt,
         isFeatured: body.isFeatured,
         tags: body.tags,
-        categoryId: nullify(body.categoryId),
+        categoryId,
+        authorName: BLOG_AUTHOR,
         metaTitle: nullify(body.metaTitle),
         metaDescription: nullify(body.metaDescription),
         canonicalUrl: nullify(body.canonicalUrl),
@@ -90,6 +94,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         readingMinutes: readingMinutes(body.content),
       },
     });
+
+    // The post may have been the last one holding its old category.
+    await pruneEmptyCategories();
 
     return NextResponse.json({ success: true, data: post });
   } catch (error) {
@@ -111,6 +118,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 
   try {
     await prisma.blogPost.delete({ where: { id: params.id } });
+    await pruneEmptyCategories();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Failed to delete blog post:', error);

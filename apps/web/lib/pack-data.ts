@@ -1,15 +1,8 @@
 import { prisma } from '@/lib/prisma';
-import { PacksBrowser } from '@/components/packs/packs-browser';
 
-// ISR: cacheable HTML for crawlers + users, refreshed hourly.
-export const revalidate = 3600;
-
-export const metadata = {
-  title: 'Curated Gift Packs', // root template appends "· GIVOO"
-  description:
-    'Hand-picked gift assortments curated by our gifting experts. Ready to customise with your branding.',
-  alternates: { canonical: '/packs' },
-};
+// Shared loader for the curated-pack pages: /packs (collection hub) and
+// /curated-packs (flat list of every pack). Both need the same shape, so the
+// query lives here rather than being duplicated per route.
 
 function uniqueById(list: { id: string; name: string }[]) {
   const map = new Map<string, { id: string; name: string }>();
@@ -17,7 +10,7 @@ function uniqueById(list: { id: string; name: string }[]) {
   return Array.from(map.values());
 }
 
-export default async function PacksPage() {
+export async function getPackCollections() {
   const collections = await prisma.giftCollection.findMany({
     where: { isActive: true },
     include: {
@@ -34,7 +27,13 @@ export default async function PacksPage() {
                   brand: true,
                   recipientTags: true,
                   images: { orderBy: { sortOrder: 'asc' }, take: 1 },
-                  priceTiers: { where: { tier: 1 }, select: { sellPrice: true } },
+                  // Highest-quantity tier — the cheapest per-unit rate, which is
+                  // what the "From ₹x /pack" figure on the listing quotes.
+                  priceTiers: {
+                    orderBy: { minQty: 'desc' },
+                    take: 1,
+                    select: { sellPrice: true },
+                  },
                   categories: { select: { category: { select: { id: true, name: true } } } },
                   occasions: {
                     select: { occasion: { select: { id: true, name: true, isCollection: true } } },
@@ -49,7 +48,7 @@ export default async function PacksPage() {
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
   });
 
-  const data = collections
+  return collections
     .map((c) => ({
       id: c.id,
       name: c.name,
@@ -84,8 +83,8 @@ export default async function PacksPage() {
           gradient: null,
           productCount: members.length,
           fromPrice: members.reduce((sum, it) => {
-            const tier1 = it.product.priceTiers[0];
-            return sum + (tier1 ? Number(tier1.sellPrice) : 0) * it.quantity;
+            const bestTier = it.product.priceTiers[0];
+            return sum + (bestTier ? Number(bestTier.sellPrice) : 0) * it.quantity;
           }, 0),
           productImages: members.map((it) => it.product.images[0]?.url ?? null),
           productIds: members.map((it) => it.productId),
@@ -97,6 +96,4 @@ export default async function PacksPage() {
       }),
     }))
     .filter((c) => c.packs.length > 0);
-
-  return <PacksBrowser collections={data} />;
 }

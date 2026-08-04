@@ -159,7 +159,7 @@ export function TrendingProducts({ initialData }: { initialData?: { products: an
                         )}
                         {p.isEcoCertified && (
                           <span className="absolute top-4 right-4 text-xs font-bold bg-[#FBF4F5] text-[#560015] px-2 py-1 rounded-full">
-                            🍃 Eco
+                            Eco
                           </span>
                         )}
                       </div>

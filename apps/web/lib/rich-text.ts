@@ -44,8 +44,9 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     },
   },
   transformTags: {
-    // Force safe rel on links that open a new tab.
-    a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }, false),
+    // Add a safe rel to links. The third arg MUST stay `true` (merge) — passing
+    // `false` replaces the attribute set and silently strips every href.
+    a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }, true),
   },
 };
 

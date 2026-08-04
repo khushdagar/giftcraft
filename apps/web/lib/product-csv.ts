@@ -13,7 +13,10 @@ export const PRODUCT_CSV_HEADERS = [
   // Tax + branding
   'hsnCode', 'printingTechnique', 'printingPosition', 'brandingArea', 'sampleAvailable',
   // Tags + description
-  'occasions', 'recipientTags', 'descriptionShort', 'descriptionLong', 'imageUrls',
+  'occasions', 'recipientTags', 'descriptionShort', 'descriptionLong',
+  // Product page content tabs
+  'keyFeatures', 'specifications', 'shippingDelivery',
+  'imageUrls',
   // Vendor / sourcing
   'vendorName', 'vendorSku', 'vendorMoq', 'vendorLeadDays', 'vendorCost', 'sourcingStatus', 'altVendorName',
   // 6 price tiers

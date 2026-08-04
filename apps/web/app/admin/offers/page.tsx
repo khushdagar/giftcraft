@@ -300,7 +300,7 @@ export default function AdminOffersPage() {
               <Input
                 value={form.ctaUrl}
                 onChange={(e) => set('ctaUrl', e.target.value)}
-                placeholder="https://giftcraft.in/catalog"
+                placeholder="https://givoo.in/catalog"
               />
             </div>
           </div>

@@ -141,8 +141,8 @@ export async function PATCH(
     // Get AWB for shipment
     const { awbCode, courierName } = await getAWB(shipmentId);
 
-    // Generate tracking URL (format: https://track.giftcraft.in/[awbCode])
-    const trackingUrl = `https://track.giftcraft.in/${awbCode}`;
+    // Generate tracking URL (format: https://track.givoo.in/[awbCode])
+    const trackingUrl = `https://track.givoo.in/${awbCode}`;
 
     // Update order with Shiprocket data
     const updatedOrder = await prisma.order.update({

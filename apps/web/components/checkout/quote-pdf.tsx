@@ -246,7 +246,7 @@ export function QuotePDF({ quoteId, expiresAt, payload, shareToken }: QuotePDFPr
         {/* Footer */}
         <View style={styles.footerSection}>
           <Text style={styles.footerText}>Share this quote: {shareUrl}</Text>
-          <Text style={styles.footerText}>Questions? Contact us at hello@giftcraft.in</Text>
+          <Text style={styles.footerText}>Questions? Contact us at support@givoo.in</Text>
           <Text style={styles.footerText}>© GIVOO 2026. Powered by Arts Shala.</Text>
         </View>
       </Page>

@@ -27,7 +27,7 @@ export default function UnauthorizedPage() {
             <Link href="/dashboard">Go to Dashboard</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <a href="mailto:hello@giftcraft.in">Contact Admin</a>
+            <a href="mailto:support@givoo.in">Contact Admin</a>
           </Button>
         </div>
       </div>

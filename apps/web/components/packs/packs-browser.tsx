@@ -48,13 +48,6 @@ type FlatPack = PackCard & {
 // Corporate MOQ (RULE 4) — packs enter checkout at the corporate minimum.
 const DEFAULT_PACK_QTY = 25;
 
-const FALLBACK_GRADIENTS = [
-  'linear-gradient(145deg, #D7AC55 0%, #9A6E2E 55%, #6F4D1E 100%)',
-  'linear-gradient(145deg, #34332F 0%, #222222 55%, #0C0C0B 100%)',
-  'linear-gradient(145deg, #3FA978 0%, #1F8A5C 45%, #134E36 100%)',
-  'linear-gradient(145deg, #4A90D9 0%, #2D5A9E 55%, #1A3C6E 100%)',
-];
-
 // Collage built from the pack's actual product images (a bundle preview).
 // Missing images fall back to a product placeholder tile — never a flat colour.
 function Collage({ tiles }: { tiles: (string | null)[] }) {
@@ -87,6 +80,14 @@ function Collage({ tiles }: { tiles: (string | null)[] }) {
   );
 }
 
+// Used for a collection tile when no cover image is set in the admin.
+const FALLBACK_GRADIENTS = [
+  'linear-gradient(145deg, #D7AC55 0%, #9A6E2E 55%, #6F4D1E 100%)',
+  'linear-gradient(145deg, #34332F 0%, #222222 55%, #0C0C0B 100%)',
+  'linear-gradient(145deg, #3FA978 0%, #1F8A5C 45%, #134E36 100%)',
+  'linear-gradient(145deg, #4A90D9 0%, #2D5A9E 55%, #1A3C6E 100%)',
+];
+
 function checkoutHref(pack: PackCard) {
   return `/builder?pack=${encodeURIComponent(pack.productIds.join(','))}&qty=${DEFAULT_PACK_QTY}`;
 }
@@ -94,14 +95,24 @@ function checkoutHref(pack: PackCard) {
 const toggle = (arr: string[], val: string) =>
   arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 
-export function PacksBrowser({ collections }: { collections: CollectionCard[] }) {
+// Two levels: the collection tiles first, then that collection's packs (with
+// the full filter sidebar). `?collection=<slug>` jumps straight to level 2.
+// A collection page (/curated-packs/<slug>) passes `collection`, which starts
+// on level 2 with that collection pre-selected and its own heading.
+export function PacksBrowser({
+  collections,
+  collection,
+}: {
+  collections: CollectionCard[];
+  collection?: { id: string; name: string; description: string | null };
+}) {
   const searchParams = useSearchParams();
-  const [browsing, setBrowsing] = useState(false);
+  const [browsing, setBrowsing] = useState(!!collection);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
 
-  const [fCollections, setFCollections] = useState<string[]>([]);
+  const [fCollections, setFCollections] = useState<string[]>(collection ? [collection.id] : []);
   const [fCategories, setFCategories] = useState<string[]>([]);
   const [fBrands, setFBrands] = useState<string[]>([]);
   const [fOccasions, setFOccasions] = useState<string[]>([]);
@@ -168,7 +179,7 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
     setFCollections([]);
   };
 
-  // Deep-link support: /packs?collection=<slug> auto-opens that collection
+  // Deep-link support: /curated-packs?collection=<slug> opens that collection
   // (used by the homepage "Curated collections" cards).
   useEffect(() => {
     const slug = searchParams.get('collection');
@@ -283,27 +294,38 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
             <Link href="/" style={{ color: '#800020' }}>
               Home
             </Link>{' '}
-            / <span>Curated Packs</span>
+            /{' '}
+            {collection ? (
+              <>
+                <Link href="/curated-packs" style={{ color: '#800020' }}>
+                  Curated Packs
+                </Link>{' '}
+                / <span>{collection.name}</span>
+              </>
+            ) : (
+              <span>Curated Packs</span>
+            )}
           </p>
-          <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">
-            Curated <span className="italic" style={{ color: '#800020' }}>Packs.</span>
-          </h1>
-          <p className="mt-2 text-base" style={{ color: '#5C5852' }}>
-            Hand-picked gift assortments for every budget and style.
-          </p>
-
-          {/* Tabs */}
-          <div className="mt-6 inline-flex gap-1 rounded-full bg-[#EFEFE9] p-1">
-            <Link
-              href="/catalog"
-              className="px-6 py-2 rounded-full text-sm font-medium text-[#5C5852] hover:text-ink transition"
-            >
-              All Products
-            </Link>
-            <span className="px-6 py-2 rounded-full text-sm font-medium bg-white text-ink shadow-card">
-              Curated Packs
-            </span>
-          </div>
+          {collection ? (
+            <>
+              <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{collection.name}</h1>
+              {collection.description && (
+                <p className="mt-2 text-base max-w-2xl" style={{ color: '#5C5852' }}>
+                  {collection.description}
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">
+                Curated <span className="italic" style={{ color: '#800020' }}>Packs.</span>
+              </h1>
+              <p className="mt-2 text-base" style={{ color: '#5C5852' }}>
+                Hand-picked gift assortments for every budget and style — ready to customise with
+                your branding.
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -320,19 +342,14 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
             </p>
           </div>
         ) : !browsing ? (
-          /* ── Level 1: Collections (gradient cards) ─────────────────────── */
+          /* ── Level 1: pick a collection ─────────────────────────────────── */
           <>
-            <p className="text-center text-ink-2 text-base md:text-lg max-w-2xl mx-auto mb-10">
-              Hand-picked gift assortments curated by our gifting experts. Each pack is ready to
-              customise with your branding.
-            </p>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {collections.map((c, idx) => (
-                <button
+                // Each collection has its own crawlable page.
+                <Link
                   key={c.id}
-                  type="button"
-                  onClick={() => openCollection(c.id)}
+                  href={`/curated-packs/${c.slug}`}
                   className="relative overflow-hidden rounded-md min-h-64 group text-left transition transform hover:-translate-y-1"
                 >
                   {c.image ? (
@@ -345,15 +362,17 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                   ) : (
                     <div
                       className="absolute inset-0 transition transform group-hover:scale-105"
-                      style={{ background: c.gradient || FALLBACK_GRADIENTS[idx % FALLBACK_GRADIENTS.length] }}
+                      style={{
+                        background: c.gradient || FALLBACK_GRADIENTS[idx % FALLBACK_GRADIENTS.length],
+                      }}
                     />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
                   <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-                    <h3 className="font-serif text-2xl md:text-3xl text-white mb-2 leading-tight">
+                    <h2 className="font-serif text-2xl md:text-3xl text-white mb-2 leading-tight">
                       {c.name}
-                    </h3>
+                    </h2>
                     {c.description && (
                       <p className="text-white/70 text-sm mb-3 line-clamp-2">{c.description}</p>
                     )}
@@ -366,23 +385,35 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                       Browse Packs →
                     </div>
                   </div>
-                </button>
+                </Link>
               ))}
             </div>
           </>
         ) : (
-          /* ── Level 2: Catalog-style packs view (filter bar + cards) ─────── */
+          /* ── Level 2: that collection's packs (filter bar + cards) ──────── */
           <>
             {/* Back + search + sort */}
             <div className="mb-4">
-              <button
-                type="button"
-                onClick={backToCollections}
-                className="inline-flex items-center gap-1.5 text-sm font-medium mb-4 transition hover:opacity-80"
-                style={{ color: '#800020' }}
-              >
-                ← All Collections
-              </button>
+              {/* On a collection page there is no in-page level 1 to return to,
+                  so the link leaves for the collections hub. */}
+              {collection ? (
+                <Link
+                  href="/curated-packs"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium mb-4 transition hover:opacity-80"
+                  style={{ color: '#800020' }}
+                >
+                  ← All Collections
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={backToCollections}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium mb-4 transition hover:opacity-80"
+                  style={{ color: '#800020' }}
+                >
+                  ← All Collections
+                </button>
+              )}
 
               <div className="flex flex-col md:flex-row md:items-center gap-3">
                 <div className="relative flex-1">
@@ -669,10 +700,9 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                         key={pack.id}
                         className="flex flex-col overflow-hidden rounded-md border-2 border-bdr bg-white group transition hover:shadow-md hover:border-em/40"
                       >
-                        {/* Whole card (image + details) opens the pack detail
-                            page. The action buttons below sit outside this Link
-                            so they stay independently clickable — no nested
-                            anchors. */}
+                        {/* Clicking the card (image + details) expands the
+                            pack's contents in place — "View Details" below is
+                            the way out to the full pack page. */}
                         <Link
                           href={`/products/${pack.slug}`}
                           className="flex flex-1 flex-col"
@@ -696,11 +726,6 @@ export function PacksBrowser({ collections }: { collections: CollectionCard[] })
                             <h3 className="text-sm font-semibold text-ink leading-snug transition group-hover:text-em">
                               {pack.name}
                             </h3>
-                            {pack.descriptionShort && (
-                              <p className="mt-1 text-xs text-ink-2 line-clamp-2">
-                                {pack.descriptionShort}
-                              </p>
-                            )}
                             <p className="mt-1 text-sm text-ink-2">
                               From{' '}
                               <span className="font-bold text-ink tabular-nums">

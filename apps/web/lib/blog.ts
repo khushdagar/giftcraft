@@ -3,6 +3,12 @@
  * and the public pages can use them.
  */
 
+/** The byline for every post on the site. */
+export const BLOG_AUTHOR = 'Mayank Jain';
+
+/** Posts per page on the public listing. */
+export const POSTS_PER_PAGE = 9;
+
 /** URL-safe slug from a title. Mirrors the inline helper used by other admin forms. */
 export function slugify(input: string): string {
   return input

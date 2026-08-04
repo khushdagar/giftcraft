@@ -16,6 +16,15 @@ import { isHiddenCategory, getHiddenCategoryIds } from '@/lib/catalog-visibility
  * thin page, and linking to one wastes crawl budget.
  */
 
+/**
+ * The customer-facing "from" price is the CHEAPEST tier (the highest-MOQ slab),
+ * not tier 1 — tier 1 is the most expensive, below-MOQ rate.
+ */
+function minTierPrice(tiers: Array<{ sellPrice: unknown }>): number | null {
+  const values = tiers.map((t) => Number(t.sellPrice)).filter((n) => n > 0);
+  return values.length > 0 ? Math.min(...values) : null;
+}
+
 export type CategorySummary = {
   id: string;
   name: string;
@@ -66,7 +75,8 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
             take: 1,
             select: { url: true },
           },
-          priceTiers: { where: { tier: 1 }, take: 1, select: { sellPrice: true } },
+          // All tiers — the "from" price is the CHEAPEST slab (highest MOQ).
+          priceTiers: { select: { sellPrice: true } },
         },
         orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
       }),
@@ -75,7 +85,7 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
     const byCategory = new Map<string, { images: string[]; prices: number[]; count: number }>();
     for (const product of products) {
       const image = product.images[0]?.url;
-      const price = product.priceTiers[0] ? Number(product.priceTiers[0].sellPrice) : null;
+      const price = minTierPrice(product.priceTiers);
       for (const { categoryId } of product.categories) {
         let bucket = byCategory.get(categoryId);
         if (!bucket) {
@@ -178,7 +188,8 @@ export async function getCategoryBySlug(slug: string): Promise<{
           take: 1,
           select: { url: true },
         },
-        priceTiers: { where: { tier: 1 }, take: 1, select: { sellPrice: true } },
+        // All tiers — the "from" price is the CHEAPEST slab (highest MOQ).
+        priceTiers: { select: { sellPrice: true } },
       },
       orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
     });
@@ -195,7 +206,7 @@ export async function getCategoryBySlug(slug: string): Promise<{
         slug: product.slug,
         brand: product.brand,
         imageUrl: product.images[0]?.url ?? null,
-        price: product.priceTiers[0] ? Number(product.priceTiers[0].sellPrice) : 0,
+        price: minTierPrice(product.priceTiers) ?? 0,
         isEcoCertified: product.isEcoCertified,
         moq: product.moq ?? null,
       })),

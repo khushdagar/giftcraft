@@ -131,7 +131,7 @@ export function OrderSummary({
       </div>
 
       {logo && (
-        <div className="text-xs text-[#8F8A82] mt-2">🎨 Logo uploaded</div>
+        <div className="text-xs text-[#8F8A82] mt-2">Logo uploaded</div>
       )}
     </div>
   );

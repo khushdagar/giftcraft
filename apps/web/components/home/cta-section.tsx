@@ -15,7 +15,7 @@ export function CTASection() {
         </p>
         <div className="flex gap-4 justify-center flex-wrap">
           <Link href="/builder" className="px-8 py-4 bg-white text-[#222222] rounded-full font-semibold hover:bg-[#FAFAFA] transition">
-            Build Your Gift
+            Build Your Pack
           </Link>
           <Link href="/catalog" className="px-8 py-4 border-2 border-white/30 text-white rounded-full font-semibold hover:border-white transition">
             Browse Catalog

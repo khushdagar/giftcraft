@@ -54,7 +54,7 @@ export function ProductInfoSection({
 
   return (
     <div>
-      <p className="mb-2 text-xs text-ink-3">{product.brand ? `${product.brand} · ` : ""}{categoryName}</p>
+      <p className="mb-2 text-xs text-ink-3">{product.brand ? `${product.brand} · ` : ""}</p>
       <h1 className="font-serif text-4xl font-light tracking-tight text-ink">{product.name}</h1>
       <p className="mt-4 text-base leading-relaxed text-ink-2">
         {product.descriptionShort || stripHtml(product.descriptionLong)}
@@ -64,12 +64,12 @@ export function ProductInfoSection({
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {product.printingTechnique !== "none" && product.printingTechnique && (
           <Badge className="rounded-full bg-em/10 text-em text-xs font-medium px-3 py-1">
-            🎨 {product.printingTechnique}
+            {product.printingTechnique}
           </Badge>
         )}
         {product.isEcoCertified && (
           <Badge className="rounded-full bg-em/10 text-em text-xs font-medium px-3 py-1">
-            🍃 BPA-Free · Recyclable Steel
+            BPA-Free · Recyclable Steel
           </Badge>
         )}
         <Badge className="rounded-full bg-em/10 text-em text-xs font-medium px-3 py-1">
@@ -78,14 +78,14 @@ export function ProductInfoSection({
       </div>
 
       {/* Customization note */}
-      {!isPack && product.printingTechnique && product.printingTechnique !== "none" && (
+      {/* {!isPack && product.printingTechnique && product.printingTechnique !== "none" && (
         <p className="mt-4 text-xs italic text-ink-2">
           This product uses <span className="font-semibold">{product.printingTechnique}</span> for logo customisation. Cost included in price.{' '}
           <Link href={`/builder?product=${product.id}`} className="text-em hover:underline">
             Want a different technique? Add a note in the gift builder.
           </Link>
         </p>
-      )}
+      )} */}
 
       {/* Color selector (hidden for packs — colours live on the member products) */}
       {!isPack && (() => {
