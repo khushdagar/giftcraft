@@ -32,8 +32,8 @@ export function GiftPackSummary() {
     pincode,
   } = useBuilderStore();
 
-  // Full running total — computed with the SAME pricing engine the final Review
-  // step and checkout use (see step-4-review / lib/quote-pricing), so the number
+  // Full running total — computed with the SAME pricing engine the delivery
+  // step and checkout use (see use-proceed-to-checkout / lib/quote-pricing), so the number
   // shown here matches to the rupee. GST + payment fee are included so nothing
   // jumps unexpectedly later; before a delivery address is entered, GST is
   // estimated intra-state (Delhi) and re-computes once the address is set.
@@ -166,17 +166,63 @@ export function GiftPackSummary() {
     // At lg the sticky right-hand column takes over and source order applies.
     <div className="order-first min-w-0 lg:order-none lg:sticky lg:top-[140px] h-fit lg:max-h-[calc(100vh-230px)] lg:overflow-y-auto lg:pr-1 lg:pb-2">
       <div className="rounded-2xl bg-em-50 border-2 border-em-200 p-3 shadow-sm space-y-3 lg:space-y-4">
-        {/* Title with Count Badge */}
+        {/* Title with Count Badge. On mobile the units stepper rides on this same
+            row (replacing the "You have selected" block below), so the price
+            block lands immediately under the heading. */}
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-black tracking-tight text-ink">Your Gift Pack</h3>
           <div className="w-6 h-6 rounded-full bg-em text-white flex items-center justify-center text-xs font-bold">{selected.length}</div>
+
+          {selected.length > 0 && (
+            <div className="ml-auto flex items-center gap-1.5 lg:hidden">
+              <div className="flex items-center overflow-hidden rounded-md border-2 border-emerald-200 bg-white">
+                <button
+                  onClick={() => setPackQuantity(Math.max(minQty, packQuantity - 1))}
+                  disabled={packQuantity <= minQty}
+                  className="flex h-8 w-8 items-center justify-center text-gray-500 transition disabled:opacity-40"
+                  title={packQuantity <= minQty ? `Minimum ${minQty} units` : 'Decrease units'}
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <input
+                  type="number"
+                  min={minQty}
+                  value={qtyInput}
+                  onChange={(e) => {
+                    setQtyInput(e.target.value);
+                    const v = parseInt(e.target.value, 10);
+                    if (!isNaN(v) && v > 0) setPackQuantity(v);
+                  }}
+                  onBlur={() => {
+                    const v = parseInt(qtyInput, 10);
+                    const next = isNaN(v) || v < minQty ? minQty : v;
+                    setPackQuantity(next);
+                    setQtyInput(String(next));
+                  }}
+                  aria-label="Units"
+                  className="w-12 border-x-2 border-emerald-200 py-1 text-center text-sm font-bold text-ink outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <button
+                  onClick={() => setPackQuantity(packQuantity + 1)}
+                  className="flex h-8 w-8 items-center justify-center text-gray-500 transition"
+                  title="Increase units"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <span className="text-[11px] text-ink-3">
+                units<span className="block leading-none">min {minQty}</span>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Icon Grid Box */}
         {selected.length > 0 ? (
           <>
-            {/* Units selected — applies to the whole pack */}
-            <div className="rounded-md bg-white p-2.5 lg:p-3">
+            {/* Units selected — applies to the whole pack. Desktop only; mobile
+                uses the compact stepper in the header row above. */}
+            <div className="hidden lg:block rounded-md bg-white p-2.5 lg:p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 mb-1.5">You have selected</p>
               <div className="flex items-center gap-2">
                 <div className="flex items-center border-2 border-emerald-200 rounded-md overflow-hidden">

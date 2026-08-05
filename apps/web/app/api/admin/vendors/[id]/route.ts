@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { zEmail, zGstin, zPhone } from '@/lib/zod-fields';
 
 const UpdateVendorSchema = z.object({
   code: z.string().nullable().optional(),
@@ -9,13 +10,13 @@ const UpdateVendorSchema = z.object({
   type: z.string().nullable().optional(),
   productsServices: z.string().nullable().optional(),
   contactName: z.string().min(2).max(100).optional(),
-  email: z.string().email().optional(),
-  phone: z.string().min(10).max(20).optional(),
-  whatsapp: z.string().nullable().optional(),
+  email: zEmail.optional(),
+  phone: zPhone.optional(),
+  whatsapp: zPhone.nullable().optional().or(z.literal('')),
   city: z.string().min(2).max(50).optional(),
   state: z.string().length(2).optional(),
   address: z.string().optional(),
-  gst: z.string().optional(),
+  gst: zGstin.optional().or(z.literal('')),
   paymentTerms: z.string().optional(),
   avgLeadDays: z.number().int().nullable().optional(),
   minOrderQty: z.number().int().nullable().optional(),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
+import { sendPushToAdmins } from '@/lib/push';
 
 // Resolve by slug or id — mirrors /api/products/[slug].
 async function resolveProduct(slugOrId: string) {
@@ -185,6 +186,14 @@ export async function POST(
         isVerifiedBuyer: true,
       },
     });
+
+    // Reviews stay hidden until moderated, so alert admins.
+    sendPushToAdmins({
+      title: `New ${rating}★ review`,
+      body: `${session.user.name || 'A customer'} reviewed a product — awaiting approval.`,
+      url: '/admin/reviews?status=pending',
+      tag: `review-${review.id}`,
+    }).catch(() => {});
 
     return NextResponse.json({ success: true, data: review }, { status: 201 });
   } catch (error) {

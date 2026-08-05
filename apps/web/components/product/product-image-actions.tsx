@@ -55,6 +55,8 @@ export function ProductImageActions({ productId, name, slug, image }: ProductIma
 
   return (
     <div className="absolute right-3 top-3 z-20 flex gap-2">
+      {/* Wishlist (heart) hidden for now — the feature isn't live yet. The store
+          and handler are left intact so it's a one-line restore.
       <button
         type="button"
         onClick={handleWishlist}
@@ -66,6 +68,7 @@ export function ProductImageActions({ productId, name, slug, image }: ProductIma
           className={`h-4 w-4 transition ${saved ? 'fill-em text-em' : 'text-ink'}`}
         />
       </button>
+      */}
       <button type="button" onClick={handleShare} aria-label={`Share ${name}`} className={btn}>
         <Share2 className="h-4 w-4 text-ink" />
       </button>

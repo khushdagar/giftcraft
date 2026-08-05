@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { Decimal } from '@prisma/client/runtime/library';
+import { FieldError } from '@/components/ui/field-error';
+import { validateEmail, validateGstin, validateName, validatePhone } from '@/lib/validation';
 
 interface VendorOverviewTabProps {
   vendor: {
@@ -45,12 +47,29 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    const value =
+      name === 'gst'
+        ? e.target.value.toUpperCase().slice(0, 15)
+        : name === 'phone'
+          ? e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 14)
+          : e.target.value;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
+
+  // Fields are optional on an existing vendor — only typed values are checked.
+  const fieldErrors = {
+    contactName: formData.contactName.trim()
+      ? validateName(formData.contactName, 'Contact name')
+      : null,
+    email: validateEmail(formData.email, { required: false }),
+    phone: validatePhone(formData.phone, { required: false }),
+    gst: validateGstin(formData.gst),
+  };
+  const hasFieldErrors = Object.values(fieldErrors).some(Boolean);
 
   const handleScoreSave = async () => {
     const numScore = Number(score);
@@ -106,6 +125,11 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
   };
 
   const handleSave = async () => {
+    const firstError = Object.values(fieldErrors).find(Boolean);
+    if (firstError) {
+      toast.error(firstError);
+      return;
+    }
     setLoading(true);
     try {
       const response = await fetch(`/api/admin/vendors/${vendor.id}`, {
@@ -215,9 +239,13 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
                 <label className="block text-sm font-normal text-ink mb-2">Contact Name</label>
                 <Input
                   name="contactName"
+                  maxLength={100}
                   value={formData.contactName}
                   onChange={handleChange}
+                  aria-invalid={!!fieldErrors.contactName}
+                  className={fieldErrors.contactName ? 'border-red-400' : ''}
                 />
+                <FieldError message={fieldErrors.contactName ?? undefined} />
               </div>
               <div>
                 <label className="block text-sm font-normal text-ink mb-2">Email</label>
@@ -226,7 +254,10 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
+                  aria-invalid={!!fieldErrors.email}
+                  className={fieldErrors.email ? 'border-red-400' : ''}
                 />
+                <FieldError message={fieldErrors.email ?? undefined} />
               </div>
             </div>
 
@@ -235,17 +266,26 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
                 <label className="block text-sm font-normal text-ink mb-2">Phone</label>
                 <Input
                   name="phone"
+                  type="tel"
+                  maxLength={14}
                   value={formData.phone}
                   onChange={handleChange}
+                  aria-invalid={!!fieldErrors.phone}
+                  className={fieldErrors.phone ? 'border-red-400' : ''}
                 />
+                <FieldError message={fieldErrors.phone ?? undefined} />
               </div>
               <div>
                 <label className="block text-sm font-normal text-ink mb-2">GST</label>
                 <Input
                   name="gst"
+                  maxLength={15}
                   value={formData.gst}
                   onChange={handleChange}
+                  aria-invalid={!!fieldErrors.gst}
+                  className={fieldErrors.gst ? 'border-red-400' : ''}
                 />
+                <FieldError message={fieldErrors.gst ?? undefined} />
               </div>
             </div>
 
@@ -301,7 +341,7 @@ export function VendorOverviewTab({ vendor }: VendorOverviewTabProps) {
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={handleSave}
-                disabled={loading}
+                disabled={loading || hasFieldErrors}
                 className="bg-em px-6 font-normal rounded-2xl"
               >
                 {loading ? 'Saving...' : 'Save Changes'}

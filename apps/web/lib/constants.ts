@@ -1,9 +1,17 @@
+// States and union territories in one A–Z list. They used to be two blocks
+// (states A–Z, then UTs A–Z), which read as broken ordering in the dropdowns —
+// Delhi and Chandigarh landed after West Bengal.
 export const INDIAN_STATES = [
+  "Andaman and Nicobar Islands",
   "Andhra Pradesh",
   "Arunachal Pradesh",
   "Assam",
   "Bihar",
+  "Chandigarh",
   "Chhattisgarh",
+  "Dadra and Nagar Haveli",
+  "Daman and Diu",
+  "Delhi",
   "Goa",
   "Gujarat",
   "Haryana",
@@ -11,6 +19,8 @@ export const INDIAN_STATES = [
   "Jharkhand",
   "Karnataka",
   "Kerala",
+  "Ladakh",
+  "Lakshadweep",
   "Madhya Pradesh",
   "Maharashtra",
   "Manipur",
@@ -18,6 +28,7 @@ export const INDIAN_STATES = [
   "Mizoram",
   "Nagaland",
   "Odisha",
+  "Puducherry",
   "Punjab",
   "Rajasthan",
   "Sikkim",
@@ -27,14 +38,6 @@ export const INDIAN_STATES = [
   "Uttar Pradesh",
   "Uttarakhand",
   "West Bengal",
-  "Andaman and Nicobar Islands",
-  "Chandigarh",
-  "Dadra and Nagar Haveli",
-  "Daman and Diu",
-  "Delhi",
-  "Ladakh",
-  "Lakshadweep",
-  "Puducherry",
 ];
 
 /**

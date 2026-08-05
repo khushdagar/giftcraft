@@ -185,7 +185,7 @@ export function GiftingMomentsSection() {
                           transition={{ delay: idx * 0.2 + 0.35 }}
                           className={`mb-10 inline-block px-8 py-4 rounded-2xl font-normal text-white text-lg ${moment.badgeBg} shadow-lg`}
                         >
-                          🎉 {moment.offer}
+                          {moment.offer}
                         </motion.div>
 
                         {/* CTA - enhanced */}

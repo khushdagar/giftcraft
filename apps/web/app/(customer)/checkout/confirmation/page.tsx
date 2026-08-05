@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { formatRupees } from '@/lib/utils';
 import { combinedGst, splitPaymentFee, shippingTaxable } from '@/lib/pricing-display';
 import { invoiceLabel } from '@/lib/invoice-status';
+import { ProposalDownloadButton } from '@/components/checkout/proposal-download-button';
 import { useBuilderStore } from '@/store/builder';
 import { useBoxStore } from '@/store/box';
 
@@ -203,7 +204,7 @@ function ConfirmationContent() {
 
           {/* Next Steps Notice */}
           <div className="bg-[#FBF4F5] border-l-4 border-[#800020] px-4 py-3 rounded-lg text-left text-sm text-[#560015] mb-6">
-            <p className="font-semibold mb-1">📬 What happens now?</p>
+            <p className="font-semibold mb-1">What happens now?</p>
             <p>
               Our design team will create branded mockups of your products within <strong>1–2 business days</strong>.
               You'll receive an approval link via email.
@@ -322,8 +323,14 @@ function ConfirmationContent() {
             )}
           </div>
 
+          {/* On mobile the actions come first, straight after the grand total —
+              the timeline is reference, the buttons are what the customer needs.
+              At lg the orders reset and the source order (timeline, then CTAs)
+              applies again. */}
+          <div className="flex flex-col">
+
           {/* Timeline */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 mb-8 text-left">
+          <div className="order-2 lg:order-none bg-white rounded-2xl shadow-sm p-6 mb-8 text-left">
             <h3 className="text-base font-semibold mb-4">Order Timeline</h3>
 
             <div className="space-y-3">
@@ -338,13 +345,7 @@ function ConfirmationContent() {
           </div>
 
           {/* CTA Buttons */}
-          <div className="space-y-3 max-w-xs mx-auto mb-8">
-            <Link
-              href={`/orders/${order.id}/track`}
-              className="flex items-center justify-center gap-2 h-12 bg-[#800020] text-white rounded-full font-semibold text-base hover:bg-[#6B001B] transition"
-            >
-              📦 Track Your Order
-            </Link>
+          <div className="order-1 lg:order-none space-y-3 max-w-xs mx-auto mb-8 w-full">
             <a
               href={`/api/orders/${order.id}/invoice`}
               target="_blank"
@@ -353,6 +354,17 @@ function ConfirmationContent() {
             >
               📄 Download {invoiceLabel(order.amountPaid, order.grandTotal)}
             </a>
+            <ProposalDownloadButton
+              orderId={order.id}
+              label="🎁 Download Proposal Deck"
+              className="relative overflow-hidden flex items-center justify-center w-full h-11 border-2 border-[#D3CBBC] rounded-full font-medium text-sm text-[#222222] hover:bg-[#FAFAFA] transition disabled:cursor-default"
+            />
+            <Link
+              href={`/orders/${order.id}/track`}
+              className="flex items-center justify-center gap-2 h-12 bg-[#800020] text-white rounded-full font-semibold text-base hover:bg-[#6B001B] transition"
+            >
+              📦 Track Your Order
+            </Link>
             <Link
               href="/"
               className="flex items-center justify-center h-11 text-sm text-[#800020] font-medium hover:underline"
@@ -360,11 +372,12 @@ function ConfirmationContent() {
               ← Back to Home
             </Link>
           </div>
+          </div>
 
           {/* Notifications */}
           <div className="bg-[#FAFAFA] rounded-lg p-4 text-left text-sm text-[#5C5852] mb-6">
-            <p className="font-semibold mb-2">📲 Notifications sent to:</p>
-            <p className="mb-1">✉️ Confirmation email with order details and quote PDF</p>
+            <p className="font-semibold mb-2">Notifications sent to:</p>
+            <p className="mb-1">Confirmation email with order details and quote PDF</p>
           </div>
 
           <p className="text-xs text-[#8F8A82]">

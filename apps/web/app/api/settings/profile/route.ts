@@ -2,15 +2,11 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { zPersonName, zPhone } from '@/lib/zod-fields';
 
 const profileSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required').max(120).optional(),
-  phone: z
-    .string()
-    .trim()
-    .max(20)
-    .optional()
-    .or(z.literal('')),
+  name: zPersonName('Name').optional(),
+  phone: zPhone.optional().or(z.literal('')),
   image: z.string().url().max(500).optional().or(z.literal('')),
 });
 
@@ -78,7 +74,7 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request', details: error.errors },
+        { error: error.errors[0]?.message || 'Invalid request', details: error.errors },
         { status: 400 }
       );
     }

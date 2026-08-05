@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { zEmail, zPersonName, zPhone } from '@/lib/zod-fields';
+import { sendPushToAdmins } from '@/lib/push';
 
 const EnquirySchema = z.object({
-  companyName: z.string().trim().min(1, 'Company name is required').max(200),
-  contactName: z.string().trim().min(1, 'Contact name is required').max(200),
-  email: z.string().trim().email('Valid email is required').max(200),
-  phone: z.string().trim().min(5, 'Phone is required').max(30),
-  quantity: z.coerce.number().int().positive().optional(),
+  companyName: zPersonName('Company name').max(200),
+  contactName: zPersonName('Contact name').max(200),
+  email: zEmail,
+  phone: zPhone,
+  quantity: z.coerce.number().int().positive().max(1000000).optional(),
   message: z.string().trim().max(2000).optional(),
   productId: z.string().optional(),
   productName: z.string().optional(),
@@ -31,6 +33,17 @@ export async function POST(request: NextRequest) {
       },
       select: { id: true },
     });
+
+    // Leads go cold fast — alert admins immediately. Tag matches the bell's
+    // enquiry-<id> key so the two don't stack up.
+    sendPushToAdmins({
+      title: `New enquiry from ${data.companyName}`,
+      body: data.productName
+        ? `About ${data.productName}${data.quantity ? ` — ${data.quantity} units` : ''}`
+        : `${data.contactName} — ${data.phone}`,
+      url: '/admin/enquiries',
+      tag: `enquiry-${enquiry.id}`,
+    }).catch(() => {});
 
     return NextResponse.json({ success: true, data: { id: enquiry.id } }, { status: 201 });
   } catch (error) {

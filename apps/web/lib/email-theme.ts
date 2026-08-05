@@ -23,9 +23,21 @@ export const FONT = `-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetic
 
 /**
  * Absolute URL to the GIVOO wordmark. Mail clients can't resolve relative
- * paths, so this must always be fully-qualified.
+ * paths, so this must always be fully-qualified — AND it must be reachable from
+ * the recipient's mail client, which is a different machine entirely. A
+ * localhost/LAN base URL (dev, or a preview box) produces a broken image in
+ * every inbox, so those fall back to the public site.
  */
-export const LOGO_URL = `${(process.env.NEXT_PUBLIC_APP_URL || 'https://givoo.in').replace(/\/$/, '')}/givoo_logo.png`;
+const EMAIL_ASSET_HOST = (() => {
+  const configured = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+  if (!configured) return 'https://givoo.in';
+  const isUnreachable =
+    /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|.*\.local)(:\d+)?$/i.test(configured) ||
+    /^https?:\/\/(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(configured);
+  return isUnreachable ? 'https://givoo.in' : configured;
+})();
+
+export const LOGO_URL = `${EMAIL_ASSET_HOST}/givoo_logo.png`;
 
 export const esc = (s: string) =>
   String(s ?? '')

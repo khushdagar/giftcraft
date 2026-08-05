@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { formatPostDate } from '@/lib/blog';
+import { validateEmail, validateName, validateText } from '@/lib/validation';
 
 interface CommentItem {
   id: string;
@@ -64,9 +65,11 @@ export function BlogComments({ postId }: { postId: string }) {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (authorName.trim().length < 2) return setError('Please enter your name');
-    if (!email.includes('@')) return setError('Please enter a valid email');
-    if (body.trim().length < 4) return setError('Please write a comment');
+    const problem =
+      validateName(authorName, 'Your name') ||
+      validateEmail(email) ||
+      validateText(body, 'Comment', { min: 4, max: 2000 });
+    if (problem) return setError(problem);
     submit.mutate();
   };
 

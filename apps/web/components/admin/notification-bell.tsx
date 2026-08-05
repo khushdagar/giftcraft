@@ -2,11 +2,37 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Bell, Package, PencilLine, AlertCircle, CheckCheck, X, Star, Mail, Box, Download } from 'lucide-react';
+import {
+  Bell,
+  Package,
+  PencilLine,
+  AlertCircle,
+  CheckCheck,
+  X,
+  Star,
+  Mail,
+  Box,
+  Download,
+  CheckCircle2,
+  IndianRupee,
+  MessageSquare,
+  Store,
+} from 'lucide-react';
 
 interface NotificationItem {
   id: string;
-  type: 'order' | 'revision' | 'dispute' | 'review' | 'enquiry' | 'sample' | 'download';
+  type:
+    | 'order'
+    | 'approval'
+    | 'payment'
+    | 'revision'
+    | 'dispute'
+    | 'review'
+    | 'comment'
+    | 'enquiry'
+    | 'vendor'
+    | 'sample'
+    | 'download';
   title: string;
   subtitle: string;
   href: string;
@@ -16,20 +42,28 @@ interface NotificationItem {
 
 const ICON = {
   order: Package,
+  approval: CheckCircle2,
+  payment: IndianRupee,
   revision: PencilLine,
   dispute: AlertCircle,
   review: Star,
+  comment: MessageSquare,
   enquiry: Mail,
+  vendor: Store,
   sample: Box,
   download: Download,
 } as const;
 
 const ICON_STYLE = {
   order: 'bg-emerald-50 text-em-700',
+  approval: 'bg-emerald-50 text-em-700',
+  payment: 'bg-emerald-50 text-em-700',
   revision: 'bg-amber-50 text-amber-700',
   dispute: 'bg-rose-50 text-rose-700',
   review: 'bg-amber-50 text-amber-700',
+  comment: 'bg-sky-50 text-sky-700',
   enquiry: 'bg-sky-50 text-sky-700',
+  vendor: 'bg-violet-50 text-violet-700',
   sample: 'bg-violet-50 text-violet-700',
   download: 'bg-gray-100 text-gray-600',
 } as const;

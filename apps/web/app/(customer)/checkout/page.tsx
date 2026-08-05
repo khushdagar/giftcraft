@@ -102,7 +102,8 @@ function CheckoutContent() {
   // re-type the address they logged in with.
   const { data: session } = useSession();
 
-  const [selectedPath, setSelectedPath] = useState<'mockup' | 'lock'>('mockup');
+  // Price lock is the recommended path, so it starts selected.
+  const [selectedPath, setSelectedPath] = useState<'mockup' | 'lock'>('lock');
   const [showSignIn, setShowSignIn] = useState(false);
 
   const [billingData, setBillingData] = useState<BillingFormData>({
@@ -377,8 +378,15 @@ function CheckoutContent() {
   });
 
   // Single entrypoint from the pricing panel; branches on the selected path.
-  const handleContinue = async () => {
+  // `pathOverride` lets a caller pick the path and place the order in one tap —
+  // the mobile sticky bar offers both paths as buttons. Anything that isn't one
+  // of the two path strings (e.g. a click event from a plain onClick={...}) is
+  // ignored, so the stored selection still wins.
+  const handleContinue = async (pathOverride?: 'mockup' | 'lock') => {
+    const path =
+      pathOverride === 'mockup' || pathOverride === 'lock' ? pathOverride : selectedPath;
     if (submitting) return;
+    if (path !== selectedPath) setSelectedPath(path);
     // Guests sign in at the payment step (orders are always tied to an
     // account). Save what they've typed so it's restored when Google brings
     // them back to this exact page.
@@ -386,7 +394,7 @@ function CheckoutContent() {
       try {
         sessionStorage.setItem(
           `checkout-form-${quoteId}`,
-          JSON.stringify({ billingData, contactData, selectedPath })
+          JSON.stringify({ billingData, contactData, selectedPath: path })
         );
       } catch {
         /* storage unavailable — they'll just re-type after signing in */
@@ -395,7 +403,7 @@ function CheckoutContent() {
       return;
     }
     if (!validateForms()) return;
-    if (selectedPath === 'lock') return handlePayAndLock();
+    if (path === 'lock') return handlePayAndLock();
     return handleMockupConfirm();
   };
 
@@ -579,7 +587,8 @@ function CheckoutContent() {
       </Dialog>
 
       <main className="bg-[#F5F1EB] min-h-screen">
-        <section className="py-8 md:py-12 pb-20">
+        {/* Extra bottom clearance on mobile — the pay CTA is a fixed bar there. */}
+        <section className="py-8 md:py-12">
           <div className="cw">
             <h1 className="text-4xl md:text-5xl font-serif font-normal mb-2">Checkout.</h1>
             <p className="text-base text-[#000000] mb-8 md:mb-12">
@@ -589,9 +598,14 @@ function CheckoutContent() {
             {/* The right column stretches to the row height (grid default) so the
                 sticky pricing panel inside it has room to travel — with items-start
                 the column would shrink to the panel's height and sticky wouldn't hold. */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* On mobile this is a flex column so the three blocks can be
+                re-ordered: order summary → price breakdown → forms. `contents`
+                dissolves the left column at that width so its two halves become
+                orderable siblings; at lg it's the original 2/1 grid again. */}
+            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-3 lg:gap-8">
               {/* Left column - Forms */}
-              <div className="lg:col-span-2 min-w-0">
+              <div className="contents lg:block lg:col-span-2 min-w-0">
+                <div className="order-1 lg:order-none">
                 <OrderSummary
                   products={summaryProducts}
                   packQuantity={packQuantity}
@@ -605,7 +619,11 @@ function CheckoutContent() {
                   logo={payload.logoUrl || undefined}
                   onEdit={() => router.push('/builder')}
                 />
+                </div>
 
+                {/* Everything else in the left column stays together, below the
+                    price breakdown on mobile. */}
+                <div className="order-3 lg:order-none">
                 {/* Shareable proposal deck — a slide-style PDF of exactly the
                     products in this pack, for sending on to approvers. */}
                 <div className="bg-white rounded-2xl shadow-sm p-5 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -639,6 +657,7 @@ function CheckoutContent() {
                   advance10={advance10}
                   balance90={balance90}
                   onContinue={handleContinue}
+                  submitting={submitting}
                 />
 
                 <ProcessTimeline
@@ -647,10 +666,11 @@ function CheckoutContent() {
                   balance90={balance90}
                   grand={pricing.grandTotal}
                 />
+                </div>
               </div>
 
               {/* Right column - Pricing */}
-              <div className="lg:col-span-1 min-w-0">
+              <div className="order-2 lg:order-none lg:col-span-1 min-w-0">
                 <PricingPanel
                   products={pricingProducts}
                   packagingName={payload.packaging?.name}
@@ -660,22 +680,13 @@ function CheckoutContent() {
                   balance90={balance90}
                   selectedPath={selectedPath}
                   onContinue={handleContinue}
+                  submitting={submitting}
                 />
               </div>
             </div>
           </div>
         </section>
       </main>
-
-      <footer className="bg-[#222222] text-[#F5F1EB] py-8 mt-12">
-        <div className="cw">
-          <p className="text-sm mb-2 font-serif italic text-opacity-40">GIVOO</p>
-          <div className="flex justify-between text-xs text-[#5C5852]">
-            <span>© 2026 GIVOO. All Rights Reserved.</span>
-            <span>Made with ♥ in Delhi</span>
-          </div>
-        </div>
-      </footer>
     </>
   );
 }

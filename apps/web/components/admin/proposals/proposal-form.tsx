@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { Search, Plus, X, Send, Loader2 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
+import { FieldError } from '@/components/ui/field-error';
+import { validateEmail } from '@/lib/validation';
 
 interface PriceTier {
   minQty: number;
@@ -156,9 +158,14 @@ export function ProposalForm({
   const perPack = productsPerPack + boxPrice + addonsPerPack;
   const estSubtotal = Math.max(0, perPack * packQuantity - discount);
 
+  // Shown inline only once something has been typed — the field starts prefilled
+  // but can be cleared.
+  const recipientEmailError = recipientEmail.trim() ? validateEmail(recipientEmail) : null;
+
   const handleSend = async () => {
-    if (!recipientEmail.trim() || !/^\S+@\S+\.\S+$/.test(recipientEmail.trim())) {
-      toast.error('Enter a valid recipient email');
+    const emailProblem = validateEmail(recipientEmail);
+    if (emailProblem) {
+      toast.error(emailProblem);
       return;
     }
     if (items.length === 0) {
@@ -226,8 +233,10 @@ export function ProposalForm({
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
                 placeholder="lead@company.com"
-                className={inputCls}
+                aria-invalid={!!recipientEmailError}
+                className={`${inputCls} ${recipientEmailError ? 'border-red-400' : ''}`}
               />
+              <FieldError message={recipientEmailError ?? undefined} />
             </div>
             <div>
               <label className="mb-1 block text-xs text-gray-500">Contact name</label>

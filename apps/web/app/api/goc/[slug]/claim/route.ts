@@ -2,17 +2,18 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
+import { zEmail, zPersonName, zPhone, zPincode } from '@/lib/zod-fields';
 
 const claimSchema = z.object({
   optionId: z.string().min(1),
-  claimerName: z.string().min(2),
-  claimerEmail: z.string().email(),
-  claimerPhone: z.string().regex(/^\d{10}$/),
-  addressLine1: z.string().min(3),
-  addressLine2: z.string().optional(),
-  city: z.string().min(2),
-  state: z.string().min(2),
-  pincode: z.string().regex(/^\d{6}$/),
+  claimerName: zPersonName('Name'),
+  claimerEmail: zEmail,
+  claimerPhone: zPhone,
+  addressLine1: z.string().trim().min(5).max(300),
+  addressLine2: z.string().trim().max(300).optional(),
+  city: zPersonName('City').max(120),
+  state: z.string().trim().min(2).max(120),
+  pincode: zPincode,
 });
 
 type ClaimData = z.infer<typeof claimSchema>;

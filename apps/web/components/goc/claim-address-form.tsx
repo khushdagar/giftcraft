@@ -6,16 +6,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AlertCircle } from 'lucide-react';
 import { z } from 'zod';
+import { EMAIL_REGEX, PHONE_REGEX, PINCODE_REGEX } from '@/lib/validation';
 
 const addressSchema = z.object({
-  claimerName: z.string().min(2, 'Name must be at least 2 characters'),
-  claimerEmail: z.string().email('Please enter a valid email'),
-  claimerPhone: z.string().regex(/^\d{10}$/, 'Phone must be 10 digits'),
-  addressLine1: z.string().min(3, 'Address is required'),
-  addressLine2: z.string().optional(),
-  city: z.string().min(2, 'City is required'),
-  state: z.string().min(2, 'State is required'),
-  pincode: z.string().regex(/^\d{6}$/, 'Pincode must be 6 digits'),
+  claimerName: z
+    .string()
+    .trim()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100)
+    .regex(/[a-zA-Z]/, 'Enter a valid name'),
+  claimerEmail: z.string().trim().regex(EMAIL_REGEX, 'Enter a valid email address'),
+  claimerPhone: z
+    .string()
+    .trim()
+    .regex(PHONE_REGEX, 'Enter a valid 10-digit Indian mobile number'),
+  addressLine1: z.string().trim().min(5, 'Address must be at least 5 characters').max(200),
+  addressLine2: z.string().trim().max(200).optional(),
+  city: z.string().trim().min(2, 'City is required').max(60).regex(/[a-zA-Z]/, 'Enter a valid city'),
+  state: z.string().trim().min(2, 'State is required').max(60).regex(/[a-zA-Z]/, 'Enter a valid state'),
+  pincode: z.string().trim().regex(PINCODE_REGEX, 'Enter a valid 6-digit pincode'),
 });
 
 type AddressData = z.infer<typeof addressSchema>;
@@ -40,8 +49,31 @@ export function ClaimAddressForm({ onSubmit, isSubmitting }: ClaimAddressFormPro
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState('');
 
+  // Numeric-only fields reject stray characters at entry, so the user can never
+  // type something the schema will later reject.
+  const sanitize = (name: string, value: string) => {
+    if (name === 'pincode') return value.replace(/\D/g, '').slice(0, 6);
+    if (name === 'claimerPhone') return value.replace(/[^\d+]/g, '').slice(0, 13);
+    return value;
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name } = e.target;
+    const result = addressSchema.safeParse(formData);
+    const message = result.success
+      ? undefined
+      : result.error.errors.find((err) => err.path[0] === name)?.message;
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (message) next[name] = message;
+      else delete next[name];
+      return next;
+    });
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    const value = sanitize(name, e.target.value);
     setFormData((prev) => ({ ...prev, [name]: value }));
     // Clear error for this field when user starts typing
     if (errors[name]) {
@@ -104,6 +136,7 @@ export function ClaimAddressForm({ onSubmit, isSubmitting }: ClaimAddressFormPro
             name="claimerName"
             value={formData.claimerName}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="John Doe"
             className={`rounded-md border-2 px-3 py-2 text-sm ${
               errors.claimerName ? 'border-rose-300' : 'border-bdr'
@@ -124,6 +157,7 @@ export function ClaimAddressForm({ onSubmit, isSubmitting }: ClaimAddressFormPro
             name="claimerEmail"
             value={formData.claimerEmail}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="john@example.com"
             className={`rounded-md border-2 px-3 py-2 text-sm ${
               errors.claimerEmail ? 'border-rose-300' : 'border-bdr'
@@ -144,6 +178,7 @@ export function ClaimAddressForm({ onSubmit, isSubmitting }: ClaimAddressFormPro
             name="claimerPhone"
             value={formData.claimerPhone}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="9876543210"
             className={`rounded-md border-2 px-3 py-2 text-sm ${
               errors.claimerPhone ? 'border-rose-300' : 'border-bdr'
@@ -164,6 +199,7 @@ export function ClaimAddressForm({ onSubmit, isSubmitting }: ClaimAddressFormPro
             name="addressLine1"
             value={formData.addressLine1}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="123 Main Street"
             className={`rounded-md border-2 px-3 py-2 text-sm ${
               errors.addressLine1 ? 'border-rose-300' : 'border-bdr'
@@ -184,6 +220,7 @@ export function ClaimAddressForm({ onSubmit, isSubmitting }: ClaimAddressFormPro
             name="addressLine2"
             value={formData.addressLine2}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="Apt 456, Building B"
             className="rounded-md border-2 border-bdr px-3 py-2 text-sm"
           />
@@ -200,6 +237,7 @@ export function ClaimAddressForm({ onSubmit, isSubmitting }: ClaimAddressFormPro
               name="city"
               value={formData.city}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="New Delhi"
               className={`rounded-md border-2 px-3 py-2 text-sm ${
                 errors.city ? 'border-rose-300' : 'border-bdr'
@@ -219,6 +257,7 @@ export function ClaimAddressForm({ onSubmit, isSubmitting }: ClaimAddressFormPro
               name="state"
               value={formData.state}
               onChange={handleChange}
+              onBlur={handleBlur}
               placeholder="DL"
               className={`rounded-md border-2 px-3 py-2 text-sm ${
                 errors.state ? 'border-rose-300' : 'border-bdr'
@@ -240,6 +279,7 @@ export function ClaimAddressForm({ onSubmit, isSubmitting }: ClaimAddressFormPro
             name="pincode"
             value={formData.pincode}
             onChange={handleChange}
+            onBlur={handleBlur}
             placeholder="110001"
             className={`rounded-md border-2 px-3 py-2 text-sm ${
               errors.pincode ? 'border-rose-300' : 'border-bdr'

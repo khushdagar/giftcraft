@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { RegisterForm } from "@/components/auth/register-form";
-import { BrandLogo } from "@/components/layout/brand-logo";
-import Image from "next/image";
+import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 
 export const metadata = { title: "Create your account" };
 
@@ -22,11 +22,15 @@ export default async function RegisterPage({
   const callbackUrl = searchParams.from ?? "/dashboard";
 
   return (
-    <main className="min-h-screen bg-canvas">
-      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
+    <>
+      <Navbar />
+      <main className="bg-canvas">
+        {/* Fill the viewport minus the 56px navbar so the split panel still
+            reads as a full-height hero without pushing the footer off-screen. */}
+        <div className="grid min-h-[calc(100vh-56px)] grid-cols-1 lg:grid-cols-2">
         {/* ── Left — editorial hero ─────────────────────────────── */}
         <aside
-          className="relative hidden flex-col justify-between overflow-hidden p-10 lg:flex"
+          className="relative hidden flex-col justify-center overflow-hidden p-10 lg:flex"
           style={{
             background: "linear-gradient(135deg, #F5F1EB 0%, #FBF4F5 50%, #F5F1EB 100%)",
           }}
@@ -39,34 +43,24 @@ export default async function RegisterPage({
             </div>
           </div>
 
-          <Link href="/" className="relative z-10 inline-block">
-            <Image src="/footer_logo.png" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />
-          </Link>
-
           <div className="relative z-10 space-y-5">
-            <p className="overline text-em-700">By Arts Shala · Delhi</p>
+            {/* <p className="overline text-em-700">By Arts Shala · Delhi</p> */}
             <h1 className="t-display balance font-display text-ink">
               Start gifting,
               <br />
               <span className="italic text-em">the easy way.</span>
             </h1>
-            <p className="max-w-sm text-base text-ink-2">
+            <p className="max-w-sm text-base text-ink">
               Create an account to track orders, reorder in a click, and manage
               your branded gift packs.
             </p>
           </div>
-
-          <p className="relative z-10 text-xs text-ink-3">
-            © {new Date().getFullYear()} Arts Shala. Crafted in Delhi.
-          </p>
         </aside>
 
         {/* ── Right — register card ─────────────────────────────── */}
         <section className="flex items-center justify-center px-6 py-16 lg:px-12">
           <div className="w-full max-w-md">
-            <Link href="/" className="mb-8 inline-block lg:hidden">
-<Image src="/footer_logo.png" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />            </Link>
-
+            {/* No mobile logo here — the navbar above already carries it. */}
             <div className="rounded-md border border-bdr bg-white p-8 shadow-card sm:p-10">
               <p className="overline text-ink-3">Get started</p>
               <h2 className="mt-2 font-display text-[2rem] leading-tight text-ink">
@@ -127,8 +121,10 @@ export default async function RegisterPage({
             </div>
           </div>
         </section>
-      </div>
-    </main>
+        </div>
+      </main>
+      <Footer />
+    </>
   );
 }
 

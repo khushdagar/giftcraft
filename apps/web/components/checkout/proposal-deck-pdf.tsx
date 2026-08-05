@@ -514,7 +514,13 @@ export interface DeckInvoice {
 export interface ProposalDeckPDFProps {
   companyName?: string | null;
   quoteRef: string;
+  /** Quote expiry, or — when `placed` is set — the date the order was placed. */
   validUntil: Date;
+  /**
+   * Set for the deck regenerated after checkout: the pack is already ordered,
+   * so validity/next-step wording is replaced with confirmation wording.
+   */
+  placed?: boolean;
   totalUnits: number;
   packQuantity: number;
   packagingName?: string | null;
@@ -683,6 +689,7 @@ export function ProposalDeckPDF({
   companyName,
   quoteRef,
   validUntil,
+  placed,
   totalUnits,
   packQuantity,
   packagingName,
@@ -749,7 +756,9 @@ export function ProposalDeckPDF({
             <View style={styles.coverMeta}>
               <Text>Proposal {quoteRef}</Text>
               <Text>
-                Prepared {dateIN(new Date())} · Valid until {dateIN(validUntil)}
+                {placed
+                  ? `Prepared ${dateIN(new Date())} · Order placed ${dateIN(validUntil)}`
+                  : `Prepared ${dateIN(new Date())} · Valid until ${dateIN(validUntil)}`}
               </Text>
             </View>
           </View>
@@ -1197,9 +1206,9 @@ export function ProposalDeckPDF({
               <View style={styles.stepRule} />
               <Text style={styles.stepTitle}>Next Steps</Text>
               <Text style={styles.stepBody}>
-                Confirm your preferred options to proceed. Samples can be
-                arranged for any product before the order is finalised. This
-                proposal is valid until {dateIN(validUntil)}.
+                {placed
+                  ? `This order was placed on ${dateIN(validUntil)} and is in production. Your account manager will share mockups and dispatch updates as they happen.`
+                  : `Confirm your preferred options to proceed. Samples can be arranged for any product before the order is finalised. This proposal is valid until ${dateIN(validUntil)}.`}
               </Text>
             </View>
           </View>

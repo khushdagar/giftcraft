@@ -657,7 +657,7 @@ export function CatalogClient({
               <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
                   <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-em-50 px-3 py-1 text-xs font-medium text-em-700 mb-2">
-                    ✨ Curated Pack
+                    Curated Pack
                   </span>
                   <h1 className="text-4xl md:text-5xl font-serif font-light">
                     {pack.name}
@@ -754,13 +754,17 @@ export function CatalogClient({
             <Search className="absolute left-3 top-3 h-4 w-4" style={{ color: '#8F8A82' }} />
             <input type="text" placeholder="Search products by name, brand, or category..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full h-11 pl-10 pr-4 rounded-full text-sm border" style={{ borderColor: '#D3CBBC', background: '#FFF' }} />
           </div>
-          <button className="md:hidden h-11 px-4 rounded-full border flex items-center gap-2" style={{ borderColor: '#E5DFD4', color: '#222222' }} onClick={() => setSidebarOpen(!sidebarOpen)}>☰ Filters</button>
-          <select value={sort} onChange={(e) => setSort(e.target.value)} className="h-11 px-4 rounded-full border text-sm font-medium" style={{ borderColor: '#E5DFD4', background: '#FFF', color: '#222222' }}>
+          {/* Filters + Sort share one row on mobile. `md:contents` dissolves this
+              wrapper on desktop, so the select keeps its original placement. */}
+          <div className="flex gap-2 md:contents">
+          <button className="md:hidden h-11 flex-1 px-4 rounded-full border flex items-center justify-center gap-2 text-sm font-medium" style={{ borderColor: '#E5DFD4', color: '#222222' }} onClick={() => setSidebarOpen(!sidebarOpen)}>☰ Filters</button>
+          <select value={sort} onChange={(e) => setSort(e.target.value)} className="h-11 flex-1 md:flex-none min-w-0 px-4 rounded-full border text-sm font-medium" style={{ borderColor: '#E5DFD4', background: '#FFF', color: '#222222' }}>
             <option value="featured">Sort: Featured</option>
             <option value="price_asc">Price: Low → High</option>
             <option value="price_desc">Price: High → Low</option>
             <option value="name">Name: A → Z</option>
           </select>
+          </div>
         </div>
 
         {/* Active Filters */}

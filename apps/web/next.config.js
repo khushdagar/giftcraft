@@ -25,6 +25,12 @@ const nextConfig = {
   },
   experimental: {
     typedRoutes: false,
+    // Static generation runs one worker per core by default, and every worker
+    // opens its own Prisma pool against the managed Postgres — which runs the
+    // server out of connections mid-build. One worker keeps the build within the
+    // connection budget; it costs wall-clock time, not correctness.
+    cpus: 1,
+    workerThreads: false,
   },
 
   async headers() {

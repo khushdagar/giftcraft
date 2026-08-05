@@ -7,8 +7,10 @@ import Link from 'next/link';
 import { ChevronLeft, FileDown, Link as LinkIcon, Check, X } from 'lucide-react';
 import { isImageUrl } from '@/lib/mockup-url';
 import { invoiceLabel } from '@/lib/invoice-status';
+import { ProposalDownloadButton } from '@/components/checkout/proposal-download-button';
 import { PayBalanceButton } from './components/pay-balance-button';
 import { OrderAutoRefresh } from '@/components/orders/order-auto-refresh';
+import { VariantTag } from '@/components/orders/variant-tag';
 
 function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
@@ -191,9 +193,13 @@ export default async function OrderDetailPage({
         })()}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {/* Mobile is one flex column so the cards from BOTH columns can be
+          interleaved: alerts/mockups → items → pricing → timeline → billing →
+          order info. `contents` dissolves each column wrapper at that width; at
+          lg the original 2/1 grid and source order come back. */}
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-3">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="contents lg:block lg:col-span-2 lg:space-y-6">
           {/* Balance payment due — shown once the mockup is approved and a
               balance remains (derived "payment pending" state). */}
           {(order.status === 'mockup_approved' || order.status === 'payment_pending') && (() => {
@@ -306,8 +312,10 @@ export default async function OrderDetailPage({
             return null;
           })()}
 
-          {/* Order Items */}
-          <div className="rounded-md border-2 border-gray-200 bg-white p-5">
+          {/* Order Items — on mobile this card and the Pricing card below join
+              into one continuous box (no bottom radius/border here, negative
+              top margin there). Separate cards again from lg. */}
+          <div className="order-2 lg:order-none rounded-t-md rounded-b-none border-2 border-b-0 border-gray-200 bg-white p-5 lg:rounded-b-md lg:border-b-2">
             <p className="text-xs font-normal uppercase tracking-wider text-gray-600 mb-4">
               Items
             </p>
@@ -316,6 +324,7 @@ export default async function OrderDetailPage({
                 <div key={item.id} className="flex items-center justify-between pb-3 border-b border-gray-200 last:border-0 last:pb-0">
                   <div>
                     <p className="font-medium text-sm">{item.product?.name || 'Product'}</p>
+                    <VariantTag variants={item.variantsJson} className="mt-0.5" />
                     <p className="text-xs text-gray-500">×{item.quantity}</p>
                   </div>
                   <p className="font-normal text-sm tabular-nums">
@@ -327,7 +336,7 @@ export default async function OrderDetailPage({
           </div>
 
           {/* Billing Info */}
-          <div className="rounded-md border-2 border-gray-200 bg-white p-5">
+          <div className="order-5 lg:order-none rounded-md border-2 border-gray-200 bg-white p-5">
             <p className="text-xs font-normal uppercase tracking-wider text-gray-600 mb-4">
               Billing Information
             </p>
@@ -354,7 +363,7 @@ export default async function OrderDetailPage({
           {/* Timeline — full lifecycle tracker. Completed stages are solid
               green with a check + timestamp; upcoming stages are dimmed until
               the order advances to them. */}
-          <div className="rounded-md border-2 border-gray-200 bg-white p-5">
+          <div className="order-4 lg:order-none rounded-md border-2 border-gray-200 bg-white p-5">
             <p className="text-xs font-normal uppercase tracking-wider text-gray-600 mb-4">
               Timeline
             </p>
@@ -443,9 +452,9 @@ export default async function OrderDetailPage({
         </div>
 
         {/* Sidebar */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="contents lg:block lg:col-span-1 lg:space-y-4">
           {/* Pricing Summary */}
-          <div className="rounded-md border-2 border-gray-200 bg-white p-5 space-y-3">
+          <div className="order-3 lg:order-none -mt-6 rounded-t-none rounded-b-md border-2 border-gray-200 bg-white p-5 space-y-3 lg:mt-0 lg:rounded-t-md">
             <p className="text-xs font-normal uppercase tracking-wider text-gray-600">
               Pricing
             </p>
@@ -538,10 +547,15 @@ export default async function OrderDetailPage({
                 Number(order.grandTotal)
               )}
             </a>
+            <ProposalDownloadButton
+              orderId={order.id}
+              label="Download Proposal Deck"
+              className="relative overflow-hidden mt-2 flex items-center justify-center gap-2 w-full px-4 py-2 rounded-md border border-gray-300 text-ink hover:bg-gray-50 transition text-sm font-normal disabled:cursor-default"
+            />
           </div>
 
           {/* Order Info */}
-          <div className="rounded-md border-2 border-gray-200 bg-white p-5 space-y-3">
+          <div className="order-6 lg:order-none rounded-md border-2 border-gray-200 bg-white p-5 space-y-3">
             <p className="text-xs font-normal uppercase tracking-wider text-gray-600">
               Order Info
             </p>
@@ -559,7 +573,7 @@ export default async function OrderDetailPage({
 
           {/* Tracking */}
           {order.awbCode && (
-            <div className="rounded-md border-2 border-em-200 bg-em-50 p-5 space-y-3">
+            <div className="order-7 lg:order-none rounded-md border-2 border-em-200 bg-em-50 p-5 space-y-3">
               <p className="text-xs font-normal uppercase tracking-wider text-em-700">
                 Shipment Tracking
               </p>

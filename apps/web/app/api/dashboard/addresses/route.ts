@@ -2,17 +2,18 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { zPersonName, zPhone, zPincode } from '@/lib/zod-fields';
 
 const addressSchema = z.object({
   label: z.string().trim().max(60).optional().or(z.literal('')),
-  contactName: z.string().trim().min(1, 'Contact name is required').max(120),
+  contactName: zPersonName('Contact name').max(120),
   company: z.string().trim().max(200).optional().or(z.literal('')),
-  addressLine1: z.string().trim().min(1, 'Address is required').max(300),
+  addressLine1: z.string().trim().min(5, 'Address must be at least 5 characters').max(300),
   addressLine2: z.string().trim().max(300).optional().or(z.literal('')),
-  city: z.string().trim().min(1, 'City is required').max(120),
-  state: z.string().trim().min(1, 'State is required').max(120),
-  pincode: z.string().trim().regex(/^\d{6}$/, 'Pincode must be 6 digits'),
-  phone: z.string().trim().max(20).optional().or(z.literal('')),
+  city: zPersonName('City').max(120),
+  state: z.string().trim().min(2, 'State is required').max(120),
+  pincode: zPincode,
+  phone: zPhone.optional().or(z.literal('')),
   isDefault: z.boolean().optional(),
 });
 

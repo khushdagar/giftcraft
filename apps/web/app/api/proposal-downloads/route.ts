@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { zEmail, zPersonName, zPhone } from '@/lib/zod-fields';
 
 const bodySchema = z.object({
   quoteToken: z.string().min(1).max(200),
-  name: z.string().trim().min(2).max(120).optional(),
-  email: z.string().trim().email().max(200).optional(),
-  phone: z.string().trim().min(7).max(20).optional(),
+  name: zPersonName('Name').max(120).optional(),
+  email: zEmail.max(200).optional(),
+  phone: zPhone.optional(),
   company: z.string().trim().max(200).optional(),
 });
 

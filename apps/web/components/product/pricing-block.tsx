@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, ChangeEvent, FocusEvent } from "react";
+import { ChevronDown } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 import { formatRupees } from "@/lib/utils";
 
@@ -112,6 +113,15 @@ export function PricingBlock({
 
   const isUnderMinimum = qty < minAllowedQty;
 
+  // Mobile-only collapse for the tier table — six rows push the Add to Pack
+  // button off screen. Collapsed shows just the tier the current quantity is in;
+  // `firstOrderableIdx` is the fallback row when the quantity is still below MOQ
+  // and no tier is active.
+  const [tiersOpen, setTiersOpen] = useState(false);
+  const firstOrderableIdx = sortedTiers.findIndex(
+    (t) => t.maxQty === null || t.maxQty >= minAllowedQty,
+  );
+
   return (
     <div className="mt-8 space-y-6 rounded-md border border-bdr bg-white p-6 shadow-card">
       {/* Quantity input */}
@@ -206,12 +216,20 @@ export function PricingBlock({
 
           {/* Table rows */}
           <div className="divide-y divide-bdr">
-            {sortedTiers.map((tier) => {
+            {sortedTiers.map((tier, idx) => {
               const isActive = activeTier?.tier === tier.tier;
               // A tier that ends below the MOQ can never be ordered — disable it.
               const isBelowMoq =
                 tier.maxQty !== null && tier.maxQty < minAllowedQty;
               const totalAtMin = tier.sellPrice * tier.minQty;
+              // Collapsed on mobile: only the tier the current quantity falls in
+              // stays visible (or the first orderable one if the quantity is
+              // still below MOQ). Desktop always shows the full table.
+              const keepWhenCollapsed = activeTier
+                ? isActive
+                : idx === firstOrderableIdx;
+              const collapsedClass =
+                !tiersOpen && !keepWhenCollapsed ? "hidden lg:grid" : "";
               return (
                 <button
                   key={tier.tier}
@@ -223,7 +241,7 @@ export function PricingBlock({
                       inputRef.current.value = String(tier.minQty);
                     }
                   }}
-                  className={`w-full grid grid-cols-3 gap-4 px-4 py-3 transition text-left ${
+                  className={`w-full grid grid-cols-3 gap-4 px-4 py-3 transition text-left ${collapsedClass} ${
                     isBelowMoq
                       ? "cursor-not-allowed bg-elevated/40 text-ink-3 opacity-50"
                       : isActive
@@ -249,6 +267,23 @@ export function PricingBlock({
               );
             })}
           </div>
+
+          {/* Mobile-only expander for the hidden tiers. */}
+          {sortedTiers.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setTiersOpen((v) => !v)}
+              aria-expanded={tiersOpen}
+              className="flex w-full items-center justify-center gap-1 border-t border-bdr bg-elevated/50 py-2.5 text-xs font-semibold text-em lg:hidden"
+            >
+              {tiersOpen
+                ? "Hide price tiers"
+                : `View all ${sortedTiers.length} price tiers`}
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${tiersOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+          )}
         </div>
         <p className="mt-2 text-xs text-ink-3">
           All prices include standard branding. Prices exclusive of GST, packaging, shipping and payment processing fees.

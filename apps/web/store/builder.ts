@@ -22,15 +22,14 @@ export interface BuilderProduct {
   dimensionH?: number | null;
   priceTiers?: Array<{ tier: number; minQty: number; maxQty: number | null; sellPrice: number }>;
   images?: Array<{ url: string }>;
-  // Selected variant (e.g. colour / size) chosen in the Quick View modal
-  variantValue?: string;
-  variantKind?: string;
-  variantHex?: string | null;
+  // Variants the customer picked (colour, size, ...). One entry per kind, so a
+  // bottle can carry both "color: Matte Black" and "size: 750 ml".
+  variants?: Array<{ kind: string; value: string; hex?: string | null }>;
 }
 
 export interface BuilderState {
   // Step tracking
-  currentStep: 1 | 2 | 3 | 4;
+  currentStep: 1 | 2 | 3;
 
   // Quantity modal
   quantityModalOpen: boolean;
@@ -129,7 +128,7 @@ export interface BuilderState {
   reviewReady: boolean;
 
   // Actions
-  setCurrentStep: (step: 1 | 2 | 3 | 4) => void;
+  setCurrentStep: (step: 1 | 2 | 3) => void;
 
   setReviewOrder: (fn: (() => void) | null) => void;
   setReviewStatus: (status: { loading: boolean; ready: boolean }) => void;
@@ -320,10 +319,16 @@ export const useBuilderStore = create<BuilderState>()(
       // accumulating quantity) could have grown a product's quantity past 1.
       // Each product is exactly one unit per pack — packQuantity is the
       // multiplier — so quantity is always 1.
-      version: 5,
+      // v6: the Review & Order step was removed, so Delivery (3) is now the
+      // last step. Anyone who left the builder sitting on step 4 would restore
+      // to a step that no longer renders — clamp them back to 3.
+      version: 6,
       migrate: (persisted: any) => {
         if (persisted && Array.isArray(persisted.products)) {
           persisted.products = persisted.products.map((p: any) => ({ ...p, quantity: 1 }));
+        }
+        if (persisted && typeof persisted.currentStep === 'number' && persisted.currentStep > 3) {
+          persisted.currentStep = 3;
         }
         return persisted;
       },
@@ -336,7 +341,7 @@ export const useBuilderStore = create<BuilderState>()(
       partialize: (state) => ({
         ...state,
         csvRecipients: null,
-        // Transient Step-4 bridge — recomputed on mount, never restored.
+        // Transient checkout bridge — recomputed on mount, never restored.
         reviewOrder: null,
         reviewLoading: false,
         reviewReady: false,

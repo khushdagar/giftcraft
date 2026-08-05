@@ -9,7 +9,10 @@ import { perPackWeightKg, perPackVolumetricKg, ASSEMBLY_QC_DAYS } from '@/lib/sh
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { FieldError } from '@/components/ui/field-error';
+import { validateName, validatePhone, validatePincode } from '@/lib/validation';
 import { Upload, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { useProceedToCheckout } from './use-proceed-to-checkout';
 
 interface PriceTier {
   tier: number;
@@ -66,6 +69,10 @@ function AnimatedNumber({
 }
 
 export function Step3Delivery() {
+  // Delivery is now the final step — publish the create-quote → checkout flow so
+  // the sticky footer's forward button runs it from here.
+  useProceedToCheckout();
+
   const {
     packQuantity,
     setPackQuantity,
@@ -93,7 +100,6 @@ export function Step3Delivery() {
     if (deliveryMode !== 'single') setDeliveryMode('single');
   }, [deliveryMode, setDeliveryMode]);
 
-  const [pincodeInput, setPincodeInput] = useState(pincode || '');
   const [loadingShipping, setLoadingShipping] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -285,14 +291,6 @@ export function Step3Delivery() {
     }
   };
 
-  const handleEstimateShipping = () => {
-    if (!pincodeInput || !/^\d{6}$/.test(pincodeInput)) {
-      setShippingError('Please enter a valid 6-digit pincode');
-      return;
-    }
-    runEstimate(pincodeInput);
-  };
-
   // Re-quote the live courier rate when the delivery mode changes after a
   // pincode has already been checked (single vs individual ship differently).
   useEffect(() => {
@@ -363,28 +361,29 @@ export function Step3Delivery() {
     reader.readAsText(file);
   };
 
-
-  // Warn when the pincode checked in the estimator box differs from the delivery
-  // address pincode below — shipping is quoted for whichever was resolved last,
-  // so a mismatch means the estimate may not match where the order actually
-  // ships. Only flagged once both are complete 6-digit pincodes.
-  const pincodeMismatch =
-    /^\d{6}$/.test(pincodeInput) &&
-    /^\d{6}$/.test(formAddress.pincode) &&
-    pincodeInput !== formAddress.pincode;
-
   // Live address validation (single-location delivery). Mirrors the Step 4 gate
   // so any problem — e.g. a 5-digit pincode — is shown here, not silently failed.
   const pincodeInvalid =
-    formAddress.pincode.length > 0 && !/^\d{6}$/.test(formAddress.pincode);
+    formAddress.pincode.length > 0 && !!validatePincode(formAddress.pincode);
+  // Only surface a format error once the field has been typed in — an empty
+  // field is covered by the "still needed" list below.
+  const nameError = formAddress.name.trim()
+    ? validateName(formAddress.name, 'Name')
+    : null;
+  const phoneError = formAddress.phone.trim() ? validatePhone(formAddress.phone) : null;
+  const cityError = formAddress.city.trim()
+    ? validateName(formAddress.city, 'City')
+    : null;
+
   const addressMissing: string[] = [];
   if (!formAddress.name.trim()) addressMissing.push('Name');
   if (!formAddress.address1.trim()) addressMissing.push('Address Line 1');
   if (!formAddress.city.trim()) addressMissing.push('City');
   if (!formAddress.state) addressMissing.push('State');
-  if (!/^\d{6}$/.test(formAddress.pincode)) addressMissing.push('a 6-digit Pincode');
+  if (validatePincode(formAddress.pincode)) addressMissing.push('a 6-digit Pincode');
   if (!formAddress.phone.trim()) addressMissing.push('Phone');
-  const addressComplete = addressMissing.length === 0;
+  const addressComplete =
+    addressMissing.length === 0 && !nameError && !phoneError && !cityError;
 
   return (
     <div className="space-y-8">
@@ -439,56 +438,6 @@ export function Step3Delivery() {
       </div>
       */}
 
-      {/* Section C: Pincode Estimator */}
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
-          Delivery Location
-        </p>
-        <div className="rounded-md border-2 border-bdr bg-white p-4 space-y-3">
-          <div className="flex gap-2 items-center">
-            <div className="max-w-xs flex-1">
-              <Input
-                type="text"
-                placeholder="Enter pincode"
-                value={pincodeInput}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                  setPincodeInput(val);
-                }}
-                maxLength={6}
-                className="rounded-md text-center font-semibold"
-              />
-            </div>
-            <Button
-              onClick={handleEstimateShipping}
-              disabled={!pincodeInput || pincodeInput.length !== 6 || loadingShipping}
-              variant="em"
-              className="rounded-md flex-shrink-0"
-              size="sm"
-            >
-              {loadingShipping ? 'Checking...' : 'Check'}
-            </Button>
-          </div>
-
-          {shippingError && <p className="text-xs text-red-600">{shippingError}</p>}
-
-          {shippingZone && !pincodeMismatch && (
-            <p className="text-xs text-em">✓ Delivery available to this pincode.</p>
-          )}
-
-          {pincodeMismatch && (
-            <p className="flex items-start gap-1.5 text-xs text-amber-700">
-              <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-              <span>
-                You've entered a different pincode ({pincodeInput}) than your delivery
-                address ({formAddress.pincode}). Please make sure they match so shipping is
-                charged for the correct location.
-              </span>
-            </p>
-          )}
-        </div>
-      </div>
-
       {/* Address Form - Single Delivery */}
       {deliveryMode === 'single' && (
         <div className="space-y-3">
@@ -520,12 +469,17 @@ export function Step3Delivery() {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                placeholder="Name *"
-                value={formAddress.name}
-                onChange={(e) => updateAddress({ name: e.target.value })}
-                className="rounded-md border-2"
-              />
+              <div>
+                <Input
+                  placeholder="Name *"
+                  value={formAddress.name}
+                  maxLength={100}
+                  aria-invalid={!!nameError}
+                  onChange={(e) => updateAddress({ name: e.target.value })}
+                  className={`rounded-md border-2 ${nameError ? 'border-red-400' : ''}`}
+                />
+                <FieldError message={nameError ?? undefined} />
+              </div>
               <Input
                 placeholder="Company (optional)"
                 value={formAddress.company}
@@ -549,16 +503,25 @@ export function Step3Delivery() {
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                placeholder="City *"
-                value={formAddress.city}
-                onChange={(e) => updateAddress({ city: e.target.value })}
-                className="rounded-md border-2"
-              />
+              <div>
+                <Input
+                  placeholder="City *"
+                  value={formAddress.city}
+                  maxLength={60}
+                  aria-invalid={!!cityError}
+                  onChange={(e) => updateAddress({ city: e.target.value })}
+                  className={`rounded-md border-2 ${cityError ? 'border-red-400' : ''}`}
+                />
+                <FieldError message={cityError ?? undefined} />
+              </div>
               <select
                 value={formAddress.state}
                 onChange={(e) => updateAddress({ state: e.target.value })}
-                className="rounded-md border-2 border-bdr px-3 py-2 bg-white"
+                // Unselected state renders in the same grey as the sibling
+                // inputs' placeholders; the chosen value goes full-contrast.
+                className={`rounded-md border-2 border-bdr px-3 py-2 bg-white ${
+                  formAddress.state ? 'text-ink' : 'text-ink-3'
+                }`}
               >
                 <option value="">Select State *</option>
                 {INDIAN_STATES.map((state) => (
@@ -586,29 +549,42 @@ export function Step3Delivery() {
                     Pincode must be exactly 6 digits.
                   </p>
                 )}
-                {!pincodeInvalid && pincodeMismatch && (
-                  <p className="mt-1 flex items-start gap-1 text-xs text-amber-700">
+                {/* Serviceability now comes from the address pincode itself —
+                    the rate is fetched automatically as soon as it's valid. */}
+                {!pincodeInvalid && loadingShipping && (
+                  <p className="mt-1 text-xs text-ink-3">Checking delivery…</p>
+                )}
+                {!pincodeInvalid && !loadingShipping && shippingError && (
+                  <p className="mt-1 flex items-start gap-1 text-xs text-red-600">
                     <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
-                    <span>Doesn't match the pincode you checked above ({pincodeInput}).</span>
+                    <span>{shippingError}</span>
                   </p>
                 )}
+                {/* No "delivery available" confirmation — a valid pincode with no
+                    error is confirmation enough. Failures still speak up above. */}
               </div>
-              <Input
-                placeholder="Phone *"
-                value={formAddress.phone}
-                onChange={(e) => updateAddress({ phone: e.target.value })}
-                className="rounded-md border-2"
-              />
+              <div>
+                <Input
+                  placeholder="Phone *"
+                  type="tel"
+                  inputMode="tel"
+                  maxLength={14}
+                  value={formAddress.phone}
+                  aria-invalid={!!phoneError}
+                  onChange={(e) =>
+                    updateAddress({ phone: e.target.value.replace(/[^\d+\s-]/g, '') })
+                  }
+                  className={`rounded-md border-2 ${phoneError ? 'border-red-400' : ''}`}
+                />
+                <FieldError message={phoneError ?? undefined} />
+              </div>
             </div>
 
-            {/* Live status so the customer always knows if the address is usable */}
-            {addressComplete ? (
+            {/* Only the positive confirmation remains — the "still needed" list
+                duplicated the per-field errors below each input. */}
+            {addressComplete && (
               <p className="flex items-center gap-1.5 text-xs font-medium text-em-700">
                 <CheckCircle className="h-3.5 w-3.5" /> Address complete — saved automatically.
-              </p>
-            ) : (
-              <p className="text-xs text-amber-700">
-                Still needed to continue: {addressMissing.join(', ')}.
               </p>
             )}
           </div>

@@ -121,8 +121,8 @@ export function FeaturedProductsSection({
             <Check className="w-5 h-5" />
             <span>
               {notification.type === "gift"
-                ? `✨ "${notification.product}" added to Gift Builder!`
-                : `🛒 "${notification.product}" added to Cart!`}
+                ? `"${notification.product}" added to Gift Builder!`
+                : `"${notification.product}" added to Cart!`}
             </span>
           </div>
         </motion.div>
@@ -202,7 +202,7 @@ export function FeaturedProductsSection({
                           />
                         )}
 
-                        {/* Wishlist Button */}
+                        {/* Wishlist button hidden for now — feature not live.
                         <button
                           onClick={(e) => handleWishlist(e, product.id)}
                           className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-md transition-all duration-200 z-10"
@@ -215,6 +215,7 @@ export function FeaturedProductsSection({
                             }`}
                           />
                         </button>
+                        */}
 
                         {/* Action Buttons Overlay */}
                         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
+import { FillProgressButton } from '@/components/ui/fill-progress-button';
 import type { PricingBreakdown } from '@giftcraft/types';
 
 export interface PricingLineProduct {
@@ -24,7 +25,10 @@ interface PricingPanelProps {
   advance10: number;
   balance90: number;
   selectedPath: 'mockup' | 'lock';
-  onContinue: () => void;
+  /** Places the order. Pass a path to pick it and submit in the same tap. */
+  onContinue: (path?: 'mockup' | 'lock') => void;
+  /** True while the order is being placed — fills the CTA. */
+  submitting?: boolean;
 }
 
 // Human label for the HSN-grouped GST lines (per SOW: one line per HSN group,
@@ -45,6 +49,7 @@ export function PricingPanel({
   balance90,
   selectedPath,
   onContinue,
+  submitting,
 }: PricingPanelProps) {
   const [gstOpen, setGstOpen] = useState(false);
 
@@ -204,41 +209,93 @@ export function PricingPanel({
           </div>
         )}
 
+        {/* One tinted block, not three loose rows — the separate padded rows
+            read as random gaps once the panel sits on a beige page. */}
         {selectedPath === 'lock' && (
-          <div className="space-y-2 mt-4 text-xs">
-            <div className="flex justify-between bg-[#F5F1EB] px-3 py-2.5 rounded-lg font-semibold text-[#222222]">
+          <div className="mt-3 rounded-lg bg-[#F5F1EB] px-3 py-2.5 text-xs">
+            <div className="flex justify-between font-semibold text-[#222222]">
               <span>10% Advance Payment</span>
               <span className="tabular-nums">{formatRupees(advance10)}</span>
             </div>
-            <div className="flex justify-between px-3 py-2 text-[#5C5852] italic">
+            <div className="mt-1 flex justify-between italic text-[#5C5852]">
               <span>Balance due after mockup approval</span>
               <span className="font-semibold tabular-nums">{formatRupees(balance90)}</span>
             </div>
-            <div className="bg-[#F5F1EB] border-l-3 border-[#3A3A3A] px-3 py-2.5 rounded-lg text-[#222222]">
+            <p className="mt-2 border-t border-[#D3CBBC] pt-2 text-[11px] text-[#5C5852]">
               Prices locked for 30 days from advance payment date.
-            </div>
+            </p>
           </div>
         )}
 
-        {/* CTA Button */}
-        <button
-          onClick={onContinue}
-          className={`w-full h-[38px] mt-4 rounded-full font-semibold flex items-center justify-center gap-2 transition-all ${
+        {/* Desktop CTA — the single button for whichever path is selected. On
+            mobile the pair of buttons in the fixed bar below takes over. */}
+        <FillProgressButton
+          onClick={() => onContinue()}
+          active={!!submitting}
+          className={`hidden lg:flex w-full h-[38px] mt-4 rounded-full font-semibold items-center justify-center gap-2 transition-all disabled:cursor-default ${
             selectedPath === 'mockup'
-              ? 'bg-[#800020] text-white hover:bg-[#6B001B] animate-pulse'
+              ? `bg-[#800020] text-white hover:bg-[#6B001B] ${submitting ? '' : 'animate-pulse'}`
               : 'bg-[#3A3A3A] text-white hover:bg-[#222222]'
           }`}
-        >
-          {selectedPath === 'mockup'
-            ? '✓ Confirm Order & Get Mockups'
-            : `🔒 Pay ${formatRupees(advance10)} & Lock Prices`}
-        </button>
+          fillClassName="bg-white/25 text-white"
+          label={
+            selectedPath === 'mockup'
+              ? '✓ Confirm Order & Get Mockups'
+              : `🔒 Pay ${formatRupees(advance10)} & Lock Prices`
+          }
+          activeLabel={
+            selectedPath === 'mockup' ? 'Placing your order…' : 'Opening payment…'
+          }
+        />
 
         {/* Legal */}
         <p className="text-[11px] text-[#8F8A82] text-center mt-3 leading-relaxed">
           By confirming, you agree to our Terms of Service, Privacy Policy, and Refund Policy.
           GST-compliant invoice will be generated upon payment.
         </p>
+      </div>
+
+      {/* Mobile action bar, pinned to the bottom of the SCREEN. It has to live
+          outside the panel card above: that card uses backdrop-blur, and a
+          backdrop-filter makes an element a containing block for its fixed
+          descendants — inside it, `fixed` would anchor to the card, not the
+          viewport. Both paths are offered, so the choice and the order happen in
+          one tap; the selected path is solid, tapping the other switches to it
+          and submits. */}
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#D3CBBC] bg-white/95 px-4 py-2.5 backdrop-blur lg:hidden">
+        <p className="mb-1.5 text-center text-[10px] text-[#8F8A82]">
+          Pay &amp; lock is recommended — or get mockups first, no payment now.
+        </p>
+        <div className="flex gap-2">
+          <FillProgressButton
+            onClick={() => onContinue('lock')}
+            active={!!submitting && selectedPath === 'lock'}
+            // Both buttons lock while an order is in flight — only the one being
+            // used shows the fill.
+            disabled={!!submitting}
+            className={`h-11 flex-[1.2] rounded-full text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-all disabled:cursor-default ${
+              selectedPath === 'lock'
+                ? 'bg-[#3A3A3A] text-white'
+                : 'border-2 border-[#3A3A3A] bg-white text-[#3A3A3A]'
+            }`}
+            fillClassName="bg-white/25 text-white"
+            label={`🔒 Pay ${formatRupees(advance10)} & Lock`}
+            activeLabel="Opening payment…"
+          />
+          <FillProgressButton
+            onClick={() => onContinue('mockup')}
+            active={!!submitting && selectedPath === 'mockup'}
+            disabled={!!submitting}
+            className={`h-11 flex-1 rounded-full text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-all disabled:cursor-default ${
+              selectedPath === 'mockup'
+                ? 'bg-[#800020] text-white'
+                : 'border-2 border-[#800020] bg-white text-[#800020]'
+            }`}
+            fillClassName="bg-white/25 text-white"
+            label="✓ Get Mockups First"
+            activeLabel="Placing your order…"
+          />
+        </div>
       </div>
     </div>
   );

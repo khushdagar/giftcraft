@@ -11,11 +11,19 @@ const globalForPrisma = globalThis as unknown as {
 // Appends connection_limit + pool_timeout to DATABASE_URL unless it (or a
 // PgBouncer pooler) already specifies one. Override the size via
 // PRISMA_CONNECTION_LIMIT if you scale up.
+// `next build` renders pages in several worker processes, each of which creates
+// its own PrismaClient. workers × pool size is what actually hits the server, so
+// a 5-connection pool becomes 40+ connections on a multi-core box and the
+// managed Postgres refuses them ("FATAL: sorry, too many clients already").
+// During the build phase one connection per worker is plenty — page rendering is
+// sequential inside a worker.
+const IS_BUILD = process.env.NEXT_PHASE === "phase-production-build";
+
 function pooledDatabaseUrl(): string | undefined {
   const url = process.env.DATABASE_URL;
   if (!url || url.includes("connection_limit")) return url;
   const sep = url.includes("?") ? "&" : "?";
-  const limit = process.env.PRISMA_CONNECTION_LIMIT || "5";
+  const limit = process.env.PRISMA_CONNECTION_LIMIT || (IS_BUILD ? "1" : "5");
   return `${url}${sep}connection_limit=${limit}&pool_timeout=20`;
 }
 
@@ -28,6 +36,7 @@ export const prisma =
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Cache on globalThis in every environment. In dev this stops HMR from leaking a
+// client per reload; during `next build` (NODE_ENV=production) it stops each
+// re-evaluated module graph inside a worker from opening a second pool.
+globalForPrisma.prisma = prisma;

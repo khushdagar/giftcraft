@@ -8,6 +8,7 @@ import {
   shippingTaxable,
 } from "@/lib/pricing-display";
 import { invoiceLabel } from "@/lib/invoice-status";
+import { ProposalDownloadButton } from "@/components/checkout/proposal-download-button";
 import Link from "next/link";
 import { OrderStatusUpdater } from "./components/order-status-updater";
 import { MockupPanel } from "./components/mockup-panel";
@@ -16,6 +17,7 @@ import { SlaLogDisplay } from "@/components/admin/orders/sla-log-display";
 import { SendPaymentLinkButton } from "./components/send-payment-link-button";
 import { MarkPaidButton } from "./components/mark-paid-button";
 import { markAdminNotificationsRead } from "@/lib/admin-notifications";
+import { VariantTag, parseVariants } from "@/components/orders/variant-tag";
 import { FileDown } from "lucide-react";
 import { OrderAutoRefresh } from "@/components/orders/order-auto-refresh";
 
@@ -33,7 +35,7 @@ export default async function AdminOrderDetailPage({
     where: { id: params.id },
     include: {
       items: {
-        include: { product: { select: { name: true, brand: true } } },
+        include: { product: { select: { name: true, brand: true, slug: true } } },
       },
       timeline: {
         orderBy: { createdAt: "asc" },
@@ -251,6 +253,9 @@ export default async function AdminOrderDetailPage({
                   <th className="py-2 text-left font-normal text-ink">
                     Product
                   </th>
+                  <th className="py-2 text-left font-normal text-ink">
+                    Variant
+                  </th>
                   <th className="py-2 text-center font-normal text-ink">Qty</th>
                   <th className="py-2 text-right font-normal text-ink">
                     Price
@@ -267,11 +272,29 @@ export default async function AdminOrderDetailPage({
                     className="border-b border-bdr last:border-0"
                   >
                     <td className="py-3 text-ink-2">
-                      {item.product?.name || item.productId}
+                      {item.product?.slug ? (
+                        <Link
+                          href={`/products/${item.product.slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:text-em hover:underline"
+                        >
+                          {item.product.name}
+                        </Link>
+                      ) : (
+                        item.product?.name || item.productId
+                      )}
                       {item.product?.brand && (
                         <span className="block text-xs text-ink-3">
                           {item.product.brand}
                         </span>
+                      )}
+                    </td>
+                    <td className="py-3 text-ink-2">
+                      {parseVariants(item.variantsJson).length > 0 ? (
+                        <VariantTag variants={item.variantsJson} />
+                      ) : (
+                        <span className="text-xs text-ink-3">—</span>
                       )}
                     </td>
                     <td className="py-3 text-center text-ink-2">
@@ -501,6 +524,11 @@ export default async function AdminOrderDetailPage({
                 Number(order.grandTotal),
               )}
             </a>
+            <ProposalDownloadButton
+              orderId={order.id}
+              label="Proposal Deck"
+              className="relative overflow-hidden flex w-full items-center gap-2 px-4 py-2 rounded-md border border-bdr text-ink hover:bg-gray-50 transition text-sm font-normal disabled:cursor-default"
+            />
             {/* Plain anchors, not <Link>: these point at API routes that stream a
                 PDF. Link would try to client-side navigate to them as if they
                 were pages. */}

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
@@ -44,7 +43,34 @@ export function Step1ChooseProducts({ allProducts, categories, presetIds }: Step
     packQuantity,
   } = useBuilderStore();
 
-  const router = useRouter();
+  // Clicking anywhere on a card adds or removes it — the whole tile and the
+  // button share this, so the card never navigates away from the builder.
+  const toggleProduct = (product: any, tierPrice: number, isSelected: boolean) => {
+    if (isSelected) {
+      removeProduct(product.id);
+      return;
+    }
+    addProduct({
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      brand: product.brand,
+      printingTechnique: product.printingTechnique,
+      hsnCode: product.hsnCode,
+      gstRate: product.gstRate,
+      leadTimeDays: product.leadTimeDays,
+      weightG: product.weightG,
+      dimensionL: product.dimensionL ?? product.lengthCm,
+      dimensionW: product.dimensionW ?? product.widthCm,
+      dimensionH: product.dimensionH ?? product.heightCm,
+      quantity: 1, // one unit of this product per pack
+      sellPrice: tierPrice,
+      moq: product.moq,
+      priceTiers: product.priceTiers,
+      images: product.images,
+    });
+  };
+
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const reduceMotion = useReducedMotion();
@@ -222,7 +248,7 @@ export function Step1ChooseProducts({ allProducts, categories, presetIds }: Step
                     animate={reduceMotion ? {} : { opacity: 1, scale: 1 }}
                     transition={reduceMotion ? { duration: 0 } : { type: 'spring', bounce: 0.3 }}
                     whileHover={reduceMotion ? {} : { y: -4 }}
-                    onClick={() => router.push(`/products/${product.slug}`)}
+                    onClick={() => toggleProduct(product, tierPrice, isSelected)}
                     className={`rounded-md border-2 overflow-hidden cursor-pointer transition-shadow ${
                       isSelected
                         ? 'border-em bg-em-50 shadow-md'
@@ -266,29 +292,7 @@ export function Step1ChooseProducts({ allProducts, categories, presetIds }: Step
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (isSelected) {
-                            removeProduct(product.id);
-                          } else {
-                            addProduct({
-                              id: product.id,
-                              name: product.name,
-                              slug: product.slug,
-                              brand: product.brand,
-                              printingTechnique: product.printingTechnique,
-                              hsnCode: product.hsnCode,
-                              gstRate: product.gstRate,
-                              leadTimeDays: product.leadTimeDays,
-                              weightG: product.weightG,
-                              dimensionL: (product as any).dimensionL ?? (product as any).lengthCm,
-                              dimensionW: (product as any).dimensionW ?? (product as any).widthCm,
-                              dimensionH: (product as any).dimensionH ?? (product as any).heightCm,
-                              quantity: 1, // one unit of this product per pack
-                              sellPrice: tierPrice,
-                              moq: (product as any).moq,
-                              priceTiers: product.priceTiers,
-                              images: product.images,
-                            });
-                          }
+                          toggleProduct(product, tierPrice, isSelected);
                         }}
                         className={`w-full mt-3 rounded-full py-2 text-xs font-bold transition ${
                           isSelected

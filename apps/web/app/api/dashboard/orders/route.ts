@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
               id: true,
               quantity: true,
               unitPrice: true,
+              variantsJson: true,
               product: {
                 select: {
                   name: true,
@@ -72,6 +73,7 @@ export async function GET(req: NextRequest) {
             name: it.product?.name || 'Product',
             quantity: it.quantity,
             unitPrice: Number(it.unitPrice),
+            variants: it.variantsJson,
             image: it.product?.images?.[0]?.url || null,
           })),
         })),

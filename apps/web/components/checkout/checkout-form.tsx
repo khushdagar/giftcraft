@@ -5,6 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatRupees } from '@/lib/utils';
 import { INDIAN_STATES } from '@/lib/constants';
+import { FieldError } from '@/components/ui/field-error';
+import {
+  validateName,
+  validatePan,
+  validatePhone,
+  validatePincode,
+  validateRequired,
+  validateText,
+} from '@/lib/validation';
 import { RazorpayButton } from './razorpay-button';
 
 interface CheckoutFormProps {
@@ -54,6 +63,23 @@ export function CheckoutForm({
 
   const [selectedPath, setSelectedPath] = useState<'mockup' | 'pricelock'>('mockup');
   const [gstinError, setGstinError] = useState<string | null>(null);
+
+  // Field-level errors surface only after the field is blurred once.
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const touch = (field: string) => setTouched((prev) => ({ ...prev, [field]: true }));
+  const showIf = (field: string, message: string | null) =>
+    touched[field] ? message ?? undefined : undefined;
+
+  const errors = {
+    companyName: showIf('companyName', validateName(formData.companyName, 'Company name')),
+    pan: showIf('pan', validatePan(formData.pan)),
+    address1: showIf('address1', validateText(formData.address1, 'Address line 1', { min: 5, max: 200 })),
+    city: showIf('city', validateName(formData.city, 'City')),
+    state: showIf('state', validateRequired(formData.state, 'State')),
+    pincode: showIf('pincode', validatePincode(formData.pincode)),
+    contactName: showIf('contactName', validateName(formData.contactName, 'Full name')),
+    phone: showIf('phone', validatePhone(formData.phone)),
+  };
 
   const handlePathChange = (path: 'mockup' | 'pricelock') => {
     setSelectedPath(path);
@@ -131,31 +157,47 @@ export function CheckoutForm({
       <div className="bg-white rounded-gc-l border-2 border-bdr p-6 space-y-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">Billing Information</p>
 
-        <Input
-          type="text"
-          placeholder="Company Name *"
-          value={formData.companyName}
-          onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-          className="rounded-gc"
-          required
-        />
+        <div>
+          <Input
+            type="text"
+            placeholder="Company Name *"
+            maxLength={120}
+            value={formData.companyName}
+            aria-invalid={!!errors.companyName}
+            onBlur={() => touch('companyName')}
+            onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+            className={`rounded-gc ${errors.companyName ? 'border-red-400' : ''}`}
+            required
+          />
+          <FieldError message={errors.companyName} />
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Input
-            type="text"
-            placeholder="GSTIN (Optional)"
-            value={formData.gstin}
-            onChange={(e) => handleGstinChange(e.target.value)}
-            className="rounded-gc"
-          />
-          {gstinError && <p className="text-xs text-red-600 col-span-2">{gstinError}</p>}
-          <Input
-            type="text"
-            placeholder="PAN (Optional)"
-            value={formData.pan}
-            onChange={(e) => setFormData({ ...formData, pan: e.target.value.toUpperCase() })}
-            className="rounded-gc"
-          />
+          <div>
+            <Input
+              type="text"
+              placeholder="GSTIN (Optional)"
+              maxLength={15}
+              value={formData.gstin}
+              aria-invalid={!!gstinError}
+              onChange={(e) => handleGstinChange(e.target.value)}
+              className={`rounded-gc ${gstinError ? 'border-red-400' : ''}`}
+            />
+            <FieldError message={gstinError ?? undefined} />
+          </div>
+          <div>
+            <Input
+              type="text"
+              placeholder="PAN (Optional)"
+              maxLength={10}
+              value={formData.pan}
+              aria-invalid={!!errors.pan}
+              onBlur={() => touch('pan')}
+              onChange={(e) => setFormData({ ...formData, pan: e.target.value.toUpperCase() })}
+              className={`rounded-gc ${errors.pan ? 'border-red-400' : ''}`}
+            />
+            <FieldError message={errors.pan} />
+          </div>
         </div>
 
         <Input
@@ -169,14 +211,20 @@ export function CheckoutForm({
         <div className="border-t border-bdr pt-4">
           <p className="text-xs font-semibold text-ink-3 mb-3">Billing Address</p>
 
-          <Input
-            type="text"
-            placeholder="Address Line 1 *"
-            value={formData.address1}
-            onChange={(e) => setFormData({ ...formData, address1: e.target.value })}
-            className="rounded-gc mb-3"
-            required
-          />
+          <div className="mb-3">
+            <Input
+              type="text"
+              placeholder="Address Line 1 *"
+              maxLength={200}
+              value={formData.address1}
+              aria-invalid={!!errors.address1}
+              onBlur={() => touch('address1')}
+              onChange={(e) => setFormData({ ...formData, address1: e.target.value })}
+              className={`rounded-gc ${errors.address1 ? 'border-red-400' : ''}`}
+              required
+            />
+            <FieldError message={errors.address1} />
+          </div>
 
           <Input
             type="text"
@@ -187,39 +235,58 @@ export function CheckoutForm({
           />
 
           <div className="grid grid-cols-3 gap-2 mb-3">
-            <Input
-              type="text"
-              placeholder="City *"
-              value={formData.city}
-              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              className="rounded-gc"
-              required
-            />
-            <select
-              value={formData.state}
-              onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-              className="rounded-gc border-2 border-bdr px-3 py-2 bg-white text-sm text-ink"
-              required
-            >
-              <option value="">State *</option>
-              {INDIAN_STATES.map((state) => (
-                <option key={state} value={state}>
-                  {state}
-                </option>
-              ))}
-            </select>
-            <Input
-              type="text"
-              placeholder="Pincode *"
-              value={formData.pincode}
-              maxLength={6}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                setFormData({ ...formData, pincode: val });
-              }}
-              className="rounded-gc"
-              required
-            />
+            <div>
+              <Input
+                type="text"
+                placeholder="City *"
+                maxLength={60}
+                value={formData.city}
+                aria-invalid={!!errors.city}
+                onBlur={() => touch('city')}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                className={`rounded-gc ${errors.city ? 'border-red-400' : ''}`}
+                required
+              />
+              <FieldError message={errors.city} />
+            </div>
+            <div>
+              <select
+                value={formData.state}
+                aria-invalid={!!errors.state}
+                onBlur={() => touch('state')}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                className={`w-full rounded-gc border-2 px-3 py-2 bg-white text-sm text-ink ${
+                  errors.state ? 'border-red-400' : 'border-bdr'
+                }`}
+                required
+              >
+                <option value="">State *</option>
+                {INDIAN_STATES.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
+              <FieldError message={errors.state} />
+            </div>
+            <div>
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="Pincode *"
+                value={formData.pincode}
+                maxLength={6}
+                aria-invalid={!!errors.pincode}
+                onBlur={() => touch('pincode')}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                  setFormData({ ...formData, pincode: val });
+                }}
+                className={`rounded-gc ${errors.pincode ? 'border-red-400' : ''}`}
+                required
+              />
+              <FieldError message={errors.pincode} />
+            </div>
           </div>
         </div>
       </div>
@@ -229,14 +296,20 @@ export function CheckoutForm({
         <p className="text-xs font-semibold uppercase tracking-wider text-ink-3 mb-2">Contact Person</p>
 
         <div className="grid grid-cols-2 gap-3">
-          <Input
-            type="text"
-            placeholder="Full Name *"
-            value={formData.contactName}
-            onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-            className="rounded-gc"
-            required
-          />
+          <div>
+            <Input
+              type="text"
+              placeholder="Full Name *"
+              maxLength={100}
+              value={formData.contactName}
+              aria-invalid={!!errors.contactName}
+              onBlur={() => touch('contactName')}
+              onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+              className={`rounded-gc ${errors.contactName ? 'border-red-400' : ''}`}
+              required
+            />
+            <FieldError message={errors.contactName} />
+          </div>
           <Input
             type="text"
             placeholder="Designation (Optional)"
@@ -254,14 +327,23 @@ export function CheckoutForm({
             className="rounded-gc bg-gray-50"
             disabled
           />
-          <Input
-            type="tel"
-            placeholder="Phone *"
-            value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="rounded-gc"
-            required
-          />
+          <div>
+            <Input
+              type="tel"
+              inputMode="tel"
+              maxLength={14}
+              placeholder="Phone *"
+              value={formData.phone}
+              aria-invalid={!!errors.phone}
+              onBlur={() => touch('phone')}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value.replace(/[^\d+\s-]/g, '') })
+              }
+              className={`rounded-gc ${errors.phone ? 'border-red-400' : ''}`}
+              required
+            />
+            <FieldError message={errors.phone} />
+          </div>
         </div>
       </div>
 

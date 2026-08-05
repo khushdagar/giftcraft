@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { zEmail, zPersonName } from '@/lib/zod-fields';
+import { sendPushToAdmins } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
 
 const CommentSchema = z.object({
   postId: z.string().min(1),
-  authorName: z.string().trim().min(2, 'Please enter your name').max(60),
-  email: z.string().trim().email('Please enter a valid email').max(120),
+  authorName: zPersonName('Your name').max(60),
+  email: zEmail.max(120),
   body: z.string().trim().min(4, 'Comment is too short').max(2000),
   // Honeypot — real people never fill a field they cannot see.
   website: z.string().max(0).optional(),
@@ -52,14 +54,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'You have already posted that comment.' }, { status: 409 });
     }
 
-    await prisma.blogComment.create({
+    const comment = await prisma.blogComment.create({
       data: {
         postId: post.id,
         authorName: input.authorName,
         email: input.email,
         body: input.body,
       },
+      select: { id: true, post: { select: { title: true } } },
     });
+
+    // Comments stay invisible until moderated, so nudge the admin.
+    sendPushToAdmins({
+      title: `New comment by ${input.authorName}`,
+      body: `on "${comment.post.title}" — awaiting moderation.`,
+      url: '/admin/blog/comments',
+      tag: `comment-${comment.id}`,
+    }).catch(() => {});
 
     return NextResponse.json({ success: true, data: { status: 'pending' } }, { status: 201 });
   } catch (error) {

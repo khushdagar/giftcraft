@@ -2,14 +2,16 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { zPincode } from '@/lib/zod-fields';
+import { sendPushToAdmins } from '@/lib/push';
 
 const createSampleSchema = z.object({
   productId: z.string().min(1),
-  addressLine1: z.string().min(3),
-  addressLine2: z.string().optional(),
-  city: z.string().min(2),
-  state: z.string().min(2),
-  pincode: z.string().regex(/^\d{6}$/),
+  addressLine1: z.string().trim().min(5).max(300),
+  addressLine2: z.string().trim().max(300).optional(),
+  city: z.string().trim().min(2).max(120),
+  state: z.string().trim().min(2).max(120),
+  pincode: zPincode,
   notes: z.string().optional(),
 });
 
@@ -79,6 +81,13 @@ export async function POST(req: NextRequest) {
     });
 
     console.log('✅ Sample order created:', sample.id);
+
+    sendPushToAdmins({
+      title: `Sample request: ${sample.product.name}`,
+      body: `${session.user.name || 'A customer'} requested a sample — awaiting approval.`,
+      url: '/admin/samples',
+      tag: `sample-${sample.id}`,
+    }).catch(() => {});
 
     return NextResponse.json(
       {

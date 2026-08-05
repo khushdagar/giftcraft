@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { zEmail, zGstin, zPersonName, zPhone } from '@/lib/zod-fields';
+import { sendPushToAdmins } from '@/lib/push';
 
 /**
  * POST /api/vendors/register
@@ -9,17 +11,17 @@ import { z } from 'zod';
  * No login account is created — the admin reviews and promotes the vendor later.
  */
 const RegisterVendorSchema = z.object({
-  name: z.string().min(2, 'Company name is required').max(100),
-  contactName: z.string().min(2, 'Contact name is required').max(100),
-  email: z.string().email('Valid email is required'),
-  phone: z.string().min(8, 'Phone number is required').max(20),
-  whatsapp: z.string().max(20).optional().nullable(),
+  name: zPersonName('Company name'),
+  contactName: zPersonName('Contact name'),
+  email: zEmail,
+  phone: zPhone,
+  whatsapp: zPhone.optional().nullable().or(z.literal('')),
   city: z.string().max(50).optional().nullable(),
   state: z.string().max(50).optional().nullable(),
   address: z.string().max(500).optional().nullable(),
   type: z.string().max(100).optional().nullable(),
   productsServices: z.string().max(2000).optional().nullable(),
-  gst: z.string().max(20).optional().nullable(),
+  gst: zGstin.optional().nullable().or(z.literal('')),
   paymentTerms: z.string().max(200).optional().nullable(),
   avgLeadDays: z.number().int().nonnegative().nullable().optional(),
   minOrderQty: z.number().int().nonnegative().nullable().optional(),
@@ -70,6 +72,13 @@ export async function POST(request: NextRequest) {
       },
       select: { id: true, name: true },
     });
+
+    sendPushToAdmins({
+      title: `Vendor application: ${vendor.name}`,
+      body: [d.type, d.city].filter(Boolean).join(' — ') || 'Awaiting review',
+      url: `/admin/vendors/${vendor.id}`,
+      tag: `vendor-${vendor.id}`,
+    }).catch(() => {});
 
     return NextResponse.json({ success: true, data: vendor }, { status: 201 });
   } catch (error) {

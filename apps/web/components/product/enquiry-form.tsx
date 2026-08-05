@@ -2,6 +2,15 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import {
+  collectErrors,
+  validateEmail,
+  validateName,
+  validateNumber,
+  validatePhone,
+  validateText,
+} from '@/lib/validation';
+import { FieldError, inputClass } from '@/components/ui/field-error';
 
 interface EnquiryFormProps {
   isOpen: boolean;
@@ -23,15 +32,41 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof typeof formData, string>>>({});
+
+  const validate = (data: typeof formData) =>
+    collectErrors({
+      companyName: validateName(data.companyName, 'Company name'),
+      contactName: validateName(data.contactName, 'Contact name'),
+      email: validateEmail(data.email),
+      phone: validatePhone(data.phone),
+      quantity: validateNumber(data.quantity, 'Quantity', { required: false, min: 1, max: 1000000 }),
+      message: validateText(data.message, 'Message', { required: false, max: 2000 }),
+    });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear the error as soon as the user starts fixing the field
+    setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const name = e.target.name as keyof typeof formData;
+    const errors = validate({ ...formData, [name]: e.target.value });
+    setFieldErrors((prev) => ({ ...prev, [name]: errors[name] }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const errors = validate(formData);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/enquiries', {
@@ -51,6 +86,7 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
       }
 
       setSubmitted(true);
+      setFieldErrors({});
       setTimeout(() => {
         setSubmitted(false);
         onClose();
@@ -112,10 +148,13 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     name="companyName"
                     value={formData.companyName}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
+                    aria-invalid={!!fieldErrors.companyName}
+                    className={inputClass(fieldErrors.companyName)}
                     placeholder="TechCorp India"
                   />
+                  <FieldError message={fieldErrors.companyName} />
                 </div>
 
                 <div>
@@ -127,10 +166,13 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     name="contactName"
                     value={formData.contactName}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
+                    aria-invalid={!!fieldErrors.contactName}
+                    className={inputClass(fieldErrors.contactName)}
                     placeholder="Priya Sharma"
                   />
+                  <FieldError message={fieldErrors.contactName} />
                 </div>
 
                 <div>
@@ -142,10 +184,13 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
+                    aria-invalid={!!fieldErrors.email}
+                    className={inputClass(fieldErrors.email)}
                     placeholder="priya@techcorp.com"
                   />
+                  <FieldError message={fieldErrors.email} />
                 </div>
 
                 <div>
@@ -155,12 +200,16 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                   <input
                     type="tel"
                     name="phone"
+                    inputMode="tel"
                     value={formData.phone}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
+                    aria-invalid={!!fieldErrors.phone}
+                    className={inputClass(fieldErrors.phone)}
                     placeholder="+91 98765 43210"
                   />
+                  <FieldError message={fieldErrors.phone} />
                 </div>
 
                 <div className="md:col-span-2">
@@ -170,11 +219,16 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                   <input
                     type="number"
                     name="quantity"
+                    min={1}
+                    step={1}
                     value={formData.quantity}
                     onChange={handleChange}
-                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none"
+                    onBlur={handleBlur}
+                    aria-invalid={!!fieldErrors.quantity}
+                    className={inputClass(fieldErrors.quantity)}
                     placeholder="250"
                   />
+                  <FieldError message={fieldErrors.quantity} />
                 </div>
 
                 <div className="md:col-span-2">
@@ -185,10 +239,14 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     name="message"
                     value={formData.message}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     rows={4}
-                    className="w-full rounded-md border border-bdr px-4 py-2 text-sm focus:border-em focus:outline-none resize-none"
+                    maxLength={2000}
+                    aria-invalid={!!fieldErrors.message}
+                    className={`${inputClass(fieldErrors.message)} resize-none`}
                     placeholder="Any specific requirements or questions?"
                   />
+                  <FieldError message={fieldErrors.message} />
                 </div>
               </div>
 

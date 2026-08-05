@@ -8,6 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { FieldError } from '@/components/ui/field-error';
+import {
+  collectErrors,
+  validateEmail,
+  validateGstin,
+  validateName,
+  validatePhone,
+} from '@/lib/validation';
 
 export default function NewVendorPage() {
   const router = useRouter();
@@ -45,7 +53,14 @@ export default function NewVendorPage() {
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    // GST is stored uppercase; phone fields drop characters the format rejects.
+    const value =
+      name === 'gst'
+        ? e.target.value.toUpperCase()
+        : name === 'phone' || name === 'whatsapp'
+          ? e.target.value.replace(/[^\d+\s-]/g, '')
+          : e.target.value;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -63,8 +78,32 @@ export default function NewVendorPage() {
     }
   };
 
+  const fieldErrors = {
+    contactName: formData.contactName.trim()
+      ? validateName(formData.contactName, 'Contact name')
+      : null,
+    email: formData.email.trim() ? validateEmail(formData.email) : null,
+    phone: formData.phone.trim() ? validatePhone(formData.phone) : null,
+    whatsapp: validatePhone(formData.whatsapp, { required: false }),
+    gst: validateGstin(formData.gst),
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const blocking = collectErrors({
+      contactName: validateName(formData.contactName, 'Contact name'),
+      email: validateEmail(formData.email),
+      phone: validatePhone(formData.phone),
+      whatsapp: validatePhone(formData.whatsapp, { required: false }),
+      gst: validateGstin(formData.gst),
+    });
+    const firstError = Object.values(blocking)[0];
+    if (firstError) {
+      toast.error(firstError);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -173,9 +212,13 @@ export default function NewVendorPage() {
               name="contactName"
               value={formData.contactName}
               onChange={handleChange}
+              maxLength={100}
+              aria-invalid={!!fieldErrors.contactName}
+              className={fieldErrors.contactName ? 'border-red-400' : ''}
               placeholder="e.g., John Smith"
               required
             />
+            <FieldError message={fieldErrors.contactName ?? undefined} />
           </div>
           <div>
             <label className="block text-sm font-normal text-ink mb-2">Email *</label>
@@ -184,9 +227,12 @@ export default function NewVendorPage() {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              aria-invalid={!!fieldErrors.email}
+              className={fieldErrors.email ? 'border-red-400' : ''}
               placeholder="contact@vendor.com"
               required
             />
+            <FieldError message={fieldErrors.email ?? undefined} />
           </div>
         </div>
 
@@ -195,20 +241,30 @@ export default function NewVendorPage() {
             <label className="block text-sm font-normal text-ink mb-2">Phone *</label>
             <Input
               name="phone"
+              type="tel"
+              maxLength={14}
               value={formData.phone}
               onChange={handleChange}
+              aria-invalid={!!fieldErrors.phone}
+              className={fieldErrors.phone ? 'border-red-400' : ''}
               placeholder="+91 XXXXXXXXXX"
               required
             />
+            <FieldError message={fieldErrors.phone ?? undefined} />
           </div>
           <div>
             <label className="block text-sm font-normal text-ink mb-2">WhatsApp</label>
             <Input
               name="whatsapp"
+              type="tel"
+              maxLength={14}
               value={formData.whatsapp}
               onChange={handleChange}
+              aria-invalid={!!fieldErrors.whatsapp}
+              className={fieldErrors.whatsapp ? 'border-red-400' : ''}
               placeholder="+91 XXXXXXXXXX"
             />
+            <FieldError message={fieldErrors.whatsapp ?? undefined} />
           </div>
         </div>
 
@@ -217,9 +273,13 @@ export default function NewVendorPage() {
           <Input
             name="gst"
             value={formData.gst}
+            maxLength={15}
             onChange={handleChange}
+            aria-invalid={!!fieldErrors.gst}
+            className={fieldErrors.gst ? 'border-red-400' : ''}
             placeholder="27XXXXXXXXX1Z5"
           />
+          <FieldError message={fieldErrors.gst ?? undefined} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
