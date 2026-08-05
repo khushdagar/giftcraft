@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 
 export function HomeHero() {
   const [slide, setSlide] = useState(0);
@@ -14,6 +13,7 @@ export function HomeHero() {
       desc: 'Custom branded gifts for your team, delivered in 10 days.',
       bg: 'linear-gradient(135deg, #222222 0%, #111111 20%, #000000 50%, #111111 80%, #222222 100%)',
       image: '/home-banners/Banners-01.jpg',
+      mobileImage: '/home-banners/mobile-1.jpg',
     },
     {
       subtitle: 'Festive Season 2026',
@@ -21,6 +21,7 @@ export function HomeHero() {
       desc: 'Premium branded gifts for the season of lights.',
       bg: 'linear-gradient(135deg, #3D000F 0%, #800020 50%, #B04057 100%)',
       image: '/home-banners/Banners-02.jpg',
+      mobileImage: '/home-banners/mobile-2.jpg',
     },
     {
       subtitle: 'Employee Onboarding',
@@ -28,6 +29,7 @@ export function HomeHero() {
       desc: 'Make every new hire feel valued from day one.',
       bg: 'linear-gradient(135deg, #000000 0%, #800020 50%, #B04057 100%)',
       image: '/home-banners/Banners-03.jpg',
+      mobileImage: '/home-banners/mobile-3.jpg',
     },
   ];
 
@@ -49,17 +51,26 @@ export function HomeHero() {
             }`}
             style={{ background: s.bg }}
           >
-            {/* First slide is the LCP — priority preloads it instead of the
-                late-discovered CSS background-image it used to be. */}
-            <Image
-              src={s.image}
-              alt=""
-              fill
-              sizes="100vw"
-              priority={i === 0}
-              loading={i === 0 ? 'eager' : 'lazy'}
-              className="object-cover"
-            />
+            {/* Art direction: phones get the portrait crop, tablets and up the
+                wide one. A <picture> (rather than two next/image layers toggled
+                with md:hidden) means the browser downloads only the matching
+                file — the hidden one would still be fetched. next/image adds
+                nothing here anyway: images are served unoptimized (see
+                next.config.js), so this renders the same <img> either way. */}
+            <picture>
+              <source media="(max-width: 767px)" srcSet={s.mobileImage} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={s.image}
+                alt=""
+                // First slide is the LCP — load it eagerly at high priority
+                // instead of lazily discovering it.
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : 'auto'}
+                decoding="async"
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            </picture>
           </div>
         ))}
         <div className="absolute inset-0 bg-black/40" />
