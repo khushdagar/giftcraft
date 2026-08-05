@@ -18,10 +18,10 @@ interface KpiProps {
 
 function Kpi({ label, value, icon: Icon, accent }: KpiProps) {
   const accentMap = {
-    em: "bg-em/5 text-em-700 border-em/20",
-    gold: "bg-gold/5 text-gold-700 border-gold/20",
-    ink: "bg-ink/5 text-ink-700 border-ink/20",
-    "em-400": "bg-em/5 text-em-400 border-em/20",
+    em: "bg-white text-em-700 border-em/20",
+    gold: "bg-white text-gold-700 border-gold/20",
+    ink: "bg-white text-ink-700 border-ink/20",
+    "em-400": "bg-white text-em-400 border-em/20",
   };
 
   return (
@@ -101,9 +101,11 @@ export default async function DashboardPage() {
     prisma.order.aggregate({
       where: {
         placedById: userId,
-        createdAt: {
+        // Only orders actually paid for — not merely placed
+        paidAt: {
           gte: new Date(new Date().getFullYear(), 0, 1),
         },
+        status: { not: "refunded" },
       },
       _sum: {
         grandTotal: true,
@@ -264,9 +266,14 @@ export default async function DashboardPage() {
               const hiddenCount = items.length - thumbs.length;
 
               return (
-                <Link key={o.id} href={`/dashboard/orders/${o.id}`} className="flex items-center gap-4 p-5 transition hover:bg-elevated">
+                <Link
+                  key={o.id}
+                  href={`/dashboard/orders/${o.id}`}
+                  className="flex flex-col gap-3 p-4 transition hover:bg-elevated sm:flex-row sm:items-center sm:gap-4 sm:p-5"
+                >
+                  <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
                   {/* Product collage — up to 4 thumbnails, last one counts the rest */}
-                  <div className="grid h-16 w-16 flex-shrink-0 grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-lg bg-gray-100">
+                  <div className="grid h-16 w-16 flex-shrink-0 grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-md bg-gray-100">
                     {thumbs.length > 0 ? (
                       thumbs.map((it: any, i: number) => {
                         const url = it.product?.images?.[0]?.url;
@@ -293,24 +300,29 @@ export default async function DashboardPage() {
                     )}
                   </div>
 
-                  {/* Order Details */}
-                  <div className="flex-1 min-w-0">
-                    <ul className="space-y-0.5">
-                      {items.map((it: any) => (
-                        <li key={it.id} className="flex items-baseline gap-2 text-xs text-ink-3">
-                          <span className="truncate">{it.product?.name ?? 'Product'}</span>
-                          <span className="flex-shrink-0 tabnum">× &nbsp;{it.quantity}</span>
-                          {/* <span className="flex-shrink-0 tabnum">({formatRupees(Number(it.unitPrice))})</span> */}
+                  {/* Order Details — names get the full row width so they read in
+                      full on a phone instead of truncating after a few characters. */}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] text-ink-3">#{o.orderNumber} · Pack × {o.packQuantity}</p>
+                    <ul className="mt-1 space-y-0.5">
+                      {items.slice(0, 3).map((it: any) => (
+                        <li key={it.id} className="flex items-baseline justify-between gap-2 text-[13px]">
+                          <span className="truncate text-ink-2">{it.product?.name ?? 'Product'}</span>
+                          <span className="flex-shrink-0 tabnum text-ink-3">× {it.quantity}</span>
                         </li>
                       ))}
+                      {items.length > 3 && (
+                        <li className="text-[11px] text-ink-3">+{items.length - 3} more</li>
+                      )}
                     </ul>
-                    <p className="mt-0.5 text-xs text-ink-3">Pack × {o.packQuantity} · #{o.orderNumber}</p>
+                  </div>
                   </div>
 
-                  {/* Status and Price */}
-                  <div className="flex items-center gap-4 flex-shrink-0">
+                  {/* Status and Price — full-width row under the details on mobile,
+                      right-aligned column beside them from sm up. */}
+                  <div className="flex flex-shrink-0 items-center justify-between gap-3 border-t border-bdr pt-3 sm:flex-col sm:items-end sm:gap-2 sm:border-0 sm:pt-0">
                     <Badge variant={getStatusVariant(o.status)}>{getStatusLabel(o.status)}</Badge>
-                    <p className="font-normal tabnum text-sm whitespace-nowrap">{formatRupees(Number(o.grandTotal))}</p>
+                    <p className="whitespace-nowrap text-sm font-normal tabnum">{formatRupees(Number(o.grandTotal))}</p>
                   </div>
                 </Link>
               );

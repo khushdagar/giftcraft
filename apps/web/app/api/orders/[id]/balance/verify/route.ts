@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { verifyRazorpaySignature } from '@/lib/razorpay';
 import { sendPaymentSuccessEmail } from '@/lib/email';
+import { sendPushToAdmins } from '@/lib/push';
 
 /**
  * POST /api/orders/[id]/balance/verify
@@ -84,6 +85,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         console.error('Balance payment email failed (non-blocking):', e);
       }
     }
+
+    // Ops alert — the order is now fully funded and needs to go into production.
+    sendPushToAdmins({
+      title: `Balance paid on ${order.orderNumber}`,
+      body: `₹${grandTotal.toFixed(2)} settled in full — moved to production.`,
+      url: `/admin/orders/${order.id}`,
+      tag: `payment-${order.id}`,
+    }).catch(() => {});
 
     return NextResponse.json({ success: true, status: 'production' });
   } catch (error: any) {

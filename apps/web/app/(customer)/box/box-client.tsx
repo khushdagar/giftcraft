@@ -385,33 +385,75 @@ export default function BuildYourBoxPage() {
         </motion.div>
 
         {/* ── Two columns: budget/tracking sidebar + product picker ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 md:gap-8">
           {/* Left: budget box + simple tracking line + your box */}
           <div className="lg:col-span-1">
             <div className="sticky top-20 space-y-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
               {/* Budget box */}
               <div className="bg-white rounded-md border-2 border-amber-200 p-4">
-                <h3 className="text-sm font-bold text-ink mb-3">Set your budget</h3>
+                {/* On mobile the box-count stepper rides alongside the heading
+                    instead of sitting in its own block below — saves a whole row
+                    of vertical space above the product grid. */}
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <h3 className="text-sm font-bold text-ink">Set your budget</h3>
+                  <div className="flex items-center gap-1 lg:hidden">
+                    <span className="text-[10px] font-semibold uppercase text-ink-3">Boxes</span>
+                    <button
+                      type="button"
+                      onClick={() => setPackQuantity(Math.max(minBoxQty, packQuantity - 5))}
+                      className="h-7 w-7 shrink-0 rounded-full border-2 border-bdr text-ink"
+                      aria-label="Fewer boxes"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min={minBoxQty}
+                      value={boxQtyInput}
+                      onChange={(e) => {
+                        setBoxQtyInput(e.target.value);
+                        const v = parseInt(e.target.value, 10);
+                        if (!isNaN(v) && v > 0) setPackQuantity(v);
+                      }}
+                      onBlur={() => {
+                        const v = parseInt(boxQtyInput, 10);
+                        const next = isNaN(v) || v < minBoxQty ? minBoxQty : v;
+                        setPackQuantity(next);
+                        setBoxQtyInput(String(next));
+                      }}
+                      aria-label="Number of boxes"
+                      className="h-7 w-12 rounded-md border-2 border-bdr text-center text-xs focus:border-em focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPackQuantity(packQuantity + 5)}
+                      className="h-7 w-7 shrink-0 rounded-full border-2 border-bdr text-ink"
+                      aria-label="More boxes"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
 
                 {/* Per-box budget — stated as GST-inclusive up front, so the
                     number the customer types is the number they think in. */}
-                <label className="block text-xs uppercase font-semibold text-ink-3 mb-1.5">
+                <label className="block text-[10px] lg:text-xs uppercase font-semibold text-ink-3 mb-1.5">
                   Per-box budget
                   <span className="ml-1.5 normal-case tracking-normal rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
                     including GST
                   </span>
                 </label>
-                <p className="text-[11px] leading-snug text-ink-3 mb-2">
+                <p className="hidden lg:block text-[11px] leading-snug text-ink-3 mb-2">
                   What you want to spend on <strong className="font-semibold text-ink-2">one box</strong>, tax
                   included. Each product uses up its price + its own GST.
                 </p>
-                <div className="flex flex-wrap gap-2 mb-2">
+                <div className="flex flex-wrap gap-1.5 lg:gap-2 mb-2">
                   {QUICK_BUDGETS.map((b) => (
                     <button
                       key={b}
                       type="button"
                       onClick={() => commitBudget(String(b))}
-                      className={`px-3 py-1.5 rounded-full border-2 text-sm font-medium transition ${
+                      className={`px-2.5 py-1 lg:px-3 lg:py-1.5 rounded-full border-2 text-xs lg:text-sm font-medium transition ${
                         budget === b
                           ? 'border-amber-400 bg-amber-100 text-amber-900'
                           : 'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-400'
@@ -429,15 +471,16 @@ export default function BuildYourBoxPage() {
                     value={budgetInput}
                     onChange={(e) => commitBudget(e.target.value)}
                     placeholder="Custom amount, e.g. 5000"
-                    className="w-full h-10 pl-7 pr-3 rounded-md border-2 border-bdr focus:border-em focus:outline-none text-sm"
+                    className="w-full h-9 lg:h-10 pl-7 pr-3 rounded-md border-2 border-bdr focus:border-em focus:outline-none text-sm"
                   />
                 </div>
 
-                {/* Boxes (pack quantity) — drives the bulk pricing tier */}
-                <label className="block text-xs uppercase font-semibold text-ink-3 mb-2">
+                {/* Boxes (pack quantity) — drives the bulk pricing tier.
+                    Desktop layout only; mobile uses the compact stepper up top. */}
+                <label className="hidden lg:block text-xs uppercase font-semibold text-ink-3 mb-2">
                   Boxes <span className="normal-case font-normal">· lower per-unit at volume</span>
                 </label>
-                <div className="flex items-center gap-1.5">
+                <div className="hidden lg:flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setPackQuantity(Math.max(minBoxQty, packQuantity - 5))}
@@ -475,8 +518,10 @@ export default function BuildYourBoxPage() {
                 </div>
               </div>
 
-              {/* Your Box (cart) */}
-              <div className="bg-white rounded-md border-2 border-bdr p-4">
+              {/* Your Box (cart) — desktop only. On mobile the sticky bottom bar
+                  carries the same summary + Proceed CTA, so this panel would just
+                  push the product grid down the page. */}
+              <div className="hidden lg:block bg-white rounded-md border-2 border-bdr p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-bold text-ink">Your Box</h3>
                   <span className="text-xs text-ink-3">
@@ -623,13 +668,11 @@ export default function BuildYourBoxPage() {
               </div>
             ) : (
               <>
-                {/* Horizontal budget tracking line.
-                    On mobile the budget panel is far above the product grid, so
-                    this sticks below the navbar (h-14) as the user scrolls the
-                    products — "what's left" has to stay on screen at the moment
-                    they're deciding what to add. On lg+ the sticky sidebar
-                    already shows it, so it scrolls normally there. */}
-                <div className="sticky top-14 z-30 bg-white rounded-md border-2 border-bdr px-4 py-3 shadow-sm lg:shadow-none">
+                {/* Horizontal budget tracking panel — desktop only. On mobile the
+                    same numbers ride along as a single line in the sticky bottom
+                    bar, which keeps "what's left" on screen without a card taking
+                    a third of the viewport. */}
+                <div className="hidden lg:block sticky top-14 z-30 bg-white rounded-md border-2 border-bdr px-4 py-3 shadow-sm lg:shadow-none">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <span className="text-sm font-bold text-ink shrink-0">
                       Budget tracking
@@ -685,32 +728,37 @@ export default function BuildYourBoxPage() {
                 </div>
 
                 <div>
-                  <h2 className="text-2xl font-normal text-ink">Choose products</h2>
-                  <p className="text-sm text-ink-2 mt-1 tabnum">
-                    Every price below includes that product's GST.{' '}
+                  <h2 className="text-xl lg:text-2xl font-normal text-ink">Choose products</h2>
+                  {/* Mobile gets the short version — the full sentence ate three
+                      lines above the fold. */}
+                  <p className="text-[12px] lg:text-sm text-ink-2 mt-1 tabnum">
+                    <span className="hidden lg:inline">
+                      Every price below includes that product's GST.{' '}
+                    </span>
                     {fitOnly
-                      ? `Showing items up to ${inr(Math.max(0, remaining))} — what's left of your box budget.`
-                      : `Showing all products · ${inr(Math.max(0, remaining))} left in your box.`}
+                      ? `Up to ${inr(Math.max(0, remaining))} left in your box · prices incl. GST`
+                      : `All products · ${inr(Math.max(0, remaining))} left in your box`}
                   </p>
                 </div>
 
-                {/* Search + category */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative flex-1">
+                {/* Search + category — side by side on mobile too, so the two
+                    controls take one row instead of two. */}
+                <div className="flex flex-row gap-2 lg:gap-3">
+                  <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-3" />
                     <input
                       type="text"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search products…"
-                      className="w-full h-10 pl-9 pr-3 rounded-full border-2 border-bdr bg-white focus:border-em focus:outline-none text-sm"
+                      placeholder="Search…"
+                      className="w-full h-9 lg:h-10 pl-9 pr-3 rounded-full border-2 border-bdr bg-white focus:border-em focus:outline-none text-sm"
                     />
                   </div>
                   {categories.length > 0 && (
                     <select
                       value={selectedCat}
                       onChange={(e) => setSelectedCat(e.target.value)}
-                      className="h-10 px-3 rounded-full border-2 border-bdr bg-white text-sm"
+                      className="h-9 lg:h-10 max-w-[42%] lg:max-w-none px-2 lg:px-3 rounded-full border-2 border-bdr bg-white text-[12px] lg:text-sm"
                     >
                       <option value="all">All categories</option>
                       {categories.map((c) => (
@@ -720,17 +768,18 @@ export default function BuildYourBoxPage() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <label className="inline-flex items-center gap-2 text-sm text-ink-2 cursor-pointer select-none">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="inline-flex items-center gap-2 text-[12px] lg:text-sm text-ink-2 cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={fitOnly}
                       onChange={(e) => setFitOnly(e.target.checked)}
-                      className="h-4 w-4 rounded border-2 border-bdr accent-[#800020]"
+                      className="h-4 w-4 shrink-0 rounded border-2 border-bdr accent-[#800020]"
                     />
-                    Only show items that fit my remaining budget
+                    <span className="lg:hidden">Only items that fit my budget</span>
+                    <span className="hidden lg:inline">Only show items that fit my remaining budget</span>
                   </label>
-                  <span className="text-[11px] text-ink-3">
+                  <span className="shrink-0 whitespace-nowrap text-[11px] text-ink-3">
                     {filtered.length} product{filtered.length !== 1 ? 's' : ''}
                   </span>
                 </div>
@@ -820,6 +869,35 @@ export default function BuildYourBoxPage() {
           the whole time the user is adding products, with the CTA bottom-right. */}
       {boxProducts.length > 0 && (
         <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t-2 border-bdr shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+          {/* Mobile-only budget line — replaces the full tracking card above. */}
+          <div className="lg:hidden border-b border-bdr px-4 pt-2 pb-1.5">
+            <div className="flex items-baseline justify-between gap-2 text-[11px] tabnum">
+              <p className="min-w-0 truncate text-ink-2">
+                Spent {inr(subtotal)} · {isExceeded ? 'Over' : 'Left'}{' '}
+                <span className={isExceeded ? 'font-semibold text-rose-600' : 'font-semibold text-em'}>
+                  {inr(Math.abs(remaining))}
+                </span>{' '}
+                of {inr(budget)}
+              </p>
+              <span
+                className={`shrink-0 font-semibold ${
+                  isExceeded ? 'text-rose-600' : percentage >= 80 ? 'text-orange-600' : 'text-em'
+                }`}
+              >
+                {isExceeded ? 'Over' : `${Math.round(percentage)}%`}
+              </span>
+            </div>
+            <div className="relative mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+              <motion.div
+                animate={{ width: `${Math.min(percentage, 100)}%` }}
+                transition={{ type: 'spring', stiffness: 50, damping: 15 }}
+                className={`h-full ${
+                  isExceeded ? 'bg-rose-500' : percentage >= 80 ? 'bg-orange-500' : 'bg-em'
+                }`}
+              />
+            </div>
+          </div>
+
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
             <div className="min-w-0">
               <p className="text-xs text-ink-3">
@@ -827,7 +905,9 @@ export default function BuildYourBoxPage() {
               </p>
               <p className="text-sm text-ink-2 tabnum truncate">
                 Per box <span className="font-semibold text-ink">{inr(subtotal)}</span>
-                <span className="hidden sm:inline text-ink-3">
+                {/* Now shown on mobile too — the tracking card that used to carry
+                    this number is desktop-only. */}
+                <span className="text-ink-3">
                   {' '}· est. final {inr(estFinalPerBox)}
                 </span>
                 {isExceeded && (
@@ -841,7 +921,7 @@ export default function BuildYourBoxPage() {
               onClick={handleProceed}
               className="shrink-0 py-3 px-6 bg-em hover:bg-em-600 text-white font-medium rounded-2xl transition"
             >
-              Proceed to Customize →
+              Proceed →
             </button>
           </div>
         </div>

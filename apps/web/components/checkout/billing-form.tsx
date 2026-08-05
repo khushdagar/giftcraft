@@ -1,13 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import { FieldError } from '@/components/ui/field-error';
+import {
+  validateGstin,
+  validateName,
+  validatePan,
+  validatePincode,
+  validateText,
+} from '@/lib/validation';
 
-const INDIAN_STATES = [
-  'Andhra Pradesh', 'Bihar', 'Chhattisgarh', 'Delhi', 'Goa', 'Gujarat',
-  'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
-  'Madhya Pradesh', 'Maharashtra', 'Odisha', 'Punjab', 'Rajasthan',
-  'Tamil Nadu', 'Telangana', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
-];
+// Was a local, partial copy (21 entries, no UTs and several states missing) —
+// use the shared A–Z list so every address form offers the same options.
+import { INDIAN_STATES } from '@/lib/constants';
 
 export interface BillingFormData {
   companyName: string;
@@ -28,19 +33,24 @@ interface BillingFormProps {
 
 export function BillingForm({ data, onChange }: BillingFormProps) {
   const [noGstin, setNoGstin] = useState(false);
-  const [gstinError, setGstinError] = useState('');
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const touch = (field: string) => setTouched((prev) => ({ ...prev, [field]: true }));
+  const showIf = (field: string, message: string | null) =>
+    touched[field] ? message ?? undefined : undefined;
 
-  const validateGSTIN = (value: string) => {
-    const v = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (v.length === 15) {
-      const valid = /^[0-3][0-9][A-Z]{5}[0-9]{4}[A-Z][0-9Z][A-Z][0-9]$/.test(v);
-      setGstinError(valid ? '' : 'Invalid GSTIN format');
-    }
-    return v;
+  const errors = {
+    companyName: showIf('companyName', validateName(data.companyName, 'Company name')),
+    gstin: showIf('gstin', validateGstin(data.gstin)),
+    pan: showIf('pan', validatePan(data.pan)),
+    address1: showIf('address1', validateText(data.address1, 'Address line 1', { min: 5, max: 200 })),
+    city: showIf('city', validateName(data.city, 'City')),
+    pincode: showIf('pincode', validatePincode(data.pincode)),
   };
 
+  const gstinError = errors.gstin;
+
   const handleGstinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = validateGSTIN(e.target.value);
+    const v = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
     onChange({ ...data, gstin: v });
   };
 
@@ -56,11 +66,15 @@ export function BillingForm({ data, onChange }: BillingFormProps) {
         </label>
         <input
           type="text"
-          className="form-input"
+          className={`form-input ${errors.companyName ? 'error' : ''}`}
           placeholder="TechCorp India Pvt. Ltd."
+          maxLength={120}
           value={data.companyName}
+          aria-invalid={!!errors.companyName}
+          onBlur={() => touch('companyName')}
           onChange={(e) => onChange({ ...data, companyName: e.target.value })}
         />
+        <FieldError message={errors.companyName} />
       </div>
 
       <div className="form-group">
@@ -73,6 +87,8 @@ export function BillingForm({ data, onChange }: BillingFormProps) {
           placeholder="07AAACT1234F1ZP"
           maxLength={15}
           value={data.gstin}
+          aria-invalid={!!gstinError}
+          onBlur={() => touch('gstin')}
           onChange={handleGstinChange}
           disabled={noGstin}
         />
@@ -102,12 +118,15 @@ export function BillingForm({ data, onChange }: BillingFormProps) {
           </label>
           <input
             type="text"
-            className="form-input"
+            className={`form-input ${errors.pan ? 'error' : ''}`}
             placeholder="AAACT1234F"
             maxLength={10}
             value={data.pan}
+            aria-invalid={!!errors.pan}
+            onBlur={() => touch('pan')}
             onChange={(e) => onChange({ ...data, pan: e.target.value.toUpperCase() })}
           />
+          <FieldError message={errors.pan} />
         </div>
         <div className="form-group">
           <label className="form-label">
@@ -129,11 +148,15 @@ export function BillingForm({ data, onChange }: BillingFormProps) {
         <div className="form-group">
           <input
             type="text"
-            className="form-input"
+            className={`form-input ${errors.address1 ? 'error' : ''}`}
             placeholder="Address Line 1 *"
+            maxLength={200}
             value={data.address1}
+            aria-invalid={!!errors.address1}
+            onBlur={() => touch('address1')}
             onChange={(e) => onChange({ ...data, address1: e.target.value })}
           />
+          <FieldError message={errors.address1} />
         </div>
 
         <div className="form-group">
@@ -150,11 +173,15 @@ export function BillingForm({ data, onChange }: BillingFormProps) {
           <div className="form-group">
             <input
               type="text"
-              className="form-input"
+              className={`form-input ${errors.city ? 'error' : ''}`}
               placeholder="City *"
+              maxLength={60}
               value={data.city}
+              aria-invalid={!!errors.city}
+              onBlur={() => touch('city')}
               onChange={(e) => onChange({ ...data, city: e.target.value })}
             />
+            <FieldError message={errors.city} />
           </div>
           <div className="form-group">
             <select
@@ -173,12 +200,18 @@ export function BillingForm({ data, onChange }: BillingFormProps) {
           <div className="form-group">
             <input
               type="text"
-              className="form-input"
+              className={`form-input ${errors.pincode ? 'error' : ''}`}
               placeholder="Pincode *"
               maxLength={6}
+              inputMode="numeric"
               value={data.pincode}
-              onChange={(e) => onChange({ ...data, pincode: e.target.value })}
+              aria-invalid={!!errors.pincode}
+              onBlur={() => touch('pincode')}
+              onChange={(e) =>
+                onChange({ ...data, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })
+              }
             />
+            <FieldError message={errors.pincode} />
           </div>
         </div>
       </div>

@@ -8,8 +8,107 @@ import { sendPaymentSuccessEmail, sendOrderConfirmationEmail } from '@/lib/email
 import { renderInvoiceBuffer } from '@/lib/invoice';
 import { invoiceLabel } from '@/lib/invoice-status';
 import { sendPushToAdmins } from '@/lib/push';
+import { z } from 'zod';
+import { zEmail, zGstin, zPan, zPhone, zPincode } from '@/lib/zod-fields';
+import { nanoid } from 'nanoid';
+import { stateNameToCode } from '@/lib/pincode-to-state';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+const slugify = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'company';
+
+/**
+ * Persist the billing block the buyer filled in at checkout to their company
+ * profile, so /dashboard/company reflects it instead of staying blank.
+ *
+ * First order → creates the Company and links the user (self-serve signup never
+ * captures one). Later orders → fills only the fields still empty on the
+ * profile, so a detail the buyer deliberately edited in their dashboard is
+ * never clobbered by a stale value carried in a checkout form.
+ *
+ * Returns the company id so the order can be tied to it.
+ */
+async function syncCompanyFromBilling(
+  userId: string,
+  billing: Record<string, any> | null | undefined
+): Promise<string | null> {
+  const str = (v: unknown) => String(v ?? '').trim();
+  const name = str(billing?.companyName);
+
+  const existing = await prisma.company.findFirst({
+    where: { users: { some: { id: userId } } },
+  });
+
+  if (existing) {
+    // Only backfill blanks — the dashboard profile is the source of truth.
+    const fill = (current: string | null, incoming: string) =>
+      current && current.trim() ? undefined : incoming || undefined;
+
+    const state = fill(existing.state, str(billing?.state));
+    const data = {
+      gstin: fill(existing.gstin, str(billing?.gstin)),
+      pan: fill(existing.pan, str(billing?.pan)),
+      addressLine: fill(
+        existing.addressLine,
+        [str(billing?.address1), str(billing?.address2)].filter(Boolean).join(', ')
+      ),
+      city: fill(existing.city, str(billing?.city)),
+      state,
+      stateCode: state ? stateNameToCode(state) : undefined,
+      pincode: fill(existing.pincode, str(billing?.pincode)),
+      phone: fill(existing.phone, str(billing?.phone)),
+    };
+
+    if (Object.values(data).some((v) => v !== undefined)) {
+      await prisma.company.update({ where: { id: existing.id }, data });
+    }
+    return existing.id;
+  }
+
+  // No company yet — create one from the billing block. Needs a name at minimum.
+  if (!name) return null;
+
+  const state = str(billing?.state);
+  const created = await prisma.$transaction(async (tx) => {
+    const company = await tx.company.create({
+      data: {
+        name,
+        slug: `${slugify(name)}-${nanoid(8)}`,
+        gstin: str(billing?.gstin) || null,
+        pan: str(billing?.pan) || null,
+        addressLine:
+          [str(billing?.address1), str(billing?.address2)].filter(Boolean).join(', ') || null,
+        city: str(billing?.city) || null,
+        state: state || null,
+        stateCode: state ? stateNameToCode(state) : null,
+        pincode: str(billing?.pincode) || null,
+        phone: str(billing?.phone) || null,
+      },
+    });
+    await tx.user.update({ where: { id: userId }, data: { companyId: company.id } });
+    return company;
+  });
+
+  return created.id;
+}
+
+// The billing block is stored verbatim on the order and printed on the invoice,
+// so its contact/tax fields are validated here rather than trusted from the
+// client. Unknown keys pass through; empty optional values are allowed.
+const BillingJsonSchema = z
+  .object({
+    email: zEmail.optional().or(z.literal('')),
+    phone: zPhone.optional().or(z.literal('')),
+    pincode: zPincode.optional().or(z.literal('')),
+    gstin: zGstin.optional().or(z.literal('')),
+    pan: zPan.optional().or(z.literal('')),
+  })
+  .passthrough();
 
 // List the authenticated user's own orders. Used by flows that need to pick an
 // order (e.g. raising a dispute against a delivered order). Scoped to the
@@ -87,6 +186,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (billingJson) {
+      const parsedBilling = BillingJsonSchema.safeParse(billingJson);
+      if (!parsedBilling.success) {
+        return NextResponse.json(
+          { error: parsedBilling.error.errors[0]?.message || 'Invalid billing details' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Fetch the quote by shareToken (not id)
     const quote = await prisma.quote.findUnique({
       where: { shareToken: quoteId },
@@ -140,6 +249,16 @@ export async function POST(req: NextRequest) {
         paymentType === 'full' ? pricing.grandTotal : advanceAmount(pricing.grandTotal);
     }
 
+    // Save the billing/company details to the buyer's company profile so they
+    // show up in the dashboard (and pre-fill the next checkout). Best-effort —
+    // an order must never fail because of the profile write.
+    let companyId: string | null = null;
+    try {
+      companyId = await syncCompanyFromBilling(session.user.id, billingJson);
+    } catch (e) {
+      console.error('Saving company details from billing failed (non-blocking):', e);
+    }
+
     // Generate order number
     const orderCount = await prisma.order.count();
     const orderNumber = `GC${new Date().getFullYear()}${String(orderCount + 1).padStart(6, '0')}`;
@@ -149,6 +268,7 @@ export async function POST(req: NextRequest) {
       data: {
         orderNumber,
         placedById: session.user.id,
+        companyId,
         status: 'confirmed',
         packQuantity: packQty,
         deliveryMode: deliveryMode || payload.deliveryMode || 'single',
@@ -199,6 +319,9 @@ export async function POST(req: NextRequest) {
               totalPrice: new Decimal(Number(product.sellPrice) * totalUnits),
               hsnCode: resolved?.hsnCode ?? null,
               gstRate: resolved ? new Decimal(resolved.gstRate) : null,
+              // Carry the builder's chosen variants through from the quote
+              // payload so both dashboards show which colour/size was ordered.
+              variantsJson: product.variants?.length ? product.variants : undefined,
             };
           }),
         },

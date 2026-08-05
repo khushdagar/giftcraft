@@ -44,7 +44,9 @@ export function ProductQuickView({ product, open, onOpenChange }: ProductQuickVi
     setPackQuantity,
   } = useBuilderStore();
 
-  const [selectedVariant, setSelectedVariant] = useState<Variant | null>(null);
+  // One selection PER KIND — a single selectedVariant meant choosing a size
+  // silently cleared the chosen colour, so only one ever reached the order.
+  const [selectedByKind, setSelectedByKind] = useState<Record<string, Variant>>({});
 
   // Fetch full product details (all tiers + variants) when modal opens
   const { data, isLoading } = useQuery({
@@ -73,16 +75,25 @@ export function ProductQuickView({ product, open, onOpenChange }: ProductQuickVi
     return groups;
   }, [variants]);
 
-  // Default-select the first variant once loaded
+  // Default-select the first option of every kind once loaded
   useEffect(() => {
-    if (variants.length > 0 && !selectedVariant) {
-      setSelectedVariant(variants[0] ?? null);
-    }
-  }, [variants, selectedVariant]);
+    if (variants.length === 0) return;
+    setSelectedByKind((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      Object.entries(variantGroups).forEach(([kind, group]) => {
+        if (!next[kind] && group[0]) {
+          next[kind] = group[0];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [variants, variantGroups]);
 
-  // Reset selected variant when modal closes
+  // Reset selections when modal closes
   useEffect(() => {
-    if (!open) setSelectedVariant(null);
+    if (!open) setSelectedByKind({});
   }, [open]);
 
   // The tier the current pack quantity falls into
@@ -119,9 +130,11 @@ export function ProductQuickView({ product, open, onOpenChange }: ProductQuickVi
       moq: (fullProduct as any).moq,
       priceTiers: tiers,
       images: fullProduct.images,
-      variantValue: selectedVariant?.value,
-      variantKind: selectedVariant?.kind,
-      variantHex: selectedVariant?.hexColor,
+      variants: Object.values(selectedByKind).map((v) => ({
+        kind: v.kind,
+        value: v.value,
+        hex: v.hexColor ?? null,
+      })),
     });
     onOpenChange(false);
   };
@@ -207,11 +220,13 @@ export function ProductQuickView({ product, open, onOpenChange }: ProductQuickVi
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {items.map((v) => {
-                        const isSel = selectedVariant?.id === v.id;
+                        const isSel = selectedByKind[kind]?.id === v.id;
                         return (
                           <button
                             key={v.id}
-                            onClick={() => setSelectedVariant(v)}
+                            onClick={() =>
+                              setSelectedByKind((prev) => ({ ...prev, [kind]: v }))
+                            }
                             className={`flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-xs font-semibold transition ${
                               isSel ? 'border-em bg-em-50 text-em' : 'border-bdr text-ink-2 hover:border-em'
                             }`}

@@ -88,6 +88,16 @@ export function CuratedCollections({ initialData }: { initialData?: any[] }) {
             })
           )}
         </div>
+
+        {/* Full list of collections — full-width on mobile, centred pill above. */}
+        <div className="mt-8 flex justify-center">
+          <Link
+            href="/curated-packs"
+            className="flex w-full sm:w-auto items-center justify-center rounded-full border border-[#800020] px-8 py-2.5 text-sm font-semibold text-[#800020] transition hover:bg-[#800020] hover:text-white"
+          >
+            See All →
+          </Link>
+        </div>
       </div>
     </section>
   );

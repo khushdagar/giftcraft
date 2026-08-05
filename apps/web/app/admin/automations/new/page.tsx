@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useMutation } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { FieldError } from '@/components/ui/field-error';
+import { validateEmail, validatePhone } from '@/lib/validation';
 
 const triggers = [
   { value: 'order_placed', label: 'Order Placed' },
@@ -54,8 +57,25 @@ export default function NewAutomationPage() {
     },
   });
 
+  // Recipients may be a literal address OR a placeholder token like "customer"
+  // that gets resolved at send time — so only address-looking values are checked.
+  const isToken = (v: string) => /^[a-z_]+$/i.test(v.trim());
+  const recipientEmailError =
+    formData.action === 'send_email' && !isToken(formData.actionConfig.recipientEmail || '')
+      ? validateEmail(formData.actionConfig.recipientEmail || '')
+      : null;
+  const recipientPhoneError =
+    formData.action === 'send_whatsapp' && !isToken(formData.actionConfig.recipientPhone || '')
+      ? validatePhone(formData.actionConfig.recipientPhone || '')
+      : null;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const problem = recipientEmailError || recipientPhoneError;
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
     createMutation.mutate(formData);
   };
 
@@ -135,9 +155,13 @@ export default function NewAutomationPage() {
               placeholder="Recipient (e.g., customer or admin@givoo.in)"
               value={formData.actionConfig.recipientEmail || ''}
               onChange={(e) => handleActionConfigChange('recipientEmail', e.target.value)}
-              className="w-full border border-bdr rounded-lg px-4 py-2"
+              aria-invalid={!!recipientEmailError}
+              className={`w-full border rounded-lg px-4 py-2 ${
+                recipientEmailError ? 'border-red-400' : 'border-bdr'
+              }`}
               required
             />
+            <FieldError message={recipientEmailError ?? undefined} />
             <input
               type="text"
               placeholder="Email Subject"
@@ -164,9 +188,13 @@ export default function NewAutomationPage() {
               placeholder="Recipient Phone (e.g., +91XXXXXXXXXX)"
               value={formData.actionConfig.recipientPhone || ''}
               onChange={(e) => handleActionConfigChange('recipientPhone', e.target.value)}
-              className="w-full border border-bdr rounded-lg px-4 py-2"
+              aria-invalid={!!recipientPhoneError}
+              className={`w-full border rounded-lg px-4 py-2 ${
+                recipientPhoneError ? 'border-red-400' : 'border-bdr'
+              }`}
               required
             />
+            <FieldError message={recipientPhoneError ?? undefined} />
             <textarea
               placeholder="Message"
               value={formData.actionConfig.message || ''}

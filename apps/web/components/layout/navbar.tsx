@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard, Phone, Search } from "lucide-react";
+import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard, Phone, Search, ChevronDown } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
@@ -45,6 +45,9 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  // Which mobile accordion is expanded — one at a time, mirroring the desktop
+  // hover dropdowns (Products / Curated Packs / Occasions).
+  const [mobileSection, setMobileSection] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [phone, setPhone] = useState(DEFAULT_PHONE);
   const [suggestions, setSuggestions] = useState<{ products: SuggestProduct[]; categories: SuggestCategory[] }>({ products: [], categories: [] });
@@ -450,7 +453,7 @@ export function Navbar() {
       {mobileOpen && (
         <>
           <div className="fixed inset-0 z-[799] bg-black/30" onClick={() => setMobileOpen(false)} />
-          <div className="fixed right-0 top-0 bottom-0 z-[800] flex w-full max-w-[380px] flex-col bg-white p-6 shadow-float">
+          <div className="fixed right-0 top-0 bottom-0 z-[800] flex w-full max-w-[380px] flex-col overflow-y-auto bg-white p-6 shadow-float">
             <div className="mb-8 flex items-center justify-between">
               <BrandLogo className="h-8 w-auto" />
               <button
@@ -472,10 +475,77 @@ export function Navbar() {
               {query.trim().length >= 2 && suggestionPanel}
             </form>
 
+            <Link
+              href="/"
+              className="block border-b border-bdr py-4 text-lg font-medium text-ink hover:text-em"
+              onClick={() => setMobileOpen(false)}
+            >
+              Home
+            </Link>
+
+            {/* Same three dropdowns as desktop, as tap-to-expand accordions. The
+                header itself still links to the landing page; the chevron toggles. */}
             {[
-              ["/", "Home"], ["/catalog", "Products"], ["/categories", "Categories"],
-              ["/curated-packs", "Curated Box"], ["/box", "Build Your Box"], ["/blog", "Blog"], ["/contact", "Contact"],
-              ["/dashboard", "Dashboard"],
+              { key: "products", label: "Products", href: "/catalog", items: categories, hrefFor: (s: string) => `/category/${s}` },
+              { key: "packs", label: "Curated Packs", href: "/curated-packs", items: collections, hrefFor: (s: string) => `/curated-packs/${s}` },
+              { key: "occasions", label: "Occasions", href: null, items: occasions, hrefFor: (s: string) => `/occasion/${s}` },
+            ].map((section) => {
+              const open = mobileSection === section.key;
+              return (
+                <div key={section.key} className="border-b border-bdr">
+                  <div className="flex items-center justify-between">
+                    {section.href ? (
+                      <Link
+                        href={section.href}
+                        className="block flex-1 py-4 text-lg font-medium text-ink hover:text-em"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        {section.label}
+                      </Link>
+                    ) : (
+                      <span className="block flex-1 py-4 text-lg font-medium text-ink">{section.label}</span>
+                    )}
+                    {section.items.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setMobileSection(open ? null : section.key)}
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-ink-2 hover:bg-elevated"
+                        aria-expanded={open}
+                        aria-label={`${open ? "Collapse" : "Expand"} ${section.label}`}
+                      >
+                        <ChevronDown className={cn("h-5 w-5 transition-transform", open && "rotate-180")} />
+                      </button>
+                    )}
+                  </div>
+                  {open && section.items.length > 0 && (
+                    <div className="grid grid-cols-2 gap-1 pb-3">
+                      {section.key === "packs" && (
+                        <Link
+                          href="/curated-packs"
+                          onClick={() => setMobileOpen(false)}
+                          className="col-span-2 rounded-md px-3 py-2 text-[13px] font-semibold text-ink hover:bg-elevated"
+                        >
+                          All Packs
+                        </Link>
+                      )}
+                      {section.items.map((i) => (
+                        <Link
+                          key={i.slug}
+                          href={section.hrefFor(i.slug)}
+                          onClick={() => setMobileOpen(false)}
+                          className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 hover:bg-elevated hover:text-ink"
+                        >
+                          {i.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {[
+              ["/box", "Build Your Pack"], ["/contact", "Contact"], ["/dashboard", "Dashboard"],
             ].map(([href, label]) => (
               <Link
                 key={href}
@@ -486,7 +556,7 @@ export function Navbar() {
                 {label}
               </Link>
             ))}
-          
+
             {authLoading ? (
               <div
                 className="mt-3 h-[60px] w-full animate-pulse rounded-md-p bg-elevated"

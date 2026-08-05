@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { zEmail, zPersonName, zPhone } from "@/lib/zod-fields";
 
 const RegisterSchema = z.object({
-  name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
-  email: z.string().trim().toLowerCase().email("Enter a valid email"),
-  phone: z
+  name: zPersonName("Name"),
+  email: zEmail,
+  phone: zPhone,
+  password: z
     .string()
-    .trim()
-    .min(10, "Enter a valid mobile number")
-    .max(20)
-    .regex(/^[0-9+\-\s()]+$/, "Enter a valid mobile number"),
-  password: z.string().min(8, "Password must be at least 8 characters").max(100),
+    .min(8, "Password must be at least 8 characters")
+    .max(100)
+    .regex(/[a-zA-Z]/, "Password must contain both letters and a number")
+    .regex(/\d/, "Password must contain both letters and a number"),
 });
 
 export async function POST(request: NextRequest) {

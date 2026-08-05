@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SavedAddressesManager } from '@/components/dashboard/saved-addresses-manager';
+import { FieldError } from '@/components/ui/field-error';
+import { validateName, validatePhone } from '@/lib/validation';
 import { CompanyProfileSection } from './company-profile-section';
 
 interface ProfileData {
@@ -88,6 +90,11 @@ export default function ProfileSettingsPage() {
     },
   });
 
+  // Phone is optional on a profile, so an empty value is fine — only a typed
+  // value has to be well-formed.
+  const nameError = name.trim() ? validateName(name, 'Full name') : null;
+  const phoneError = phone.trim() ? validatePhone(phone) : null;
+
   if (isLoading || !profile) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -141,26 +148,34 @@ export default function ProfileSettingsPage() {
             <label className="text-sm font-medium text-ink block mb-1.5">Full Name</label>
             <Input
               value={name}
+              maxLength={100}
+              aria-invalid={!!nameError}
               onChange={(e) => {
                 setName(e.target.value);
                 setDirty(true);
               }}
               placeholder="Your name"
-              className="rounded-md border-2"
+              className={`rounded-md border-2 ${nameError ? 'border-red-400' : ''}`}
             />
+            <FieldError message={nameError ?? undefined} />
           </div>
 
           <div>
             <label className="text-sm font-medium text-ink block mb-1.5">Phone</label>
             <Input
               value={phone}
+              type="tel"
+              inputMode="tel"
+              maxLength={14}
+              aria-invalid={!!phoneError}
               onChange={(e) => {
-                setPhone(e.target.value);
+                setPhone(e.target.value.replace(/[^\d+\s-]/g, ''));
                 setDirty(true);
               }}
               placeholder="e.g. 9876543210"
-              className="rounded-md border-2"
+              className={`rounded-md border-2 ${phoneError ? 'border-red-400' : ''}`}
             />
+            <FieldError message={phoneError ?? undefined} />
           </div>
 
           <div>
@@ -185,7 +200,7 @@ export default function ProfileSettingsPage() {
           <div className="flex items-center gap-3 border-t border-bdr pt-4">
             <Button
               onClick={() => mutation.mutate()}
-              disabled={!dirty || mutation.isPending || !name.trim()}
+              disabled={!dirty || mutation.isPending || !name.trim() || !!nameError || !!phoneError}
               className="rounded-2xl bg-em px-6 py-3 font-normal hover:bg-em-600"
             >
               {mutation.isPending ? 'Saving…' : 'Save Changes'}

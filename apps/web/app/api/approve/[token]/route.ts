@@ -201,6 +201,18 @@ export async function POST(
         }
       }
 
+      // Alert admins that the customer signed off. Tag + url match the bell's
+      // approval-<id> key / admin order link, so opening the order clears it.
+      sendPushToAdmins({
+        title: `Mockup approved on ${approval.order.orderNumber}`,
+        body:
+          balanceDue > 0
+            ? `Balance of ₹${balanceDue.toFixed(2)} pending — payment link sent to the customer.`
+            : 'Fully paid — ready for production.',
+        url: `/admin/orders/${approval.order.id}`,
+        tag: `approval-${approval.id}`,
+      }).catch(() => {});
+
       return NextResponse.json(
         {
           success: true,

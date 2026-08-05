@@ -426,23 +426,27 @@ export function PacksBrowser({
                     className="w-full rounded-full border-2 border-bdr bg-white pl-10 pr-4 py-2.5 text-sm text-ink focus:border-em focus:outline-none"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden inline-flex items-center justify-center gap-2 rounded-full border-2 border-bdr bg-white px-4 py-2.5 text-sm font-medium text-ink"
-                >
-                  <SlidersHorizontal className="w-4 h-4" />
-                  Filters
-                </button>
-                <select
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value as typeof sort)}
-                  className="rounded-full border-2 border-bdr bg-white px-4 py-2.5 text-sm text-ink focus:border-em focus:outline-none"
-                >
-                  <option value="featured">Sort: Featured</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                </select>
+                {/* Filters + Sort share one row on mobile; `md:contents` dissolves
+                    the wrapper from md up so the original layout is unchanged. */}
+                <div className="flex gap-2 md:contents">
+                  <button
+                    type="button"
+                    onClick={() => setSidebarOpen(true)}
+                    className="lg:hidden inline-flex flex-1 md:flex-none items-center justify-center gap-2 rounded-full border-2 border-bdr bg-white px-4 py-2.5 text-sm font-medium text-ink"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    Filters
+                  </button>
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as typeof sort)}
+                    className="flex-1 md:flex-none min-w-0 rounded-full border-2 border-bdr bg-white px-4 py-2.5 text-sm text-ink focus:border-em focus:outline-none"
+                  >
+                    <option value="featured">Sort: Featured</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                  </select>
+                </div>
               </div>
               <div className="mt-3 flex items-center gap-3">
                 <p className="text-sm text-ink-2">

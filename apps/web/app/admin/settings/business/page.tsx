@@ -7,6 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Link from 'next/link';
 import { Building2 } from 'lucide-react';
+import { FieldError } from '@/components/ui/field-error';
+import {
+  validateEmail,
+  validateGstin,
+  validateName,
+  validatePan,
+  validatePhone,
+  validatePincode,
+} from '@/lib/validation';
 
 interface BusinessSettings {
   companyName: string;
@@ -39,14 +48,46 @@ export default function BusinessSettingsPage() {
   });
 
   const handleChange = (field: keyof BusinessSettings, value: string) => {
-    setSettings({ ...settings, [field]: value });
+    const sanitized =
+      field === 'gstin'
+        ? value.toUpperCase().slice(0, 15)
+        : field === 'pan'
+          ? value.toUpperCase().slice(0, 10)
+          : field === 'phone'
+            ? value.replace(/[^\d+\s-]/g, '').slice(0, 14)
+            : field === 'pincode'
+              ? value.replace(/\D/g, '').slice(0, 6)
+              : value;
+    setSettings({ ...settings, [field]: sanitized });
   };
+
+  // Every field here is optional except the company name — only typed values
+  // have to be well-formed.
+  const fieldErrors = {
+    companyName: settings.companyName.trim()
+      ? validateName(settings.companyName, 'Company name')
+      : null,
+    gstin: validateGstin(settings.gstin),
+    pan: validatePan(settings.pan),
+    email: validateEmail(settings.email, { required: false }),
+    phone: validatePhone(settings.phone, { required: false }),
+    city: settings.city.trim() ? validateName(settings.city, 'City') : null,
+    pincode: validatePincode(settings.pincode, { required: false }),
+  };
+  const hasFieldErrors = Object.values(fieldErrors).some(Boolean);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
     setSuccess(false);
+
+    const firstError = Object.values(fieldErrors).find(Boolean);
+    if (firstError) {
+      setError(firstError);
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const res = await fetch('/api/admin/settings', {
@@ -110,9 +151,12 @@ export default function BusinessSettingsPage() {
                 type="text"
                 value={settings.companyName}
                 onChange={(e) => handleChange('companyName', e.target.value)}
-                className="rounded-md"
+                maxLength={120}
+                aria-invalid={!!fieldErrors.companyName}
+                className={`rounded-md ${fieldErrors.companyName ? 'border-red-400' : ''}`}
                 required
               />
+              <FieldError message={fieldErrors.companyName ?? undefined} />
             </div>
 
             {/* GSTIN */}
@@ -123,8 +167,11 @@ export default function BusinessSettingsPage() {
                 value={settings.gstin}
                 onChange={(e) => handleChange('gstin', e.target.value)}
                 placeholder="07XXXXXXXXX1Z5"
-                className="rounded-md"
+                maxLength={15}
+                aria-invalid={!!fieldErrors.gstin}
+                className={`rounded-md ${fieldErrors.gstin ? 'border-red-400' : ''}`}
               />
+              <FieldError message={fieldErrors.gstin ?? undefined} />
               <p className="text-xs text-ink-3 mt-1">15-character GST Identification Number</p>
             </div>
 
@@ -136,8 +183,11 @@ export default function BusinessSettingsPage() {
                 value={settings.pan}
                 onChange={(e) => handleChange('pan', e.target.value)}
                 placeholder="AAAPP1234A"
-                className="rounded-md"
+                maxLength={10}
+                aria-invalid={!!fieldErrors.pan}
+                className={`rounded-md ${fieldErrors.pan ? 'border-red-400' : ''}`}
               />
+              <FieldError message={fieldErrors.pan ?? undefined} />
               <p className="text-xs text-ink-3 mt-1">Permanent Account Number</p>
             </div>
 
@@ -148,8 +198,10 @@ export default function BusinessSettingsPage() {
                 type="email"
                 value={settings.email}
                 onChange={(e) => handleChange('email', e.target.value)}
-                className="rounded-md"
+                aria-invalid={!!fieldErrors.email}
+                className={`rounded-md ${fieldErrors.email ? 'border-red-400' : ''}`}
               />
+              <FieldError message={fieldErrors.email ?? undefined} />
             </div>
 
             {/* Phone */}
@@ -159,8 +211,11 @@ export default function BusinessSettingsPage() {
                 type="tel"
                 value={settings.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
-                className="rounded-md"
+                maxLength={14}
+                aria-invalid={!!fieldErrors.phone}
+                className={`rounded-md ${fieldErrors.phone ? 'border-red-400' : ''}`}
               />
+              <FieldError message={fieldErrors.phone ?? undefined} />
             </div>
 
             {/* City */}
@@ -170,8 +225,11 @@ export default function BusinessSettingsPage() {
                 type="text"
                 value={settings.city}
                 onChange={(e) => handleChange('city', e.target.value)}
-                className="rounded-md"
+                maxLength={60}
+                aria-invalid={!!fieldErrors.city}
+                className={`rounded-md ${fieldErrors.city ? 'border-red-400' : ''}`}
               />
+              <FieldError message={fieldErrors.city ?? undefined} />
             </div>
 
             {/* State */}
@@ -191,10 +249,13 @@ export default function BusinessSettingsPage() {
               <Input
                 type="text"
                 value={settings.pincode}
-                onChange={(e) => handleChange('pincode', e.target.value.slice(0, 6))}
+                onChange={(e) => handleChange('pincode', e.target.value)}
                 maxLength={6}
-                className="rounded-md"
+                inputMode="numeric"
+                aria-invalid={!!fieldErrors.pincode}
+                className={`rounded-md ${fieldErrors.pincode ? 'border-red-400' : ''}`}
               />
+              <FieldError message={fieldErrors.pincode ?? undefined} />
             </div>
           </div>
 
@@ -211,7 +272,7 @@ export default function BusinessSettingsPage() {
 
           {/* Actions */}
           <div className="flex gap-3 pt-6 border-t border-bdr">
-            <Button type="submit" disabled={loading} className="rounded-md">
+            <Button type="submit" disabled={loading || hasFieldErrors} className="rounded-md">
               {loading ? 'Saving...' : 'Save Settings'}
             </Button>
             <Link href="/admin/settings">

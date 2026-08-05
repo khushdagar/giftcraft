@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatRupees } from '@/lib/utils';
+import { VariantTag } from '@/components/orders/variant-tag';
 
 function getStatusVariant(status: string): "em" | "gold" | "grey" {
   if (status === "mockup_pending") return "gold";
@@ -45,6 +46,7 @@ interface Order {
     name: string;
     quantity: number;
     unitPrice: number;
+    variants: Array<{ kind: string; value: string; hex?: string | null }> | null;
     image: string | null;
   }[];
 }
@@ -103,11 +105,16 @@ export default function OrdersPage() {
       </div>
 
       <div className="rounded-md bg-white shadow-card">
-        <div className="grid grid-cols-12 gap-3 border-b border-bdr px-5 py-3 text-[10px] font-normal uppercase tracking-wider text-ink-3">
-          <div className="col-span-4">Order</div>
-          <div className="col-span-3 hidden sm:block">Status</div>
-          <div className="col-span-2 hidden sm:block">Amount</div>
-          <div className="col-span-1"></div>
+        {/* Mirrors the row layout below exactly — a 12-col grid header never
+            lined up with the flex rows, so Amount sat nowhere near its values. */}
+        <div className="flex items-center gap-4 border-b border-bdr px-5 py-3 text-[10px] font-normal uppercase tracking-wider text-ink-3">
+          <div className="h-0 w-14 flex-shrink-0" />
+          <div className="min-w-0 flex-1">Order</div>
+          <div className="hidden flex-shrink-0 items-center gap-4 sm:flex">
+            <div className="w-28">Status</div>
+            <div className="w-28 text-right">Amount</div>
+          </div>
+          <div className="w-4 flex-shrink-0" />
         </div>
 
         {isLoading ? (
@@ -163,6 +170,7 @@ export default function OrdersPage() {
                   {o.items?.map((it) => (
                     <li key={it.id} className="flex items-baseline gap-2 text-xs text-ink-3">
                       <span className="truncate">{it.name}</span>
+                      <VariantTag variants={it.variants} className="flex-shrink-0" />
                       <span className="flex-shrink-0 tabnum">× &nbsp;{it.quantity}</span>
                       {/* <span className="flex-shrink-0 tabnum">({formatRupees(Number(it.unitPrice))})</span> */}
                     </li>
@@ -173,11 +181,13 @@ export default function OrdersPage() {
 
               {/* Status and Price */}
               <div className="hidden sm:flex items-center gap-4 flex-shrink-0">
-                <Badge variant={getStatusVariant(o.status)}>{getStatusLabel(o.status)}</Badge>
-                <p className="font-normal tabnum">{formatRupees(Number(o.grandTotal))}</p>
+                <div className="w-28">
+                  <Badge variant={getStatusVariant(o.status)}>{getStatusLabel(o.status)}</Badge>
+                </div>
+                <p className="w-28 text-right font-normal tabnum">{formatRupees(Number(o.grandTotal))}</p>
               </div>
 
-              <div className="text-right text-ink-3 flex-shrink-0">→</div>
+              <div className="w-4 flex-shrink-0 text-right text-ink-3">→</div>
             </Link>
           ))
         )}

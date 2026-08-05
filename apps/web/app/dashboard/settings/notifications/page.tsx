@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/lib/stores/toast-store';
 import { Button } from '@/components/ui/button';
 import { PushToggle } from '@/components/notifications/push-toggle';
 import Link from 'next/link';
@@ -72,6 +73,8 @@ export default function NotificationsSettingsPage() {
   const [preferences, setPreferences] = useState<Preferences | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
+  const queryClient = useQueryClient();
+
   const { data, isLoading } = useQuery({
     queryKey: ['notification-preferences'],
     queryFn: async () => {
@@ -79,6 +82,9 @@ export default function NotificationsSettingsPage() {
       if (!response.ok) throw new Error('Failed to fetch preferences');
       return response.json() as Promise<{ success: boolean; data: Preferences }>;
     },
+    // A background refetch would overwrite toggles the user hasn't saved yet.
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
 
   useEffect(() => {
@@ -94,11 +100,19 @@ export default function NotificationsSettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newPreferences),
       });
-      if (!response.ok) throw new Error('Failed to update preferences');
-      return response.json();
+      const json = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(json?.error || 'Failed to update preferences');
+      }
+      return json as { success: boolean; data: Preferences };
     },
-    onSuccess: () => {
+    onSuccess: (json) => {
       setUnsavedChanges(false);
+      queryClient.setQueryData(['notification-preferences'], json);
+      toast.success('Preferences saved');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Could not save preferences');
     },
   });
 

@@ -1,4 +1,26 @@
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import fs from 'fs';
+import path from 'path';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+
+// The real wordmark instead of the "GIVOO" text. react-pdf can't resolve a bare
+// filesystem path as an Image src, so the file is read once into a buffer. This
+// renders server-side only (lib/invoice.tsx → renderToBuffer). A missing file
+// falls back to the text mark rather than 500-ing the invoice download.
+type PngSrc = { data: Buffer; format: 'png' } | null;
+let logoCache: PngSrc | undefined;
+function givooLogo(): PngSrc {
+  if (logoCache === undefined) {
+    try {
+      logoCache = {
+        data: fs.readFileSync(path.join(process.cwd(), 'public', 'givoo_logo.png')),
+        format: 'png',
+      };
+    } catch {
+      logoCache = null;
+    }
+  }
+  return logoCache;
+}
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#222222' },
@@ -13,6 +35,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   logo: { fontSize: 24, fontWeight: 'bold' },
+  // 514×235 source — keep the ~2.2:1 aspect so the mark isn't stretched.
+  logoImage: { width: 110, height: 50, objectFit: 'contain' },
   docTitle: { fontSize: 16, fontWeight: 'bold', textAlign: 'right' },
   docMeta: { fontSize: 9, color: '#71717A', textAlign: 'right', marginTop: 4 },
   parties: {
@@ -333,6 +357,7 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
   const amountPaid = data.payment?.amountPaid ?? 0;
   const balanceDue = round2(Math.max(0, amounts.grandTotal - amountPaid));
   const isAdvance = data.payment?.paymentType !== 'full';
+  const logo = givooLogo();
 
   return (
     <Document>
@@ -340,7 +365,11 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.logo}>GIVOO</Text>
+            {logo ? (
+              <Image src={logo} style={styles.logoImage} />
+            ) : (
+              <Text style={styles.logo}>GIVOO</Text>
+            )}
             <Text style={[styles.partyLine, { marginTop: 6 }]}>{seller.name}</Text>
             <Text style={styles.partyLine}>{seller.address}</Text>
             <Text style={styles.partyLine}>GSTIN: {seller.gstin}</Text>

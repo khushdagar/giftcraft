@@ -3,6 +3,16 @@ import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+const defaultPrefs = {
+  email: true,
+  whatsapp: false,
+  push: false,
+  orderStatus: true,
+  quotes: true,
+  disputes: true,
+  marketing: false,
+};
+
 const preferencesSchema = z.object({
   email: z.boolean().optional(),
   whatsapp: z.boolean().optional(),
@@ -23,26 +33,11 @@ export async function GET(request: NextRequest) {
 
     const userId = session.user.id;
 
-    let preferences = await prisma.notificationPreference.findUnique({
+    const preferences = await prisma.notificationPreference.upsert({
       where: { userId },
+      create: { userId, prefsJson: defaultPrefs },
+      update: {},
     });
-
-    if (!preferences) {
-      preferences = await prisma.notificationPreference.create({
-        data: {
-          userId,
-          prefsJson: {
-            email: true,
-            whatsapp: false,
-            push: false,
-            orderStatus: true,
-            quotes: true,
-            disputes: true,
-            marketing: false,
-          },
-        },
-      });
-    }
 
     return NextResponse.json({
       success: true,
@@ -66,38 +61,15 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const parsed = preferencesSchema.parse(body);
 
-    let preferences = await prisma.notificationPreference.findUnique({
-      where: { userId },
-    });
+    // Single round-trip — the client always sends the full preference object,
+    // so merging over the defaults is enough and saves a read before the write.
+    const nextPrefs = { ...defaultPrefs, ...parsed };
 
-    if (!preferences) {
-      preferences = await prisma.notificationPreference.create({
-        data: {
-          userId,
-          prefsJson: {
-            email: true,
-            whatsapp: false,
-            push: false,
-            orderStatus: true,
-            quotes: true,
-            disputes: true,
-            marketing: false,
-            ...parsed,
-          },
-        },
-      });
-    } else {
-      const currentPrefs = preferences.prefsJson as Record<string, any>;
-      preferences = await prisma.notificationPreference.update({
-        where: { userId },
-        data: {
-          prefsJson: {
-            ...currentPrefs,
-            ...parsed,
-          },
-        },
-      });
-    }
+    const preferences = await prisma.notificationPreference.upsert({
+      where: { userId },
+      create: { userId, prefsJson: nextPrefs },
+      update: { prefsJson: nextPrefs },
+    });
 
     return NextResponse.json({
       success: true,

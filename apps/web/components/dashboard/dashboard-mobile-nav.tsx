@@ -9,7 +9,7 @@ import {
   Settings, LogOut, Bell, Menu, X, MapPin,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { BrandLogo } from '@/components/layout/brand-logo';
+import Image from 'next/image';
 
 const NAV = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
@@ -52,7 +52,8 @@ export function DashboardMobileNav({ userName, userRole, userImage }: Props) {
   return (
     <header className="sticky top-0 z-[60] flex h-14 items-center justify-between border-b border-bdr bg-dark px-4 text-inv lg:hidden">
       <Link href="/" className="flex items-center">
-        <BrandLogo className="h-8 w-auto rounded-md" />
+        {/* White-on-dark mark — the default BrandLogo is dark and disappears here. */}
+        <Image src="/footer_logo.png" alt="GIVOO" width={80} height={40} className="h-8 w-auto" />
       </Link>
       <button
         type="button"
@@ -70,10 +71,11 @@ export function DashboardMobileNav({ userName, userRole, userImage }: Props) {
             onClick={() => setOpen(false)}
             aria-hidden
           />
-          <aside className="absolute left-0 top-0 flex h-full w-[280px] max-w-[85vw] flex-col bg-dark text-inv shadow-float">
+          {/* Anchored right, matching the hamburger it opens from. */}
+          <aside className="absolute right-0 top-0 flex h-full w-[280px] max-w-[85vw] flex-col bg-dark text-inv shadow-float">
             <div className="flex items-center justify-between px-5 pt-5 pb-4">
               <div>
-                <BrandLogo className="h-8 w-auto rounded-md" />
+                <Image src="/footer_logo.png" alt="GIVOO" width={80} height={40} className="h-8 w-auto" />
                 <p className="mt-1 text-[10px] uppercase tracking-wider text-white">Customer Portal</p>
               </div>
               <button

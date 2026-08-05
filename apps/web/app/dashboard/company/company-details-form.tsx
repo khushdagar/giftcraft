@@ -6,6 +6,15 @@ import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { INDIAN_STATES } from '@/lib/constants';
+import { FieldError } from '@/components/ui/field-error';
+import {
+  validateGstin,
+  validateName,
+  validatePan,
+  validatePhone,
+  validatePincode,
+  validateUrl,
+} from '@/lib/validation';
 
 export interface CompanyFormValues {
   name: string;
@@ -61,6 +70,27 @@ export function CompanyDetailsForm({
     },
   });
 
+  // Optional fields only complain once something has been typed; the company
+  // name is the single hard requirement (enforced on the save button).
+  const errors: Partial<Record<keyof CompanyFormValues, string>> = {
+    name: values.name.trim() ? validateName(values.name, 'Company name') ?? undefined : undefined,
+    gstin: validateGstin(values.gstin) ?? undefined,
+    pan: validatePan(values.pan) ?? undefined,
+    city: values.city.trim() ? validateName(values.city, 'City') ?? undefined : undefined,
+    pincode: validatePincode(values.pincode, { required: false }) ?? undefined,
+    phone: validatePhone(values.phone, { required: false }) ?? undefined,
+    website: validateUrl(values.website) ?? undefined,
+  };
+  const hasErrors = Object.values(errors).some(Boolean);
+
+  // Keeps typed input inside the shape each field accepts.
+  const sanitizers: Partial<Record<keyof CompanyFormValues, (v: string) => string>> = {
+    gstin: (v) => v.toUpperCase().slice(0, 15),
+    pan: (v) => v.toUpperCase().slice(0, 10),
+    pincode: (v) => v.replace(/\D/g, '').slice(0, 6),
+    phone: (v) => v.replace(/[^\d+\s-]/g, '').slice(0, 14),
+  };
+
   const field = (
     label: string,
     key: keyof CompanyFormValues,
@@ -72,11 +102,19 @@ export function CompanyDetailsForm({
       </label>
       <Input
         value={values[key]}
-        onChange={(e) => set({ [key]: e.target.value } as Partial<CompanyFormValues>)}
+        aria-invalid={!!errors[key]}
+        onChange={(e) => {
+          const raw = e.target.value;
+          const value = sanitizers[key] ? sanitizers[key]!(raw) : raw;
+          set({ [key]: value } as Partial<CompanyFormValues>);
+        }}
         placeholder={placeholder}
         disabled={!canEdit}
-        className="mt-1 rounded-md border-2 disabled:bg-gray-50"
+        className={`mt-1 rounded-md border-2 disabled:bg-gray-50 ${
+          errors[key] ? 'border-red-400' : ''
+        }`}
       />
+      <FieldError message={errors[key]} />
     </div>
   );
 
@@ -135,7 +173,7 @@ export function CompanyDetailsForm({
         <div className="mt-6 flex items-center gap-3 border-t border-bdr pt-4">
           <Button
             onClick={() => mutation.mutate()}
-            disabled={!dirty || mutation.isPending || !values.name.trim()}
+            disabled={!dirty || mutation.isPending || !values.name.trim() || hasErrors}
             className="rounded-2xl bg-em px-6 py-3 font-normal hover:bg-em-600"
           >
             {mutation.isPending

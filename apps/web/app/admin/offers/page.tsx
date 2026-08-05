@@ -7,6 +7,8 @@ import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { toast } from 'sonner';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Megaphone, Users, Send, Eye, Check } from 'lucide-react';
+import { FieldError } from '@/components/ui/field-error';
+import { validateEmail, validateUrl } from '@/lib/validation';
 
 interface Recipient {
   id: string;
@@ -98,7 +100,11 @@ export default function AdminOffersPage() {
   const hasBody =
     form.body.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0 ||
     /<(img|hr|table)\b/i.test(form.body);
-  const canSubmit = Boolean(form.subject.trim() && form.headline.trim() && hasBody);
+  const ctaUrlError = validateUrl(form.ctaUrl);
+  const imageUrlError = validateUrl(form.imageUrl);
+  const canSubmit = Boolean(
+    form.subject.trim() && form.headline.trim() && hasBody && !ctaUrlError && !imageUrlError
+  );
 
   const handleSend = () => {
     if (!canSubmit) {
@@ -131,8 +137,9 @@ export default function AdminOffersPage() {
       toast.error('Subject, headline and body are required');
       return;
     }
-    if (!testEmail.trim()) {
-      toast.error('Enter a test email address');
+    const emailProblem = validateEmail(testEmail);
+    if (emailProblem) {
+      toast.error(emailProblem);
       return;
     }
     sendMutation.mutate({ ...form, testEmail: testEmail.trim() });
@@ -301,7 +308,10 @@ export default function AdminOffersPage() {
                 value={form.ctaUrl}
                 onChange={(e) => set('ctaUrl', e.target.value)}
                 placeholder="https://givoo.in/catalog"
+                aria-invalid={!!ctaUrlError}
+                className={ctaUrlError ? 'border-red-400' : ''}
               />
+              <FieldError message={ctaUrlError ?? undefined} />
             </div>
           </div>
 
@@ -311,7 +321,10 @@ export default function AdminOffersPage() {
               value={form.imageUrl}
               onChange={(e) => set('imageUrl', e.target.value)}
               placeholder="https://…/banner.jpg"
+              aria-invalid={!!imageUrlError}
+              className={imageUrlError ? 'border-red-400' : ''}
             />
+            <FieldError message={imageUrlError ?? undefined} />
           </div>
 
           {/* Test send */}

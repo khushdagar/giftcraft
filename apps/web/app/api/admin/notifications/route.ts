@@ -16,12 +16,20 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Event-style notifications (approvals, payments) have no "pending" state to
+    // query, so they're windowed to the last 14 days and cleared by the admin.
+    const eventWindow = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+
     const [
       newOrders,
+      mockupApprovals,
+      balancePayments,
       revisionRequests,
       openDisputes,
       pendingReviews,
+      pendingComments,
       newEnquiries,
+      vendorApplications,
       sampleRequests,
       deckDownloads,
       confirmedOrders,
@@ -32,6 +40,35 @@ export async function GET() {
       prisma.order.findMany({
         where: { status: 'confirmed' },
         select: { id: true, orderNumber: true, packQuantity: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      // Customers who approved their mockup — production (or the balance
+      // payment) is now the admin's next action.
+      prisma.artworkApproval.findMany({
+        where: { status: 'approved', approvedAt: { gte: eventWindow } },
+        select: {
+          id: true,
+          revision: true,
+          approvedAt: true,
+          order: {
+            select: { id: true, orderNumber: true, status: true, grandTotal: true, billingJson: true },
+          },
+        },
+        orderBy: { approvedAt: 'desc' },
+        take: 10,
+      }),
+      // Balance payments collected after mockup approval.
+      prisma.orderTimeline.findMany({
+        where: {
+          note: { startsWith: 'Balance payment received' },
+          createdAt: { gte: eventWindow },
+        },
+        select: {
+          id: true,
+          createdAt: true,
+          order: { select: { id: true, orderNumber: true, grandTotal: true } },
+        },
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
@@ -72,6 +109,18 @@ export async function GET() {
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
+      // Blog comments awaiting moderation (nothing is public until approved).
+      prisma.blogComment.findMany({
+        where: { status: 'pending' },
+        select: {
+          id: true,
+          authorName: true,
+          createdAt: true,
+          post: { select: { title: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
       // Fresh enquiries (product quick-quotes + contact page).
       prisma.enquiry.findMany({
         where: { status: 'new' },
@@ -82,6 +131,13 @@ export async function GET() {
           productName: true,
           createdAt: true,
         },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      // "Sell With Us" vendor applications awaiting review.
+      prisma.vendor.findMany({
+        where: { onboardingStatus: 'pending', source: 'self_registration' },
+        select: { id: true, name: true, city: true, type: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
@@ -135,6 +191,32 @@ export async function GET() {
         href: `/admin/orders/${o.id}`,
         createdAt: o.createdAt.toISOString(),
       })),
+      ...mockupApprovals.map((a) => {
+        const billing = (a.order?.billingJson as Record<string, unknown> | null) || {};
+        const balanceDue = Math.max(
+          0,
+          Number(a.order?.grandTotal ?? 0) - Number((billing.amountPaid as number) ?? 0)
+        );
+        return {
+          id: `approval-${a.id}`,
+          type: 'approval' as const,
+          title: `Mockup approved${a.order ? ` on ${a.order.orderNumber}` : ''}`,
+          subtitle:
+            balanceDue > 0
+              ? `v${a.revision} approved — balance ₹${balanceDue.toFixed(2)} pending, payment link sent`
+              : `v${a.revision} approved — ready for production`,
+          href: a.order ? `/admin/orders/${a.order.id}` : '/admin/orders',
+          createdAt: (a.approvedAt ?? new Date()).toISOString(),
+        };
+      }),
+      ...balancePayments.map((t) => ({
+        id: `payment-${t.id}`,
+        type: 'payment' as const,
+        title: `Balance paid${t.order ? ` on ${t.order.orderNumber}` : ''}`,
+        subtitle: `₹${Number(t.order?.grandTotal ?? 0).toFixed(2)} settled in full — moved to production`,
+        href: t.order ? `/admin/orders/${t.order.id}` : '/admin/orders',
+        createdAt: t.createdAt.toISOString(),
+      })),
       ...revisionRequests.map((r) => ({
         id: `revision-${r.id}`,
         type: 'revision' as const,
@@ -158,6 +240,22 @@ export async function GET() {
         subtitle: `by ${r.user?.name || 'a customer'} — awaiting approval`,
         href: '/admin/reviews?status=pending',
         createdAt: r.createdAt.toISOString(),
+      })),
+      ...pendingComments.map((c) => ({
+        id: `comment-${c.id}`,
+        type: 'comment' as const,
+        title: `New comment by ${c.authorName}`,
+        subtitle: `on "${c.post.title}" — awaiting moderation`,
+        href: '/admin/blog/comments',
+        createdAt: c.createdAt.toISOString(),
+      })),
+      ...vendorApplications.map((v) => ({
+        id: `vendor-${v.id}`,
+        type: 'vendor' as const,
+        title: `Vendor application: ${v.name}`,
+        subtitle: [v.type, v.city].filter(Boolean).join(' — ') || 'Awaiting review',
+        href: `/admin/vendors/${v.id}`,
+        createdAt: v.createdAt.toISOString(),
       })),
       ...newEnquiries.map((e) => ({
         id: `enquiry-${e.id}`,

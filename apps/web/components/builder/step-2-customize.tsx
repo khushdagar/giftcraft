@@ -410,12 +410,14 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                 <div className="p-3 space-y-2">
                   <div>
                     <p className="font-bold text-sm text-ink">No Box</p>
-                    <p className="text-xs text-ink-3 mt-1 line-clamp-2">
+                    {/* Description + "Add cost" label are desktop-only — on mobile
+                        the card carries just the name and the price. */}
+                    <p className="hidden lg:block text-xs text-ink-3 mt-1 line-clamp-2">
                       Ship the products without a gift box
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-ink-3">Add cost</p>
+                    <p className="hidden lg:block text-xs text-ink-3">Add cost</p>
                     <p className="text-sm font-black text-em">+{formatRupees(0)}</p>
                   </div>
                 </div>
@@ -475,13 +477,13 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                       <div>
                         <p className="font-bold text-sm text-ink line-clamp-2">{design.name}</p>
                         {design.description && (
-                          <p className="text-xs text-ink-3 mt-1 line-clamp-2">{design.description}</p>
+                          <p className="hidden lg:block text-xs text-ink-3 mt-1 line-clamp-2">{design.description}</p>
                         )}
                       </div>
 
                       {/* Price */}
                       <div>
-                        <p className="text-xs text-ink-3">Add cost</p>
+                        <p className="hidden lg:block text-xs text-ink-3">Add cost</p>
                         <p className="text-sm font-black text-em">+{formatRupees(price)}</p>
                       </div>
                     </div>
@@ -552,14 +554,14 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                     <div>
                       <p className="font-bold text-sm text-ink line-clamp-2">{addon.name}</p>
                       {addon.description && (
-                        <p className="text-xs text-ink-3 mt-1 line-clamp-2">{addon.description}</p>
+                        <p className="hidden lg:block text-xs text-ink-3 mt-1 line-clamp-2">{addon.description}</p>
                       )}
                     </div>
 
                     {/* Price */}
                     {addon.price > 0 ? (
                       <div>
-                        <p className="text-xs text-ink-3">Add cost</p>
+                        <p className="hidden lg:block text-xs text-ink-3">Add cost</p>
                         <p className="text-sm font-black text-em">+{formatRupees(addon.price)}</p>
                       </div>
                     ) : (

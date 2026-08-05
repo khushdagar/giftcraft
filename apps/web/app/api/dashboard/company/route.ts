@@ -4,17 +4,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { nanoid } from 'nanoid';
 import { stateNameToCode } from '@/lib/pincode-to-state';
+import { zGstin, zPan, zPhone, zPincode, zUrl } from '@/lib/zod-fields';
 
+// Optional fields accept '' (cleared), but any non-empty value must be valid.
 const companySchema = z.object({
-  name: z.string().trim().min(1, 'Company name is required').max(200).optional(),
-  gstin: z.string().trim().max(20).optional().or(z.literal('')),
-  pan: z.string().trim().max(15).optional().or(z.literal('')),
+  name: z.string().trim().min(2, 'Company name is required').max(200).optional(),
+  gstin: zGstin.optional().or(z.literal('')),
+  pan: zPan.optional().or(z.literal('')),
   addressLine: z.string().trim().max(300).optional().or(z.literal('')),
   city: z.string().trim().max(120).optional().or(z.literal('')),
   state: z.string().trim().max(120).optional().or(z.literal('')),
-  pincode: z.string().trim().max(10).optional().or(z.literal('')),
-  phone: z.string().trim().max(20).optional().or(z.literal('')),
-  website: z.string().trim().max(200).optional().or(z.literal('')),
+  pincode: zPincode.optional().or(z.literal('')),
+  phone: zPhone.optional().or(z.literal('')),
+  website: zUrl.optional().or(z.literal('')),
 });
 
 const slugify = (name: string) =>
@@ -122,7 +124,7 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request', details: error.errors },
+        { error: error.errors[0]?.message || 'Invalid request', details: error.errors },
         { status: 400 }
       );
     }

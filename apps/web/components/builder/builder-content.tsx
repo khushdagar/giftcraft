@@ -7,7 +7,6 @@ import { X } from 'lucide-react';
 import { Step1ChooseProducts } from './step-1-choose-products';
 import { Step2Customize } from './step-2-customize';
 import { Step3Delivery } from './step-3-delivery';
-import { Step4Review } from './step-4-review';
 import { GiftPackSummary } from './gift-pack-summary';
 
 interface BuilderContentProps {
@@ -73,7 +72,11 @@ async function resolveProduct(
 }
 
 /** Map a catalogue product onto a pack line, priced at the pack's quantity. */
-function toBuilderProduct(p: CatalogueProduct, qty: number) {
+function toBuilderProduct(
+  p: CatalogueProduct,
+  qty: number,
+  variants?: Array<{ kind: string; value: string; hex?: string | null }>
+) {
   const tier =
     p.priceTiers?.find((t) => qty >= t.minQty && (t.maxQty === null || qty <= t.maxQty)) ||
     p.priceTiers?.[0];
@@ -95,6 +98,7 @@ function toBuilderProduct(p: CatalogueProduct, qty: number) {
     moq: p.moq,
     priceTiers: p.priceTiers,
     images: p.images,
+    variants: variants?.length ? variants : undefined,
   };
 }
 
@@ -222,9 +226,20 @@ export function BuilderContent({
         );
       }
 
+      // Carry the colour/size chosen on the product detail page. Matched back
+      // against the product's real variants so the hex swatch comes along too.
+      const chosenVariants = (['color', 'size'] as const).flatMap((kind) => {
+        const value = searchParams.get(kind);
+        if (!value) return [];
+        const match = (found as any).variants?.find(
+          (v: any) => v.kind === kind && v.value === value
+        );
+        return [{ kind, value, hex: match?.hexColor ?? null }];
+      });
+
       // Add the product, priced at the pack's effective quantity
       if (!pack.some((p) => p.id === productId)) {
-        addProduct(toBuilderProduct(found, effectiveQty));
+        addProduct(toBuilderProduct(found, effectiveQty, chosenVariants));
       }
     })();
   }, [searchParams, allProducts, addProduct, setPackQuantity]);
@@ -273,7 +288,6 @@ export function BuilderContent({
               />
             )}
             {currentStep === 3 && <Step3Delivery />}
-            {currentStep === 4 && <Step4Review />}
           </div>
           <GiftPackSummary />
         </div>

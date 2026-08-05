@@ -6,6 +6,13 @@ import { MapPin, Plus, Star, Trash2, Pencil, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { INDIAN_STATES } from '@/lib/constants';
+import { FieldError } from '@/components/ui/field-error';
+import {
+  validateName,
+  validatePhone,
+  validatePincode,
+  validateText,
+} from '@/lib/validation';
 
 interface SavedAddress {
   id: string;
@@ -153,12 +160,25 @@ export function SavedAddressesManager() {
 
   const set = (patch: Partial<FormValues>) => setForm((prev) => ({ ...prev, ...patch }));
 
+  const fieldErrors = {
+    contactName: form.contactName.trim()
+      ? validateName(form.contactName, 'Contact name')
+      : null,
+    addressLine1: form.addressLine1.trim()
+      ? validateText(form.addressLine1, 'Address line 1', { min: 5, max: 200 })
+      : null,
+    city: form.city.trim() ? validateName(form.city, 'City') : null,
+    pincode: form.pincode ? validatePincode(form.pincode) : null,
+    phone: form.phone.trim() ? validatePhone(form.phone) : null,
+  };
+
   const canSubmit =
     form.contactName.trim() &&
     form.addressLine1.trim() &&
     form.city.trim() &&
     form.state &&
-    /^\d{6}$/.test(form.pincode);
+    validatePincode(form.pincode) === null &&
+    !Object.values(fieldErrors).some(Boolean);
 
   return (
     <div>
@@ -191,12 +211,17 @@ export function SavedAddressesManager() {
               className="rounded-md border-2"
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                placeholder="Contact Name *"
-                value={form.contactName}
-                onChange={(e) => set({ contactName: e.target.value })}
-                className="rounded-md border-2"
-              />
+              <div>
+                <Input
+                  placeholder="Contact Name *"
+                  maxLength={100}
+                  value={form.contactName}
+                  aria-invalid={!!fieldErrors.contactName}
+                  onChange={(e) => set({ contactName: e.target.value })}
+                  className={`rounded-md border-2 ${fieldErrors.contactName ? 'border-red-400' : ''}`}
+                />
+                <FieldError message={fieldErrors.contactName ?? undefined} />
+              </div>
               <Input
                 placeholder="Company (optional)"
                 value={form.company}
@@ -204,12 +229,17 @@ export function SavedAddressesManager() {
                 className="rounded-md border-2"
               />
             </div>
-            <Input
-              placeholder="Address Line 1 *"
-              value={form.addressLine1}
-              onChange={(e) => set({ addressLine1: e.target.value })}
-              className="rounded-md border-2"
-            />
+            <div>
+              <Input
+                placeholder="Address Line 1 *"
+                maxLength={200}
+                value={form.addressLine1}
+                aria-invalid={!!fieldErrors.addressLine1}
+                onChange={(e) => set({ addressLine1: e.target.value })}
+                className={`rounded-md border-2 ${fieldErrors.addressLine1 ? 'border-red-400' : ''}`}
+              />
+              <FieldError message={fieldErrors.addressLine1 ?? undefined} />
+            </div>
             <Input
               placeholder="Address Line 2 (optional)"
               value={form.addressLine2}
@@ -217,12 +247,17 @@ export function SavedAddressesManager() {
               className="rounded-md border-2"
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                placeholder="City *"
-                value={form.city}
-                onChange={(e) => set({ city: e.target.value })}
-                className="rounded-md border-2"
-              />
+              <div>
+                <Input
+                  placeholder="City *"
+                  maxLength={60}
+                  value={form.city}
+                  aria-invalid={!!fieldErrors.city}
+                  onChange={(e) => set({ city: e.target.value })}
+                  className={`rounded-md border-2 ${fieldErrors.city ? 'border-red-400' : ''}`}
+                />
+                <FieldError message={fieldErrors.city ?? undefined} />
+              </div>
               <select
                 value={form.state}
                 onChange={(e) => set({ state: e.target.value })}
@@ -237,21 +272,33 @@ export function SavedAddressesManager() {
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                placeholder="Pincode (6 digits) *"
-                value={form.pincode}
-                maxLength={6}
-                onChange={(e) =>
-                  set({ pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })
-                }
-                className="rounded-md border-2"
-              />
-              <Input
-                placeholder="Phone (optional)"
-                value={form.phone}
-                onChange={(e) => set({ phone: e.target.value })}
-                className="rounded-md border-2"
-              />
+              <div>
+                <Input
+                  placeholder="Pincode (6 digits) *"
+                  inputMode="numeric"
+                  value={form.pincode}
+                  maxLength={6}
+                  aria-invalid={!!fieldErrors.pincode}
+                  onChange={(e) =>
+                    set({ pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })
+                  }
+                  className={`rounded-md border-2 ${fieldErrors.pincode ? 'border-red-400' : ''}`}
+                />
+                <FieldError message={fieldErrors.pincode ?? undefined} />
+              </div>
+              <div>
+                <Input
+                  placeholder="Phone (optional)"
+                  type="tel"
+                  inputMode="tel"
+                  maxLength={14}
+                  value={form.phone}
+                  aria-invalid={!!fieldErrors.phone}
+                  onChange={(e) => set({ phone: e.target.value.replace(/[^\d+\s-]/g, '') })}
+                  className={`rounded-md border-2 ${fieldErrors.phone ? 'border-red-400' : ''}`}
+                />
+                <FieldError message={fieldErrors.phone ?? undefined} />
+              </div>
             </div>
 
             <label className="flex items-center gap-2 text-sm text-ink-2">

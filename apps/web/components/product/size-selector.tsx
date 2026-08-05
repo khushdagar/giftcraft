@@ -4,10 +4,16 @@ import { useState } from 'react';
 
 interface SizeSelectorProps {
   options?: Array<{ name: string }>;
+  onSelect?: (name: string) => void;
 }
 
-export function SizeSelector({ options }: SizeSelectorProps) {
+export function SizeSelector({ options, onSelect }: SizeSelectorProps) {
   const [selected, setSelected] = useState(options?.[0]?.name || '');
+
+  const handleSelect = (name: string) => {
+    setSelected(name);
+    onSelect?.(name);
+  };
 
   if (!options || options.length === 0) {
     return null;
@@ -22,7 +28,7 @@ export function SizeSelector({ options }: SizeSelectorProps) {
         {options.map((option) => (
           <button
             key={option.name}
-            onClick={() => setSelected(option.name)}
+            onClick={() => handleSelect(option.name)}
             className={`px-4 py-2 rounded-lg border-2 font-medium transition ${
               selected === option.name
                 ? 'border-em bg-em/10 text-em'

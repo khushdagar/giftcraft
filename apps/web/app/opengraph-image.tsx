@@ -6,6 +6,12 @@ import { SITE_NAME, SITE_TAGLINE } from '@/lib/site';
 // Default 1200×630 link preview for every page that doesn't set its own
 // og:image (homepage, catalog, packs, blog index, info pages …).
 export const runtime = 'nodejs';
+// Rendered on request rather than prerendered at build time. next/og's bundled
+// @vercel/og resolves its font asset through fileURLToPath(import.meta.url),
+// which throws "TypeError: Invalid URL" when the build runs on Windows and fails
+// the whole export. The card is static and CDN-cacheable, so generating it on
+// first request costs nothing and keeps the build platform-independent.
+export const dynamic = 'force-dynamic';
 export const alt = `${SITE_NAME} — ${SITE_TAGLINE}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';

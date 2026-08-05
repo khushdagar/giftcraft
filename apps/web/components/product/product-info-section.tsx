@@ -36,11 +36,28 @@ export function ProductInfoSection({
   const [currentQty, setCurrentQty] = useState(moq);
   const isUnderMinimum = currentQty < moq;
 
+  // Real variants only. ColorSelector falls back to placeholder swatches when a
+  // product has none — those must never be recorded as an ordered variant.
+  const colorVariants = (!isPack && variants?.filter((v: any) => v.kind === 'color')) || [];
+  const sizeVariants = (!isPack && variants?.filter((v: any) => v.kind === 'size')) || [];
+
+  // The pickers below default to their first option, so seed the same defaults
+  // here — otherwise "Add to Pack" without touching them would carry nothing.
+  const [selectedColor, setSelectedColor] = useState<string>(colorVariants[0]?.value ?? '');
+  const [selectedSize, setSelectedSize] = useState<string>(sizeVariants[0]?.value ?? '');
+
+  // Hand the chosen colour/size to the builder. Previously these selections were
+  // local to the pickers and thrown away, so orders never recorded a variant.
+  const variantParams = new URLSearchParams();
+  if (selectedColor) variantParams.set('color', selectedColor);
+  if (selectedSize) variantParams.set('size', selectedSize);
+  const variantQuery = variantParams.toString() ? `&${variantParams}` : '';
+
   // A pack loads all its member products into the builder at once; a normal
   // product loads just itself.
   const builderHref = isPack
     ? `/builder?pack=${encodeURIComponent(packProductIds.join(','))}&qty=${currentQty}`
-    : `/builder?product=${product.id}&qty=${currentQty}`;
+    : `/builder?product=${product.id}&qty=${currentQty}${variantQuery}`;
 
   // Mobile sticky CTA bar: hidden on load, slides in once the user has scrolled
   // past ~20% of the viewport height.
@@ -88,43 +105,35 @@ export function ProductInfoSection({
       )} */}
 
       {/* Color selector (hidden for packs — colours live on the member products) */}
-      {!isPack && (() => {
-        const colorVariants = variants?.filter((v: any) => v.kind === 'color') || [];
-        const hasColorVariants = colorVariants.length > 0;
-
-        return (
-          <ColorSelector
-            options={
-              hasColorVariants
-                ? colorVariants.map((v: any) => ({
-                    name: v.value,
-                    // Auto-derive the swatch colour from the variant name when
-                    // no hex was saved (e.g. "Navy" -> navy, "White" -> white).
-                    hex: resolveSwatchHex(v.value, v.hexColor),
-                    imageUrl: v.imageUrl || undefined,
-                  }))
-                : undefined
-            }
-            isDynamic={!hasColorVariants}
-          />
-        );
-      })()}
+      {!isPack && (
+        <ColorSelector
+          options={
+            colorVariants.length > 0
+              ? colorVariants.map((v: any) => ({
+                  name: v.value,
+                  // Auto-derive the swatch colour from the variant name when
+                  // no hex was saved (e.g. "Navy" -> navy, "White" -> white).
+                  hex: resolveSwatchHex(v.value, v.hexColor),
+                  imageUrl: v.imageUrl || undefined,
+                }))
+              : undefined
+          }
+          isDynamic={colorVariants.length === 0}
+          onSelect={(c) => setSelectedColor(colorVariants.length > 0 ? c.name : '')}
+        />
+      )}
 
       {/* Size selector (hidden for packs) */}
-      {!isPack && (() => {
-        const sizeVariants = variants?.filter((v: any) => v.kind === 'size') || [];
-        return (
-          <SizeSelector
-            options={
-              sizeVariants.length > 0
-                ? sizeVariants.map((v: any) => ({
-                    name: v.value,
-                  }))
-                : undefined
-            }
-          />
-        );
-      })()}
+      {!isPack && (
+        <SizeSelector
+          options={
+            sizeVariants.length > 0
+              ? sizeVariants.map((v: any) => ({ name: v.value }))
+              : undefined
+          }
+          onSelect={setSelectedSize}
+        />
+      )}
 
       {/* Pricing - with qty tracking */}
       <PricingBlock

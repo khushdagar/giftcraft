@@ -3,9 +3,9 @@
 import { motion } from 'framer-motion';
 
 const OFFERS = [
-  { title: '🔥 FLASH SALE', desc: '50% OFF on Select Items', action: 'Ends in 2 days' },
-  { title: '🎁 BULK BUY', desc: 'Min ₹5000: Extra 10% OFF', action: 'Valid till month end' },
-  { title: '⭐ WELCOME', desc: 'First-time: ₹500 discount', action: 'Use WELCOME500' },
+  { title: 'FLASH SALE', desc: '50% OFF on Select Items', action: 'Ends in 2 days' },
+  { title: 'BULK BUY', desc: 'Min ₹5000: Extra 10% OFF', action: 'Valid till month end' },
+  { title: 'WELCOME', desc: 'First-time: ₹500 discount', action: 'Use WELCOME500' },
 ];
 
 export function OffersSection() {

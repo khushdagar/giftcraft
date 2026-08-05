@@ -5,6 +5,14 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Mail, Phone, MapPin, MessageCircle, Clock, Users, Zap } from 'lucide-react';
 import { CONTACT_FALLBACK } from '@/lib/constants';
+import { FieldError } from '@/components/ui/field-error';
+import {
+  collectErrors,
+  validateEmail,
+  validateName,
+  validatePhone,
+  validateText,
+} from '@/lib/validation';
 
 const DEFAULT_CONTACT = CONTACT_FALLBACK;
 
@@ -20,6 +28,26 @@ export default function ContactPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contact, setContact] = useState(DEFAULT_CONTACT);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});
+
+  const validate = (data: typeof formData) =>
+    collectErrors({
+      name: validateName(data.name, 'Your name'),
+      email: validateEmail(data.email),
+      phone: validatePhone(data.phone),
+      company: validateName(data.company, 'Company name', { required: false }),
+      message: validateText(data.message, 'Message', { min: 10, max: 2000 }),
+    });
+
+  const updateField = (field: keyof typeof formData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
+  const blurField = (field: keyof typeof formData) => {
+    const errors = validate(formData);
+    setFieldErrors((prev) => ({ ...prev, [field]: errors[field] }));
+  };
 
   useEffect(() => {
     let active = true;
@@ -34,8 +62,15 @@ export default function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    const errors = validate(formData);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setLoading(true);
     try {
       // Saved as an Enquiry — shows up in /admin/enquiries alongside
       // product quick-quote leads (Product column stays empty for these).
@@ -56,6 +91,7 @@ export default function ContactPage() {
       }
       setSuccess(true);
       setFormData({ name: '', email: '', phone: '', company: '', message: '' });
+      setFieldErrors({});
       setTimeout(() => setSuccess(false), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send your message. Please try again.');
@@ -190,12 +226,18 @@ export default function ContactPage() {
                     <input
                       type="text"
                       required
+                      maxLength={100}
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      aria-invalid={!!fieldErrors.name}
+                      onBlur={() => blurField('name')}
+                      onChange={(e) => updateField('name', e.target.value)}
                       placeholder="John Doe"
-                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors text-sm"
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:outline-none transition-colors text-sm ${
+                        fieldErrors.name ? 'border-red-400' : 'border-slate-200 focus:border-emerald-500'
+                      }`}
                       disabled={loading}
                     />
+                    <FieldError message={fieldErrors.name} />
                   </div>
 
                   <div>
@@ -204,11 +246,16 @@ export default function ContactPage() {
                       type="email"
                       required
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      aria-invalid={!!fieldErrors.email}
+                      onBlur={() => blurField('email')}
+                      onChange={(e) => updateField('email', e.target.value)}
                       placeholder="you@company.com"
-                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors text-sm"
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:outline-none transition-colors text-sm ${
+                        fieldErrors.email ? 'border-red-400' : 'border-slate-200 focus:border-emerald-500'
+                      }`}
                       disabled={loading}
                     />
+                    <FieldError message={fieldErrors.email} />
                   </div>
                 </div>
 
@@ -217,25 +264,38 @@ export default function ContactPage() {
                     <label className="text-sm font-normal text-slate-700 block mb-2">Phone *</label>
                     <input
                       type="tel"
+                      inputMode="tel"
                       required
+                      maxLength={14}
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      aria-invalid={!!fieldErrors.phone}
+                      onBlur={() => blurField('phone')}
+                      onChange={(e) => updateField('phone', e.target.value.replace(/[^\d+\s-]/g, ''))}
                       placeholder="+91 98765 43210"
-                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors text-sm"
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:outline-none transition-colors text-sm ${
+                        fieldErrors.phone ? 'border-red-400' : 'border-slate-200 focus:border-emerald-500'
+                      }`}
                       disabled={loading}
                     />
+                    <FieldError message={fieldErrors.phone} />
                   </div>
 
                   <div>
                     <label className="text-sm font-normal text-slate-700 block mb-2">Company Name</label>
                     <input
                       type="text"
+                      maxLength={120}
                       value={formData.company}
-                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      aria-invalid={!!fieldErrors.company}
+                      onBlur={() => blurField('company')}
+                      onChange={(e) => updateField('company', e.target.value)}
                       placeholder="Your company"
-                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors text-sm"
+                      className={`w-full px-4 py-3 rounded-lg border-2 focus:outline-none transition-colors text-sm ${
+                        fieldErrors.company ? 'border-red-400' : 'border-slate-200 focus:border-emerald-500'
+                      }`}
                       disabled={loading}
                     />
+                    <FieldError message={fieldErrors.company} />
                   </div>
                 </div>
 
@@ -243,13 +303,19 @@ export default function ContactPage() {
                   <label className="text-sm font-normal text-slate-700 block mb-2">Message *</label>
                   <textarea
                     required
+                    maxLength={2000}
                     value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    aria-invalid={!!fieldErrors.message}
+                    onBlur={() => blurField('message')}
+                    onChange={(e) => updateField('message', e.target.value)}
                     placeholder="Tell us about your gifting needs, budget, timeline..."
                     rows={5}
-                    className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 focus:border-emerald-500 focus:outline-none transition-colors text-sm resize-none"
+                    className={`w-full px-4 py-3 rounded-lg border-2 focus:outline-none transition-colors text-sm resize-none ${
+                      fieldErrors.message ? 'border-red-400' : 'border-slate-200 focus:border-emerald-500'
+                    }`}
                     disabled={loading}
                   />
+                  <FieldError message={fieldErrors.message} />
                 </div>
 
                 <button

@@ -57,7 +57,7 @@ export function ProcessTimeline({ selectedPath, advance10, balance90, grand }: P
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 md:p-7 mb-4">
       <h3 className="text-base font-medium mb-4 flex items-center gap-2">
-        📋 What Happens Next
+        What Happens Next
       </h3>
 
       <div className="space-y-0">

@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { zEmail, zGstin, zPhone } from '@/lib/zod-fields';
 
 const num = z.coerce.number().int().nonnegative().nullable().optional();
 
@@ -12,13 +13,13 @@ const CreateVendorSchema = z.object({
   type: z.string().optional().nullable(),
   productsServices: z.string().optional().nullable(),
   contactName: z.string().optional().nullable(),
-  email: z.string().email().optional().nullable().or(z.literal('')),
-  phone: z.string().optional().nullable(),
-  whatsapp: z.string().optional().nullable(),
+  email: zEmail.optional().nullable().or(z.literal('')),
+  phone: zPhone.optional().nullable().or(z.literal('')),
+  whatsapp: zPhone.optional().nullable().or(z.literal('')),
   city: z.string().optional().nullable(),
   state: z.string().optional().nullable(),
   address: z.string().optional().nullable(),
-  gst: z.string().optional().nullable(),
+  gst: zGstin.optional().nullable().or(z.literal('')),
   paymentTerms: z.string().optional().nullable(),
   avgLeadDays: num,
   minOrderQty: num,

@@ -648,6 +648,11 @@ model OrderItem {
   hsnCode           String?
   gstRate           Decimal?           @db.Decimal(5, 2)
   printingTechnique PrintingTechnique?
+  // Snapshot of the variants the customer picked (colour AND size, etc.) as
+  // [{ kind, value, hex }]. Stored as values, not ProductVariant FKs, so an
+  // order keeps showing what was actually ordered even if a variant is later
+  // renamed or deleted. An array because one product can have several kinds.
+  variantsJson      Json?
 
   @@index([orderId])
 }

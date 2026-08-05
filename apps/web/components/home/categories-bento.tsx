@@ -55,7 +55,7 @@ export function CategoriesBento({ categories }: CategoriesBentoProps) {
                 {/* Top Section - Category Info */}
                 <div className="relative z-20">
                   <p className="text-xs font-normal text-gray-600 uppercase tracking-widest mb-3">
-                    📦 Explore
+                    Explore
                   </p>
                   <h3 className="text-4xl sm:text-5xl font-normal text-slate-900 leading-tight">
                     {cat.name}

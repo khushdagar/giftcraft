@@ -95,7 +95,7 @@ export function BoxBudgetMeter({ budget, spent }: BudgetMeterProps) {
             className="bg-rose-100 border border-rose-300 rounded-md p-2"
           >
             <p className="text-xs text-rose-700 font-semibold">
-              💡 Tip: Remove some items to get back within budget
+              Tip: Remove some items to get back within budget
             </p>
           </motion.div>
         )}
