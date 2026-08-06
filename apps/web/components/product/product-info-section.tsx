@@ -11,6 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { resolveSwatchHex } from '@/lib/color-name';
 import { stripHtml } from '@/lib/strip-html';
+import {
+  PackMemberVariants,
+  variantKinds,
+  type PackMember,
+} from './pack-member-variants';
 
 interface ProductInfoSectionProps {
   product: any;
@@ -21,6 +26,7 @@ interface ProductInfoSectionProps {
   variants?: any[];
   isPack?: boolean;
   packProductIds?: string[];
+  packMembers?: PackMember[];
 }
 
 export function ProductInfoSection({
@@ -32,6 +38,7 @@ export function ProductInfoSection({
   variants,
   isPack = false,
   packProductIds = [],
+  packMembers = [],
 }: ProductInfoSectionProps) {
   const [currentQty, setCurrentQty] = useState(moq);
   const isUnderMinimum = currentQty < moq;
@@ -53,10 +60,47 @@ export function ProductInfoSection({
   if (selectedSize) variantParams.set('size', selectedSize);
   const variantQuery = variantParams.toString() ? `&${variantParams}` : '';
 
+  // Curated packs: one variant choice per member product. Seeded with each
+  // member's first option for every kind it has, mirroring how the single
+  // product pickers above default — so "Add to Pack" always carries a variant.
+  const [memberVariants, setMemberVariants] = useState<Record<string, Record<string, string>>>(
+    () => {
+      const seed: Record<string, Record<string, string>> = {};
+      for (const m of packMembers) {
+        if (!m.variants.length) continue;
+        seed[m.id] = Object.fromEntries(
+          variantKinds(m).map((kind) => [kind, m.variants.find((v) => v.kind === kind)!.value])
+        );
+      }
+      return seed;
+    }
+  );
+
+  const setMemberVariant = (productId: string, kind: string, value: string) =>
+    setMemberVariants((prev) => ({
+      ...prev,
+      [productId]: { ...prev[productId], [kind]: value },
+    }));
+
+  // Encode the picks for the builder as
+  //   pv=<productId>~<kind>~<value>|<productId>~<kind>~<value>
+  // Each field is encoded on its own so a variant value containing "~" or "|"
+  // can't corrupt the next entry.
+  const packVariantQuery = (() => {
+    if (!isPack) return '';
+    const entries = packMembers.flatMap((m) =>
+      Object.entries(memberVariants[m.id] ?? {}).map(
+        ([kind, value]) =>
+          `${encodeURIComponent(m.id)}~${encodeURIComponent(kind)}~${encodeURIComponent(value)}`
+      )
+    );
+    return entries.length ? `&pv=${encodeURIComponent(entries.join('|'))}` : '';
+  })();
+
   // A pack loads all its member products into the builder at once; a normal
   // product loads just itself.
   const builderHref = isPack
-    ? `/builder?pack=${encodeURIComponent(packProductIds.join(','))}&qty=${currentQty}`
+    ? `/builder?pack=${encodeURIComponent(packProductIds.join(','))}&qty=${currentQty}${packVariantQuery}`
     : `/builder?product=${product.id}&qty=${currentQty}${variantQuery}`;
 
   // Mobile sticky CTA bar: hidden on load, slides in once the user has scrolled
@@ -132,6 +176,16 @@ export function ProductInfoSection({
               : undefined
           }
           onSelect={setSelectedSize}
+        />
+      )}
+
+      {/* Per-member variant pickers — packs only. Renders nothing when no
+          member product has variants. */}
+      {isPack && (
+        <PackMemberVariants
+          members={packMembers}
+          selections={memberVariants}
+          onChange={setMemberVariant}
         />
       )}
 

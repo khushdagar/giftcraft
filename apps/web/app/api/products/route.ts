@@ -110,9 +110,10 @@ export async function GET(request: NextRequest) {
             orderBy: { sortOrder: 'asc' },
             take: 4,
           },
-          // Colour variants (with optional per-variant image) for card swatches.
+          // ALL variant kinds — colour, size and any custom kind. Cards filter
+          // this down to colours for their swatches; the builder needs every
+          // kind, since a product added there must record its size too.
           variants: {
-            where: { kind: 'color' },
             orderBy: { sortOrder: 'asc' },
           },
           hsn: {

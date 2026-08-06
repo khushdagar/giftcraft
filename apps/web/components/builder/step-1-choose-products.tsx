@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
+import { resolveChosenVariants } from '@/lib/variants';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
@@ -22,6 +23,7 @@ interface Product {
   priceTiers?: Array<{ tier: number; minQty: number; maxQty: number | null; sellPrice: number }>;
   images?: Array<{ url: string }>;
   categories?: Array<{ categoryId: string }>;
+  variants?: Array<{ kind: string; value: string; hexColor?: string | null }>;
 }
 
 interface StepProps {
@@ -68,6 +70,10 @@ export function Step1ChooseProducts({ allProducts, categories, presetIds }: Step
       moq: product.moq,
       priceTiers: product.priceTiers,
       images: product.images,
+      // Adding straight off a card asks for no options, so record the product's
+      // defaults (first option per kind). Without this the order line arrived
+      // with no colour or size at all.
+      variants: resolveChosenVariants(product.variants),
     });
   };
 
