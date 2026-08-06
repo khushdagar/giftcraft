@@ -93,7 +93,14 @@ export default async function ProductPage({ params }: { params: { slug: string }
           product: {
             select: {
               id: true,
+              name: true,
               images: { orderBy: { sortOrder: "asc" }, take: 2 },
+              // Member variants power the per-product pickers on a pack page —
+              // a pack has no variants of its own.
+              variants: {
+                orderBy: { sortOrder: "asc" },
+                select: { kind: true, value: true, hexColor: true, imageUrl: true },
+              },
               priceTiers: {
                 orderBy: { tier: "asc" },
                 select: { minQty: true, maxQty: true, sellPrice: true },
@@ -200,6 +207,19 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const memberImages = product.packItems
     .map((it) => it.product.images[0]?.url)
     .filter((u): u is string => Boolean(u));
+  // Members + their variants, for the pack page's per-product option pickers.
+  const packMembers = product.packItems.map((it) => ({
+    id: it.productId,
+    name: it.product.name,
+    quantity: it.quantity,
+    image: it.product.images[0]?.url ?? null,
+    variants: it.product.variants.map((v) => ({
+      kind: v.kind,
+      value: v.value,
+      hexColor: v.hexColor,
+      imageUrl: v.imageUrl,
+    })),
+  }));
   // Related cards: packs get a computed "from" price; products serialize normally.
   const serializedRelated = isPack
     ? related.map((p) => {
@@ -313,6 +333,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
           variants={displaySerialized.variants}
           isPack={isPack}
           packProductIds={memberProductIds}
+          packMembers={packMembers}
         />
       </div>
 

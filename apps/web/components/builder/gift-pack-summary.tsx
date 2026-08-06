@@ -315,6 +315,24 @@ export function GiftPackSummary() {
                     {/* Pre-tax, matching the "(₹605 + 5% GST)" base shown for the
                         same item on Build Your Box. GST for the whole pack is in
                         its own line in the total below. */}
+                    {/* Chosen options — shown so the spec is visible before
+                        checkout, not just on the order afterwards. */}
+                    {product.variants && product.variants.length > 0 && (
+                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
+                        {product.variants.map((v) => (
+                          <span key={v.kind} className="inline-flex items-center gap-1">
+                            {v.hex && (
+                              <span
+                                aria-hidden
+                                className="h-2.5 w-2.5 rounded-full border border-black/10"
+                                style={{ backgroundColor: v.hex }}
+                              />
+                            )}
+                            {v.value}
+                          </span>
+                        ))}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-500 mt-0.5">
                       {formatRupees(product.sellPrice)} each
                     </p>

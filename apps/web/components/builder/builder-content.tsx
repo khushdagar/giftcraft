@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useBuilderStore } from '@/store/builder';
+import { resolveChosenVariants } from '@/lib/variants';
 import { X } from 'lucide-react';
 import { Step1ChooseProducts } from './step-1-choose-products';
 import { Step2Customize } from './step-2-customize';
@@ -69,6 +70,32 @@ async function resolveProduct(
   } catch {
     return null;
   }
+}
+
+/**
+ * Decode the per-member variant picks a curated pack page hands over:
+ *   ?pv=<productId>~<kind>~<value>|<productId>~<kind>~<value>
+ * Every field is individually encoded, so values containing "~" or "|" survive.
+ * Returns productId -> the kinds chosen for it. Malformed entries are skipped
+ * rather than thrown — a bad share link should still load the pack.
+ */
+function parsePackVariants(raw: string | null) {
+  const picks = new Map<string, Array<{ kind: string; value: string }>>();
+  if (!raw) return picks;
+  for (const entry of raw.split('|')) {
+    const parts = entry.split('~');
+    if (parts.length !== 3) continue;
+    let decoded: string[];
+    try {
+      decoded = parts.map(decodeURIComponent);
+    } catch {
+      continue;
+    }
+    const [id, kind, value] = decoded;
+    if (!id || !kind || !value) continue;
+    picks.set(id, [...(picks.get(id) ?? []), { kind, value }]);
+  }
+  return picks;
 }
 
 /** Map a catalogue product onto a pack line, priced at the pack's quantity. */
@@ -175,10 +202,23 @@ export function BuilderContent({
     // mounted, torn down and re-run, and the re-run stops at packRef — so
     // cancelling here would throw away the only pass that does the work.
     // packRef already prevents duplicates, and addProduct ignores repeats.
+    // Colour/size the user picked per member on the pack page.
+    const picks = parsePackVariants(searchParams.get('pv'));
+
     (async () => {
       for (const id of packProductIds) {
         const found = await resolveProduct(id, allProducts);
-        if (found) addProduct(toBuilderProduct(found, qty));
+        if (!found) continue;
+        // Resolve against the product's real variants: the user's picks win,
+        // and any kind the pack page didn't ask about falls back to its default
+        // so the order still records a complete spec.
+        addProduct(
+          toBuilderProduct(
+            found,
+            qty,
+            resolveChosenVariants((found as any).variants, picks.get(id) ?? [])
+          )
+        );
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,16 +266,16 @@ export function BuilderContent({
         );
       }
 
-      // Carry the colour/size chosen on the product detail page. Matched back
-      // against the product's real variants so the hex swatch comes along too.
-      const chosenVariants = (['color', 'size'] as const).flatMap((kind) => {
-        const value = searchParams.get(kind);
-        if (!value) return [];
-        const match = (found as any).variants?.find(
-          (v: any) => v.kind === kind && v.value === value
-        );
-        return [{ kind, value, hex: match?.hexColor ?? null }];
-      });
+      // Carry the colour/size chosen on the product detail page (or on a catalog
+      // card, which only passes a colour). Kinds the link didn't specify fall
+      // back to the product's defaults, so nothing reaches the order half-blank.
+      const chosenVariants = resolveChosenVariants(
+        (found as any).variants,
+        (['color', 'size'] as const).flatMap((kind) => {
+          const value = searchParams.get(kind);
+          return value ? [{ kind, value }] : [];
+        })
+      );
 
       // Add the product, priced at the pack's effective quantity
       if (!pack.some((p) => p.id === productId)) {
