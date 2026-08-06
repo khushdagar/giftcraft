@@ -387,7 +387,7 @@ export default function AdminOffersPage() {
             />
             {form.ctaLabel && form.ctaUrl && (
               <div className="mt-5">
-                <span className="inline-block rounded-xl bg-orange-500 px-7 py-3 font-bold text-white">
+                <span className="inline-block rounded-xl bg-em px-7 py-3 font-bold text-white">
                   {form.ctaLabel}
                 </span>
               </div>

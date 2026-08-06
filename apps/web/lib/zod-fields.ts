@@ -24,7 +24,7 @@ export const zPhone = z
   .string()
   .trim()
   .transform((v) => v.replace(/[\s-]/g, ""))
-  .refine((v) => PHONE_REGEX.test(v), "Enter a valid 10-digit Indian mobile number");
+  .refine((v) => PHONE_REGEX.test(v), "Enter a valid 10-digit mobile number");
 
 export const zPincode = z
   .string()

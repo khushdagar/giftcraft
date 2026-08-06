@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { canAccessOrder } from '@/lib/order-access';
 
 /**
  * GET /api/orders/[id]
  * Returns a single order for the customer confirmation / tracking views.
- * Only the user who placed the order (or a super_admin) may read it.
+ * Readable by the buying company (either of the buyer's sign-in addresses) or a
+ * super_admin.
  */
 export async function GET(
   _request: NextRequest,
@@ -40,7 +42,7 @@ export async function GET(
     }
 
     // Ownership / role check
-    if (order.placedById !== session.user.id && session.user.role !== 'super_admin') {
+    if (!canAccessOrder(order, session.user)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

@@ -2,11 +2,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { orderScopeWhere } from "@/lib/order-access";
 import { Package, FileText, Clock, TrendingUp, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRupees } from "@/lib/utils";
-import { Decimal } from "@prisma/client/runtime/library";
 import { DashboardPaymentModal } from "./components/payment-modal";
 
 interface KpiProps {
@@ -76,11 +76,15 @@ export default async function DashboardPage() {
   const firstName = session?.user?.name?.split(" ")[0] ?? "there";
   const userId = session.user.id;
 
+  // Orders are scoped to the buyer's company, not just this login, so a buyer
+  // who checked out under a second email still sees their whole history.
+  const orderScope = orderScopeWhere(session.user);
+
   // Fetch KPI data
   const [activeOrders, activeQuotes, inProductionCount, ytdSpendData] = await Promise.all([
     prisma.order.count({
       where: {
-        placedById: userId,
+        ...orderScope,
         status: {
           notIn: ["delivered", "completed", "cancelled", "refunded"],
         },
@@ -94,30 +98,33 @@ export default async function DashboardPage() {
     }),
     prisma.order.count({
       where: {
-        placedById: userId,
+        ...orderScope,
         status: "production",
       },
     }),
-    prisma.order.aggregate({
+    prisma.order.findMany({
       where: {
-        placedById: userId,
+        ...orderScope,
         // Only orders actually paid for — not merely placed
         paidAt: {
           gte: new Date(new Date().getFullYear(), 0, 1),
         },
         status: { not: "refunded" },
       },
-      _sum: {
-        grandTotal: true,
-      },
+      // amountPaid lives in billingJson, so it can't be aggregated in SQL
+      select: { billingJson: true },
     }),
   ]);
 
-  const ytdSpend = ytdSpendData._sum.grandTotal || new Decimal(0);
+  // Sum what the customer actually paid (advance or full), not order totals.
+  const ytdSpend = ytdSpendData.reduce(
+    (sum, o) => sum + Number((o.billingJson as any)?.amountPaid ?? 0),
+    0
+  );
 
   // Fetch recent orders with product details
   const recentOrders = await prisma.order.findMany({
-    where: { placedById: userId },
+    where: orderScope,
     select: {
       id: true,
       orderNumber: true,
@@ -156,7 +163,7 @@ export default async function DashboardPage() {
   // with its own order number and Review link, or the later ones get stranded.
   const mockupPendingOrders = await prisma.order.findMany({
     where: {
-      placedById: userId,
+      ...orderScope,
       status: "mockup_pending",
     },
     select: {

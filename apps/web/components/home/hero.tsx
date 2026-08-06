@@ -94,7 +94,7 @@ export function HomeHero() {
           );
         })()}
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
-          <Link href="/builder" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-[#800020] bg-[#800020] text-white rounded-full font-semibold hover:bg-transparent hover:border-white hover:text-white transition">
+          <Link href="/box" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-[#800020] bg-[#800020] text-white rounded-full font-semibold hover:bg-transparent hover:border-white hover:text-white transition">
             Build Your Pack
           </Link>
           <Link href="/catalog" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-white bg-white text-[#222222] rounded-full font-semibold hover:bg-transparent hover:border-white hover:text-white transition">

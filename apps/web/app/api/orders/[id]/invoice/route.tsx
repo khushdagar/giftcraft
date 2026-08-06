@@ -1,6 +1,7 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { renderInvoiceBuffer } from '@/lib/invoice';
+import { canAccessOrder } from '@/lib/order-access';
 
 /**
  * GET /api/orders/[id]/invoice
@@ -30,7 +31,7 @@ export async function GET(
       return new Response('Order not found', { status: 404 });
     }
 
-    if (order.placedById !== session.user.id && session.user.role !== 'super_admin') {
+    if (!canAccessOrder(order, session.user)) {
       return new Response('Forbidden', { status: 403 });
     }
 

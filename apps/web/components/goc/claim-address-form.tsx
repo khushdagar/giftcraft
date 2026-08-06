@@ -19,7 +19,7 @@ const addressSchema = z.object({
   claimerPhone: z
     .string()
     .trim()
-    .regex(PHONE_REGEX, 'Enter a valid 10-digit Indian mobile number'),
+    .regex(PHONE_REGEX, 'Enter a valid 10-digit mobile number'),
   addressLine1: z.string().trim().min(5, 'Address must be at least 5 characters').max(200),
   addressLine2: z.string().trim().max(200).optional(),
   city: z.string().trim().min(2, 'City is required').max(60).regex(/[a-zA-Z]/, 'Enter a valid city'),
