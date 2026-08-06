@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -807,16 +808,28 @@ export default function BuildYourBoxPage() {
                       const moqBlocked = !inBox && moq > packQuantity;
                       return (
                         <div key={p.id} className="bg-white rounded-md border-2 border-bdr overflow-hidden flex flex-col">
-                          <div className="aspect-square m-2 rounded-md bg-gray-50 flex items-center justify-center overflow-hidden">
+                          {/* Image and title open the full product page. The box, budget
+                              and quantity all live in the persisted store, so navigating
+                              away and coming back keeps the pack intact. */}
+                          <Link
+                            href={`/products/${p.slug}`}
+                            className="group aspect-square m-2 rounded-md bg-gray-50 flex items-center justify-center overflow-hidden"
+                          >
                             {img ? (
-                              <img src={img} alt={p.name} className="w-full h-full object-cover" />
+                              <img
+                                src={img}
+                                alt={p.name}
+                                className="w-full h-full object-cover transition group-hover:scale-105"
+                              />
                             ) : (
                               <span className="text-4xl opacity-40">🎁</span>
                             )}
-                          </div>
+                          </Link>
                           <div className="px-3 pb-3 flex flex-col flex-1">
                             {p.brand && <p className="text-[11px] text-ink-3">{p.brand}</p>}
-                            <h4 className="text-sm font-medium line-clamp-2 text-ink">{p.name}</h4>
+                            <Link href={`/products/${p.slug}`} className="hover:underline">
+                              <h4 className="text-sm font-medium line-clamp-2 text-ink">{p.name}</h4>
+                            </Link>
                             <p className="text-sm font-bold tabnum mt-1 text-ink">
                               {inr(price)}{' '}
                               <span className="font-normal text-[10px] text-ink-3">incl. GST</span>

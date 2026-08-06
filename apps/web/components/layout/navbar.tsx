@@ -241,7 +241,7 @@ export function Navbar() {
           <li className="group relative py-4">
             <Link href="/catalog" className="text-sm font-medium text-ink-2 hover:text-ink">Products ▾</Link>
             {categories.length > 0 && (
-              <div className="invisible absolute left-1/2 top-full grid min-w-[640px] -translate-x-1/2 grid-cols-4 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+              <div className="invisible absolute left-0 top-full grid min-w-[640px] grid-cols-4 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
                 {categories.map((c) => (
                   <Link
                     key={c.slug}
@@ -261,7 +261,7 @@ export function Navbar() {
           <li className="group relative py-4">
             <Link href="/curated-packs" className="text-sm font-medium text-ink-2 hover:text-ink">Curated Packs ▾</Link>
             {collections.length > 0 && (
-              <div className="invisible absolute left-1/2 top-full grid min-w-[280px] -translate-x-1/2 grid-cols-1 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+              <div className="invisible absolute left-0 top-full grid min-w-[280px] grid-cols-1 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
                 <Link
                   href="/curated-packs"
                   className="rounded-md px-3 py-2 text-[13px] font-semibold text-ink transition hover:bg-elevated"
@@ -285,7 +285,7 @@ export function Navbar() {
           <li className="group relative py-4">
             <button className="text-sm font-medium text-ink-2 hover:text-ink">Occasions ▾</button>
             {occasions.length > 0 && (
-              <div className="invisible absolute left-1/2 top-full grid min-w-[480px] -translate-x-1/2 grid-cols-3 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+              <div className="invisible absolute left-0 top-full grid min-w-[480px] grid-cols-3 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
                 {occasions.map((o) => (
                   <Link
                     key={o.slug}
