@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { orderScopeWhere } from '@/lib/order-access';
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,10 +18,13 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const skip = (page - 1) * limit;
 
-    // Fetch orders for the logged-in user with product details
+    // Every order the buyer's company placed — so a buyer who checked out under
+    // a second email still finds their history here.
+    const scope = orderScopeWhere(session.user);
+
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
-        where: { placedById: session.user.id },
+        where: scope,
         select: {
           id: true,
           orderNumber: true,
@@ -53,9 +57,7 @@ export async function GET(req: NextRequest) {
         skip,
         take: limit,
       }),
-      prisma.order.count({
-        where: { placedById: session.user.id },
-      }),
+      prisma.order.count({ where: scope }),
     ]);
 
     return NextResponse.json(

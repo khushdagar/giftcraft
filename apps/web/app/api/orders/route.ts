@@ -12,6 +12,12 @@ import { z } from 'zod';
 import { zEmail, zGstin, zPan, zPhone, zPincode } from '@/lib/zod-fields';
 import { nanoid } from 'nanoid';
 import { stateNameToCode } from '@/lib/pincode-to-state';
+import {
+  adoptOrphanBrandAssets,
+  ensureLogoInLibrary,
+  linkEmailToCompany,
+} from '@/lib/company-identity';
+import { orderScopeWhere } from '@/lib/order-access';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -112,7 +118,7 @@ const BillingJsonSchema = z
 
 // List the authenticated user's own orders. Used by flows that need to pick an
 // order (e.g. raising a dispute against a delivered order). Scoped to the
-// logged-in user — never returns another user's orders.
+// buyer's own orders plus their company's — never another company's.
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
@@ -124,7 +130,7 @@ export async function GET(req: NextRequest) {
     }
 
     const orders = await prisma.order.findMany({
-      where: { placedById: session.user.id },
+      where: orderScopeWhere(session.user),
       select: {
         id: true,
         orderNumber: true,
@@ -257,6 +263,47 @@ export async function POST(req: NextRequest) {
       companyId = await syncCompanyFromBilling(session.user.id, billingJson);
     } catch (e) {
       console.error('Saving company details from billing failed (non-blocking):', e);
+    }
+
+    // With a company resolved, pull the buyer's whole identity together so the
+    // next sign-in — with EITHER address — finds the logos, the company address
+    // and the past orders already there. Best-effort throughout: none of this is
+    // worth failing a paid order over.
+    // Each step is independently guarded. They are unrelated to each other, so
+    // one failing must not swallow the rest — a single shared try/catch here
+    // once let a Prisma error in the first call silently skip the email linking
+    // entirely, and the second identity was never attached.
+    if (companyId) {
+      // Logos uploaded in the builder, before this company existed.
+      try {
+        await adoptOrphanBrandAssets(session.user.id, companyId);
+      } catch (e) {
+        console.error('Adopting orphan brand assets failed (non-blocking):', e);
+      }
+
+      // A logo branded onto this pack while still a guest never reached the
+      // library at all — only its CDN URL rode along on the quote.
+      try {
+        await ensureLogoInLibrary(companyId, session.user.id, payload.logoUrl);
+      } catch (e) {
+        console.error('Filing order logo into the brand library failed (non-blocking):', e);
+      }
+
+      // The contact address typed on this page may differ from the one they
+      // signed in with. Point it at the same company.
+      try {
+        const result = await linkEmailToCompany(companyId, billingJson?.email, {
+          sessionEmail: session.user.email,
+          name: billingJson?.name,
+        });
+        if (!result.linked && result.reason === 'belongs-elsewhere') {
+          console.warn(
+            `Checkout email ${billingJson?.email} already belongs to another company — not relinked.`
+          );
+        }
+      } catch (e) {
+        console.error('Linking the checkout email to the company failed (non-blocking):', e);
+      }
     }
 
     // Generate order number
@@ -403,8 +450,26 @@ export async function POST(req: NextRequest) {
     // sends a payment receipt; the no-payment "mockup" path sends a plain order
     // confirmation so the customer always gets an email when they order. Both
     // include the full price breakdown and a proforma-invoice PDF attachment.
-    const email = billingJson?.email || session.user.email;
-    if (email) {
+    // Both of the buyer's addresses get the confirmation: the one they typed
+    // into the checkout contact block AND the one they signed in with. These are
+    // routinely different (personal Google account, work address on the order),
+    // and sending to only the billing address left the signed-in buyer with no
+    // record of their own order. Deduped, so the common case sends once.
+    // The buyer's own address comes from the DB rather than the session, so a
+    // thin or stale session token can't quietly drop them off the recipient list.
+    const placedBy = await prisma.user
+      .findUnique({ where: { id: session.user.id }, select: { email: true } })
+      .catch(() => null);
+
+    const recipients = Array.from(
+      new Set(
+        [billingJson?.email, placedBy?.email ?? session.user.email]
+          .map((e) => String(e ?? '').trim().toLowerCase())
+          .filter((e) => e.includes('@'))
+      )
+    );
+    console.log(`📧 Order ${order.orderNumber} — emailing ${recipients.join(', ') || '(nobody)'}`);
+    if (recipients.length) {
       const customerName = billingJson?.name || billingJson?.companyName || 'there';
 
       // Full price breakdown — same line items the customer saw at checkout.
@@ -449,34 +514,39 @@ export async function POST(req: NextRequest) {
         quantity: it.quantity,
       }));
 
-      try {
-        if (paidAt) {
-          await sendPaymentSuccessEmail({
-            customerEmail: email,
-            customerName,
-            orderNumber: order.orderNumber,
-            orderId: order.id,
-            amountPaid,
-            paymentId: razorpayPaymentId,
-            isAdvance: paymentType !== 'full',
-            grandTotal: Number(pricing.grandTotal || 0),
-            amounts,
-            attachments,
-          });
-        } else {
-          await sendOrderConfirmationEmail({
-            customerEmail: email,
-            customerName,
-            orderNumber: order.orderNumber,
-            orderId: order.id,
-            packQuantity: packQty,
-            amounts,
-            items: emailItems,
-            attachments,
-          });
+      // The order, breakdown and PDF above are built once and reused for every
+      // recipient. Each send is guarded on its own so a bounce on one address
+      // still delivers to the other.
+      for (const email of recipients) {
+        try {
+          if (paidAt) {
+            await sendPaymentSuccessEmail({
+              customerEmail: email,
+              customerName,
+              orderNumber: order.orderNumber,
+              orderId: order.id,
+              amountPaid,
+              paymentId: razorpayPaymentId,
+              isAdvance: paymentType !== 'full',
+              grandTotal: Number(pricing.grandTotal || 0),
+              amounts,
+              attachments,
+            });
+          } else {
+            await sendOrderConfirmationEmail({
+              customerEmail: email,
+              customerName,
+              orderNumber: order.orderNumber,
+              orderId: order.id,
+              packQuantity: packQty,
+              amounts,
+              items: emailItems,
+              attachments,
+            });
+          }
+        } catch (e) {
+          console.error(`Order email to ${email} failed (non-blocking):`, e);
         }
-      } catch (e) {
-        console.error('Order email failed (non-blocking):', e);
       }
     }
 

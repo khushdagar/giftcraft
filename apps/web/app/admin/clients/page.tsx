@@ -302,9 +302,7 @@ export default async function AdminClientsPage({
                 </td>
                 <td className="px-5 py-4 text-right">
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={client.href}>
-                      {client.linked ? 'View Profile' : 'View Orders'}
-                    </Link>
+                    <Link href={client.href}>View Orders</Link>
                   </Button>
                 </td>
               </tr>

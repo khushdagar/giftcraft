@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { MAX_FREE_REVISIONS, REVISION_FEE_PERCENT } from '@/lib/constants';
 import { Decimal } from '@prisma/client/runtime/library';
+import { canAccessOrder } from '@/lib/order-access';
 
 export async function POST(
   request: NextRequest,
@@ -31,7 +32,13 @@ export async function POST(
     // Verify order belongs to user
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { placedById: true, status: true, grandTotal: true, revisionCount: true },
+      select: {
+        placedById: true,
+        companyId: true,
+        status: true,
+        grandTotal: true,
+        revisionCount: true,
+      },
     });
 
     if (!order) {
@@ -41,7 +48,7 @@ export async function POST(
       );
     }
 
-    if (order.placedById !== session.user.id) {
+    if (!canAccessOrder(order, session.user)) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }

@@ -1,7 +1,6 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import { Decimal } from '@prisma/client/runtime/library';
 
 export async function GET() {
   try {
@@ -11,11 +10,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all confirmed/completed orders
+    // All placed, non-cancelled orders — any of them can hold received money
+    // (an advance or full payment stored in billingJson.amountPaid).
     const orders = await prisma.order.findMany({
       where: {
         status: {
-          in: ['confirmed', 'completed', 'shipped', 'delivered'],
+          notIn: ['draft', 'quote_sent', 'cancelled', 'refunded'] as any,
         },
       },
       include: {
@@ -25,10 +25,11 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Calculate stats
+    // Calculate stats. Revenue = money actually received, not order totals.
+    const paidOf = (o: { billingJson: unknown }) => Number((o.billingJson as any)?.amountPaid ?? 0);
     const totalOrders = orders.length;
-    const totalRevenue = orders.reduce((sum, order) => sum.plus(order.grandTotal), new Decimal(0));
-    const avgOrderValue = totalOrders > 0 ? totalRevenue.dividedBy(totalOrders) : new Decimal(0);
+    const totalRevenue = orders.reduce((sum, order) => sum + paidOf(order), 0);
+    const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // Get previous month's orders for comparison
     const today = new Date();
@@ -43,34 +44,34 @@ export async function GET() {
     const orderChange = ordersLastMonth > 0 ? ((ordersThisMonth - ordersLastMonth) / ordersLastMonth * 100).toFixed(0) : '+100';
     const revenueThisMonth = orders
       .filter((order) => order.createdAt >= oneMonthAgo)
-      .reduce((sum, order) => sum.plus(order.grandTotal), new Decimal(0));
+      .reduce((sum, order) => sum + paidOf(order), 0);
     const revenueLastMonth = orders
       .filter((order) => order.createdAt >= twoMonthsAgo && order.createdAt < oneMonthAgo)
-      .reduce((sum, order) => sum.plus(order.grandTotal), new Decimal(0));
+      .reduce((sum, order) => sum + paidOf(order), 0);
 
     const revenueChange =
-      revenueLastMonth.toNumber() > 0
-        ? (((revenueThisMonth.toNumber() - revenueLastMonth.toNumber()) / revenueLastMonth.toNumber()) * 100).toFixed(0)
+      revenueLastMonth > 0
+        ? (((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100).toFixed(0)
         : '+100';
 
     // Revenue by month (last 12 months)
-    const monthlyRevenue: Record<string, Decimal> = {};
+    const monthlyRevenue: Record<string, number> = {};
     for (let i = 11; i >= 0; i--) {
       const date = new Date(today.getTime() - i * 30 * 24 * 60 * 60 * 1000);
       const month = date.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
-      monthlyRevenue[month] = new Decimal(0);
+      monthlyRevenue[month] = 0;
     }
 
     orders.forEach((order) => {
       const month = order.createdAt.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
       if (monthlyRevenue[month] !== undefined) {
-        monthlyRevenue[month] = monthlyRevenue[month].plus(order.grandTotal);
+        monthlyRevenue[month] += paidOf(order);
       }
     });
 
     const revenueData = Object.entries(monthlyRevenue).map(([month, revenue]) => ({
       month,
-      revenue: revenue.toNumber(),
+      revenue,
     }));
 
     // Order status distribution
@@ -116,14 +117,14 @@ export async function GET() {
       },
       {
         label: 'Revenue',
-        value: `₹${totalRevenue.toNumber().toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+        value: `₹${totalRevenue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
         change: `+${revenueChange}% from last month`,
         trend: parseInt(revenueChange) >= 0 ? ('up' as const) : ('down' as const),
       },
       {
         label: 'Avg Order Value',
-        value: `₹${avgOrderValue.toNumber().toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
-        change: `${avgOrderValue.toNumber().toFixed(0)} per order`,
+        value: `₹${avgOrderValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+        change: `${avgOrderValue.toFixed(0)} per order`,
         trend: 'up' as const,
       },
       {

@@ -172,30 +172,27 @@ export interface PriceBreakdown {
 }
 
 /**
- * Render the price summary: taxable value, GST, total, and — when an advance has
- * been taken — what has been paid against it.
- *
- * Deliberately NOT itemised. Packaging, add-ons, shipping and the gateway fee
- * are all in the attached invoice PDF, which is the GST document of record; the
- * email only has to answer "what do I owe". Keeping the itemisation in one place
- * also means there is only one thing to keep correct.
+ * Render the price summary with the same line items the customer saw at
+ * checkout: products, packaging, add-ons, shipping, GST, the gateway fee
+ * (GST-inclusive, per RULE 2 always its own line), and the grand total —
+ * plus, when an advance has been taken, what has been paid against it.
  */
 function priceBreakdownCard(
   amounts: PriceBreakdown,
   opts?: { advancePaid?: number; balanceDue?: number; paymentId?: string }
 ): string {
-  // The gateway fee is stored GST-INCLUSIVE (fee base + 18% on the fee) and its
-  // tax is not part of cgst/sgst/igst, so split it out before totalling —
-  // otherwise the GST line under-reports and the three rows stop adding up.
-  const gatewayGst = round2(amounts.razorpayFee - amounts.razorpayFee / 1.18);
-  const gst = round2(amounts.cgst + amounts.sgst + amounts.igst + gatewayGst);
-  // Derive the taxable value from the total rather than re-adding the parts:
-  // exact by construction, so subtotal + GST always lands on the grand total
-  // even if a discount or a new charge is introduced upstream.
-  const taxable = round2(amounts.grandTotal - gst);
+  // The gateway fee is stored GST-INCLUSIVE and its tax is not part of
+  // cgst/sgst/igst, so the GST row here covers products only — mirroring the
+  // checkout summary, where "Payment Processing" carries its own 18%.
+  const gst = round2(amounts.cgst + amounts.sgst + amounts.igst);
 
-  let rows = row('Subtotal (taxable value)', inr(taxable));
+  let rows = row('Subtotal', inr(amounts.subtotal));
+  if (amounts.packaging > 0) rows += row('Packaging', inr(amounts.packaging));
+  if (amounts.addons > 0) rows += row('Add-ons', inr(amounts.addons));
+  if (amounts.shipping > 0) rows += row('Shipping', inr(amounts.shipping));
   if (gst > 0) rows += row('GST', inr(gst));
+  if (amounts.razorpayFee > 0)
+    rows += row('Payment Processing (Razorpay 2% + 18% GST)', inr(amounts.razorpayFee));
 
   // Divider before the grand total.
   rows += `<tr><td colspan="2" style="padding:0;"><div style="border-top:2px solid ${COLORS.border};margin:8px 0 2px;"></div></td></tr>`;

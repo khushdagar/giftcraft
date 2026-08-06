@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { canAccessOrder } from '@/lib/order-access';
 import { auth } from '@/auth';
 import { formatRupees } from '@/lib/utils';
 import { combinedGst, splitPaymentFee, shippingTaxable } from '@/lib/pricing-display';
@@ -114,7 +115,7 @@ export default async function OrderDetailPage({
     },
   }) as any;
 
-  if (!order || order.placedById !== session.user.id) {
+  if (!order || !canAccessOrder(order, session.user)) {
     return (
       <div className="max-w-2xl space-y-6">
         <Link href="/dashboard/orders" className="inline-flex items-center gap-2 text-sm font-normal text-em hover:underline">

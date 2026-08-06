@@ -71,8 +71,9 @@ export default async function AdminDashboard() {
     pipelineGroups, activeOrders, ordersToday,
     topItems, recentOrders, chartOrders,
   ] = await Promise.all([
-    prisma.order.aggregate({ _sum: { grandTotal: true }, where: { status: { in: REVENUE_STATUSES as any }, createdAt: { gte: monthStart } } }),
-    prisma.order.aggregate({ _sum: { grandTotal: true }, where: { status: { in: REVENUE_STATUSES as any }, createdAt: { gte: lastMonthStart, lt: monthStart } } }),
+    // amountPaid lives in billingJson, so revenue (money actually received) is summed in JS
+    prisma.order.findMany({ where: { status: { in: REVENUE_STATUSES as any }, createdAt: { gte: monthStart } }, select: { billingJson: true } }),
+    prisma.order.findMany({ where: { status: { in: REVENUE_STATUSES as any }, createdAt: { gte: lastMonthStart, lt: monthStart } }, select: { billingJson: true } }),
     prisma.order.count({ where: { status: { in: REVENUE_STATUSES as any }, createdAt: { gte: monthStart } } }),
     prisma.order.count({ where: { status: { in: REVENUE_STATUSES as any }, createdAt: { gte: lastMonthStart, lt: monthStart } } }),
     prisma.quote.count({ where: { status: "active", expiresAt: { gt: now } } }),
@@ -83,11 +84,12 @@ export default async function AdminDashboard() {
     prisma.order.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.orderItem.groupBy({ by: ["productId"], _sum: { totalPrice: true }, _count: true, orderBy: { _sum: { totalPrice: "desc" } }, take: 4 }),
     prisma.order.findMany({ orderBy: { createdAt: "desc" }, take: 5, select: { id: true, orderNumber: true, status: true, packQuantity: true, grandTotal: true, createdAt: true, billingJson: true } }),
-    prisma.order.findMany({ where: { status: { in: REVENUE_STATUSES as any }, createdAt: { gte: thirtyDaysAgo } }, select: { createdAt: true, grandTotal: true } }),
+    prisma.order.findMany({ where: { status: { in: REVENUE_STATUSES as any }, createdAt: { gte: thirtyDaysAgo } }, select: { createdAt: true, billingJson: true } }),
   ]);
 
-  const revenueMtd = Number(revMtdAgg._sum.grandTotal ?? 0);
-  const revenueLast = Number(revLastAgg._sum.grandTotal ?? 0);
+  const paidOf = (o: { billingJson: unknown }) => Number((o.billingJson as any)?.amountPaid ?? 0);
+  const revenueMtd = revMtdAgg.reduce((sum, o) => sum + paidOf(o), 0);
+  const revenueLast = revLastAgg.reduce((sum, o) => sum + paidOf(o), 0);
   const aov = ordersMtd > 0 ? Math.round(revenueMtd / ordersMtd) : 0;
   const pct = (cur: number, prev: number) => (prev > 0 ? Math.round(((cur - prev) / prev) * 100) : cur > 0 ? 100 : 0);
   const revChange = pct(revenueMtd, revenueLast);
@@ -122,7 +124,7 @@ export default async function AdminDashboard() {
   const dailyBuckets = new Array(30).fill(0);
   chartOrders.forEach((o) => {
     const dayIdx = Math.floor((o.createdAt.getTime() - thirtyDaysAgo.getTime()) / (24 * 60 * 60 * 1000));
-    if (dayIdx >= 0 && dayIdx < 30) dailyBuckets[dayIdx] += Number(o.grandTotal);
+    if (dayIdx >= 0 && dayIdx < 30) dailyBuckets[dayIdx] += paidOf(o);
   });
   const areaPath = buildAreaPath(dailyBuckets);
 

@@ -89,7 +89,7 @@ export function RelatedProducts({
             whileInView={{ opacity: 1, y: 0 }}
             className="text-3xl md:text-4xl font-normal text-slate-900 mb-4"
           >
-            YOU MAY <span className="italic text-em">ALSO LIKE</span>
+            You May Also<span className="italic text-em"> Like</span>
           </motion.h2>
           <div className="flex gap-2">
             <button

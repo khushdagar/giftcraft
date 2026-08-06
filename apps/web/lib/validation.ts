@@ -45,7 +45,7 @@ export function validatePhone(value: string, { required = true } = {}): string |
   const trimmed = (value || "").trim();
   if (!trimmed) return required ? "Phone number is required" : null;
   if (!PHONE_REGEX.test(trimmed.replace(/[\s-]/g, ""))) {
-    return "Enter a valid 10-digit Indian mobile number";
+    return "Enter a valid 10-digit mobile number";
   }
   return null;
 }

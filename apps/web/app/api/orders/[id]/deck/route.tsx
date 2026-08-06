@@ -1,6 +1,7 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { renderProposalDeck } from '@/lib/proposal-deck';
+import { canAccessOrder } from '@/lib/order-access';
 
 // Product imagery is downloaded per request — never cache this route.
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,7 @@ export async function GET(
     });
 
     if (!order) return new Response('Order not found', { status: 404 });
-    if (order.placedById !== session.user.id && session.user.role !== 'super_admin') {
+    if (!canAccessOrder(order, session.user)) {
       return new Response('Forbidden', { status: 403 });
     }
 

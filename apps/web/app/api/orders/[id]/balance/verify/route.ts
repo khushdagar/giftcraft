@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyRazorpaySignature } from '@/lib/razorpay';
 import { sendPaymentSuccessEmail } from '@/lib/email';
 import { sendPushToAdmins } from '@/lib/push';
+import { canAccessOrder } from '@/lib/order-access';
 
 /**
  * POST /api/orders/[id]/balance/verify
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
-    if (order.placedById !== session.user.id && session.user.role !== 'super_admin') {
+    if (!canAccessOrder(order, session.user)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

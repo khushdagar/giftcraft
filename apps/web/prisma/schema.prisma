@@ -242,8 +242,12 @@ model Company {
 
 model BrandAsset {
   id         String   @id @default(cuid())
-  companyId  String
-  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  // Optional: a buyer uploads their logo in the builder long before a company
+  // exists for them (the company is created from the billing block at checkout).
+  // Those uploads are held against `uploadedBy` alone and adopted into the
+  // company library the moment one is resolved.
+  companyId  String?
+  company    Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   name       String
   url        String
   mimeType   String
@@ -252,6 +256,7 @@ model BrandAsset {
   createdAt  DateTime @default(now())
 
   @@index([companyId])
+  @@index([uploadedBy])
 }
 
 // Reusable delivery/shipping addresses saved to a user's account so they can be

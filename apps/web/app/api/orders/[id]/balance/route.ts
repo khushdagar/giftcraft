@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { createRazorpayOrder, isRazorpayConfigured, RAZORPAY_KEY_ID } from '@/lib/razorpay';
+import { canAccessOrder } from '@/lib/order-access';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -27,7 +28,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
-    if (order.placedById !== session.user.id && session.user.role !== 'super_admin') {
+    if (!canAccessOrder(order, session.user)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

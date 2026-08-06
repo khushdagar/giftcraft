@@ -18,14 +18,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // The library is everything this user uploaded, plus everything their
+    // company holds. A buyer who uploaded before their company existed still
+    // sees their own logos; once they join a company they also see the ones a
+    // colleague — or their own other sign-in email — uploaded.
     const companyId = session.user.companyId;
-    if (!companyId) {
-      // User is not attached to a company yet — no saved library.
-      return NextResponse.json({ success: true, assets: [] });
-    }
-
     const assets = await prisma.brandAsset.findMany({
-      where: { companyId },
+      where: companyId
+        ? { OR: [{ companyId }, { uploadedBy: session.user.id }] }
+        : { uploadedBy: session.user.id },
       orderBy: { createdAt: 'desc' },
       select: { id: true, name: true, url: true, mimeType: true, createdAt: true },
     });
@@ -79,18 +80,23 @@ export async function POST(request: NextRequest) {
     // Upload to Digital Ocean Spaces (folder: logos)
     const url = await uploadToDigitalOcean(file, 'logos');
 
-    // Persist to the company's brand asset library when the user belongs to one.
+    // Persist to the brand asset library for any signed-in user. Most buyers
+    // upload their logo in the builder BEFORE they have a company — that only
+    // gets created from the billing block at checkout — so gating the save on
+    // companyId silently dropped every first-time upload. We record it against
+    // the uploader instead, and the order flow adopts it into the company
+    // library once one exists. Guests (no session) still get the CDN URL.
     let assetId: string | null = null;
-    const companyId = session?.user?.companyId;
-    if (companyId) {
+    const userId = session?.user?.id;
+    if (userId) {
       const asset = await prisma.brandAsset.create({
         data: {
-          companyId,
+          companyId: session?.user?.companyId ?? null,
           name: file.name,
           url,
           mimeType: file.type || 'application/octet-stream',
           sizeBytes: file.size,
-          uploadedBy: session!.user!.id,
+          uploadedBy: userId,
         },
       });
       assetId = asset.id;

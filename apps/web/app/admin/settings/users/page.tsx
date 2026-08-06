@@ -5,8 +5,11 @@ import { prisma } from "@/lib/prisma";
 import type { UserRole } from "@prisma/client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { GrantAccessForm } from "./grant-access-form";
 
 const ROLES: UserRole[] = ["super_admin", "company_admin", "company_member", "vendor", "reseller"];
+// Roles that appear in this list / can be granted here. company_member = normal customer (revokes access).
+const PRIVILEGED_ROLES: UserRole[] = ["super_admin", "company_admin", "vendor", "reseller"];
 
 /**
  * Server action: update a user's role.
@@ -36,12 +39,50 @@ async function updateUserRole(formData: FormData) {
   revalidatePath("/admin/settings/users");
 }
 
-export default async function AdminUsersPage() {
+/**
+ * Server action: grant an elevated role to a registered user by email.
+ * The user must already have signed in with Google once.
+ */
+async function grantAccessByEmail(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session || session.user.role !== "super_admin") {
+    throw new Error("Forbidden");
+  }
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const role = String(formData.get("role")) as UserRole;
+
+  if (!email) redirect("/admin/settings/users?error=missing");
+  if (!PRIVILEGED_ROLES.includes(role)) throw new Error("Invalid role");
+
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (!user) {
+    redirect(`/admin/settings/users?error=notfound&email=${encodeURIComponent(email)}`);
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { role },
+  });
+
+  revalidatePath("/admin/settings/users");
+  redirect(`/admin/settings/users?granted=${encodeURIComponent(email)}`);
+}
+
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams?: { error?: string; email?: string; granted?: string };
+}) {
   const session = await auth();
   if (!session || session.user.role !== "super_admin") redirect("/unauthorized");
 
   const [users, companies] = await Promise.all([
     prisma.user.findMany({
+      where: { role: { in: PRIVILEGED_ROLES } },
       orderBy: { createdAt: "desc" },
       include: { company: true },
     }),
@@ -53,10 +94,29 @@ export default async function AdminUsersPage() {
       <div>
         <h1 className="text-[22px] font-normal font-display">Users & Roles</h1>
         <p className="text-[13px] text-ink-3">
-          Promote clients to company admins, onboard vendors, or change permissions here.
-          Role changes take effect on the user&apos;s next request — no re-login required.
+          Only users with elevated access are listed here — regular customers are managed
+          under Clients. Role changes take effect on the user&apos;s next request — no re-login required.
         </p>
       </div>
+
+      {searchParams?.error === "notfound" && (
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+          No registered user found with <span className="font-medium">{searchParams.email}</span>.
+          Ask them to sign in with Google once, then try again.
+        </div>
+      )}
+      {searchParams?.error === "missing" && (
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-700">
+          Please enter an email address.
+        </div>
+      )}
+      {searchParams?.granted && (
+        <div className="rounded-md border border-em/20 bg-em-50 px-4 py-3 text-[13px] text-em-700">
+          Access granted to <span className="font-medium">{searchParams.granted}</span>.
+        </div>
+      )}
+
+      <GrantAccessForm action={grantAccessByEmail} roles={PRIVILEGED_ROLES} />
 
       <div className="rounded-md bg-white shadow-card overflow-hidden">
         <div className="grid grid-cols-12 gap-3 border-b border-bdr bg-canvas px-4 py-2.5 text-[10px] font-normal uppercase tracking-wider text-ink-3">
@@ -68,7 +128,7 @@ export default async function AdminUsersPage() {
 
         {users.length === 0 ? (
           <div className="p-10 text-center">
-            <p className="text-sm text-ink-3">No users yet. The first person to sign in with Google will land here.</p>
+            <p className="text-sm text-ink-3">No users with elevated access yet. Grant access by email above.</p>
           </div>
         ) : (
           users.map((u) => (
@@ -139,9 +199,8 @@ export default async function AdminUsersPage() {
       <div className="rounded-md border border-gold/20 bg-gold-50 p-4 text-[12px] text-gold-700">
         <p className="font-normal">Tip</p>
         <p className="mt-0.5">
-          To onboard a new company admin: ask them to sign in with Google once (this creates
-          their user row), then assign their company here and switch their role to
-          &quot;company admin&quot;.
+          To remove someone&apos;s access, set their role back to &quot;company member&quot; —
+          they&apos;ll disappear from this list but keep their normal customer account.
         </p>
       </div>
     </div>

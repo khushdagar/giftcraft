@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { sendBalancePaymentLinkEmail } from '@/lib/email';
+import { canAccessOrder } from '@/lib/order-access';
 import { sendPushToAdmins } from '@/lib/push';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -21,11 +22,13 @@ export async function POST(
 
     const { id: orderId } = params;
 
-    // Verify order belongs to user
+    // Verify the order belongs to the buyer (either of their sign-in addresses,
+    // via the company).
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       select: {
         placedById: true,
+        companyId: true,
         status: true,
         orderNumber: true,
         grandTotal: true,
@@ -41,7 +44,7 @@ export async function POST(
       );
     }
 
-    if (order.placedById !== session.user.id) {
+    if (!canAccessOrder(order, session.user)) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
