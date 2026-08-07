@@ -42,18 +42,18 @@ export const INDIAN_STATES = [
 
 /**
  * Public contact details shown until an admin saves the `contact`
- * PlatformSetting (Admin → Settings → Contact). The phone/WhatsApp numbers are
- * deliberate placeholders — the real business line isn't live yet, and a
- * plausible-looking fake number is worse than an obvious blank, because
- * customers dial it. Every surface that shows a contact number falls back here,
- * so there is exactly one place to update when the real number arrives.
+ * PlatformSetting (Admin → Settings → Contact). Every surface that shows a
+ * contact number falls back here, so this is the single place to change it.
  */
-export const PLACEHOLDER_PHONE = "XXXXXXXXXXXX";
+/** Display form — used in tel: links, which ignore the spacing and dashes. */
+export const SUPPORT_PHONE = "+91-8505909441";
+/** Digits only, country code included. wa.me rejects anything else. */
+export const SUPPORT_WHATSAPP = "918505909441";
 
 export const CONTACT_FALLBACK = {
   email: "support@givoo.in",
-  phone: PLACEHOLDER_PHONE,
-  whatsapp: PLACEHOLDER_PHONE, // digits only elsewhere; used for wa.me links
+  phone: SUPPORT_PHONE,
+  whatsapp: SUPPORT_WHATSAPP,
 };
 
 export const DELIVERY_RATES = { single: 90, individual: 140 };

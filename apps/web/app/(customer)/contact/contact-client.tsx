@@ -63,6 +63,9 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    // Clear any previous confirmation, otherwise a second submission that
+    // fails would show the old "Message sent!" banner next to the error.
+    setSuccess(false);
 
     const errors = validate(formData);
     if (Object.keys(errors).length > 0) {
@@ -92,7 +95,8 @@ export default function ContactPage() {
       setSuccess(true);
       setFormData({ name: '', email: '', phone: '', company: '', message: '' });
       setFieldErrors({});
-      setTimeout(() => setSuccess(false), 5000);
+      // The confirmation stays put — it is the only record the visitor has that
+      // the message went through, and it clears on the next submission anyway.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send your message. Please try again.');
     } finally {

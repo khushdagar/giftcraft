@@ -122,7 +122,7 @@ export function TrendingProducts({ initialData }: { initialData?: { products: an
       <div className="container">
         <div className="flex justify-between items-end mb-8 md:mb-16">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-normal">
-            Trending <span className="italic">now.</span>
+            Trending <span className="italic text-[#800020]">Now.</span>
           </h2>
           {/* On mobile the link lives under the row instead — see below. */}
           <Link href="/catalog" className="hidden sm:block text-sm font-semibold text-[#800020] hover:opacity-70">
@@ -193,7 +193,7 @@ export function TrendingProducts({ initialData }: { initialData?: { products: an
                         )}
                       </div>
                       <div className="px-3 pt-3 sm:px-5 sm:pt-5">
-                        <p className="text-[10px] sm:text-xs text-[#8F8A82] mb-1 truncate">{p.brand || 'Brand'}</p>
+                        {/* <p className="text-[10px] sm:text-xs text-[#8F8A82] mb-1 truncate">{p.brand || 'Brand'}</p> */}
                         <h3 className="text-[12px] sm:text-sm font-medium mb-2 sm:mb-3 leading-snug line-clamp-2 group-hover:text-[#800020] transition-colors">
                           {p.name}
                         </h3>

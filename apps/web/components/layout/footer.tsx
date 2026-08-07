@@ -28,10 +28,22 @@ const LEGAL_LINKS: FooterLink[] = [
 async function getFooterData() {
   try {
     const [rawCategories, collections, occasionRows, hiddenCategoryIds] = await Promise.all([
-      // Only categories with at least one live catalog product — the category
-      // landing page for an empty category is noindex, so never link to it.
+      // Top-level categories only. Sub-categories belong on the category
+      // landing page, not in the footer — listing every one of them turns this
+      // column into an unreadable wall.
+      //
+      // Sub-category products count towards the parent: a product tagged only
+      // "Insulated Steel Bottle" still makes "Drinkware" worth linking to.
+      // Without that, a parent whose products all sit in children would be
+      // dropped even though its landing page is populated.
       prisma.category.findMany({
-        where: { products: { some: { product: { status: "active", isPack: false } } } },
+        where: {
+          parentId: null,
+          OR: [
+            { products: { some: { product: { status: "active", isPack: false } } } },
+            { children: { some: { products: { some: { product: { status: "active", isPack: false } } } } } },
+          ],
+        },
         orderBy: { sortOrder: "asc" },
       }),
       prisma.giftCollection.findMany({

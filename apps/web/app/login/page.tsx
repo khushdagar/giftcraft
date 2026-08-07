@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CredentialsLoginForm } from "@/components/auth/credentials-login-form";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { SUPPORT_PHONE } from "@/lib/constants";
 
 export const metadata = { title: "Sign in" };
 
@@ -125,7 +126,10 @@ export default async function LoginPage({
 
             <p className="mt-6 text-center text-xs text-ink-3">
               Facing any issues? {" "}
-              <a href="tel:+XXXXXXXXXXX" className="font-normal text-em hover:underline">
+              <a
+                href={`tel:${SUPPORT_PHONE.replace(/[^\d+]/g, "")}`}
+                className="font-normal text-em hover:underline"
+              >
                 Call now.
               </a>
             </p>

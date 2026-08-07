@@ -58,7 +58,10 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
     // One pass over the live catalog, grouped in memory — cheaper and simpler
     // than a count + image query per category.
     const [categories, products] = await Promise.all([
-      prisma.category.findMany({ orderBy: { sortOrder: 'asc' } }),
+      // Top-level only — the /categories index is a browse grid of the main
+      // departments, not every sub-category. Products carry both their parent
+      // and sub-category, so the per-category counts below stay correct.
+      prisma.category.findMany({ where: { parentId: null }, orderBy: { sortOrder: 'asc' } }),
       prisma.product.findMany({
         where: {
           status: 'active',
@@ -130,7 +133,14 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
 export async function getCategoryNav(): Promise<Array<{ id: string; name: string; slug: string }>> {
   try {
     const categories = await prisma.category.findMany({
-      where: { products: { some: { product: { status: 'active', isPack: false } } } },
+      // Top-level only, matching the footer and nav dropdown.
+      where: {
+        parentId: null,
+        OR: [
+          { products: { some: { product: { status: 'active', isPack: false } } } },
+          { children: { some: { products: { some: { product: { status: 'active', isPack: false } } } } } },
+        ],
+      },
       select: { id: true, name: true, slug: true },
       orderBy: { sortOrder: 'asc' },
     });
