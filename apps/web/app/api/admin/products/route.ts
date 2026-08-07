@@ -144,7 +144,9 @@ const CreateProductSchema = z.object({
       tier: z.number().int().min(1).max(12),
       minQty: z.number().int().min(1),
       maxQty: z.number().int().nullable(),
-      costPrice: z.number().positive(),
+      // Matches the update route: cost of 0 means "not sourced yet", which is
+      // a real state for this catalogue. Sell price must still be > 0.
+      costPrice: z.number().nonnegative(),
       sellPrice: z.number().positive(),
     })
   ).nullable().optional(),

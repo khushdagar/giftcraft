@@ -10,20 +10,13 @@ interface ColorOption {
 }
 
 interface ColorSelectorProps {
+  /** Real colour variants. Omit or pass an empty array to render nothing. */
   options?: ColorOption[];
   onSelect?: (color: ColorOption) => void;
-  isDynamic?: boolean;
 }
 
-const DEFAULT_COLORS: ColorOption[] = [
-  { name: 'Matte Black', hex: '#1a1a1a' },
-  { name: 'Silver', hex: '#c0c0c0' },
-  { name: 'Forest Green', hex: '#800020' },
-  { name: 'Rose Gold', hex: '#b76e79' },
-];
-
-export function ColorSelector({ options = DEFAULT_COLORS, onSelect, isDynamic = true }: ColorSelectorProps) {
-  const [selected, setSelected] = useState<ColorOption>((options && options.length > 0 ? options[0] : DEFAULT_COLORS[0])!);
+export function ColorSelector({ options, onSelect }: ColorSelectorProps) {
+  const [selected, setSelected] = useState<ColorOption | null>(options?.[0] ?? null);
   const setVariantImageUrl = useProductGallery((s) => s.setVariantImageUrl);
 
   const handleSelect = (color: ColorOption) => {
@@ -33,22 +26,16 @@ export function ColorSelector({ options = DEFAULT_COLORS, onSelect, isDynamic = 
     onSelect?.(color);
   };
 
-  // If no colors provided and isDynamic is true, show a note
-  if (!options || options.length === 0) {
-    return (
-      <div className="mt-6">
-        <p className="text-sm font-medium text-ink-3">
-          Colour options will be shown based on product availability
-        </p>
-      </div>
-    );
-  }
+  // A product with no colour variants has no colours to offer. This used to
+  // fall back to four placeholder swatches, which advertised colourways that
+  // did not exist — the caller passes `undefined` here, so a default parameter
+  // silently took over and the empty-state check below never ran.
+  if (!options || options.length === 0 || !selected) return null;
 
   return (
     <div className="mt-6">
       <p className="mb-3 text-sm font-medium text-ink">
         Colour: <span className="font-semibold">{selected.name}</span>
-        {/* {isDynamic && <span className="ml-2 text-xs text-ink-3">(Dynamic)</span>} */}
       </p>
       <div className="flex flex-wrap gap-3">
         {options.map((color) => (

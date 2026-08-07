@@ -281,6 +281,9 @@ export default async function AdminProductsPage({
             <Link href="/admin/products/bulk-upload">Bulk Upload</Link>
           </Button>
           <Button asChild variant="outline" className="rounded-2xl px-6 py-3 font-normal">
+            <Link href="/admin/products/bulk-images">Bulk Images</Link>
+          </Button>
+          <Button asChild variant="outline" className="rounded-2xl px-6 py-3 font-normal">
             <Link href="/admin/products/new?type=pack">+ New Pack</Link>
           </Button>
           <Button asChild className="rounded-2xl bg-emerald-600 px-8 py-3 font-normal hover:bg-emerald-700 text-white">

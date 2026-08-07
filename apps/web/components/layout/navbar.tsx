@@ -82,6 +82,7 @@ export function Navbar() {
     fetch("/api/categories")
       .then((r) => (r.ok ? r.json() : null))
       .then((res) => {
+        
         if (!active || !Array.isArray(res?.data)) return;
         setCategories(res.data.map((c: any) => ({ name: c.name, slug: c.slug })));
       })

@@ -32,6 +32,11 @@ const ALIASES: Record<string, string> = {
   'sub-category': 'subcategory', subcategory: 'subcategory', 'sub category': 'subcategory',
   material: 'material',
   'dimensions lxwxh': 'dimensions', dimensions: 'dimensions', 'dimension': 'dimensions',
+  // The generated template emits these three explicitly; without aliases the
+  // importer silently dropped every dimension it was handed.
+  lengthcm: 'lengthCm', 'length cm': 'lengthCm', length: 'lengthCm',
+  widthcm: 'widthCm', 'width cm': 'widthCm', width: 'widthCm',
+  heightcm: 'heightCm', 'height cm': 'heightCm', height: 'heightCm',
   'wt g': 'weightG', 'weight g': 'weightG', weight: 'weightG', wt: 'weightG', weightg: 'weightG',
   'colour variants': 'colors', 'color variants': 'colors', colors: 'colors', colours: 'colors', colour: 'colors', color: 'colors',
   'size variants': 'sizes', sizes: 'sizes', size: 'sizes',

@@ -43,8 +43,8 @@ export function ProductInfoSection({
   const [currentQty, setCurrentQty] = useState(moq);
   const isUnderMinimum = currentQty < moq;
 
-  // Real variants only. ColorSelector falls back to placeholder swatches when a
-  // product has none — those must never be recorded as an ordered variant.
+  // Real variants only. When a product has none the corresponding picker
+  // renders nothing, so a selection can never be anything but real data.
   const colorVariants = (!isPack && variants?.filter((v: any) => v.kind === 'color')) || [];
   const sizeVariants = (!isPack && variants?.filter((v: any) => v.kind === 'size')) || [];
 
@@ -162,8 +162,7 @@ export function ProductInfoSection({
                 }))
               : undefined
           }
-          isDynamic={colorVariants.length === 0}
-          onSelect={(c) => setSelectedColor(colorVariants.length > 0 ? c.name : '')}
+          onSelect={(c) => setSelectedColor(c.name)}
         />
       )}
 

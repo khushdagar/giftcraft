@@ -49,7 +49,11 @@ const UpdateProductSchema = z.object({
         tier: z.number().int().min(1).max(12),
         minQty: z.number().int().min(1),
         maxQty: z.number().int().nullable(),
-        costPrice: z.number().positive(),
+        // Cost may legitimately be 0 — bulk-imported catalogue rows carry no
+        // vendor cost until sourcing is confirmed, and rejecting 0 here made
+        // every imported product unsaveable from the edit form. Sell price
+        // stays strictly positive: a Rs.0 sell price is always a mistake.
+        costPrice: z.number().nonnegative(),
         sellPrice: z.number().positive(),
       })
     )

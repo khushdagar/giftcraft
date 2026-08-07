@@ -14,11 +14,22 @@ export async function GET(request: NextRequest) {
       "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&h=600&fit=crop",
     ];
 
-    // Only categories with at least one live catalog product. An empty category
-    // has a noindex landing page and a dead-end dropdown entry, so it should
-    // not surface in the nav or homepage tiles either.
+    // Top-level categories with at least one live catalog product. An empty
+    // category has a noindex landing page and a dead-end dropdown entry, so it
+    // should not surface in the nav or homepage tiles either.
+    //
+    // Sub-categories are deliberately excluded: they are a drill-down on the
+    // category landing page, and listing them here floods the nav dropdown.
+    // A parent counts as populated if either it or one of its children has
+    // live products.
     const allCategories = await prisma.category.findMany({
-      where: { products: { some: { product: { status: 'active', isPack: false } } } },
+      where: {
+        parentId: null,
+        OR: [
+          { products: { some: { product: { status: 'active', isPack: false } } } },
+          { children: { some: { products: { some: { product: { status: 'active', isPack: false } } } } } },
+        ],
+      },
       orderBy: { sortOrder: 'asc' },
       include: {
         _count: {
