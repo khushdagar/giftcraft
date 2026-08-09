@@ -72,6 +72,16 @@
   .container-gc   { @apply mx-auto w-full px-2 sm:px-8 lg:px-12; max-width: 1200px; }
   .container-gc-w { @apply mx-auto w-full px-2 sm:px-8 lg:px-12; max-width: 1440px; }
 
+  /* Product detail page only. The shared 8px mobile gutter leaves the gallery,
+     price block and tabs sitting almost against the screen edge on a phone.
+     Widening it here covers every container on that page — including the ones
+     inside ProductReviews and RelatedProducts — without touching any other
+     page. Scoped to <sm so the sm:/lg: steps above still win on desktop. */
+  @media (max-width: 639px) {
+    .pdp-gutters .container-gc,
+    .pdp-gutters .container-gc-w { padding-left: 1rem; padding-right: 1rem; }
+  }
+
   /* Roboto heading helpers */
   .t-hero    { font-size: clamp(2.8rem,8vw,5.5rem); line-height: 1.04; letter-spacing:-0.02em; @apply font-serif font-bold; }
   .t-display { font-size: clamp(2.2rem,5.5vw,3.8rem); line-height: 1.08; letter-spacing:-0.015em; @apply font-serif font-bold; }

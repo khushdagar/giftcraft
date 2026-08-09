@@ -280,7 +280,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
   ]);
 
   return (
-    <div className="bg-canvas pb-24 lg:pb-0">
+    <div className="pdp-gutters bg-canvas pb-24 lg:pb-0">
       <JsonLd data={productJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
       {/* Breadcrumb */}
