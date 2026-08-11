@@ -183,8 +183,19 @@ async function buildPackPayload(pack: PackInput) {
     packTagline: pack.tagline || null,
   };
 
-  const { pricing } = await priceQuotePayload(payload);
+  const { pricing, hsnByProductId } = await priceQuotePayload(payload);
   payload.pricing = pricing;
+
+  // Snapshot the tax identity each line was priced with. Without it the deck
+  // PDF has to guess (it used to assume 18%), and its GST table would contradict
+  // the quoted total for any product on a 5% or 12% HSN.
+  for (const p of payload.products) {
+    const tax = hsnByProductId.get(p.id);
+    if (tax) {
+      p.hsnCode = tax.hsnCode;
+      p.gstRate = tax.gstRate;
+    }
+  }
 
   return { payload, products, pricing };
 }

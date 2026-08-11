@@ -1,6 +1,7 @@
 import { renderToBuffer } from '@react-pdf/renderer';
 import { prisma } from '@/lib/prisma';
 import { stripHtml } from '@/lib/strip-html';
+import { resolveProductHsn, type ResolvedHsn } from '@/lib/quote-pricing';
 import {
   ProposalDeckPDF,
   MultiProposalDeckPDF,
@@ -39,13 +40,33 @@ const UNCATEGORISED = 'Corporate Gifting';
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /**
- * Build the deck's itemised GST table from the payload — the SAME rows
- * and maths as the proforma invoice (components/orders/invoice-pdf.tsx):
- * products + packaging + add-ons are GST-exclusive lines; shipping and the
- * payment gateway fee are GST-INCLUSIVE amounts whose taxable value is
- * reverse-calculated. Returns null when there is no pricing snapshot.
+ * Tax fallbacks — identical to lib/quote-pricing, so a product with no
+ * ProductHsn row is taxed the same way in the deck as in the priced quote.
  */
-function buildDeckInvoice(payload: any): DeckInvoice | null {
+const DEFAULT_HSN_CODE = '4820';
+const DEFAULT_GST_RATE = 18;
+/** Packaging and add-ons are always billed as printed paper goods at 18%. */
+const PACKAGING_HSN_CODE = '4819';
+const PACKAGING_GST_RATE = 18;
+
+/**
+ * Build the deck's itemised GST table from the payload — the SAME rows and
+ * maths as @giftcraft/pricing, so the table's Grand Total is exactly the
+ * `pricing.grandTotal` the client sees in the email, on the quote page and at
+ * checkout. Products + packaging + add-ons are GST-exclusive lines; shipping
+ * and the payment gateway fee are GST-INCLUSIVE amounts whose taxable value
+ * comes from the snapshot (reverse-calculated only for legacy snapshots that
+ * never stored the split). Returns null when there is no pricing snapshot.
+ *
+ * Tax identity is NEVER assumed: `taxById` carries each product's HSN code and
+ * GST rate resolved from the database (the same source computePricing was fed),
+ * because proposal payloads don't snapshot them. Defaulting to 18% here is what
+ * used to make the deck disagree with the email on any 5%/12% product.
+ */
+function buildDeckInvoice(
+  payload: any,
+  taxById: Map<string, ResolvedHsn>
+): DeckInvoice | null {
   const pricing = payload?.pricing;
   if (!pricing || !(Number(pricing.grandTotal) > 0)) return null;
 
@@ -59,75 +80,92 @@ function buildDeckInvoice(payload: any): DeckInvoice | null {
     return { cgst, sgst: round2(gst - cgst), igst: 0 };
   };
 
-  /** A taxable row where `taxable` EXCLUDES GST — tax is added on top. */
-  const exclusiveRow = (
+  /** A row whose GST amount is already decided by the caller. */
+  const row = (
     name: string,
     hsn: string,
-    quantity: number,
+    quantity: number | null,
     taxable: number,
-    gstRate: number
-  ): DeckInvoiceRow => {
-    const gst = round2((taxable * gstRate) / 100);
-    return {
-      name,
-      hsn,
-      quantity,
-      unitPrice: quantity > 0 ? round2(taxable / quantity) : null,
-      taxable: round2(taxable),
-      gstRate,
-      ...splitGst(gst),
-      total: round2(taxable + gst),
-    };
-  };
+    gstRate: number,
+    gst: number
+  ): DeckInvoiceRow => ({
+    name,
+    hsn,
+    quantity,
+    unitPrice: quantity && quantity > 0 ? round2(taxable / quantity) : null,
+    taxable: round2(taxable),
+    gstRate,
+    ...splitGst(round2(gst)),
+    total: round2(taxable + gst),
+  });
 
-  /** A GST-INCLUSIVE charge (shipping / gateway fee) — not unit-priced. */
-  const inclusiveRow = (
-    name: string,
-    hsn: string,
-    amount: number,
-    gstRate: number
-  ): DeckInvoiceRow => {
-    const taxable = round2(amount / (1 + gstRate / 100));
-    const gst = round2(amount - taxable);
-    return {
-      name,
-      hsn,
-      quantity: null,
-      unitPrice: null,
-      taxable,
-      gstRate,
-      ...splitGst(gst),
-      total: round2(amount),
-    };
+  /**
+   * Spread a group's GST across its lines the way computePricing rounds it:
+   * the GST for the WHOLE group is rounded once, then handed out per line with
+   * the last line absorbing the remainder. Rounding each line independently
+   * would drift a paisa or two off the amount actually charged.
+   */
+  const spreadGst = (
+    lines: { taxable: number }[],
+    rate: number
+  ): number[] => {
+    const groupTaxable = lines.reduce((s, l) => s + l.taxable, 0);
+    const groupGst = round2((groupTaxable * rate) / 100);
+    let allocated = 0;
+    return lines.map((l, i) => {
+      if (i === lines.length - 1) return round2(groupGst - allocated);
+      const share = round2((l.taxable * rate) / 100);
+      allocated = round2(allocated + share);
+      return share;
+    });
   };
 
   const rows: DeckInvoiceRow[] = [];
 
   // 1. Products — one row each; each pack holds one unit of every product.
-  for (const p of payload.products || []) {
+  //    Grouped by HSN code so the GST rounding matches the priced quote.
+  const productLines = (payload.products || []).map((p: any) => {
+    const tax = taxById.get(String(p.id));
+    const gstRate = Number(p.gstRate ?? tax?.gstRate ?? DEFAULT_GST_RATE);
     const qty = (Number(p.quantity) || 1) * packQuantity;
-    const taxable = round2((Number(p.sellPrice) || 0) * qty);
-    rows.push(
-      exclusiveRow(
-        p.name || 'Product',
-        p.hsnCode || '—',
-        qty,
-        taxable,
-        Number(p.gstRate ?? 18)
-      )
-    );
+    return {
+      name: p.name || 'Product',
+      hsn: String(p.hsnCode || tax?.hsnCode || DEFAULT_HSN_CODE),
+      qty,
+      taxable: round2((Number(p.sellPrice) || 0) * qty),
+      gstRate,
+    };
+  });
+  // GST is rounded per HSN group, but the rows stay in pack order so the table
+  // reads in the same sequence as the product slides.
+  const productGroups = new Map<string, number[]>();
+  for (let i = 0; i < productLines.length; i++) {
+    const line = productLines[i];
+    const key = `${line.hsn}|${line.gstRate}`;
+    const group = productGroups.get(key);
+    if (group) group.push(i);
+    else productGroups.set(key, [i]);
   }
+  const productGst: number[] = new Array(productLines.length).fill(0);
+  for (const indices of productGroups.values()) {
+    const lines = indices.map((i) => productLines[i]);
+    const gsts = spreadGst(lines, lines[0]!.gstRate);
+    indices.forEach((originalIndex, i) => {
+      productGst[originalIndex] = gsts[i]!;
+    });
+  }
+  productLines.forEach((line: any, i: number) => {
+    rows.push(row(line.name, line.hsn, line.qty, line.taxable, line.gstRate, productGst[i]!));
+  });
 
-  // 2. Packaging & add-ons — priced per gift pack (HSN 4819, 18%). The order
-  // route has no per-item breakdown, so it passes the stored totals directly.
+  // 2. Packaging & add-ons — priced per gift pack (HSN 4819, 18%), and taxed
+  // as ONE group by the pricing engine. The order route has no per-item
+  // breakdown, so it passes the stored totals directly.
   const packagingTotal = round2(
     payload.packagingTotal != null
       ? Number(payload.packagingTotal) || 0
       : (Number(payload.packaging?.price) || 0) * packQuantity
   );
-  if (packagingTotal > 0) {
-    rows.push(exclusiveRow('Packaging', '4819', packQuantity, packagingTotal, 18));
-  }
   const addonsPerUnit =
     (payload.addons || []).reduce(
       (sum: number, a: any) => sum + (Number(a.price) || 0),
@@ -138,21 +176,72 @@ function buildDeckInvoice(payload: any): DeckInvoice | null {
       ? Number(payload.addonsTotal) || 0
       : addonsPerUnit * packQuantity
   );
-  if (addonsTotal > 0) {
-    rows.push(exclusiveRow('Add-ons', '4819', packQuantity, addonsTotal, 18));
+  const packLines = [
+    { name: 'Packaging', taxable: packagingTotal },
+    { name: 'Add-ons', taxable: addonsTotal },
+  ].filter((l) => l.taxable > 0);
+  if (packLines.length > 0) {
+    const gsts = spreadGst(packLines, PACKAGING_GST_RATE);
+    packLines.forEach((l, i) => {
+      rows.push(
+        row(l.name, PACKAGING_HSN_CODE, packQuantity, l.taxable, PACKAGING_GST_RATE, gsts[i]!)
+      );
+    });
   }
 
-  // 3. Shipping (courier rate) & 4. gateway fee — both stored GST-inclusive.
-  const shipping = Number(pricing.shipping) || 0;
-  if (shipping > 0) rows.push(inclusiveRow('Shipping', '996812', shipping, 18));
-  const gatewayFee = Number(pricing.razorpayFee) || 0;
+  // 3. Shipping — quoted GST-INCLUSIVE, so its taxable half is the split the
+  // pricing engine already stored (reverse-calculated for legacy snapshots).
+  const shipping = round2(Number(pricing.shipping) || 0);
+  if (shipping > 0) {
+    const taxable =
+      pricing.shippingTaxable != null
+        ? round2(Number(pricing.shippingTaxable))
+        : round2(shipping / 1.18);
+    rows.push(row('Shipping', '996812', null, taxable, 18, round2(shipping - taxable)));
+  }
+
+  // 4. A negotiated discount reduces the amount payable after GST, exactly as
+  // computePricing applies it — shown as its own line so the table still adds up.
+  const discount = round2(Number(pricing.discount) || 0);
+  if (discount > 0) {
+    rows.push(row('Discount', '—', null, -discount, 0, 0));
+  }
+
+  // 5. Payment gateway fee — 2% + GST on it, taken straight from the snapshot
+  // so the deck can never restate the fee the customer is actually charged.
+  const gatewayFee = round2(Number(pricing.razorpayFee) || 0);
   if (gatewayFee > 0) {
-    rows.push(inclusiveRow('Payment Gateway Fee', '997158', gatewayFee, 18));
+    const base =
+      pricing.razorpayFeeBase != null
+        ? round2(Number(pricing.razorpayFeeBase))
+        : round2(gatewayFee / 1.18);
+    rows.push(row('Payment Gateway Fee', '997158', null, base, 18, round2(gatewayFee - base)));
   }
 
   // Grand total across every column except GST % (a rate can't be summed).
   const sum = (pick: (r: DeckInvoiceRow) => number) =>
     round2(rows.reduce((s, r) => s + pick(r), 0));
+
+  // Safety net: the table must state the amount the customer was actually
+  // quoted. Any residue is sub-rupee rounding — absorb it into the last row so
+  // the column still adds up. A larger gap means the snapshot and the line
+  // items genuinely disagree (a stale payload), which is logged, not hidden.
+  const grandTotal = round2(Number(pricing.grandTotal) || 0);
+  const drift = round2(grandTotal - sum((r) => r.total));
+  if (drift !== 0) {
+    if (Math.abs(drift) <= 1) {
+      const last = rows[rows.length - 1]!;
+      last.total = round2(last.total + drift);
+      last.taxable = round2(last.taxable + drift);
+    } else {
+      console.error(
+        `[proposal-deck] pricing snapshot (₹${grandTotal}) disagrees with itemised total (₹${sum(
+          (r) => r.total
+        )}) — check the quote payload`
+      );
+    }
+  }
+
   return {
     isIntraState,
     rows,
@@ -298,6 +387,12 @@ async function buildDeckProps(
 
   const byId = new Map(dbProducts.map((p) => [p.id, p]));
 
+  // Tax identity comes from the ProductHsn table — the same source the quote
+  // was priced from. Proposal payloads carry no HSN/GST (only order-derived
+  // payloads snapshot them), so without this lookup the deck would fall back to
+  // a flat 18% and overstate every 5%/12% product against the quoted price.
+  const taxById = await resolveProductHsn(payloadProducts.map((p) => p.id));
+
   // Both the box and the add-ons are Products (Packaging / Add-on category)
   // and are looked up live so the slide reflects the current admin imagery,
   // while prices stay from the snapshot. The packaging snapshot id is
@@ -343,7 +438,7 @@ async function buildDeckProps(
 
   const products: DeckProduct[] = payloadProducts.map((p, idx) => {
     const db = byId.get(p.id);
-    const gstRate = Number(p.gstRate ?? 18);
+    const gstRate = Number(p.gstRate ?? taxById.get(String(p.id))?.gstRate ?? DEFAULT_GST_RATE);
     const sellPrice = Number(p.sellPrice) || 0;
     const technique = db?.printingTechnique ?? p.printingTechnique ?? 'none';
 
@@ -433,7 +528,7 @@ async function buildDeckProps(
     packaging,
     addons,
     clientLogo,
-    invoice: buildDeckInvoice(payload),
+    invoice: buildDeckInvoice(payload, taxById),
     packLabel: payload?.packLabel || null,
     packTagline: payload?.packTagline || null,
   };
