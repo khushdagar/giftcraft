@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const q = (new URL(request.url).searchParams.get('q') || '').trim();
     if (q.length < 2) {
-      return NextResponse.json({ products: [], categories: [] });
+      return NextResponse.json({ products: [], packs: [], categories: [] });
     }
 
     const hiddenCategoryIds = await getHiddenCategoryIds();
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    const [products, categories] = await Promise.all([
+    const [products, packs, categories] = await Promise.all([
       prisma.product.findMany({
         where: {
           status: 'active',
@@ -55,6 +55,38 @@ export async function GET(request: NextRequest) {
         orderBy: [{ isFeatured: 'desc' }, { sortOrder: 'asc' }],
         take: 8,
       }),
+      // Curated packs match on the same words. Price is the "From ₹x /pack"
+      // figure: each member's cheapest (highest-quantity) tier, summed.
+      prisma.product.findMany({
+        where: {
+          status: 'active',
+          isPack: true,
+          AND: words.map(wordMatch),
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } },
+          packItems: {
+            orderBy: { sortOrder: 'asc' },
+            select: {
+              product: {
+                select: {
+                  images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } },
+                  priceTiers: {
+                    orderBy: { minQty: 'desc' },
+                    take: 1,
+                    select: { sellPrice: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ isFeatured: 'desc' }, { sortOrder: 'asc' }],
+        take: 4,
+      }),
       prisma.category.findMany({
         where: {
           name: { contains: q, mode: 'insensitive' },
@@ -74,10 +106,28 @@ export async function GET(request: NextRequest) {
         image: p.images[0]?.url ?? null,
         price: p.priceTiers[0] ? Number(p.priceTiers[0].sellPrice) : null,
       })),
+      packs: packs.map((p) => {
+        const price = p.packItems.reduce(
+          (sum, it) => sum + (it.product.priceTiers[0] ? Number(it.product.priceTiers[0].sellPrice) : 0),
+          0
+        );
+        return {
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          // Packs often have no image of their own — fall back to the first
+          // member product's image, same as the pack listing pages.
+          image:
+            p.images[0]?.url ??
+            p.packItems.find((it) => it.product.images[0])?.product.images[0]?.url ??
+            null,
+          price: price > 0 ? price : null,
+        };
+      }),
       categories,
     });
   } catch (error) {
     console.error('Error building search suggestions:', error);
-    return NextResponse.json({ products: [], categories: [] }, { status: 200 });
+    return NextResponse.json({ products: [], packs: [], categories: [] }, { status: 200 });
   }
 }

@@ -33,6 +33,10 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Desktop teaser shows the first 8 (with a See All link below) — the full
+  // list lives at /occasions. The mobile slider pages through everything.
+  const featured = useMemo(() => (occasions ?? []).slice(0, 8), [occasions]);
+
   // Group into pages of 4 — each page renders as a 2x2 grid, so a swipe
   // or arrow click always moves a full "screen" of 4 cards at once.
   const pages = useMemo(() => {
@@ -112,7 +116,7 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
             ? Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="rounded-2xl aspect-[3/2] bg-[#E5DFD4] animate-pulse" />
               ))
-            : occasions?.map((occ: any) => renderCard(occ))}
+            : featured.map((occ: any) => renderCard(occ))}
         </div>
 
         {/* Mobile: 2x2 pages, swipeable + arrow navigation */}
@@ -167,6 +171,19 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
             </>
           )}
         </div>
+
+        {/* Hub link — desktop only: the grid above is capped at 8 occasions,
+            while the mobile slider already pages through all of them. */}
+        {!isLoading && featured.length > 0 && (
+          <div className="mt-8 md:mt-10 hidden md:flex justify-center">
+            <Link
+              href="/occasions"
+              className="flex items-center justify-center rounded-full border border-[#800020] px-8 py-2.5 text-sm font-semibold text-[#800020] transition hover:bg-[#800020] hover:text-white"
+            >
+              See All →
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

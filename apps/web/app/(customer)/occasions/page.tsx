@@ -61,7 +61,6 @@ export default async function OccasionsPage() {
         </nav>
 
         <header className="mt-4 max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-3">Browse</p>
           <h1 className="mt-1 font-serif text-4xl font-light tracking-tight text-ink md:text-5xl">
             Shop corporate gifts by occasion
           </h1>
@@ -69,7 +68,7 @@ export default async function OccasionsPage() {
             Gifting for a festival, a new joiner or a client milestone? Every occasion below is
             priced per unit with standard branding already included — no separate printing charge,
             and the rate steps down as your quantity grows. Or{' '}
-            <Link href="/builder" className="font-semibold text-em underline">
+            <Link href="/box" className="font-semibold text-em underline">
               build a gift pack
             </Link>{' '}
             from across the range.
@@ -124,12 +123,12 @@ export default async function OccasionsPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-1 flex-col p-5">
+                  {/* <div className="flex flex-1 flex-col p-5">
                     <p className="line-clamp-3 flex-1 text-sm leading-relaxed text-ink-2">{blurb}</p>
                     <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-em">
                       Explore {occasion.name} <span aria-hidden>→</span>
                     </span>
-                  </div>
+                  </div> */}
                 </Link>
               );
             })}

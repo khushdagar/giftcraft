@@ -165,6 +165,23 @@ function applyScope(
   return list;
 }
 
+/**
+ * Identity of a brand for filtering: case- and whitespace-insensitive, because
+ * the same brand is entered inconsistently across the product master.
+ */
+function brandKey(brand: string | null | undefined): string {
+  return (brand || '').trim().toLowerCase();
+}
+
+/**
+ * How many capitals a spelling carries — used to pick which variant of a brand
+ * to display, so "Uppercase" wins over "uppercase" and "DailyObjects" over
+ * "dailyobjects".
+ */
+function capitals(s: string): number {
+  return (s.match(/[A-Z]/g) || []).length;
+}
+
 // "From" price = the cheapest tier (highest MOQ slab), not the first tier.
 function minTierPrice(p: Product): number {
   const prices = (p.priceTiers || []).map((t) => t.sellPrice).filter((n) => n > 0);
@@ -486,7 +503,7 @@ export function CatalogClient({
     },
     cats: (p: Product) =>
       selectedCats.size === 0 || !!p.categories?.some(c => selectedCats.has(c.categoryId)),
-    brands: (p: Product) => selectedBrands.size === 0 || selectedBrands.has(p.brand || ''),
+    brands: (p: Product) => selectedBrands.size === 0 || selectedBrands.has(brandKey(p.brand)),
     occasions: (p: Product) =>
       selectedOccasions.size === 0 || !!p.occasionIds?.some(id => selectedOccasions.has(id)),
     recipients: (p: Product) =>
@@ -541,13 +558,34 @@ export function CatalogClient({
       .filter(c => c.count > 0 || selectedCats.has(c.id));
   }, [categories, productsExcept, selectedCats]);
 
+  // Brands are grouped case-insensitively — the product master has the same
+  // brand typed both ways ("Uppercase" / "uppercase"), and two checkboxes for
+  // one brand is just a broken filter. One row per brand, counts summed.
   const brandFacets = useMemo(() => {
     const base = productsExcept('brands');
-    const names = [...new Set(products.map(p => p.brand).filter((b): b is string => !!b))].sort();
-    return names
-      .map(name => ({ name, count: base.filter(p => p.brand === name).length }))
-      .filter(b => b.count > 0 || selectedBrands.has(b.name));
+    const groups = new Map<string, { key: string; label: string; count: number }>();
+    for (const p of products) {
+      const key = brandKey(p.brand);
+      if (!key) continue;
+      const label = (p.brand || '').trim();
+      const existing = groups.get(key);
+      if (!existing) groups.set(key, { key, label, count: 0 });
+      else if (capitals(label) > capitals(existing.label)) existing.label = label;
+    }
+    for (const p of base) {
+      const group = groups.get(brandKey(p.brand));
+      if (group) group.count++;
+    }
+    return [...groups.values()]
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .filter(b => b.count > 0 || selectedBrands.has(b.key));
   }, [products, productsExcept, selectedBrands]);
+
+  /** Display label for a selected brand key, for the active-filter chips. */
+  const brandLabels = useMemo(
+    () => new Map(brandFacets.map(b => [b.key, b.label])),
+    [brandFacets]
+  );
 
   const occasionFacets = useMemo(() => {
     const base = productsExcept('occasions');
@@ -780,7 +818,7 @@ export function CatalogClient({
             })}
             {Array.from(selectedBrands).map(brand => (
               <button key={brand} onClick={() => handleBrandChange(brand)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>
-                Brand: {brand} ✕
+                Brand: {brandLabels.get(brand) ?? brand} ✕
               </button>
             ))}
             {Array.from(selectedOccasions).map(occId => {
@@ -937,10 +975,10 @@ export function CatalogClient({
                 <div className="mb-4 pb-3 border-b">
                   <h4 className="text-sm font-semibold mb-2">Brand</h4>
                   <div className="space-y-1">
-                    {brandFacets.map(({ name, count }) => (
-                      <label key={name} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
-                        <input type="checkbox" checked={selectedBrands.has(name)} onChange={() => handleBrandChange(name)} style={{ accentColor: '#800020' }} />
-                        {name}
+                    {brandFacets.map(({ key, label, count }) => (
+                      <label key={key} className="flex items-center gap-2 text-sm cursor-pointer hover:text-emerald-700">
+                        <input type="checkbox" checked={selectedBrands.has(key)} onChange={() => handleBrandChange(key)} style={{ accentColor: '#800020' }} />
+                        {label}
                         <span className="text-xs ml-auto" style={{ color: '#8F8A82' }}>({count})</span>
                       </label>
                     ))}
