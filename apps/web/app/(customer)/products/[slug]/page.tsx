@@ -251,9 +251,36 @@ export default async function ProductPage({ params }: { params: { slug: string }
     _avg: { rating: true },
     _count: true,
   });
-  const tier1Price = isPack
-    ? derivedTiers[0]?.sellPrice ?? 0
-    : Number(product.priceTiers?.[0]?.sellPrice ?? 0);
+  // Up to 5 approved reviews, quoted verbatim into the markup. Real rows only.
+  const schemaReviews = await prisma.review.findMany({
+    where: { productId: product.id, status: "approved" },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    select: {
+      rating: true,
+      title: true,
+      comment: true,
+      createdAt: true,
+      user: { select: { name: true } },
+    },
+  });
+
+  // The SAME slabs the price table renders, so the markup and the visible
+  // table can never disagree. Packs price off their members' derived tiers.
+  const schemaTiers = (
+    isPack
+      ? derivedTiers.map((t) => ({
+          minQty: t.minQty,
+          maxQty: t.maxQty,
+          sellPrice: Number(t.sellPrice),
+        }))
+      : (product.priceTiers ?? []).map((t) => ({
+          minQty: t.minQty,
+          maxQty: t.maxQty,
+          sellPrice: Number(t.sellPrice),
+        }))
+  ).filter((t) => t.sellPrice > 0);
+  const tier1Price = schemaTiers[0]?.sellPrice ?? 0;
   const schemaImages = (isPack ? memberImages : product.images.map((im) => im.url)).filter(Boolean);
   const productJsonLd = productSchema({
     name: product.name,
@@ -262,7 +289,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
     sku: product.sku,
     brand: product.brand,
     images: schemaImages,
+    tiers: schemaTiers,
     price: tier1Price,
+    moq,
+    category: categoryName,
     inStock: true, // status === "active" is enforced above
     aggregateRating:
       reviewAgg._count > 0 && reviewAgg._avg.rating
@@ -271,6 +301,13 @@ export default async function ProductPage({ params }: { params: { slug: string }
             reviewCount: reviewAgg._count,
           }
         : undefined,
+    reviews: schemaReviews.map((r) => ({
+      author: r.user?.name || "Verified buyer",
+      rating: r.rating,
+      body: r.comment,
+      title: r.title,
+      datePublished: r.createdAt.toISOString(),
+    })),
   });
   const breadcrumbJsonLd = breadcrumbSchema([
     { name: "Home", path: "/" },

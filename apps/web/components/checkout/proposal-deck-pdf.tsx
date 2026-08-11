@@ -23,7 +23,6 @@ import {
  *   3..N. Product slide — OPTION n, brand/price, keyFeatures bullets, image
  *   N+1. Packaging & Add-ons — the box (left) and add-ons (right), if any
  *   N+2. Pricing Summary — table of every product at unit price incl. GST
- *   N+3. Fulfilment      — quantity, branding, packaging, next steps
  *
  * All data arrives pre-resolved from the route (images already downloaded to
  * data URIs) so this component stays pure and never performs I/O.
@@ -119,6 +118,15 @@ const styles = StyleSheet.create({
     width: "58%",
     paddingHorizontal: 54,
     justifyContent: "center",
+  },
+  coverOption: {
+    fontFamily: FONT,
+    fontWeight: 700,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    color: INK_3,
+    marginBottom: 10,
   },
   coverTitle: {
     fontFamily: FONT,
@@ -407,19 +415,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
 
-  // ── Fulfilment slide ─────────────────────────────────────────────────────
-  gridRow: { flexDirection: "row", gap: 26, marginTop: 26 },
-  gridCell: { flex: 1 },
-  stepNum: { fontSize: 9, color: INK_3, marginBottom: 6 },
-  // A zero-height View draws no border in react-pdf, so the rule is a filled
-  // block instead.
-  stepRule: { height: 1.5, backgroundColor: MINT_INK, marginBottom: 10 },
-  stepTitle: {
-    fontFamily: FONT,
-    fontWeight: 700,
-    fontSize: 12,
-    marginBottom: 6,
-  },
+  // ── Body copy under a block heading (packaging / add-on descriptions) ────
   stepBody: { fontSize: 9.5, lineHeight: 1.55, color: INK_2 },
 
   // ── Footer (all slides except the cover) ─────────────────────────────────
@@ -521,9 +517,7 @@ export interface ProposalDeckPDFProps {
    * so validity/next-step wording is replaced with confirmation wording.
    */
   placed?: boolean;
-  totalUnits: number;
   packQuantity: number;
-  packagingName?: string | null;
   products: DeckProduct[];
   categories: DeckCategory[];
   /** Selected box for the Packaging & Add-ons slide, if any. */
@@ -534,6 +528,10 @@ export interface ProposalDeckPDFProps {
   clientLogo?: string | null;
   /** Itemised proforma table for the Pricing Summary slide, if available. */
   invoice?: DeckInvoice | null;
+  /** Option name ("Premium"), shown on the cover when a proposal has several. */
+  packLabel?: string | null;
+  /** One-line pitch shown under the option name on the cover. */
+  packTagline?: string | null;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -685,41 +683,35 @@ function ProductArt({ src, name }: { src?: string | null; name: string }) {
 
 // ── Document ───────────────────────────────────────────────────────────────
 
-export function ProposalDeckPDF({
+/**
+ * Every slide for ONE pack, without the surrounding <Document>. Kept separate
+ * so a multi-option proposal can lay several packs into a single PDF.
+ */
+function DeckPages({
   companyName,
   quoteRef,
   validUntil,
   placed,
-  totalUnits,
   packQuantity,
-  packagingName,
   products,
   categories,
   packaging,
   addons = [],
   clientLogo,
   invoice,
+  packLabel,
 }: ProposalDeckPDFProps) {
   registerFonts();
 
   const forWhom = companyName?.trim() || "Your Team";
   const categoryCount = categories.length;
 
-  // Distinct branding methods across the pack, for the fulfilment slide.
-  const brandingMethods = Array.from(
-    new Set(products.map((p) => p.brandingLabel).filter(Boolean) as string[]),
-  );
-
   const coverImages = products
     .map((p) => p.imageData)
     .filter((src): src is string => !!src);
 
   return (
-    <Document
-      title={`GIVOO Proposal — ${forWhom}`}
-      author="GIVOO by Arts Shala"
-      subject="Curated Merchandise & Gifting Proposal"
-    >
+    <>
       {/* ── 1. Cover ───────────────────────────────────────────────────── */}
       <Page size="A4" orientation="landscape" style={styles.page}>
         <Watermark />
@@ -742,6 +734,11 @@ export function ProposalDeckPDF({
                 </>
               ) : null}
             </View>
+            {/* Option name — only set when the proposal offers several packs,
+                so a single-pack deck reads exactly as it always did. */}
+            {packLabel ? (
+              <Text style={styles.coverOption}>Option — {packLabel}</Text>
+            ) : null}
             <Text style={styles.coverTitle}>
               Curated Merchandise &amp; Gifting Ideas for {forWhom}
             </Text>
@@ -1157,64 +1154,109 @@ export function ProposalDeckPDF({
         <Footer quoteRef={quoteRef} />
       </Page>
 
-      {/* ── N+3. Fulfilment & Customization ────────────────────────────── */}
+    </>
+  );
+}
+
+/** Single-pack proposal deck — one quote, one document. */
+export function ProposalDeckPDF(props: ProposalDeckPDFProps) {
+  const forWhom = props.companyName?.trim() || "Your Team";
+  return (
+    <Document
+      title={`GIVOO Proposal — ${forWhom}`}
+      author="GIVOO by Arts Shala"
+      subject="Curated Merchandise & Gifting Proposal"
+    >
+      <DeckPages {...props} />
+    </Document>
+  );
+}
+
+/** One row of the options-overview slide that opens a multi-pack deck. */
+export interface DeckOptionSummary {
+  label: string;
+  tagline?: string | null;
+  productCount: number;
+  packQuantity: number;
+  /** Per-pack price incl. GST. */
+  perPack: number;
+  /** Grand total incl. GST, shipping and the payment fee. */
+  grandTotal: number;
+}
+
+/**
+ * Multi-option proposal deck: an overview slide comparing every option, then
+ * the full slide set for each pack in turn — all in ONE PDF.
+ */
+export function MultiProposalDeckPDF({
+  companyName,
+  quoteRef,
+  validUntil,
+  options,
+  decks,
+}: {
+  companyName?: string | null;
+  quoteRef: string;
+  validUntil: Date;
+  options: DeckOptionSummary[];
+  decks: ProposalDeckPDFProps[];
+}) {
+  registerFonts();
+  const forWhom = companyName?.trim() || "Your Team";
+
+  return (
+    <Document
+      title={`GIVOO Proposal — ${forWhom}`}
+      author="GIVOO by Arts Shala"
+      subject="Curated Merchandise & Gifting Proposal"
+    >
+      {/* ── Options overview — the comparison the client opens on ─────── */}
       <Page size="A4" orientation="landscape" style={styles.page}>
         <Watermark />
         <SlideLogo />
         <View style={styles.slide}>
-          <Text style={styles.h1}>Fulfilment &amp; Customization</Text>
+          <Text style={styles.h1}>Your Gifting Options</Text>
+          <Text style={styles.lead}>
+            We&apos;ve put together {options.length}{" "}
+            {options.length === 1 ? "option" : "options"} for {forWhom}, each
+            priced separately so you can pick the one that fits your budget.
+            Full details for every option follow in this deck.
+          </Text>
 
-          <View style={styles.gridRow}>
-            <View style={styles.gridCell}>
-              <Text style={styles.stepNum}>01</Text>
-              <View style={styles.stepRule} />
-              <Text style={styles.stepTitle}>Total Quantity</Text>
-              <Text style={styles.stepBody}>
-                {totalUnits} units across {products.length}{" "}
-                {products.length === 1 ? "product" : "products"} ({packQuantity}{" "}
-                {packQuantity === 1 ? "pack" : "packs"}).
-              </Text>
-            </View>
-            <View style={styles.gridCell}>
-              <Text style={styles.stepNum}>02</Text>
-              <View style={styles.stepRule} />
-              <Text style={styles.stepTitle}>Customization / Branding</Text>
-              <Text style={styles.stepBody}>
-                All items carry your branding
-                {brandingMethods.length > 0
-                  ? ` via ${brandingMethods.join(" / ")}`
-                  : ""}
-                , depending upon the chosen product. Branding cost is already
-                included in the unit prices shown.
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.gridRow}>
-            <View style={styles.gridCell}>
-              <Text style={styles.stepNum}>03</Text>
-              <View style={styles.stepRule} />
-              <Text style={styles.stepTitle}>Packaging</Text>
-              <Text style={styles.stepBody}>
-                {packagingName
-                  ? `${packagingName} — included with every pack.`
-                  : "No packaging included in this proposal."}
-              </Text>
-            </View>
-            <View style={styles.gridCell}>
-              <Text style={styles.stepNum}>04</Text>
-              <View style={styles.stepRule} />
-              <Text style={styles.stepTitle}>Next Steps</Text>
-              <Text style={styles.stepBody}>
-                {placed
-                  ? `This order was placed on ${dateIN(validUntil)} and is in production. Your account manager will share mockups and dispatch updates as they happen.`
-                  : `Confirm your preferred options to proceed. Samples can be arranged for any product before the order is finalised. This proposal is valid until ${dateIN(validUntil)}.`}
-              </Text>
-            </View>
-          </View>
+          {Array.from({ length: Math.ceil(options.length / 3) }).map(
+            (_, rowIdx) => (
+              <View key={rowIdx} style={styles.cardRow}>
+                {options.slice(rowIdx * 3, rowIdx * 3 + 3).map((opt, i) => (
+                  <View key={opt.label + i} style={styles.card}>
+                    <Text style={styles.cardTitle}>
+                      {rowIdx * 3 + i + 1}. {opt.label}
+                    </Text>
+                    {opt.tagline ? (
+                      <Text style={styles.cardBody}>{opt.tagline}</Text>
+                    ) : null}
+                    <Text style={styles.cardBody}>
+                      {opt.productCount}{" "}
+                      {opt.productCount === 1 ? "product" : "products"} ·{" "}
+                      {opt.packQuantity} packs
+                    </Text>
+                    <Text style={styles.cardTitle}>
+                      {rupees(opt.perPack)} per pack
+                    </Text>
+                    <Text style={styles.cardBody}>
+                      {rupees(opt.grandTotal)} total incl. GST
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ),
+          )}
         </View>
         <Footer quoteRef={quoteRef} />
       </Page>
+
+      {decks.map((deck, i) => (
+        <DeckPages key={`deck-${i}`} {...deck} validUntil={validUntil} />
+      ))}
     </Document>
   );
 }

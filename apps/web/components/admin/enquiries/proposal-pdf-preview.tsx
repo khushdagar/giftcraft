@@ -13,17 +13,29 @@ import { Loader2, Download, FileText } from 'lucide-react';
  */
 export function ProposalPdfPreview({
   token,
+  proposalToken,
   title,
   open,
   onClose,
 }: {
   token: string;
+  /**
+   * Set for proposals that carry pack options — previews the SAME combined deck
+   * the lead was emailed (comparison slide + every pack). Falls back to the
+   * single-quote deck for proposals sent before multi-pack existed.
+   */
+  proposalToken?: string | null;
   title: string;
   open: boolean;
   onClose: () => void;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const deckUrl = proposalToken
+    ? `/api/proposals/${proposalToken}/deck`
+    : `/api/quotes/${token}/deck`;
+  const livePageUrl = proposalToken ? `/proposal/${proposalToken}` : `/quote/${token}`;
 
   useEffect(() => {
     if (!open) return;
@@ -36,7 +48,7 @@ export function ProposalPdfPreview({
 
     (async () => {
       try {
-        const res = await fetch(`/api/quotes/${token}/deck`, { cache: 'no-store' });
+        const res = await fetch(deckUrl, { cache: 'no-store' });
         if (!res.ok) throw new Error('Could not load the proposal PDF');
         const blob = await res.blob();
         if (cancelled) return;
@@ -51,7 +63,7 @@ export function ProposalPdfPreview({
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [open, token]);
+  }, [open, deckUrl]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -68,7 +80,7 @@ export function ProposalPdfPreview({
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <p className="text-sm text-gray-600">{error}</p>
               <a
-                href={`/api/quotes/${token}/deck`}
+                href={deckUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="text-sm text-emerald-700 hover:underline"
@@ -88,17 +100,17 @@ export function ProposalPdfPreview({
 
         <div className="flex items-center justify-between">
           <a
-            href={`/quote/${token}`}
+            href={livePageUrl}
             target="_blank"
             rel="noreferrer"
             className="text-sm text-gray-500 hover:text-gray-900 hover:underline"
           >
-            Open the live quote page
+            {proposalToken ? 'Open the live proposal page' : 'Open the live quote page'}
           </a>
           {url && (
             <a
               href={url}
-              download={`givoo-proposal-${token}.pdf`}
+              download={`givoo-proposal-${proposalToken || token}.pdf`}
               className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
             >
               <Download className="h-3.5 w-3.5" />

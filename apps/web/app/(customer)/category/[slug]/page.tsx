@@ -96,7 +96,14 @@ export default async function CategoryPage({ params }: { params: { slug: string 
           name: `${category.name} — Bulk Corporate Gifts`,
           description: introText,
           path: `/category/${category.slug}`,
-          items: category.products.map((p) => ({ name: p.name, path: `/products/${p.slug}` })),
+          // `price` is the same cheapest-slab figure the cards render.
+          items: category.products.map((p) => ({
+            name: p.name,
+            path: `/products/${p.slug}`,
+            image: p.imageUrl,
+            brand: p.brand,
+            price: p.price,
+          })),
         })}
       />
       <JsonLd

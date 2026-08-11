@@ -25,7 +25,18 @@ export default async function CatalogPage() {
     <>
       <JsonLd
         data={itemListSchema(
-          products.slice(0, 50).map((p: any) => ({ name: p.name, path: `/products/${p.slug}` }))
+          products.slice(0, 50).map((p: any) => ({
+            name: p.name,
+            path: `/products/${p.slug}`,
+            image: p.images?.[0]?.url ?? null,
+            brand: p.brand ?? null,
+            // The card's "from" figure — the cheapest slab.
+            price: Math.min(
+              ...(p.priceTiers ?? [])
+                .map((t: any) => Number(t.sellPrice))
+                .filter((n: number) => n > 0)
+            ),
+          }))
         )}
       />
       <JsonLd

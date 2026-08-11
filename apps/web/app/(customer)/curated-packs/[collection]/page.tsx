@@ -74,7 +74,15 @@ export default async function CollectionDetailPage({
   return (
     <>
       <JsonLd
-        data={itemListSchema(packs.map((p) => ({ name: p.name, path: `/products/${p.slug}` })))}
+        data={itemListSchema(
+          packs.map((p) => ({
+            name: p.name,
+            path: `/products/${p.slug}`,
+            image: p.image,
+            // Sum of the members' cheapest slabs — the pack's "from" price.
+            price: p.fromPrice,
+          }))
+        )}
       />
       <JsonLd
         data={breadcrumbSchema([
