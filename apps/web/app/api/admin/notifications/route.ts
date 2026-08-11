@@ -32,6 +32,7 @@ export async function GET() {
       vendorApplications,
       sampleRequests,
       deckDownloads,
+      sentProposals,
       confirmedOrders,
       readRows,
       ghlResult,
@@ -157,6 +158,23 @@ export async function GET() {
       prisma.proposalDownload.findMany({
         where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
         select: { id: true, name: true, company: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      // Proposals emailed to leads in the last 14 days — confirmation that the
+      // send actually went out, and a shortcut back to the links.
+      prisma.proposal.findMany({
+        where: { createdAt: { gte: eventWindow } },
+        select: {
+          id: true,
+          recipientEmail: true,
+          recipientName: true,
+          companyName: true,
+          shareToken: true,
+          createdAt: true,
+          quote: { select: { shareToken: true } },
+          _count: { select: { packs: true } },
+        },
         orderBy: { createdAt: 'desc' },
         take: 10,
       }),
@@ -290,6 +308,19 @@ export async function GET() {
         subtitle: `${d.name}${d.company ? ` — ${d.company}` : ''}`,
         href: '/admin/proposal-downloads',
         createdAt: d.createdAt.toISOString(),
+      })),
+      ...sentProposals.map((pr) => ({
+        id: `proposal-${pr.id}`,
+        type: 'proposal' as const,
+        title:
+          pr._count.packs > 1
+            ? `Proposal sent — ${pr._count.packs} pack options`
+            : 'Proposal sent',
+        subtitle: `to ${pr.recipientName || pr.recipientEmail}${
+          pr.companyName ? ` — ${pr.companyName}` : ''
+        }`,
+        href: pr.shareToken ? `/proposal/${pr.shareToken}` : `/quote/${pr.quote.shareToken}`,
+        createdAt: pr.createdAt.toISOString(),
       })),
     ]
       // Hide only cleared notifications; read-but-not-cleared ones stay visible.

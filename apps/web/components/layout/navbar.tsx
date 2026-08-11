@@ -348,7 +348,7 @@ export function Navbar() {
           {authLoading ? (
             // Same 36px footprint as both real states, so nothing shifts when it resolves.
             <div
-              className="flex h-9 w-9 items-center justify-center rounded-full"
+              className="order-3 flex h-9 w-9 items-center justify-center rounded-full lg:order-1"
               aria-busy="true"
               aria-label="Checking sign-in status"
             >
@@ -357,7 +357,7 @@ export function Navbar() {
           ) : session?.user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-elevated" aria-label={`Account menu for ${session.user?.name}`}>
+                <button className="order-3 flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-elevated lg:order-1" aria-label={`Account menu for ${session.user?.name}`}>
                   <Avatar className="h-9 w-9">
                     {session.user?.image && <AvatarImage src={session.user.image} alt={session.user?.name ?? ""} />}
                     <AvatarFallback>{userInitial}</AvatarFallback>
@@ -393,14 +393,14 @@ export function Navbar() {
             // that skipped the page and lost the "return here afterwards" target.
             <Link
               href={`/login?from=${encodeURIComponent(pathname || "/")}`}
-              className="flex border border-[#800020] h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink"
+              className="order-3 flex border border-[#800020] h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink lg:order-1"
               aria-label="Sign in"
             >
               <UserIcon className="h-5 w-5" />
             </Link>
           )}
 
-          <Link href="/builder" className="relative border border-[#800020] flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink" aria-label="Gift Pack">
+          <Link href="/builder" className="order-2 relative border border-[#800020] flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink" aria-label="Gift Pack">
             <ShoppingBag className="h-5 w-5" />
             {productCount > 0 && (
               <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-em text-white text-[10px] font-bold">
@@ -413,7 +413,7 @@ export function Navbar() {
               so the box drops down under the bar. */}
           <button
             onClick={() => setMobileSearchOpen((o) => !o)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#800020] text-ink-2 transition hover:bg-elevated hover:text-ink lg:hidden"
+            className="order-1 flex h-9 w-9 items-center justify-center rounded-full border border-[#800020] text-ink-2 transition hover:bg-elevated hover:text-ink lg:hidden"
             aria-label="Search products"
             aria-expanded={mobileSearchOpen}
           >
@@ -422,7 +422,7 @@ export function Navbar() {
 
           <button
             onClick={() => setMobileOpen(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-ink nav:hidden"
+            className="order-4 flex h-9 w-9 items-center justify-center rounded-full text-ink nav:hidden"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" />

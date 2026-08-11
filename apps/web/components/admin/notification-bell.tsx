@@ -17,6 +17,7 @@ import {
   IndianRupee,
   MessageSquare,
   Store,
+  Send,
 } from 'lucide-react';
 
 interface NotificationItem {
@@ -32,7 +33,8 @@ interface NotificationItem {
     | 'enquiry'
     | 'vendor'
     | 'sample'
-    | 'download';
+    | 'download'
+    | 'proposal';
   title: string;
   subtitle: string;
   href: string;
@@ -52,6 +54,7 @@ const ICON = {
   vendor: Store,
   sample: Box,
   download: Download,
+  proposal: Send,
 } as const;
 
 const ICON_STYLE = {
@@ -66,6 +69,7 @@ const ICON_STYLE = {
   vendor: 'bg-violet-50 text-violet-700',
   sample: 'bg-violet-50 text-violet-700',
   download: 'bg-gray-100 text-gray-600',
+  proposal: 'bg-indigo-50 text-indigo-700',
 } as const;
 
 function timeAgo(iso: string): string {

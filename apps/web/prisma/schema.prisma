@@ -717,7 +717,8 @@ model Quote {
   payload   Json // snapshot of builder state + pricing
   expiresAt DateTime
 
-  proposal Proposal?
+  proposal     Proposal?
+  proposalPack ProposalPack?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -729,18 +730,44 @@ model Quote {
 // An admin-created quote sent by email to a lead (from enquiries or GoHighLevel).
 // The underlying Quote holds the payload/pricing; this records who it was sent to.
 model Proposal {
-  id             String @id @default(cuid())
+  id String @id @default(cuid())
+  // The primary pack's quote — kept so single-pack proposals (and every link
+  // already sent out) keep working. Additional pack options live in `packs`.
   quoteId        String @unique
   quote          Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  // Public token for the compare-packs page at /proposal/[token]. Nullable so
+  // proposals created before multi-pack existed stay valid.
+  shareToken     String? @unique
   recipientEmail String
   recipientName  String?
   companyName    String?
   message        String? @db.Text
   createdById    String?
 
+  packs ProposalPack[]
+
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// One pack option inside a proposal. Each option is a full Quote of its own, so
+// it carries its own products, pricing breakdown and checkout link — the client
+// compares the options and proceeds with one.
+model ProposalPack {
+  id         String   @id @default(cuid())
+  proposalId String
+  proposal   Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  quoteId    String   @unique
+  quote      Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  label      String
+  // Admin-written pitch line shown under the pack name on the compare page.
+  tagline    String?
+  sortOrder  Int      @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([proposalId])
 }
 
 // Every proposal-deck download from checkout. Logged-in users are captured

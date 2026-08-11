@@ -6,6 +6,7 @@ import { ChevronLeft, Clock } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { formatPostDate, publishedPostWhere, autoExcerpt, BLOG_AUTHOR } from '@/lib/blog';
 import { BlogComments } from '@/components/blog/comments';
+import { articleSchema } from '@/lib/schema';
 
 export const revalidate = 300;
 
@@ -83,19 +84,18 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
   });
 
   const image = post.ogImageUrl || post.coverImageUrl;
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
-    headline: post.title,
-    description: post.metaDescription || post.excerpt || undefined,
-    image: image ? [image] : undefined,
-    datePublished: post.publishedAt?.toISOString(),
+  // Publisher/logo, absolute image URLs and the @id wiring all come from the
+  // shared builder so the article ties into the site's Organization node.
+  const jsonLd = articleSchema({
+    title: post.title,
+    slug: post.slug,
+    description: post.metaDescription || post.excerpt,
+    image,
+    datePublished: post.publishedAt?.toISOString() ?? null,
     dateModified: post.updatedAt.toISOString(),
-    author: { '@type': 'Person', name: post.authorName || BLOG_AUTHOR },
-    publisher: { '@type': 'Organization', name: 'GIVOO', url: SITE },
-    mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE}/blog/${post.slug}` },
-    keywords: post.tags.join(', ') || undefined,
-  };
+    authorName: post.authorName || BLOG_AUTHOR,
+    keywords: post.tags,
+  });
 
   return (
     <div className="min-h-screen bg-canvas">

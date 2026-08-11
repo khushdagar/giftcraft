@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { stripHtml } from '@/lib/strip-html';
 import {
   ProposalDeckPDF,
+  MultiProposalDeckPDF,
+  type ProposalDeckPDFProps,
+  type DeckOptionSummary,
   type DeckProduct,
   type DeckCategory,
   type DeckInvoice,
@@ -251,13 +254,15 @@ export interface DeckMeta {
 }
 
 /**
- * Render the proposal deck PDF for a builder-shaped payload.
+ * Resolve one builder-shaped payload into the deck component's props (live
+ * product copy + images, snapshot pricing). Shared by the single-pack deck and
+ * the combined multi-option deck.
  * Throws when the payload carries no products.
  */
-export async function renderProposalDeck(
+async function buildDeckProps(
   payload: any,
   meta: DeckMeta
-): Promise<Buffer> {
+): Promise<ProposalDeckPDFProps> {
   const payloadProducts: any[] = Array.isArray(payload?.products)
     ? payload.products
     : [];
@@ -380,11 +385,6 @@ export async function renderProposalDeck(
     }
   }
 
-  const totalUnits = payloadProducts.reduce(
-    (sum, p) => sum + (Number(p.quantity) || 1) * packQuantity,
-    0
-  );
-
   const companyName =
     payload?.address?.company?.trim() || meta.companyName || null;
 
@@ -422,21 +422,80 @@ export async function renderProposalDeck(
     });
   }
 
+  return {
+    companyName,
+    quoteRef: meta.reference,
+    validUntil: meta.validUntil,
+    placed: meta.placed,
+    packQuantity,
+    products,
+    categories: Array.from(categoryMap.values()),
+    packaging,
+    addons,
+    clientLogo,
+    invoice: buildDeckInvoice(payload),
+    packLabel: payload?.packLabel || null,
+    packTagline: payload?.packTagline || null,
+  };
+}
+
+/**
+ * Render the proposal deck PDF for a builder-shaped payload.
+ * Throws when the payload carries no products.
+ */
+export async function renderProposalDeck(
+  payload: any,
+  meta: DeckMeta
+): Promise<Buffer> {
+  const props = await buildDeckProps(payload, meta);
+  // A single-pack deck never labels its cover with an option name.
+  return renderToBuffer(<ProposalDeckPDF {...props} packLabel={null} />);
+}
+
+/**
+ * Render ONE deck covering every option in a multi-pack proposal: a comparison
+ * slide up front, then the full slide set for each pack.
+ * Packs whose payload has no products are skipped; throws if none survive.
+ */
+export async function renderMultiProposalDeck(
+  packs: { label: string; tagline?: string | null; payload: any }[],
+  meta: DeckMeta
+): Promise<Buffer> {
+  const decks: ProposalDeckPDFProps[] = [];
+  const options: DeckOptionSummary[] = [];
+
+  for (const pack of packs) {
+    let props: ProposalDeckPDFProps;
+    try {
+      props = await buildDeckProps(pack.payload, meta);
+    } catch {
+      continue; // an empty option shouldn't sink the whole deck
+    }
+    props.packLabel = pack.label;
+    props.packTagline = pack.tagline ?? null;
+    decks.push(props);
+
+    const grandTotal = Number(pack.payload?.pricing?.grandTotal) || 0;
+    const packQuantity = Number(pack.payload?.packQuantity) || 1;
+    options.push({
+      label: pack.label,
+      tagline: pack.tagline ?? null,
+      productCount: props.products.length,
+      packQuantity,
+      perPack: packQuantity > 0 ? grandTotal / packQuantity : grandTotal,
+      grandTotal,
+    });
+  }
+
+  if (decks.length === 0) throw new Error('NO_PRODUCTS');
+
   return renderToBuffer(
-    <ProposalDeckPDF
-      companyName={companyName}
+    <MultiProposalDeckPDF
+      companyName={decks[0]!.companyName}
       quoteRef={meta.reference}
       validUntil={meta.validUntil}
-      placed={meta.placed}
-      totalUnits={totalUnits}
-      packQuantity={packQuantity}
-      packagingName={payload?.packaging?.name || null}
-      products={products}
-      categories={Array.from(categoryMap.values())}
-      packaging={packaging}
-      addons={addons}
-      clientLogo={clientLogo}
-      invoice={buildDeckInvoice(payload)}
+      options={options}
+      decks={decks}
     />
   );
 }

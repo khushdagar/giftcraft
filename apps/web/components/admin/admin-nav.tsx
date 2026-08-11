@@ -15,6 +15,7 @@ const NAV = [
     { href: "/admin/goc", icon: Sparkles, label: "GOC Campaigns" },
     { href: "/admin/samples", icon: Box, label: "Samples" },
     { href: "/admin/enquiries", icon: Mail, label: "Enquiries" },
+    { href: "/admin/proposals", icon: FileText, label: "Proposals" },
     { href: "/admin/clients", icon: Users, label: "Clients" },
     { href: "/admin/vendors", icon: Truck, label: "Vendors" },
   ]},

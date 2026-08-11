@@ -749,40 +749,90 @@ export async function sendProposalEmail(options: {
   recipientName?: string | null;
   companyName?: string | null;
   quoteToken: string;
+  /** Token of the compare page listing every pack option (multi-pack only). */
+  proposalToken?: string | null;
   packQuantity: number;
   productNames: string[];
   grandTotal: number;
+  /** Every option in the proposal. Omitted for legacy single-pack sends. */
+  packs?: {
+    label: string;
+    tagline?: string | null;
+    quoteToken: string;
+    packQuantity: number;
+    productNames: string[];
+    grandTotal: number;
+  }[];
   validUntil: Date;
   message?: string | null;
   attachments?: EmailAttachment[];
 }) {
   const greeting = options.recipientName ? `Hi ${esc(options.recipientName)},` : 'Hi there,';
-  const quoteUrl = `${APP_URL}/quote/${options.quoteToken}`;
 
-  const intro = options.companyName
-    ? `We've put together a curated gift pack proposal for <strong>${esc(options.companyName)}</strong>. Here's a quick summary — the full details, imagery and pricing breakdown are one click away.`
-    : `We've put together a curated gift pack proposal for you. Here's a quick summary — the full details, imagery and pricing breakdown are one click away.`;
+  // Normalise to a list of options so single- and multi-pack sends share one
+  // code path.
+  const packs =
+    options.packs && options.packs.length > 0
+      ? options.packs
+      : [
+          {
+            label: 'Your pack',
+            tagline: null,
+            quoteToken: options.quoteToken,
+            packQuantity: options.packQuantity,
+            productNames: options.productNames,
+            grandTotal: options.grandTotal,
+          },
+        ];
+  const isMulti = packs.length > 1;
+
+  const ctaUrl =
+    isMulti && options.proposalToken
+      ? `${APP_URL}/proposal/${options.proposalToken}`
+      : `${APP_URL}/quote/${packs[0]?.quoteToken ?? options.quoteToken}`;
+
+  const intro = isMulti
+    ? options.companyName
+      ? `We've put together <strong>${packs.length} gift pack options</strong> for <strong>${esc(options.companyName)}</strong> — each priced separately so you can compare and pick the one that fits your budget.`
+      : `We've put together <strong>${packs.length} gift pack options</strong> for you — each priced separately so you can compare and pick the one that fits your budget.`
+    : options.companyName
+      ? `We've put together a curated gift pack proposal for <strong>${esc(options.companyName)}</strong>. Here's a quick summary — the full details, imagery and pricing breakdown are one click away.`
+      : `We've put together a curated gift pack proposal for you. Here's a quick summary — the full details, imagery and pricing breakdown are one click away.`;
 
   const personalNote = options.message
     ? note(esc(options.message).replace(/\n/g, '<br/>'))
     : '';
 
-  const productList = options.productNames
-    .slice(0, 8)
-    .map((n) => `<li style="margin:0 0 6px;font-size:14px;color:${COLORS.body};">${esc(n)}</li>`)
-    .join('');
-  const moreCount = options.productNames.length - 8;
+  /** One option: name, contents, per-pack price, total and its own link. */
+  const packBlock = (pack: (typeof packs)[number], index: number) => {
+    const perPack = pack.packQuantity > 0 ? pack.grandTotal / pack.packQuantity : pack.grandTotal;
+    const items = pack.productNames
+      .slice(0, 8)
+      .map((n) => `<li style="margin:0 0 5px;font-size:14px;color:${COLORS.body};">${esc(n)}</li>`)
+      .join('');
+    const moreCount = pack.productNames.length - 8;
 
-  const perPack =
-    options.packQuantity > 0 ? options.grandTotal / options.packQuantity : options.grandTotal;
-
-  const summary = card(
-    row('Gift packs', String(options.packQuantity)) +
-      row('Items per pack', String(options.productNames.length)) +
-      row('Price per pack (incl. GST)', inr(perPack)) +
-      `<tr><td colspan="2" style="padding:0;"><div style="border-top:2px solid ${COLORS.border};margin:8px 0 2px;"></div></td></tr>` +
-      row('Estimated Total (incl. GST)', `<span style="font-size:16px;">${inr(options.grandTotal)}</span>`, true)
-  );
+    return `<div style="border:1px solid ${COLORS.border};border-radius:12px;padding:18px 20px;margin:0 0 16px;background-color:${COLORS.surface};">
+      ${isMulti ? `<p style="margin:0 0 4px;">${badge(`Option ${index + 1}`)}</p>` : ''}
+      <p style="margin:${isMulti ? '8px' : '0'} 0 2px;font-size:17px;font-weight:700;color:${COLORS.ink};">${esc(pack.label)}</p>
+      ${pack.tagline ? `<p style="margin:0 0 10px;font-size:13px;color:${COLORS.muted};">${esc(pack.tagline)}</p>` : '<div style="height:8px;"></div>'}
+      <ul style="margin:0 0 14px;padding-left:20px;">${items}${
+        moreCount > 0
+          ? `<li style="margin:0 0 5px;font-size:14px;color:${COLORS.muted};">+ ${moreCount} more</li>`
+          : ''
+      }</ul>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${row('Gift packs', String(pack.packQuantity))}
+        ${row('Items per pack', String(pack.productNames.length))}
+        ${row('Price per pack (incl. GST)', inr(perPack))}
+        <tr><td colspan="2" style="padding:0;"><div style="border-top:2px solid ${COLORS.border};margin:8px 0 2px;"></div></td></tr>
+        ${row('Total (incl. GST)', `<span style="font-size:16px;">${inr(pack.grandTotal)}</span>`, true)}
+      </table>
+      <p style="margin:14px 0 0;font-size:14px;">
+        <a href="${APP_URL}/quote/${pack.quoteToken}" target="_blank" style="color:${COLORS.brand};font-weight:700;text-decoration:none;">View ${esc(pack.label)} &rarr;</a>
+      </p>
+    </div>`;
+  };
 
   const validUntilStr = options.validUntil.toLocaleDateString('en-IN', {
     day: 'numeric',
@@ -794,15 +844,12 @@ export async function sendProposalEmail(options: {
     `<p style="margin:0 0 16px;font-size:15px;color:${COLORS.muted};">${greeting}</p>` +
     p(intro) +
     personalNote +
-    `<p style="margin:0 0 8px;font-size:14px;font-weight:700;color:${COLORS.ink};">What's inside</p>` +
-    `<ul style="margin:0 0 20px;padding-left:20px;">${productList}${
-      moreCount > 0
-        ? `<li style="margin:0 0 6px;font-size:14px;color:${COLORS.muted};">+ ${moreCount} more</li>`
-        : ''
-    }</ul>` +
-    summary +
+    `<p style="margin:0 0 10px;font-size:14px;font-weight:700;color:${COLORS.ink};">${
+      isMulti ? `Your ${packs.length} options` : "What's inside"
+    }</p>` +
+    packs.map(packBlock).join('') +
     `<p style="margin:0 0 20px;font-size:12px;color:${COLORS.muted};">Shipping is not included — it's calculated at checkout based on your delivery address.</p>` +
-    button('View Your Proposal', quoteUrl) +
+    button(isMulti ? 'Compare All Options' : 'View Your Proposal', ctaUrl) +
     p(
       `This proposal is valid until <strong>${validUntilStr}</strong>. ${
         options.attachments?.length
@@ -810,14 +857,22 @@ export async function sendProposalEmail(options: {
           : ''
       }`
     ) +
-    p(`Questions or want to tweak the pack? Just reply to this email — we're happy to adjust.`);
+    p(
+      isMulti
+        ? `Want a pack that sits between these options? Just reply to this email — we're happy to adjust.`
+        : `Questions or want to tweak the pack? Just reply to this email — we're happy to adjust.`
+    );
 
   return sendEmail({
     to: options.to,
-    subject: `Your GIVOO gift pack proposal${options.companyName ? ` for ${options.companyName}` : ''}`,
+    subject: isMulti
+      ? `${packs.length} GIVOO gift pack options${options.companyName ? ` for ${options.companyName}` : ''}`
+      : `Your GIVOO gift pack proposal${options.companyName ? ` for ${options.companyName}` : ''}`,
     html: renderEmail({
-      heading: 'Your Gift Pack Proposal',
-      preheader: `A curated gifting proposal — ${options.packQuantity} packs, valid until ${validUntilStr}`,
+      heading: isMulti ? 'Your Gift Pack Options' : 'Your Gift Pack Proposal',
+      preheader: isMulti
+        ? `${packs.length} curated pack options, each priced separately — valid until ${validUntilStr}`
+        : `A curated gifting proposal — ${options.packQuantity} packs, valid until ${validUntilStr}`,
       contentHtml: content,
     }),
     category: 'quotes',

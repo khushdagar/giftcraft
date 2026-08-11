@@ -3,7 +3,8 @@
 import { Fragment, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2, Mail, Phone, FileText, RefreshCw, Send, Download, ChevronDown, ChevronUp, Eye } from 'lucide-react';
-import { ProposalDialog } from './proposal-dialog';
+import { useRouter } from 'next/navigation';
+import { ProposalBuilder } from '@/components/admin/proposals/proposal-builder';
 import { ProposalPdfPreview } from './proposal-pdf-preview';
 
 interface WebsiteEnquiry {
@@ -69,7 +70,7 @@ interface DeckDownload {
   createdAt: string;
 }
 
-type Tab = 'website' | 'ghl' | 'downloads';
+type Tab = 'website' | 'ghl' | 'downloads' | 'create';
 
 const GHL_KEY = ['admin', 'ghl-leads'] as const;
 const PROPOSALS_KEY = ['admin', 'proposals'] as const;
@@ -90,6 +91,10 @@ interface ProposalInfo {
   addonNames: string[];
   packQuantity: number;
   grandTotal: number;
+  /** Token of the multi-option compare page + combined deck (null on legacy). */
+  proposalToken: string | null;
+  /** Every option in the latest proposal, in the order the lead sees them. */
+  packs: { label: string; shareToken: string; grandTotal: number; packQuantity: number }[];
   /** How many proposals this lead has been sent in total. */
   sentCount: number;
 }
@@ -155,13 +160,13 @@ export function EnquiriesUnifiedTable({
     });
 
   // Proposal deck being previewed, if any.
-  const [preview, setPreview] = useState<{ token: string; title: string } | null>(null);
+  const [preview, setPreview] = useState<{
+    token: string;
+    proposalToken?: string | null;
+    title: string;
+  } | null>(null);
 
-  const [dialog, setDialog] = useState<{
-    open: boolean;
-    leadId: string | null; // set when the dialog was opened from a GHL row
-    prefill: { email: string; name: string; company: string };
-  }>({ open: false, leadId: null, prefill: { email: '', name: '', company: '' } });
+  const router = useRouter();
 
   // GHL leads — pulled live from the GoHighLevel API, nothing stored locally.
   // Cached for the whole browser session: switching tabs or navigating away and
@@ -225,6 +230,8 @@ export function EnquiriesUnifiedTable({
           addonNames: p.addonNames || [],
           packQuantity: p.packQuantity || 0,
           grandTotal: p.grandTotal || 0,
+          proposalToken: p.proposalToken ?? null,
+          packs: p.packs || [],
           sentCount: 1,
         };
       });
@@ -292,16 +299,16 @@ export function EnquiriesUnifiedTable({
     }
   };
 
+  // Proposals are composed on their own page — a lead can be sent several pack
+  // options at once, which needs more room than a dialog. The GHL lead id rides
+  // along so the builder can flip its status to "quoted" after sending.
   const openProposal = (row: Row) => {
-    setDialog({
-      open: true,
-      leadId: row.leadId,
-      prefill: {
-        email: row.email || '',
-        name: row.contactName || '',
-        company: row.companyName || '',
-      },
-    });
+    const params = new URLSearchParams();
+    if (row.email) params.set('email', row.email);
+    if (row.contactName) params.set('name', row.contactName);
+    if (row.companyName) params.set('company', row.companyName);
+    if (row.leadId) params.set('leadId', row.leadId);
+    router.push(`/admin/proposals/new?${params.toString()}`);
   };
 
   // ── Merge both sources into one list, newest first ──────────────────────
@@ -346,10 +353,12 @@ export function EnquiriesUnifiedTable({
 
   const rows = allRows.filter((r) => r.source === tab);
 
-  const TABS: { id: Tab; label: string; count: number }[] = [
+  const TABS: { id: Tab; label: string; count: number | null }[] = [
     { id: 'website', label: 'Enquiries', count: websiteRows.length },
     { id: 'ghl', label: 'GHL Entries', count: ghlLeads.length },
     { id: 'downloads', label: 'Deck Downloads', count: downloads.length },
+    // Compose a proposal for anyone — no enquiry row needed.
+    { id: 'create', label: 'Create Proposal', count: null },
   ];
 
   return (
@@ -366,9 +375,11 @@ export function EnquiriesUnifiedTable({
             }`}
           >
             {t.label}
-            <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-              {t.count}
-            </span>
+            {t.count !== null && (
+              <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                {t.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -394,7 +405,11 @@ export function EnquiriesUnifiedTable({
         </div>
       )}
 
-      {tab === 'downloads' ? (
+      {tab === 'create' ? (
+        // Same composer as /admin/proposals/new, with an empty recipient — the
+        // admin types any email address and builds the pack options here.
+        <ProposalBuilder prefill={{ email: '', name: '', company: '' }} />
+      ) : tab === 'downloads' ? (
         downloads.length === 0 ? (
           <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
             <Download className="mx-auto mb-3 h-8 w-8 text-gray-300" />
@@ -582,38 +597,68 @@ export function EnquiriesUnifiedTable({
                     <td className="px-4 py-3">
                       {proposal ? (
                         <div className="max-w-[240px] space-y-1">
-                          <p className="text-sm text-gray-900" title={proposal.productNames.join(', ')}>
-                            {proposal.productNames.length > 0
-                              ? proposal.productNames.slice(0, 2).join(', ')
-                              : 'Custom pack'}
-                            {proposal.productNames.length > 2 && (
-                              <span className="text-gray-500">
-                                {' '}
-                                +{proposal.productNames.length - 2} more
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {proposal.packQuantity ? `${proposal.packQuantity} packs · ` : ''}
-                            {fmtMoney(proposal.grandTotal)}
-                          </p>
-                          {(proposal.packagingName || proposal.addonNames.length > 0) && (
-                            <p className="text-xs text-gray-400">
-                              {[proposal.packagingName, ...proposal.addonNames]
-                                .filter(Boolean)
-                                .join(' · ')}
-                            </p>
+                          {/* Multi-option proposals list every pack the lead
+                              received; single-option ones keep the old summary. */}
+                          {proposal.packs.length > 1 ? (
+                            <>
+                              <p className="text-sm text-gray-900">
+                                {proposal.packs.length} pack options
+                              </p>
+                              <ul className="space-y-0.5">
+                                {proposal.packs.map((pk) => (
+                                  <li
+                                    key={pk.shareToken}
+                                    className="flex justify-between gap-2 text-xs text-gray-500"
+                                  >
+                                    <span className="truncate">{pk.label}</span>
+                                    <span className="shrink-0 tabular-nums">
+                                      {fmtMoney(pk.grandTotal)}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </>
+                          ) : (
+                            <>
+                              <p
+                                className="text-sm text-gray-900"
+                                title={proposal.productNames.join(', ')}
+                              >
+                                {proposal.productNames.length > 0
+                                  ? proposal.productNames.slice(0, 2).join(', ')
+                                  : 'Custom pack'}
+                                {proposal.productNames.length > 2 && (
+                                  <span className="text-gray-500">
+                                    {' '}
+                                    +{proposal.productNames.length - 2} more
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {proposal.packQuantity ? `${proposal.packQuantity} packs · ` : ''}
+                                {fmtMoney(proposal.grandTotal)}
+                              </p>
+                              {(proposal.packagingName || proposal.addonNames.length > 0) && (
+                                <p className="text-xs text-gray-400">
+                                  {[proposal.packagingName, ...proposal.addonNames]
+                                    .filter(Boolean)
+                                    .join(' · ')}
+                                </p>
+                              )}
+                            </>
                           )}
                           <button
                             onClick={() =>
                               setPreview({
                                 token: proposal.shareToken,
+                                proposalToken: proposal.proposalToken,
                                 title: `Proposal for ${row.companyName || row.contactName || row.email}`,
                               })
                             }
                             className="mt-0.5 inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
                           >
-                            <Eye className="h-3.5 w-3.5" /> View PDF
+                            <Eye className="h-3.5 w-3.5" />
+                            {proposal.packs.length > 1 ? 'View PDF (all packs)' : 'View PDF'}
                           </button>
                           {proposal.sentCount > 1 && (
                             <p className="text-xs text-gray-400">
@@ -692,21 +737,10 @@ export function EnquiriesUnifiedTable({
         </div>
       )}
 
-      <ProposalDialog
-        open={dialog.open}
-        onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
-        prefill={dialog.prefill}
-        onSent={() => {
-          // Sending a proposal moves a GHL lead to "Proposal sent" on its own.
-          if (dialog.leadId) updateGhlStatus(dialog.leadId, 'quoted');
-          setDialog((d) => ({ ...d, open: false }));
-          queryClient.invalidateQueries({ queryKey: PROPOSALS_KEY }); // refresh proposal status column
-        }}
-      />
-
       <ProposalPdfPreview
         open={!!preview}
         token={preview?.token ?? ''}
+        proposalToken={preview?.proposalToken ?? null}
         title={preview?.title ?? 'Proposal'}
         onClose={() => setPreview(null)}
       />
