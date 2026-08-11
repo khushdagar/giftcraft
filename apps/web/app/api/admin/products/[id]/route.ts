@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
@@ -381,6 +382,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         data: auditLogsWithReason,
       });
     }
+
+    // The public product page is ISR-cached (revalidate = 3600), so admin edits —
+    // SEO meta included — would otherwise take up to an hour to appear. Bust both
+    // the old and new slug in case the slug itself changed.
+    revalidatePath(`/products/${updated.slug}`);
+    if (existing.slug !== updated.slug) revalidatePath(`/products/${existing.slug}`);
+    revalidatePath('/catalog');
 
     // Handle image uploads if provided
     if (imageFiles.length > 0) {
