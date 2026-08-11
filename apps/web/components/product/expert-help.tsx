@@ -41,7 +41,7 @@ export function ExpertHelp({ productName, productId }: ExpertHelpProps) {
             className="flex items-center gap-2 rounded-full border border-bdr bg-white px-4 py-2 text-xs font-medium text-ink transition hover:bg-elevated"
           >
             <Mail className="h-4 w-4" style={{ color: '#800020' }} />
-            Enquiry Form
+            Enquiry
           </button>
         </div>
       </div>

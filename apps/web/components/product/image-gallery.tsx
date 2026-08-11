@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
 import { useProductGallery } from '@/store/product-gallery';
 import { ThumbnailStrip } from './thumbnail-strip';
@@ -32,6 +32,9 @@ export function ImageGallery({
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [dragStart, setDragStart] = useState(0);
+  // +1 = moving to a later image (slides in from the right), -1 = earlier.
+  const [direction, setDirection] = useState(0);
+  const reduceMotion = useReducedMotion();
 
   // A selected colour variant can override the displayed main image.
   const { variantImageUrl, setVariantImageUrl } = useProductGallery();
@@ -70,15 +73,28 @@ export function ImageGallery({
   // Variant image takes precedence over the manually-selected thumbnail.
   const activeImage = variantImageUrl ? { ...baseImage, url: variantImageUrl } : baseImage;
 
+  // A variant image is shown on its own, so swiping through the product's
+  // image list is only meaningful when there are 2+ of them.
+  const canSwipe = sortedImages.length > 1 && !variantImageUrl;
+
   // Framer calls this with (event, info) — taking only `info` here read the
   // event instead, so `offset.x` was undefined and swiping never changed image.
   const handleDragEnd = (_: unknown, info: { offset: { x: number } }) => {
     const offset = dragStart - info.offset.x;
     if (Math.abs(offset) > 50) {
-      const direction = offset > 0 ? 1 : -1;
-      const nextIndex = Math.max(0, Math.min(sortedImages.length - 1, activeIndex + direction));
-      setActiveIndex(nextIndex);
+      const dir = offset > 0 ? 1 : -1;
+      const nextIndex = Math.max(0, Math.min(sortedImages.length - 1, activeIndex + dir));
+      if (nextIndex !== activeIndex) {
+        setDirection(dir);
+        setActiveIndex(nextIndex);
+      }
     }
+  };
+
+  const goToIndex = (i: number) => {
+    setDirection(i > activeIndex ? 1 : -1);
+    setActiveIndex(i);
+    setVariantImageUrl(null);
   };
 
   // Touch/no-hover devices can't hover-zoom, so tapping the image opens a
@@ -111,7 +127,7 @@ export function ImageGallery({
           {sortedImages.map((img, i) => (
             <button
               key={img.id}
-              onClick={() => { setActiveIndex(i); setVariantImageUrl(null); }}
+              onClick={() => goToIndex(i)}
               ref={(el) => { thumbRefs.current[i] = el; }}
               className={`relative w-16 h-16 flex-shrink-0 snap-start overflow-hidden rounded-md bg-elevated transition ${
                 i === activeIndex && !variantImageUrl ? '' : 'opacity-60 hover:opacity-100'
@@ -203,22 +219,42 @@ export function ImageGallery({
         ) : (
           // Touch / no-pointer: swipe to change images, tap to open the viewer.
           <motion.div
-            drag="x"
-            dragElastic={0.2}
+            // Only swipeable when there's actually another image to swipe to.
+            // Constraints pin it in place so the block never slides off and
+            // leaves an empty gap — it just rubber-bands and snaps back.
+            drag={canSwipe ? 'x' : false}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.15}
+            dragMomentum={false}
+            dragTransition={{ bounceStiffness: 400, bounceDamping: 40 }}
             onDragStart={() => setDragStart(0)}
             onDragEnd={handleDragEnd}
             onClick={activeImage?.url ? () => setLightboxOpen(true) : undefined}
             className="relative flex aspect-square items-center justify-center rounded-md bg-elevated overflow-hidden cursor-zoom-in"
           >
             {activeImage?.url ? (
-              <Image
-                src={activeImage.url}
-                alt={productName}
-                fill
-                className="object-cover"
-                priority
-                sizes="(max-width: 768px) 100vw, 50vw"
-              />
+              // Each image slides in from the side the swipe came from, so the
+              // change reads as movement rather than an instant swap.
+              <AnimatePresence initial={false} custom={direction}>
+                <motion.div
+                  key={variantImageUrl ?? activeIndex}
+                  custom={direction}
+                  initial={reduceMotion ? { opacity: 0 } : { x: direction >= 0 ? '100%' : '-100%', opacity: 0.4 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={reduceMotion ? { opacity: 0 } : { x: direction >= 0 ? '-100%' : '100%', opacity: 0.4 }}
+                  transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 34, mass: 0.8 }}
+                  className="absolute inset-0"
+                >
+                  <Image
+                    src={activeImage.url}
+                    alt={productName}
+                    fill
+                    className="object-cover"
+                    priority
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                  />
+                </motion.div>
+              </AnimatePresence>
             ) : (
               <div className="flex items-center justify-center w-full h-full">
                 <span className="text-[140px] opacity-70">📦</span>
