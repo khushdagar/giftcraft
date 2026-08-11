@@ -33,6 +33,8 @@ export interface GhlLead {
   message: string | null;
   productName: string | null;
   quantity: number | null;
+  /** Raw answer ("25 - 50") — ranges can't be represented by `quantity` alone. */
+  quantityLabel: string | null;
   detail: GhlDetailField[];
 }
 
@@ -143,10 +145,33 @@ const asText = (value: unknown): string | null => {
 const pickField = (fields: GhlDetailField[], needles: string[]) =>
   fields.find((f) => needles.some((n) => f.label.toLowerCase().includes(n)))?.value ?? null;
 
+/**
+ * Numeric quantity from a form answer.
+ *
+ * The GIVOO Facebook forms answer this as a RANGE ("25 – 50", "100 – 250"), and
+ * stripping every non-digit glued the bounds together — "25 – 50" became 2550,
+ * turning a request for 25–50 packs into one for 2,550. Take the first number
+ * instead, which is the low end of a range and the value itself otherwise.
+ */
 const toQuantity = (raw: string | null) => {
   if (!raw) return null;
-  const n = parseInt(raw.replace(/[^\d]/g, ''), 10);
+  const first = raw.match(/\d+/);
+  if (!first) return null;
+  const n = parseInt(first[0], 10);
   return Number.isFinite(n) ? n : null;
+};
+
+/**
+ * The quantity exactly as the lead answered it, so a range stays a range on
+ * screen. Dash variants (en/em dash, "to") are normalised to a plain hyphen.
+ */
+const toQuantityLabel = (raw: string | null) => {
+  if (!raw) return null;
+  const text = raw
+    .replace(/\s*[–—]\s*/g, ' - ')
+    .replace(/\s+to\s+/gi, ' - ')
+    .trim();
+  return text || null;
 };
 
 // The bell polls every 60s per admin — a short cache keeps that off GHL's rate
@@ -279,6 +304,9 @@ async function load(): Promise<GhlResult> {
         message: pickField(detail, ['message', 'requirement', 'enquiry', 'note', 'comment']),
         productName: pickField(detail, ['product', 'gift', 'hamper', 'item', 'interested in']),
         quantity: toQuantity(pickField(detail, ['quantity', 'qty', 'pieces', 'units'])),
+        quantityLabel: toQuantityLabel(
+          pickField(detail, ['quantity', 'qty', 'pieces', 'units'])
+        ),
         detail,
       };
     };

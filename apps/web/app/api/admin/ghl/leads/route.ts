@@ -26,16 +26,22 @@ export async function GET() {
     return NextResponse.json({ success: false, error: result.error }, { status: 502 });
   }
 
-  // Pipeline status is ours, not GHL's — merge it in by lead id.
+  // Pipeline status and the hidden flag are ours, not GHL's — merge by lead id.
   const statusRows = await prisma.ghlLeadStatus.findMany({
     where: { leadId: { in: result.leads.map((l) => l.id) } },
-    select: { leadId: true, status: true },
+    select: { leadId: true, status: true, hidden: true },
   });
-  const statusByLead = new Map(statusRows.map((r) => [r.leadId, r.status]));
+  const rowByLead = new Map(statusRows.map((r) => [r.leadId, r]));
 
   return NextResponse.json({
     success: true,
-    data: result.leads.map((l) => ({ ...l, status: statusByLead.get(l.id) ?? 'new' })),
+    // Hidden leads are still returned (flagged) so the table can offer a
+    // "Show hidden" toggle without another round trip to GHL.
+    data: result.leads.map((l) => ({
+      ...l,
+      status: rowByLead.get(l.id)?.status ?? 'new',
+      hidden: rowByLead.get(l.id)?.hidden ?? false,
+    })),
     missingScopes: result.missingScopes,
   });
 }

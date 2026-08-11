@@ -1462,11 +1462,16 @@ enum EnquiryStatus {
 // it. Keyed by the synthetic lead id from lib/ghl.ts — "sub-<submissionId>" for
 // a form submission, "contact-<contactId>" for a CRM-only contact.
 model GhlLeadStatus {
-  id        String        @id @default(cuid())
-  leadId    String        @unique
-  status    EnquiryStatus @default(new)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id     String        @id @default(cuid())
+  leadId String        @unique
+  status EnquiryStatus @default(new)
+  // Dismissed from the admin Enquiries table. GHL stays the source of truth —
+  // the contact is untouched there — this only hides the row on our side, so it
+  // can always be brought back with the "Show hidden" toggle.
+  hidden Boolean       @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Enquiry {
