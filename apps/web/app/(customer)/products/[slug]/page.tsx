@@ -37,6 +37,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       name: true,
       descriptionShort: true,
       status: true,
+      metaTitle: true,
+      metaDescription: true,
       // Primary image first, else the first by sort order.
       images: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1, select: { url: true } },
     },
@@ -45,7 +47,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!product || product.status !== "active")
     return { title: "Product not found", robots: { index: false, follow: false } };
 
+  // Admin-authored SEO fields (Products → SEO tab) win over the derived defaults.
+  const metaTitle = product.metaTitle?.trim() || null;
   const description =
+    product.metaDescription?.trim() ||
     product.descriptionShort ||
     `Order ${product.name} in bulk with your branding. Transparent per-unit pricing on GIVOO.`;
   const url = `/products/${params.slug}`;
@@ -54,14 +59,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const ogImage = product.images?.[0]?.url || "/opengraph-image";
 
   return {
-    // Root template appends "· GIVOO" — don't add the brand here.
-    title: product.name,
+    // Root template appends "· GIVOO" — don't add the brand here. An
+    // admin-authored page title is used verbatim (matches the admin SEO preview).
+    title: metaTitle ? { absolute: metaTitle } : product.name,
     description,
     alternates: { canonical: url },
     openGraph: {
       type: "website",
       url,
-      title: product.name,
+      title: metaTitle || product.name,
       description,
       siteName: "GIVOO",
       locale: "en_IN",
@@ -69,7 +75,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     },
     twitter: {
       card: "summary_large_image",
-      title: product.name,
+      title: metaTitle || product.name,
       description,
       images: [ogImage],
     },
