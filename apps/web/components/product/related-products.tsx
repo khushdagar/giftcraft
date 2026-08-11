@@ -135,15 +135,14 @@ export function RelatedProducts({
                 <div className="flex h-full flex-col rounded-md overflow-hidden shadow-card hover:shadow-hover transition-shadow">
                   <Link href={`/products/${product.slug}`} className="block">
                     {/* Image */}
-                    <div className="relative m-2.5 overflow-hidden rounded-md bg-elevated aspect-[4/3]">
+                    <div className="relative m-2.5 overflow-hidden rounded-md bg-elevated aspect-[3/4]">
                       {product.images?.[0]?.url ? (
                         <Image
                           src={product.images[0].url}
                           alt={product.name}
                           fill
                           sizes="(min-width: 640px) 256px, 176px"
-                          // cover + no padding, matching the catalog card: the
-                          // tile fills edge to edge instead of leaving gutters
+                          // Fills the portrait tile edge to edge — no gutters
                           // around the product shot's own backdrop.
                           className="object-cover group-hover:scale-105 transition-transform duration-500"
                         />
