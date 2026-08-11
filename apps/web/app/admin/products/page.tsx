@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit2 } from 'lucide-react';
 import { ProductDataTable } from '@/components/admin/products/product-data-table';
-import { ProductsSearch } from './products-search';
 
 export const dynamic = 'force-dynamic';
 
@@ -243,7 +242,11 @@ export default async function AdminProductsPage({
 
   const where: any = { isPack: false };
   if (search) {
-    where.name = { contains: search, mode: 'insensitive' };
+    // Match the placeholder's promise: name OR SKU.
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { sku: { contains: search, mode: 'insensitive' } },
+    ];
   }
   if (status) {
     where.status = status;
@@ -258,7 +261,11 @@ export default async function AdminProductsPage({
         categories: { include: { category: true } },
         vendors: { include: { vendor: { select: { name: true } } } },
       },
-      orderBy: { createdAt: 'desc' },
+      // Active products first, then draft, archived, seasonal. Postgres sorts an
+      // enum by its DECLARATION order, and ProductStatus is declared in exactly
+      // that sequence — so a plain ascending sort gives the intended grouping.
+      // Newest first within each status band.
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
       skip: (page - 1) * limit,
       take: limit,
     }),
@@ -291,8 +298,6 @@ export default async function AdminProductsPage({
           </Button>
         </div>
       </div>
-
-      <ProductsSearch />
 
       <ViewTabs view="products" />
 

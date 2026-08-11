@@ -202,12 +202,20 @@ function offersNode(o: {
     };
   }
 
+  const lowest = Math.min(...prices);
+
   return {
     '@type': 'AggregateOffer',
     url: o.url,
     priceCurrency: 'INR',
-    lowPrice: Math.min(...prices).toFixed(2),
+    lowPrice: lowest.toFixed(2),
     highPrice: Math.max(...prices).toFixed(2),
+    // An explicit single per-unit price alongside the range. Without it a
+    // crawler wanting one number has nothing to read at the top level and can
+    // fall back to page text — which is how the ORDER TOTAL for the default
+    // quantity ended up in search results instead of the each-price.
+    price: lowest.toFixed(2),
+    priceSpecification: unitSpec(lowest),
     offerCount: tiers.length,
     availability,
     // One nested offer per visible slab, each carrying the quantity band it

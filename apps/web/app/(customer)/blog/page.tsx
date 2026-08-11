@@ -64,7 +64,10 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     // duplicates of page 1. Tag views are thin slices of the same posts, so they
     // stay out of the index while still passing link equity through.
     alternates: { canonical: listingPath({ category, tag, page }) },
-    robots: tag ? { index: false, follow: true } : undefined,
+    // Spread, never `robots: undefined` — an explicit undefined key OVERRIDES the
+    // root layout instead of inheriting it, which silently exempted this route
+    // from the site-wide SITE_NOINDEX kill switch.
+    ...(tag ? { robots: { index: false, follow: true } } : {}),
   };
 }
 

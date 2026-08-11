@@ -348,6 +348,7 @@ const styles = StyleSheet.create({
   tCell: { fontSize: 8.5, color: INK_2 },
   tCellStrong: { fontFamily: FONT, fontWeight: 700, fontSize: 8.5, color: INK },
   cHsn: { fontSize: 7, color: INK_3, marginTop: 2 },
+  tableNote: { fontSize: 8, color: INK_3, lineHeight: 1.5, marginTop: 10 },
   // Column widths (sum ≈ 100%). Numeric columns right-aligned like the invoice.
   cItem: { width: "23%", paddingRight: 6 },
   cQty: { width: "7%", textAlign: "right" },
@@ -737,7 +738,7 @@ function DeckPages({
             {/* Option name — only set when the proposal offers several packs,
                 so a single-pack deck reads exactly as it always did. */}
             {packLabel ? (
-              <Text style={styles.coverOption}>Option — {packLabel}</Text>
+              <Text style={styles.coverOption}>{packLabel}</Text>
             ) : null}
             <Text style={styles.coverTitle}>
               Curated Merchandise &amp; Gifting Ideas for {forWhom}
@@ -1150,6 +1151,22 @@ function DeckPages({
               ))}
             </View>
           )}
+
+          {/* Disclaimer under the pricing table. The wording tracks what the
+              table actually shows: product rows are quoted EX-GST (GST has its
+              own columns), so it would be wrong to claim prices "include GST" —
+              only the Grand Total does. Shipping and the gateway fee are only
+              mentioned when they're genuinely on this quote. */}
+          <Text style={styles.tableNote}>
+            {invoice?.rows.some((r) => r.name === 'Shipping')
+              ? 'Shipping is included in the table above for the delivery address on this quote. '
+              : 'Shipping is calculated at checkout once you enter the delivery address. '}
+            Unit prices include standard branding and are exclusive of GST; GST is shown separately above
+            {invoice?.rows.some((r) => r.name === 'Payment Gateway Fee')
+              ? ', and the payment-processing fee (2% + GST) appears as its own line'
+              : ''}
+            . The Grand Total is the final amount payable.
+          </Text>
         </View>
         <Footer quoteRef={quoteRef} />
       </Page>

@@ -37,7 +37,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     description,
     // A canonical pointing elsewhere means this post was first published there.
     alternates: { canonical: post.canonicalUrl || url },
-    robots: post.noIndex ? { index: false, follow: true } : undefined,
+    // Spread, never `robots: undefined` — an explicit undefined key OVERRIDES the
+    // root layout instead of inheriting it, which silently exempted this route
+    // from the site-wide SITE_NOINDEX kill switch.
+    ...(post.noIndex ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       type: 'article',
       title,

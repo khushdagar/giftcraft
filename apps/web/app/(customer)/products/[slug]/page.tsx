@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { serializeProduct } from "@/lib/serialize";
@@ -118,7 +118,20 @@ export default async function ProductPage({ params }: { params: { slug: string }
     },
   });
 
-  if (!product || product.status !== "active") {
+  if (!product) {
+    // The slug may be one this product used to have (renamed in admin) — 301 to
+    // the current URL so old links, shared URLs and search results keep working.
+    const renamed = await prisma.productSlugHistory.findUnique({
+      where: { slug: params.slug },
+      select: { product: { select: { slug: true, status: true } } },
+    });
+    if (renamed?.product && renamed.product.status === "active") {
+      permanentRedirect(`/products/${renamed.product.slug}`);
+    }
+    notFound();
+  }
+
+  if (product.status !== "active") {
     notFound();
   }
 

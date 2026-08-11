@@ -260,7 +260,10 @@ export function PricingBlock({
                   <span className="tabnum text-sm">
                     {formatRupees(tier.sellPrice)}
                   </span>
-                  <span className="tabnum text-right text-sm">
+                  {/* An order total, not a product price. data-nosnippet keeps
+                      Google from lifting it as THE price of the product — the
+                      per-unit column beside it is the one that should surface. */}
+                  <span className="tabnum text-right text-sm" data-nosnippet>
                     {formatRupees(totalAtMin)}
                   </span>
                 </button>
@@ -294,8 +297,12 @@ export function PricingBlock({
         </p> */}
       </div>
 
-      {/* Final pricing */}
-      <div className="border-t border-bdr pt-4">
+      {/* Final pricing — the order total for the chosen quantity. This is the
+          biggest number on the page, so Google was picking it up as the product
+          price (a 10-unit total, e.g. ₹1,76,000 instead of ₹17,600 each).
+          data-nosnippet excludes the whole block from snippet extraction; the
+          per-unit price stays visible and is what the JSON-LD declares. */}
+      <div className="border-t border-bdr pt-4" data-nosnippet>
         <div className="flex items-baseline justify-between">
           <span className="text-sm font-medium text-ink-2">
             {qty} units × {formatRupees(activeTier?.sellPrice || 0)}

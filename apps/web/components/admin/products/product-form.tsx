@@ -3,7 +3,7 @@
 import { compressAndUpload } from '@/hooks/use-compressed-upload';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { RichTextField } from '@/components/admin/rich-text-field';
 import { stripHtml } from '@/lib/strip-html';
@@ -151,6 +151,19 @@ export function ProductForm({
   isPack?: boolean;
 }) {
   const router = useRouter();
+  // The listing URL we were opened from (page number + filters intact). Set by
+  // the products table; falls back to the plain listing when absent.
+  const searchParams = useSearchParams();
+  const listUrl =
+    searchParams.get('returnTo') || (isPack ? '/admin/products?view=packs' : '/admin/products');
+
+  // Leaving the editor. history.back() restores the listing exactly as it was —
+  // same page number, filters and scroll — so returning from page 5 lands on
+  // page 5. Deep-linked edits have no history entry, so they use the URL.
+  const goBackToList = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+    else router.push(listUrl);
+  };
   const [loading, setLoading] = useState(false);
   const [detailTab, setDetailTab] = useState<DetailTabName>('specifications');
   const [error, setError] = useState<string | null>(null);
@@ -744,14 +757,14 @@ export function ProductForm({
 
       toast.success(successMsg, 4000); // 4 seconds visibility
 
-      if (mode === 'edit') {
-        // Stay on the edit page after saving — just refresh server data so the
-        // form reflects the saved state. (Previously bounced to the listing.)
-        router.refresh();
-      } else {
-        // After creating, go to the relevant listing.
+      // Editing stays in the editor: the success toast is the only feedback, and
+      // no navigation or refresh happens — so nothing can bounce the listing
+      // back to page 1. Leaving is an explicit action via the back button.
+      // Creating still moves on to the listing, since there's no record to keep
+      // editing in place.
+      if (mode === 'create') {
         setTimeout(() => {
-          router.push(isPack ? '/admin/products?view=packs' : '/admin/products');
+          router.push(listUrl);
           router.refresh();
         }, 500);
       }
@@ -772,7 +785,7 @@ export function ProductForm({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => router.push('/admin/products')}
+            onClick={goBackToList}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-300 text-gray-600 transition hover:bg-gray-50"
             aria-label="Back to products"
             title="Back to products"
@@ -790,7 +803,7 @@ export function ProductForm({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => router.back()}>
+          <Button type="button" variant="outline" size="sm" onClick={goBackToList}>
             Cancel
           </Button>
           <Button type="submit" size="sm" disabled={loading}>
@@ -1594,7 +1607,7 @@ export function ProductForm({
         <Button type="submit" disabled={loading}>
           {loading ? 'Saving...' : mode === 'create' ? 'Create Product' : 'Save Changes'}
         </Button>
-        <Button type="button" variant="outline" onClick={() => router.back()}>
+        <Button type="button" variant="outline" onClick={goBackToList}>
           Cancel
         </Button>
       </div>

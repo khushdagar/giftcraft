@@ -9,6 +9,7 @@ import { useTopLoading } from '@/components/ui/top-loading-bar';
 import { toast } from '@/lib/stores/toast-store';
 import { resolveSwatchHex } from '@/lib/color-name';
 import { CollapsibleRichText } from '@/components/catalog/collapsible-rich-text';
+import { printingTechniqueLabel } from '@/lib/printing';
 
 interface ProductImage {
   id: string;
@@ -59,19 +60,6 @@ interface Occasion {
   slug?: string;
   isCollection?: boolean;
 }
-
-// Mapping of printing techniques to badges
-const TECH_BADGES: Record<string, string> = {
-  'screen_print': 'Screen Print',
-  'digital_print': 'Digital Print',
-  'embroidery': 'Embroidery',
-  'uv_print': 'UV Print',
-  'laser_engrave': 'Laser Engraved',
-  'foil_stamp': 'Foil Stamped',
-  'pad_print': 'Pad Printed',
-  'dtf_print': 'DTF Printing',
-  'deboss': 'Debossing',
-};
 
 function formatPrice(n: number) {
   return '₹' + n.toLocaleString('en-IN');
@@ -1097,7 +1085,7 @@ export function CatalogClient({
                           {p.moq && <span className="absolute top-2 left-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#F5F1EB', color: '#222222' }}>Min {p.moq}</span>}
                           {p.isEcoCertified && <span className="absolute top-2 right-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#FBF4F5', color: '#560015' }}>Eco</span>}
                           {/* Only badge techniques we have a label for — an unmapped value must render nothing, not a fallback. */}
-                          {p.printingTechnique && TECH_BADGES[p.printingTechnique] && <span className="absolute bottom-2 right-2 text-[8px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: 'rgba(128, 0, 32,.08)', color: '#560015' }}>{TECH_BADGES[p.printingTechnique]}</span>}
+                          {printingTechniqueLabel(p.printingTechnique) && <span className="absolute bottom-2 right-2 text-[8px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: 'rgba(128, 0, 32,.08)', color: '#560015' }}>{printingTechniqueLabel(p.printingTechnique)}</span>}
                         </div>
                         <div className="px-3.5 pb-3.5">
                           {/* {p.brand && <p className="text-[11px]" style={{ color: '#8F8A82' }}>{p.brand}</p>} */}
@@ -1105,7 +1093,7 @@ export function CatalogClient({
                           {minTierPrice(p) > 0 && (
                             <p className="text-sm font-semibold font-mono"><span className="text-[11px] font-normal" style={{ color: '#8F8A82' }}>From </span>{formatPrice(minTierPrice(p))}</p>
                           )}
-                          {/* {p.printingTechnique && <p className="text-[10px] uppercase tracking-widest mt-1" style={{ color: '#8F8A82' }}>{TECH_BADGES[p.printingTechnique] || p.printingTechnique}</p>} */}
+                          {/* {printingTechniqueLabel(p.printingTechnique) && <p className="text-[10px] uppercase tracking-widest mt-1" style={{ color: '#8F8A82' }}>{printingTechniqueLabel(p.printingTechnique)}</p>} */}
                         </div>
                       </Link>
                       {/* Colour swatches — hover/tap swaps the card image */}

@@ -336,6 +336,7 @@ model Product {
   sampleOrders  SampleOrder[]
   giftPackItems GiftPackItem[]
   reviews       Review[]
+  slugHistory   ProductSlugHistory[]
 
   // ── Curated Pack support ──────────────────────────────────────────────────
   // A pack is a Product (isPack=true) that bundles other products. It gets every
@@ -355,6 +356,20 @@ model Product {
   @@index([isFeatured])
   @@index([isPack])
   @@index([packCollectionId])
+}
+
+// Every slug a product has ever had. Written whenever an admin changes a
+// product's slug, so /products/<old-slug> can 301 to the current one instead of
+// 404ing — old links, search results and shared URLs keep working.
+model ProductSlugHistory {
+  id        String   @id @default(cuid())
+  // The RETIRED slug. Unique so one old URL can never point at two products.
+  slug      String   @unique
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([productId])
 }
 
 // A member product inside a pack-product (self-relation on Product), with the

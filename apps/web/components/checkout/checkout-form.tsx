@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { formatRupees } from '@/lib/utils';
 import { INDIAN_STATES } from '@/lib/constants';
+import { printingTechniqueLabel } from '@/lib/printing';
 import { FieldError } from '@/components/ui/field-error';
 import {
   validateName,
@@ -119,7 +120,13 @@ export function CheckoutForm({
             <div key={product.id} className="flex items-start justify-between gap-2">
               <div className="flex-1">
                 <p className="text-sm font-semibold text-ink">{product.name}</p>
-                <p className="text-xs text-ink-3 mt-0.5">{product.printingTechnique || 'Screen Printed'}</p>
+                {/* No fallback: a product with no technique shouldn't be told
+                    it's screen printed on the page where money changes hands. */}
+                {printingTechniqueLabel(product.printingTechnique) && (
+                  <p className="text-xs text-ink-3 mt-0.5">
+                    {printingTechniqueLabel(product.printingTechnique)}
+                  </p>
+                )}
               </div>
               <p className="text-sm font-black text-ink flex-shrink-0">{formatRupees(product.sellPrice * product.quantity)}</p>
             </div>

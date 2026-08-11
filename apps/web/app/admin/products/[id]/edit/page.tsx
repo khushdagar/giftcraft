@@ -4,7 +4,10 @@ import { prisma } from '@/lib/prisma';
 import { serializeProduct } from '@/lib/serialize';
 import { ProductForm } from '@/components/admin/products/product-form';
 
-export const revalidate = 3600;
+// Session-scoped admin page: must be dynamic. `revalidate` here also made
+// `useSearchParams()` come back empty in the form during the cached render, so
+// the ?returnTo= page number was lost and saving always bounced to page 1.
+export const dynamic = 'force-dynamic';
 
 export default async function EditProductPage({ params }: { params: { id: string } }) {
   const session = await auth();
