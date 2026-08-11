@@ -18,6 +18,7 @@ import { CONTACT_FALLBACK } from "@/lib/constants";
 interface NavLink { name: string; slug: string }
 
 interface SuggestProduct { id: string; name: string; slug: string; brand: string | null; image: string | null; price: number | null }
+interface SuggestPack { id: string; name: string; slug: string; image: string | null; price: number | null }
 interface SuggestCategory { id: string; name: string; slug: string }
 
 // Shown until the live occasions load (and if the fetch fails), so the menu
@@ -50,7 +51,7 @@ export function Navbar() {
   const [mobileSection, setMobileSection] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [phone, setPhone] = useState(DEFAULT_PHONE);
-  const [suggestions, setSuggestions] = useState<{ products: SuggestProduct[]; categories: SuggestCategory[] }>({ products: [], categories: [] });
+  const [suggestions, setSuggestions] = useState<{ products: SuggestProduct[]; packs: SuggestPack[]; categories: SuggestCategory[] }>({ products: [], packs: [], categories: [] });
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [categories, setCategories] = useState<NavLink[]>([]);
@@ -117,7 +118,7 @@ export function Navbar() {
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) {
-      setSuggestions({ products: [], categories: [] });
+      setSuggestions({ products: [], packs: [], categories: [] });
       setSuggestLoading(false);
       return;
     }
@@ -128,7 +129,7 @@ export function Navbar() {
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
           if (id !== suggestReq.current) return;
-          setSuggestions({ products: data?.products ?? [], categories: data?.categories ?? [] });
+          setSuggestions({ products: data?.products ?? [], packs: data?.packs ?? [], categories: data?.categories ?? [] });
           setSuggestLoading(false);
         })
         .catch(() => {
@@ -167,9 +168,9 @@ export function Navbar() {
   /** Shared markup for both the desktop and mobile suggestion panels. */
   const suggestionPanel = (
     <div className="absolute left-0 right-0 top-full z-[750] mt-2 overflow-hidden rounded-md-s border border-bdr bg-white shadow-float">
-      {suggestLoading && suggestions.products.length === 0 && suggestions.categories.length === 0 ? (
+      {suggestLoading && suggestions.products.length === 0 && suggestions.packs.length === 0 && suggestions.categories.length === 0 ? (
         <p className="px-4 py-3 text-[13px] text-ink-3">Searching…</p>
-      ) : suggestions.products.length === 0 && suggestions.categories.length === 0 ? (
+      ) : suggestions.products.length === 0 && suggestions.packs.length === 0 && suggestions.categories.length === 0 ? (
         <p className="px-4 py-3 text-[13px] text-ink-3">No matches for “{query.trim()}”</p>
       ) : (
         <>
@@ -184,6 +185,29 @@ export function Navbar() {
               <Search className="h-3.5 w-3.5 text-ink-3" />
               {c.name}
               <span className="ml-auto text-[11px] text-ink-3">Category</span>
+            </button>
+          ))}
+          {suggestions.packs.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => goToSuggestion(`/products/${p.slug}`)}
+              className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-elevated"
+            >
+              <span className="h-9 w-9 shrink-0 overflow-hidden rounded-md bg-elevated">
+                {p.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.image} alt="" className="h-full w-full object-cover" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-medium text-ink">{p.name}</span>
+                <span className="block truncate text-[11px] text-ink-3">Curated pack</span>
+              </span>
+              {p.price !== null && (
+                <span className="shrink-0 text-[12px] font-semibold tabular-nums text-ink-2">₹{p.price}</span>
+              )}
             </button>
           ))}
           {suggestions.products.map((p) => (

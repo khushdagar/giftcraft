@@ -53,6 +53,14 @@ interface AddonOption {
   imageUrl: string | null;
 }
 
+/** A curated pack from the storefront — one click adds all its products. */
+interface CuratedPackOption {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  items: CatalogProduct[];
+}
+
 /** One pack option being composed. Each becomes its own quote when sent. */
 interface Pack {
   key: string;
@@ -146,6 +154,9 @@ export function ProposalBuilder({
 
   const [boxes, setBoxes] = useState<BoxOption[]>([]);
   const [addonOptions, setAddonOptions] = useState<AddonOption[]>([]);
+  const [curatedPacks, setCuratedPacks] = useState<CuratedPackOption[]>([]);
+  // Grid mode: false = catalog products, true = curated packs.
+  const [showPacks, setShowPacks] = useState(false);
 
   useEffect(() => {
     fetch('/api/categories')
@@ -185,6 +196,30 @@ export function ProposalBuilder({
         )
       )
       .catch(() => {/* addons selector just stays empty */});
+    fetch('/api/packs')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) =>
+        Array.isArray(d) &&
+        setCuratedPacks(
+          d
+            .map((pk: any) => {
+              const items = (pk.items ?? []).map(toCatalogProduct);
+              return {
+                id: pk.id,
+                name: pk.name,
+                // Packs often carry no image of their own — borrow the first
+                // member product's photo, same as the storefront listing.
+                imageUrl:
+                  pk.image ??
+                  items.find((it: CatalogProduct) => it.imageUrl)?.imageUrl ??
+                  null,
+                items,
+              };
+            })
+            .filter((pk: CuratedPackOption) => pk.items.length > 0)
+        )
+      )
+      .catch(() => {/* curated-pack shortcuts just stay hidden */});
   }, []);
 
   // Catalog grid — debounced so typing doesn't fire a request per keystroke.
@@ -259,6 +294,25 @@ export function ProposalBuilder({
     );
   };
 
+  /**
+   * One click pulls every product of a curated pack into the option. If all of
+   * them are already in, the same click takes them back out (toggle).
+   */
+  const applyCuratedPack = (key: string, cp: CuratedPackOption) => {
+    setPacks((prev) =>
+      prev.map((p) => {
+        if (p.key !== key) return p;
+        const allIn = cp.items.every((it) => p.items.some((x) => x.id === it.id));
+        if (allIn) {
+          const ids = new Set(cp.items.map((it) => it.id));
+          return { ...p, items: p.items.filter((it) => !ids.has(it.id)) };
+        }
+        const missing = cp.items.filter((it) => !p.items.some((x) => x.id === it.id));
+        return { ...p, items: [...p.items, ...missing] };
+      })
+    );
+  };
+
   const toggleAddon = (key: string, addonId: string) =>
     setPacks((prev) =>
       prev.map((p) =>
@@ -298,6 +352,17 @@ export function ProposalBuilder({
       }),
     [packs, boxes, addonOptions]
   );
+
+  // Pack grid honours the same search box — matches the pack's name or any
+  // product inside it. Filtered client-side; the list is small.
+  const packQuery = search.trim().toLowerCase();
+  const filteredPacks = packQuery
+    ? curatedPacks.filter(
+        (cp) =>
+          cp.name.toLowerCase().includes(packQuery) ||
+          cp.items.some((it) => it.name.toLowerCase().includes(packQuery))
+      )
+    : curatedPacks;
 
   const activeIndex = Math.max(0, packs.findIndex((p) => p.key === activeKey));
   const active = priced[activeIndex];
@@ -766,32 +831,55 @@ export function ProposalBuilder({
                       <input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search the catalog…"
+                        placeholder={showPacks ? 'Search curated packs…' : 'Search the catalog…'}
                         className={`${inputCls} pl-8`}
                       />
                     </div>
                   </div>
 
-                  {categories.length > 0 && (
+                  {(categories.length > 0 || curatedPacks.length > 0) && (
                     <div className="mb-2 flex flex-wrap gap-1.5">
                       <button
                         type="button"
-                        onClick={() => setCategoryId('')}
+                        onClick={() => {
+                          setCategoryId('');
+                          setShowPacks(false);
+                        }}
                         className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                          categoryId === ''
+                          categoryId === '' && !showPacks
                             ? 'border-gray-900 bg-gray-900 text-white'
                             : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                         }`}
                       >
                         All
                       </button>
+                      {/* Curated packs live beside the categories — flipping this
+                          chip swaps the grid from single products to whole packs. */}
+                      {curatedPacks.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowPacks((s) => !s)}
+                          aria-pressed={showPacks}
+                          className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                            showPacks
+                              ? 'border-gray-900 bg-gray-900 text-white'
+                              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                          }`}
+                        >
+                          <Layers className="h-3 w-3" />
+                          Curated Packs
+                        </button>
+                      )}
                       {categories.map((c) => (
                         <button
                           key={c.id}
                           type="button"
-                          onClick={() => setCategoryId(categoryId === c.id ? '' : c.id)}
+                          onClick={() => {
+                            setCategoryId(categoryId === c.id ? '' : c.id);
+                            setShowPacks(false);
+                          }}
                           className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                            categoryId === c.id
+                            categoryId === c.id && !showPacks
                               ? 'border-gray-900 bg-gray-900 text-white'
                               : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                           }`}
@@ -802,8 +890,80 @@ export function ProposalBuilder({
                     </div>
                   )}
 
-                  {/* Grid — click a card to add or remove it from this pack */}
-                  {loadingProducts ? (
+                  {/* Grid — click a card to add or remove it from this pack.
+                      In pack mode one click pulls in (or removes) every product
+                      of that curated pack at once. */}
+                  {showPacks ? (
+                    filteredPacks.length === 0 ? (
+                      <p className="rounded-lg border border-dashed border-gray-200 px-3 py-8 text-center text-sm text-gray-400">
+                        No curated packs match this search.
+                      </p>
+                    ) : (
+                      <div className="max-h-[320px] overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+                          {filteredPacks.map((cp) => {
+                            const allIn = cp.items.every((it) =>
+                              active.pack.items.some((x) => x.id === it.id)
+                            );
+                            const perPack = cp.items.reduce(
+                              (sum, it) => sum + tierPrice(it.priceTiers, active.pack.packQuantity),
+                              0
+                            );
+                            return (
+                              <button
+                                key={cp.id}
+                                type="button"
+                                onClick={() => applyCuratedPack(active.pack.key, cp)}
+                                aria-pressed={allIn}
+                                title={
+                                  allIn
+                                    ? `Remove the ${cp.items.length} products of ${cp.name}`
+                                    : `Add all ${cp.items.length} products of ${cp.name}`
+                                }
+                                className={`group relative overflow-hidden rounded-md border bg-white text-left transition-all ${
+                                  allIn
+                                    ? 'border-indigo-500 ring-2 ring-indigo-300'
+                                    : 'border-gray-200 hover:border-indigo-300 hover:shadow-sm'
+                                }`}
+                              >
+                                <div className="relative aspect-square w-full bg-gray-50">
+                                  {cp.imageUrl ? (
+                                    <Image
+                                      src={cp.imageUrl}
+                                      alt={cp.name}
+                                      fill
+                                      className="object-cover"
+                                      sizes="120px"
+                                    />
+                                  ) : (
+                                    <Layers className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-gray-300" />
+                                  )}
+                                  <span className="absolute left-1 top-1 rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
+                                    {cp.items.length} items
+                                  </span>
+                                  {allIn && (
+                                    <span className="absolute inset-0 flex items-center justify-center bg-indigo-600/25">
+                                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white">
+                                        <Check className="h-3.5 w-3.5" />
+                                      </span>
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="px-1.5 py-1">
+                                  <p className="truncate text-[11px] font-medium leading-tight text-gray-900">
+                                    {cp.name}
+                                  </p>
+                                  <p className="truncate text-[11px] tabular-nums text-gray-500">
+                                    {formatRupees(perPack)}
+                                  </p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )
+                  ) : loadingProducts ? (
                     <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
                       {Array.from({ length: 20 }).map((_, i) => (
                         <div
