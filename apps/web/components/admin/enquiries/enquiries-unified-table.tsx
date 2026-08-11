@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Trash2, Mail, Phone, FileText, RefreshCw, Send, Download, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { Trash2, Mail, Phone, FileText, RefreshCw, Send, Download, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProposalBuilder } from '@/components/admin/proposals/proposal-builder';
 import { ProposalPdfPreview } from './proposal-pdf-preview';
@@ -35,6 +35,9 @@ interface GhlLead {
   message: string | null;
   productName: string | null;
   quantity: number | null;
+  quantityLabel: string | null;
+  /** Dismissed from this table on our side; still live in GoHighLevel. */
+  hidden?: boolean;
   // Everything else the lead submitted — form answers, custom fields, address…
   detail: { label: string; value: string }[];
 }
@@ -51,12 +54,16 @@ interface Row {
   phone: string | null;
   productName: string | null;
   quantity: number | null;
+  /** GHL leads answer with a range ("25 - 50"), which `quantity` can't hold. */
+  quantityLabel: string | null;
   message: string | null;
   tags: string[];
   status: string | null;
   createdAt: string | null;
   formName: string | null;
   detail: { label: string; value: string }[];
+  /** GHL row dismissed from this table (never deleted in GoHighLevel). */
+  hidden: boolean;
 }
 
 interface DeckDownload {
@@ -285,6 +292,93 @@ export function EnquiriesUnifiedTable({
     }
   };
 
+  // ── Removing rows ─────────────────────────────────────────────────────────
+  // Website enquiries are ours, so they're deleted outright. GHL leads belong to
+  // GoHighLevel, so they're only hidden here — the contact stays in the CRM and
+  // can be brought back with the "Show hidden" toggle.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showHidden, setShowHidden] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const toggleSelect = (key: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  const setLeadsHidden = async (leadIds: string[], hidden: boolean) => {
+    if (leadIds.length === 0) return;
+    const prev = queryClient.getQueryData<GhlResult>(GHL_KEY);
+    queryClient.setQueryData<GhlResult>(GHL_KEY, (old) =>
+      old
+        ? {
+            ...old,
+            leads: old.leads.map((l) => (leadIds.includes(l.id) ? { ...l, hidden } : l)),
+          }
+        : old
+    );
+    try {
+      const res = await fetch('/api/admin/ghl/hide', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadIds, hidden }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      if (prev) queryClient.setQueryData<GhlResult>(GHL_KEY, prev);
+      alert(hidden ? 'Failed to hide lead(s).' : 'Failed to restore lead(s).');
+    }
+  };
+
+  const hideLead = async (leadId: string) => {
+    setBusyId(leadId);
+    await setLeadsHidden([leadId], true);
+    setBusyId(null);
+  };
+
+  // Mixed selections are handled in one pass: website rows are deleted, GHL rows
+  // hidden. The confirm spells out which is which so neither is a surprise.
+  const removeSelected = async (rows: Row[]) => {
+    const picked = rows.filter((r) => selected.has(r.key));
+    const enquiryIds = picked.filter((r) => r.enquiryId).map((r) => r.enquiryId!);
+    const leadIds = picked.filter((r) => r.leadId).map((r) => r.leadId!);
+    if (picked.length === 0) return;
+
+    const parts = [
+      enquiryIds.length > 0 && `delete ${enquiryIds.length} website enquiry(ies) permanently`,
+      leadIds.length > 0 && `hide ${leadIds.length} GHL lead(s) from this table`,
+    ].filter(Boolean);
+    if (!confirm(`This will ${parts.join(' and ')}. Continue?`)) return;
+
+    setBulkBusy(true);
+    try {
+      if (leadIds.length > 0) await setLeadsHidden(leadIds, true);
+      if (enquiryIds.length > 0) {
+        // Only drop rows whose DELETE actually succeeded, so a failed one stays
+        // on screen instead of silently vanishing from the table.
+        const results = await Promise.allSettled(
+          enquiryIds.map(async (id) => {
+            const res = await fetch(`/api/admin/enquiries/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error(id);
+            return id;
+          })
+        );
+        const ok = new Set(
+          results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
+        );
+        setWebsiteRows((r) => r.filter((e) => !ok.has(e.id)));
+        if (ok.size < enquiryIds.length) {
+          alert(`${enquiryIds.length - ok.size} enquiry(ies) could not be deleted.`);
+        }
+      }
+      setSelected(new Set());
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   const remove = async (id: string) => {
     if (!confirm('Delete this enquiry? This cannot be undone.')) return;
     setBusyId(id);
@@ -324,12 +418,14 @@ export function EnquiriesUnifiedTable({
       phone: e.phone,
       productName: e.productName,
       quantity: e.quantity,
+      quantityLabel: null,
       message: e.message,
       tags: [],
       status: e.status,
       createdAt: e.createdAt,
       formName: null,
       detail: [],
+      hidden: false,
     })),
     ...ghlLeads.map((l) => ({
       key: `ghl-${l.id}`,
@@ -342,16 +438,21 @@ export function EnquiriesUnifiedTable({
       phone: l.phone,
       productName: l.productName,
       quantity: l.quantity,
+      quantityLabel: l.quantityLabel,
       message: l.message,
       tags: l.tags,
       status: l.status || 'new',
       createdAt: l.dateAdded,
       formName: l.formName,
       detail: l.detail || [],
+      hidden: l.hidden ?? false,
     })),
   ].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
-  const rows = allRows.filter((r) => r.source === tab);
+  // Hidden GHL leads drop out unless the toggle is on.
+  const rows = allRows.filter((r) => r.source === tab && (showHidden || !r.hidden));
+  const hiddenCount = allRows.filter((r) => r.source === tab && r.hidden).length;
+  const selectedInTab = rows.filter((r) => selected.has(r.key)).length;
 
   const TABS: { id: Tab; label: string; count: number | null }[] = [
     { id: 'website', label: 'Enquiries', count: websiteRows.length },
@@ -423,7 +524,7 @@ export function EnquiriesUnifiedTable({
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
                   {['Name', 'Reach', 'Company', 'Type', 'Quote', 'Downloaded'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-normal uppercase text-gray-600">
+                    <th key={h} className="px-3 py-3 text-left text-xs font-normal uppercase text-gray-600">
                       {h}
                     </th>
                   ))}
@@ -432,8 +533,8 @@ export function EnquiriesUnifiedTable({
               <tbody className="divide-y divide-gray-200 bg-white">
                 {downloads.map((d) => (
                   <tr key={d.id} className="align-top hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{d.name}</td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 py-3 text-sm font-medium text-gray-900">{d.name}</td>
+                    <td className="px-3 py-3 text-sm">
                       <a href={`mailto:${d.email}`} className="flex items-center gap-1 text-emerald-700 hover:underline">
                         <Mail className="h-3 w-3" /> {d.email}
                       </a>
@@ -443,8 +544,8 @@ export function EnquiriesUnifiedTable({
                         </a>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{d.company || '—'}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3 text-sm text-gray-700">{d.company || '—'}</td>
+                    <td className="px-3 py-3">
                       <span
                         className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
                           d.isAccount ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
@@ -453,7 +554,7 @@ export function EnquiriesUnifiedTable({
                         {d.isAccount ? 'Account' : 'Guest lead'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 py-3 text-sm">
                       <a
                         href={`/quote/${d.quoteToken}`}
                         target="_blank"
@@ -463,7 +564,7 @@ export function EnquiriesUnifiedTable({
                         View quote
                       </a>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{fmtDate(d.createdAt)}</td>
+                    <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">{fmtDate(d.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -478,12 +579,84 @@ export function EnquiriesUnifiedTable({
           </p>
         </div>
       ) : (
+        <>
+        {/* Bulk bar + hidden-rows toggle. Only rendered for the two lead tabs. */}
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          {selectedInTab > 0 && (
+            <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+              <span className="text-sm font-medium text-blue-900">{selectedInTab} selected</span>
+              <button
+                onClick={() => removeSelected(rows)}
+                disabled={bulkBusy}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {bulkBusy ? 'Removing…' : `Remove ${selectedInTab}`}
+              </button>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="text-xs text-gray-500 hover:text-gray-900 hover:underline"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+          {tab === 'ghl' && hiddenCount > 0 && (
+            <button
+              onClick={() => setShowHidden((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 hover:underline"
+            >
+              {showHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {showHidden ? 'Hide dismissed rows' : `Show ${hiddenCount} hidden`}
+            </button>
+          )}
+        </div>
         <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full min-w-[1280px]">
+          {/* table-fixed + colgroup: every column gets the width declared below
+              instead of the browser handing leftover space to whichever column
+              it likes (which is what left a big gap after Qty). Also keeps the
+              row inside the viewport, so there's no horizontal scrollbar. */}
+          <table className="w-full table-fixed">
+            <colgroup>
+              <col className="w-[3%]" />{/* Select */}
+              <col className="w-[6%]" />{/* Source */}
+              <col className="w-[13%]" />{/* Company / Contact */}
+              <col className="w-[16%]" />{/* Reach */}
+              <col className="w-[8%]" />{/* Product */}
+              <col className="w-[7%]" />{/* Qty */}
+              <col className="w-[8%]" />{/* Received */}
+              <col className="w-[8%]" />{/* Status */}
+              <col className="w-[13%]" />{/* Proposal sent */}
+              <col className="w-[8%]" />{/* Proposal */}
+              <col className="w-[9%]" />{/* Message */}
+              <col className="w-[4%]" />{/* Actions */}
+            </colgroup>
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {['Source', 'Company / Contact', 'Reach', 'Product', 'Qty', 'Message', 'Received', 'Status', 'Proposal sent', 'Proposal', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-normal uppercase text-gray-600">
+                <th className="px-3 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all rows"
+                    checked={rows.length > 0 && selectedInTab === rows.length}
+                    ref={(el) => {
+                      if (el) el.indeterminate = selectedInTab > 0 && selectedInTab < rows.length;
+                    }}
+                    onChange={() =>
+                      setSelected(
+                        selectedInTab === rows.length ? new Set() : new Set(rows.map((r) => r.key))
+                      )
+                    }
+                    className="rounded"
+                  />
+                </th>
+                {/* Message sits at the end: it's the only free-text column, so
+                    keeping it between the fixed-width ones squeezed it into a
+                    two-word-per-line strip and stretched every row. */}
+                {['Source', 'Company / Contact', 'Reach', 'Product', 'Qty', 'Received', 'Status', 'Proposal sent', 'Proposal', 'Message', ''].map((h) => (
+                  <th
+                    key={h}
+                    className="px-3 py-3 text-left text-xs font-normal uppercase leading-tight text-gray-600"
+                  >
                     {h}
                   </th>
                 ))}
@@ -494,8 +667,19 @@ export function EnquiriesUnifiedTable({
                 const proposal = row.email ? proposals[row.email.toLowerCase()] : undefined;
                 return (
                   <Fragment key={row.key}>
-                  <tr className="align-top hover:bg-gray-50">
-                    <td className="px-4 py-3">
+                  <tr
+                    className={`align-top hover:bg-gray-50 ${row.hidden ? 'opacity-50' : ''}`}
+                  >
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${row.companyName || row.email || 'row'}`}
+                        checked={selected.has(row.key)}
+                        onChange={() => toggleSelect(row.key)}
+                        className="rounded"
+                      />
+                    </td>
+                    <td className="px-3 py-3">
                       <span
                         className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
                           row.source === 'website'
@@ -509,14 +693,17 @@ export function EnquiriesUnifiedTable({
                         <p className="mt-1 text-xs text-gray-500">{row.formName}</p>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       <p className="text-sm font-medium text-gray-900">{row.companyName || '—'}</p>
                       <p className="text-xs text-gray-500">{row.contactName || '—'}</p>
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-3 py-3 text-sm">
                       {row.email ? (
-                        <a href={`mailto:${row.email}`} className="flex items-center gap-1 text-emerald-700 hover:underline">
-                          <Mail className="h-3 w-3" /> {row.email}
+                        <a
+                          href={`mailto:${row.email}`}
+                          className="flex items-start gap-1 break-all text-emerald-700 hover:underline"
+                        >
+                          <Mail className="mt-0.5 h-3 w-3 shrink-0" /> {row.email}
                         </a>
                       ) : (
                         <span className="text-gray-400">—</span>
@@ -527,54 +714,19 @@ export function EnquiriesUnifiedTable({
                         </a>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{row.productName || '—'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{row.quantity ?? '—'}</td>
-                    <td className="px-4 py-3 max-w-xs text-sm text-gray-600">
-                      {row.source === 'ghl' ? (
-                        <div className="space-y-1.5">
-                          {row.message && (
-                            <span className="line-clamp-2 block" title={row.message}>
-                              {row.message}
-                            </span>
-                          )}
-                          {row.tags.length > 0 && (
-                            <div className="flex max-w-xs flex-wrap gap-1">
-                              {row.tags.slice(0, 4).map((t) => (
-                                <span key={t} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                                  {t}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {row.detail.length > 0 ? (
-                            <button
-                              onClick={() => toggleDetail(row.key)}
-                              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 hover:underline"
-                            >
-                              {expanded.has(row.key) ? (
-                                <ChevronUp className="h-3 w-3" />
-                              ) : (
-                                <ChevronDown className="h-3 w-3" />
-                              )}
-                              {expanded.has(row.key)
-                                ? 'Hide details'
-                                : `All details (${row.detail.length})`}
-                            </button>
-                          ) : (
-                            !row.message && row.tags.length === 0 && <span className="text-gray-400">—</span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="line-clamp-2" title={row.message || ''}>{row.message || '—'}</span>
-                      )}
+                    <td className="px-3 py-3 text-sm text-gray-700">{row.productName || '—'}</td>
+                    {/* Ranges keep their original form ("25 - 50"); a plain
+                        number falls back to the parsed value. */}
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
+                      {row.quantityLabel ?? row.quantity ?? '—'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
+                    <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">
                       {fmtDate(row.createdAt)}
                       {row.source === 'ghl' && row.createdAt && (
                         <span className="block text-gray-400">{fmtTime(row.createdAt)}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       <select
                         value={row.status ?? 'new'}
                         disabled={busyId === (row.enquiryId ?? row.leadId)}
@@ -594,9 +746,9 @@ export function EnquiriesUnifiedTable({
                     </td>
                     {/* What was actually sent, so a proposal can be checked without
                         digging through the mailbox. */}
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       {proposal ? (
-                        <div className="max-w-[240px] space-y-1">
+                        <div className="space-y-1">
                           {/* Multi-option proposals list every pack the lead
                               received; single-option ones keep the old summary. */}
                           {proposal.packs.length > 1 ? (
@@ -670,7 +822,7 @@ export function EnquiriesUnifiedTable({
                         <span className="text-xs text-gray-400">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       {proposal ? (
                         <div className="space-y-1">
                           <span
@@ -697,7 +849,53 @@ export function EnquiriesUnifiedTable({
                         <span className="text-xs text-gray-400" title="Lead has no email">No email</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                    {/* Message — free text, so it gets a real width here at the
+                        end of the row instead of being squeezed mid-table. */}
+                    <td className="px-3 py-3 align-top text-sm text-gray-600">
+                      <div className="space-y-1.5">
+                        {row.message ? (
+                          <span className="line-clamp-2 block" title={row.message}>
+                            {row.message}
+                          </span>
+                        ) : (
+                          row.tags.length === 0 &&
+                          row.detail.length === 0 && <span className="text-gray-400">—</span>
+                        )}
+                        {row.source === 'ghl' && row.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {row.tags.slice(0, 3).map((t) => (
+                              <span
+                                key={t}
+                                className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                            {row.tags.length > 3 && (
+                              <span className="px-1 py-0.5 text-xs text-gray-400">
+                                +{row.tags.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {row.source === 'ghl' && row.detail.length > 0 && (
+                          <button
+                            onClick={() => toggleDetail(row.key)}
+                            className="inline-flex items-center gap-1 whitespace-nowrap text-xs text-gray-500 hover:text-gray-900 hover:underline"
+                          >
+                            {expanded.has(row.key) ? (
+                              <ChevronUp className="h-3 w-3" />
+                            ) : (
+                              <ChevronDown className="h-3 w-3" />
+                            )}
+                            {expanded.has(row.key)
+                              ? 'Hide details'
+                              : `All details (${row.detail.length})`}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">
                       {row.source === 'website' && row.enquiryId && (
                         <button
                           onClick={() => remove(row.enquiryId!)}
@@ -708,11 +906,31 @@ export function EnquiriesUnifiedTable({
                           <Trash2 className="h-4 w-4" />
                         </button>
                       )}
+                      {/* GHL leads are hidden, not deleted — the contact stays
+                          in GoHighLevel and can be restored from here. */}
+                      {row.source === 'ghl' && row.leadId && (
+                        <button
+                          onClick={() =>
+                            row.hidden
+                              ? setLeadsHidden([row.leadId!], false)
+                              : hideLead(row.leadId!)
+                          }
+                          disabled={busyId === row.leadId}
+                          title={row.hidden ? 'Restore to list' : 'Hide from list (stays in GoHighLevel)'}
+                          className="text-gray-500 hover:text-red-600 disabled:opacity-50"
+                        >
+                          {row.hidden ? (
+                            <RefreshCw className="h-4 w-4" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      )}
                     </td>
                   </tr>
                   {expanded.has(row.key) && row.detail.length > 0 && (
                     <tr className="bg-gray-50">
-                      <td colSpan={11} className="px-4 py-4">
+                      <td colSpan={12} className="px-4 py-4">
                         {row.formName && (
                           <p className="mb-2 text-xs uppercase tracking-wide text-gray-500">
                             Submitted via {row.formName}
@@ -735,6 +953,7 @@ export function EnquiriesUnifiedTable({
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       <ProposalPdfPreview
