@@ -56,6 +56,12 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const isFirstRender = useRef(true);
 
+  // The exact listing URL (page + filters) the editor should come back to, so
+  // saving from page 5 returns to page 5 instead of dumping you on page 1.
+  const returnTo = `/admin/products${searchParams.toString() ? `?${searchParams}` : ''}`;
+  const editHref = (id: string) =>
+    `/admin/products/${id}/edit?returnTo=${encodeURIComponent(returnTo)}`;
+
   // Navigate pages while keeping the current search/status filters.
   const goToPage = (target: number) => {
     const params = new URLSearchParams();
@@ -167,7 +173,7 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
       {/* Search and filters */}
       <div className="flex gap-3 items-center">
         <Input
-          placeholder="Search products..."
+          placeholder="Search products by name or SKU…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
@@ -251,7 +257,7 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
               return (
                 <tr
                   key={product.id}
-                  onClick={() => startTransition(() => router.push(`/admin/products/${product.id}/edit`))}
+                  onClick={() => startTransition(() => router.push(editHref(product.id)))}
                   className="cursor-pointer hover:bg-gray-50"
                 >
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -299,7 +305,7 @@ export function ProductDataTable({ initialData, total, page, limit, totalPages }
                   </td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-2 justify-end">
-                      <Link href={`/admin/products/${product.id}/edit`} title="Edit">
+                      <Link href={editHref(product.id)} title="Edit">
                         <Edit2 className="h-4 w-4 text-gray-600 hover:text-gray-900" />
                       </Link>
                       <button

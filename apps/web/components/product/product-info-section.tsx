@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { resolveSwatchHex } from '@/lib/color-name';
 import { stripHtml } from '@/lib/strip-html';
+import { printingTechniqueLabel } from '@/lib/printing';
 import {
   PackMemberVariants,
   variantKinds,
@@ -115,7 +116,9 @@ export function ProductInfoSection({
 
   return (
     <div>
-      <p className="mb-2 text-xs text-ink-3">{product.brand ? `${product.brand} · ` : ""}</p>
+      {/* Brand only — the separator used to be printed unconditionally, leaving
+          a dangling "Nappa Dori ·" with nothing after it. */}
+      {product.brand && <p className="mb-2 text-xs text-ink-3">{product.brand}</p>}
       <h1 className="font-serif text-4xl font-light tracking-tight text-ink">{product.name}</h1>
       <p className="mt-4 text-base leading-relaxed text-ink-2">
         {product.descriptionShort || stripHtml(product.descriptionLong)}
@@ -123,14 +126,17 @@ export function ProductInfoSection({
 
       {/* Badges */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {product.printingTechnique !== "none" && product.printingTechnique && (
+        {printingTechniqueLabel(product.printingTechnique) && (
           <Badge className="rounded-full bg-em/10 text-em text-xs font-medium px-3 py-1">
-            {product.printingTechnique}
+            {printingTechniqueLabel(product.printingTechnique)}
           </Badge>
         )}
         {product.isEcoCertified && (
+          // Shows the certification the admin actually entered (GOTS, FSC, GRS…).
+          // Falls back to a plain label when the field is blank — it used to be
+          // hardcoded drinkware copy, so a leather bag claimed "BPA-Free".
           <Badge className="rounded-full bg-em/10 text-em text-xs font-medium px-3 py-1">
-            BPA-Free · Recyclable Steel
+            {product.ecoCertification?.trim() || 'Eco-Certified'}
           </Badge>
         )}
         <Badge className="rounded-full bg-em/10 text-em text-xs font-medium px-3 py-1">

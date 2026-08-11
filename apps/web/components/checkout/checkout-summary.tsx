@@ -1,6 +1,7 @@
 'use client';
 
 import { formatRupees } from '@/lib/utils';
+import { printingTechniqueLabel } from '@/lib/printing';
 import { RazorpayButton } from './razorpay-button';
 
 interface CheckoutSummaryProps {
@@ -44,7 +45,11 @@ export function CheckoutSummary({
             <div key={product.id} className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-ink">{product.name}</p>
-                <p className="text-xs text-ink-3 mt-0.5">incl. {product.printingTechnique || 'Screen Printed'}</p>
+                {printingTechniqueLabel(product.printingTechnique) && (
+                  <p className="text-xs text-ink-3 mt-0.5">
+                    incl. {printingTechniqueLabel(product.printingTechnique)}
+                  </p>
+                )}
               </div>
               <p className="text-sm font-black text-ink tabnum flex-shrink-0">
                 {formatRupees(product.sellPrice * product.quantity)}

@@ -243,6 +243,20 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         },
       });
 
+      // Slug changed → remember the old one so /products/<old> can 301 to the
+      // new URL instead of 404ing. Upsert because the same slug may have been
+      // retired before; re-pointing it at this product keeps it unambiguous.
+      if (data.slug && data.slug !== existing.slug) {
+        await tx.productSlugHistory.upsert({
+          where: { slug: existing.slug },
+          create: { slug: existing.slug, productId: params.id },
+          update: { productId: params.id },
+        });
+        // If the NEW slug was itself a retired alias, drop that row — otherwise
+        // the live URL would also be a redirect source and loop onto itself.
+        await tx.productSlugHistory.deleteMany({ where: { slug: data.slug } });
+      }
+
       // Upsert price tiers if provided
       if (data.priceTiers) {
         for (const tier of data.priceTiers) {
