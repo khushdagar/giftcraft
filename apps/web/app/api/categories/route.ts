@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { isHiddenCategory } from '@/lib/catalog-visibility';
 
+// This handler reads no request data, so Next would statically evaluate it at
+// build time and freeze the category list into the build output — the nav
+// dropdown then keeps showing whatever was populated on deploy day.
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Fallback Unsplash images for categories (used when no custom image is set)

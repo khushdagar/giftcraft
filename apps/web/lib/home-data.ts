@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { serializeProduct } from '@/lib/serialize';
-import { getHiddenCategoryIds } from '@/lib/catalog-visibility';
+import { getHiddenCategoryIds, isHiddenCategory } from '@/lib/catalog-visibility';
 
 /**
  * Server-side data for the homepage sections.
@@ -69,6 +69,47 @@ function convertTailwindGradient(tailwindGradient: string): string {
   const fromColor = (fromMatch[1] && TAILWIND_COLORS[fromMatch[1]]) || '#999999';
   const toColor = (toMatch[1] && TAILWIND_COLORS[toMatch[1]]) || '#666666';
   return `linear-gradient(135deg, ${fromColor} 0%, ${toColor} 100%)`;
+}
+
+/**
+ * Matches ShopByCategory: shape of GET /api/categories.
+ *
+ * Same visibility rules as the nav dropdown — top-level only (sub-categories
+ * are a drill-down on the landing page), Packaging/Add-on stripped, and a
+ * category must have at least one live catalog product either directly or on
+ * one of its children, so no tile dead-ends on an empty grid.
+ */
+export async function getHomeCategories() {
+  try {
+    const categories = await prisma.category.findMany({
+      where: {
+        parentId: null,
+        OR: [
+          { products: { some: { product: { status: 'active', isPack: false } } } },
+          { children: { some: { products: { some: { product: { status: 'active', isPack: false } } } } } },
+        ],
+      },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: { name: true, slug: true, imageUrl: true, description: true },
+    });
+
+    return categories.filter((c) => !isHiddenCategory(c)).map((c) => ({
+      name: c.name,
+      slug: c.slug,
+      image: c.imageUrl || null,
+      // `description` is rich text authored in admin — strip the markup so the
+      // card subtitle never renders raw tags.
+      description: stripHtml(c.description).slice(0, 80),
+    }));
+  } catch (error) {
+    console.error('getHomeCategories failed:', error);
+    return [];
+  }
+}
+
+function stripHtml(value: string | null): string {
+  if (!value) return '';
+  return value.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /** Matches ShopByOccasion: shape of GET /api/occasions */

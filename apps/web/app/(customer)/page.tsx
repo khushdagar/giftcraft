@@ -2,6 +2,7 @@ import { HomePageWrapper } from '@/components/home/home-page-wrapper';
 import { HomeHero } from '@/components/home/hero';
 import { TrustStrip } from '@/components/home/trust-strip';
 import { ShopByOccasion } from '@/components/home/shop-by-occasion';
+import { ShopByCategory } from '@/components/home/shop-by-category';
 import { TrendingProducts } from '@/components/home/trending-products';
 import { HowItWorks } from '@/components/home/how-it-works';
 import { CustomerReviews } from '@/components/home/customer-reviews';
@@ -10,6 +11,7 @@ import { CTASection } from '@/components/home/cta-section';
 import {
   getFeaturedProducts,
   getHomeOccasions,
+  getHomeCategories,
   getHomeCollections,
   getFeaturedReviews,
 } from '@/lib/home-data';
@@ -20,9 +22,10 @@ import {
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const [featuredProducts, occasions, collections, reviews] = await Promise.all([
+  const [featuredProducts, occasions, categories, collections, reviews] = await Promise.all([
     getFeaturedProducts(6),
     getHomeOccasions(),
+    getHomeCategories(),
     getHomeCollections(),
     getFeaturedReviews(),
   ]);
@@ -34,6 +37,7 @@ export default async function HomePage() {
         {/* <TrustStrip /> */}
         <ShopByOccasion initialData={occasions} />
         <TrendingProducts initialData={featuredProducts} />
+        <ShopByCategory initialData={categories} />
         <HowItWorks />
         <CuratedCollections initialData={collections} />
         <CustomerReviews initialData={reviews} />
