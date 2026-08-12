@@ -143,11 +143,28 @@ export async function Footer() {
               and order branded corporate gifts with transparent pricing.
             </p>
             <div className="mt-4 flex gap-3">
-              {["in", "x", "ig", "fb"].map((k) => (
-                <a key={k} href="#" className="flex h-8 w-8 border border-white items-center justify-center rounded-full bg-white/5 text-sm transition hover:bg-white/10">
-                  {k === "in" ? "in" : k === "x" ? "𝕏" : k === "ig" ? "◉" : "f"}
-                </a>
-              ))}
+              <a
+                href="https://www.instagram.com/givoogifting/"
+                aria-label="Instagram"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-8 w-8 border border-white items-center justify-center rounded-full bg-white/5 transition hover:bg-white/10"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.336 3.608 1.311.975.975 1.249 2.242 1.311 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.336 2.633-1.311 3.608-.975.975-2.242 1.249-3.608 1.311-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.336-3.608-1.311-.975-.975-1.249-2.242-1.311-3.608C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.062-1.366.336-2.633 1.311-3.608.975-.975 2.242-1.249 3.608-1.311 1.266-.058 1.646-.07 4.85-.07zM12 0C8.741 0 8.332.014 7.052.072 5.197.157 3.355.673 2.014 2.014.673 3.355.157 5.197.072 7.052.014 8.332 0 8.741 0 12s.014 3.668.072 4.948c.085 1.855.601 3.697 1.942 5.038 1.341 1.341 3.183 1.857 5.038 1.942C8.332 23.986 8.741 24 12 24s3.668-.014 4.948-.072c1.855-.085 3.697-.601 5.038-1.942 1.341-1.341 1.857-3.183 1.942-5.038.058-1.28.072-1.689.072-4.948s-.014-3.668-.072-4.948c-.085-1.855-.601-3.697-1.942-5.038C20.645.673 18.803.157 16.948.072 15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                </svg>
+              </a>
+              <a
+                href="https://www.facebook.com/givoogifting/"
+                aria-label="Facebook"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-8 w-8 border border-white items-center justify-center rounded-full bg-white/5 transition hover:bg-white/10"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.026 1.792-4.697 4.533-4.697 1.313 0 2.686.235 2.686.235v2.971h-1.513c-1.491 0-1.956.93-1.956 1.886v2.265h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
+                </svg>
+              </a>
             </div>
           </div>
 
