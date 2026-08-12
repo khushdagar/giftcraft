@@ -91,6 +91,10 @@ async function getFooterData() {
   }
 }
 
+// Cap for the catalog-driven columns. Occasions/categories grow unbounded as
+// the catalog does — past ~10 the footer turns into a scrolling wall.
+const MAX_COLUMN_LINKS = 10;
+
 function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) {
   if (links.length === 0) return null;
   return (
@@ -114,19 +118,19 @@ function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) 
 export async function Footer() {
   const { categories, collections, occasions } = await getFooterData();
 
-  const productLinks: FooterLink[] = [
+  const productLinks: FooterLink[] = ([
     ["/catalog", "All Products"],
     ["/categories", "All Categories"],
     // Indexable category landing pages, not filtered ?category= URLs.
     ...categories.map((c): FooterLink => [`/category/${c.slug}`, c.name]),
-  ];
-  const packLinks: FooterLink[] = [
+  ] as FooterLink[]).slice(0, MAX_COLUMN_LINKS);
+  const packLinks: FooterLink[] = ([
     ["/curated-packs", "All Packs"],
     ...collections.map((c): FooterLink => [`/curated-packs/${c.slug}`, c.name]),
-  ];
-  const occasionLinks: FooterLink[] = occasions.map(
-    (o): FooterLink => [`/occasion/${o.slug}`, o.name]
-  );
+  ] as FooterLink[]).slice(0, MAX_COLUMN_LINKS);
+  const occasionLinks: FooterLink[] = occasions
+    .map((o): FooterLink => [`/occasion/${o.slug}`, o.name])
+    .slice(0, MAX_COLUMN_LINKS);
 
   return (
     <footer className="bg-dark px-4 pt-12 pb-7 text-inv sm:px-8 lg:px-12 lg:pt-[72px]">

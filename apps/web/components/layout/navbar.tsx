@@ -310,7 +310,7 @@ export function Navbar() {
           <li className="group relative py-4">
             <button className="text-sm font-medium text-ink-2 hover:text-ink">Occasions ▾</button>
             {occasions.length > 0 && (
-              <div className="invisible absolute left-0 top-full grid min-w-[480px] grid-cols-3 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+              <div className="invisible absolute left-0 top-full grid min-w-[640px] grid-cols-4 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
                 {occasions.map((o) => (
                   <Link
                     key={o.slug}
