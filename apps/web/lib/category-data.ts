@@ -37,6 +37,8 @@ export type CategorySummary = {
   previewImages: string[];
   /** Lowest tier-1 price across the category, for a "from" line. */
   fromPrice: number | null;
+  /** Populated sub-categories, in sort order. Empty for a sub-category itself. */
+  children: CategorySummary[];
 };
 
 export type CategoryProduct = {
@@ -58,10 +60,10 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
     // One pass over the live catalog, grouped in memory — cheaper and simpler
     // than a count + image query per category.
     const [categories, products] = await Promise.all([
-      // Top-level only — the /categories index is a browse grid of the main
-      // departments, not every sub-category. Products carry both their parent
-      // and sub-category, so the per-category counts below stay correct.
-      prisma.category.findMany({ where: { parentId: null }, orderBy: { sortOrder: 'asc' } }),
+      // Every category — the index lists each department AND its
+      // sub-categories, so a shopper can jump straight to "Laptop Backpack"
+      // without first landing on "Bags & Travel". Nesting is rebuilt below.
+      prisma.category.findMany({ orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] }),
       prisma.product.findMany({
         where: {
           status: 'active',
@@ -101,22 +103,38 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
       }
     }
 
-    return categories
-      .filter((category) => !isHiddenCategory(category))
-      .map((category) => {
-        const bucket = byCategory.get(category.id);
-        return {
-          id: category.id,
-          name: category.name,
-          slug: category.slug,
-          description: category.description,
-          imageUrl: category.imageUrl,
-          productCount: bucket?.count ?? 0,
-          previewImages: bucket?.images ?? [],
-          fromPrice: bucket?.prices.length ? Math.min(...bucket.prices) : null,
-        };
-      })
-      .filter((category) => category.productCount > 0);
+    const summarise = (category: (typeof categories)[number]): CategorySummary => {
+      const bucket = byCategory.get(category.id);
+      return {
+        id: category.id,
+        name: category.name,
+        slug: category.slug,
+        description: category.description,
+        imageUrl: category.imageUrl,
+        productCount: bucket?.count ?? 0,
+        previewImages: bucket?.images ?? [],
+        fromPrice: bucket?.prices.length ? Math.min(...bucket.prices) : null,
+        children: [],
+      };
+    };
+
+    // An empty category is a dead-end page, so it stays off the index whether
+    // it's a department or a sub-category.
+    const visible = categories.filter(
+      (category) => !isHiddenCategory(category) && (byCategory.get(category.id)?.count ?? 0) > 0
+    );
+    const visibleIds = new Set(visible.map((c) => c.id));
+
+    return visible
+      // A sub-category whose parent was filtered out (hidden or empty) has
+      // nowhere to nest, so it is promoted to a top-level card.
+      .filter((category) => !category.parentId || !visibleIds.has(category.parentId))
+      .map((parent) => ({
+        ...summarise(parent),
+        children: visible
+          .filter((child) => child.parentId === parent.id)
+          .map(summarise),
+      }));
   } catch (error) {
     console.error('getCategorySummaries failed:', error);
     return [];

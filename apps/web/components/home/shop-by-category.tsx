@@ -6,47 +6,63 @@ import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cdnSrcSet, clearSrcSetOnError } from '@/lib/cdn-srcset';
 
-export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
+// Fallback tile backgrounds, cycled by position — used only when a category
+// has no cover image set in admin. Same maroon/charcoal family as the occasion
+// tiles so the two sections read as one system.
+const CATEGORY_GRADIENTS = [
+  'linear-gradient(135deg, #800020 0%, #3D000F 100%)',
+  'linear-gradient(135deg, #222222 0%, #800020 100%)',
+  'linear-gradient(135deg, #B04057 0%, #6B001B 100%)',
+  'linear-gradient(135deg, #560015 0%, #000000 100%)',
+  'linear-gradient(135deg, #3A3A3A 0%, #000000 100%)',
+  'linear-gradient(135deg, #800020 0%, #B04057 50%, #D9A0AB 100%)',
+  'linear-gradient(135deg, #6B001B 0%, #222222 100%)',
+  'linear-gradient(135deg, #222222 0%, #5C5852 100%)',
+];
+
+export function ShopByCategory({ initialData }: { initialData?: any[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const occasionColors: { [key: string]: string } = {
-    'Diwali': 'linear-gradient(135deg, #800020 0%, #3D000F 100%)',
-    'Holi': 'linear-gradient(135deg, #B04057 0%, #800020 50%, #560015 100%)',
-    'Christmas & New Year': 'linear-gradient(135deg, #560015 0%, #000000 100%)',
-    'Women\'s Day': 'linear-gradient(135deg, #B04057 0%, #6B001B 100%)',
-    'Employee Onboarding': 'linear-gradient(135deg, #222222 0%, #800020 100%)',
-    'Client Appreciation': 'linear-gradient(135deg, #3A3A3A 0%, #000000 100%)',
-    'Birthday': 'linear-gradient(135deg, #800020 0%, #B04057 50%, #D9A0AB 100%)',
-    'Work Anniversary': 'linear-gradient(135deg, #6B001B 0%, #222222 100%)',
-    'Farewell': 'linear-gradient(135deg, #222222 0%, #5C5852 100%)',
-  };
-
-  const { data: occasions, isLoading } = useQuery({
-    queryKey: ['occasions'],
+  const { data: categories, isLoading } = useQuery({
+    queryKey: ['home-categories'],
     queryFn: async () => {
-      const res = await fetch('/api/occasions');
-      if (!res.ok) throw new Error('Failed to fetch occasions');
-      return res.json();
+      const res = await fetch('/api/categories');
+      if (!res.ok) throw new Error('Failed to fetch categories');
+      const json = await res.json();
+      return (json?.data ?? []).map((c: any) => ({
+        name: c.name,
+        slug: c.slug,
+        image: c.imageUrl || null,
+        // `description` comes back as the admin's rich text — strip the markup
+        // so the card subtitle never renders raw tags. Mirrors getHomeCategories.
+        description: String(c.description || '')
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 80),
+      }));
     },
-    // Server-rendered on the homepage so occasion links are crawlable.
+    // Server-rendered on the homepage so category links are crawlable.
     initialData,
     staleTime: 5 * 60 * 1000,
   });
 
-  // Desktop teaser shows the first 8 (with a See All link below) — the full
-  // list lives at /occasions. The mobile slider pages through everything.
-  const featured = useMemo(() => (occasions ?? []).slice(0, 8), [occasions]);
+  // Desktop teaser shows the first 6 (with a See All link below) — two full
+  // rows of the 3-up grid, no ragged trailing row. The full list lives at
+  // /categories, and the mobile slider pages through everything.
+  const featured = useMemo(() => (categories ?? []).slice(0, 6), [categories]);
 
   // Group into pages of 4 — each page renders as a 2x2 grid, so a swipe
   // or arrow click always moves a full "screen" of 4 cards at once.
   const pages = useMemo(() => {
-    const list = occasions ?? [];
+    const list = categories ?? [];
     const chunked: any[][] = [];
     for (let i = 0; i < list.length; i += 4) {
       chunked.push(list.slice(i, i + 4));
     }
     return chunked;
-  }, [occasions]);
+  }, [categories]);
 
   const scrollByPage = (dir: 'prev' | 'next') => {
     const el = scrollRef.current;
@@ -68,55 +84,54 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
     }
   };
 
-  const renderCard = (occ: any) => (
+  const renderCard = (cat: any, index: number) => (
     <Link
-      key={occ.slug}
-      href={`/occasion/${occ.slug}`}
+      key={cat.slug}
+      href={`/category/${cat.slug}`}
       className="block w-full h-full aspect-[3/2] rounded-3xl overflow-hidden group cursor-pointer relative shadow-md hover:shadow-lg transition-shadow"
     >
-      {occ.image ? (
-        // Uploaded occasion photo (admin) — shown in place of the flat gradient.
+      {cat.image ? (
+        // Uploaded category cover (admin) — shown in place of the flat gradient.
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={occ.image}
-          srcSet={cdnSrcSet(occ.image)}
-          sizes="(min-width: 768px) 25vw, 50vw"
+          src={cat.image}
+          srcSet={cdnSrcSet(cat.image)}
+          sizes="(min-width: 768px) 33vw, 50vw"
           decoding="async"
           onError={clearSrcSetOnError}
-          alt={occ.name}
+          alt={cat.name}
           className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-600"
         />
       ) : (
         <div
           className="absolute inset-0 group-hover:scale-105 transition-transform duration-600"
-          style={{ background: occasionColors[occ.name] || occ.bg }}
+          style={{ background: CATEGORY_GRADIENTS[index % CATEGORY_GRADIENTS.length] }}
         />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
       <div className="absolute bottom-0 left-0 right-0 p-4 text-white z-10">
-        <h3 className="text-lg md:text-xl font-bold font-serif mb-1">{occ.name}</h3>
-        <p className="text-xs md:text-sm text-white/80">{occ.description}</p>
+        <h3 className="text-lg md:text-xl font-bold font-serif mb-1">{cat.name}</h3>
       </div>
     </Link>
   );
 
   return (
-    <section className="py-16 md:py-24 bg-[#F5F1EB]">
+    <section className="py-16 md:pt-24 md:pb-0 bg-[#F5F1EB]">
       <div className="container">
         <h2 className="text-4xl md:text-5xl text-center mb-2 font-serif font-normal">
-          Shop by <span className="italic text-[#800020]">Occasions</span>
+          Shop by <span className="italic text-[#800020]">Categories</span>
         </h2>
         <p className="text-center text-[#5C5852] text-sm mb-12">
-          Find the perfect gift for every moment that matters.
+          Browse our range and find exactly what you have in mind.
         </p>
 
         {/* Desktop / tablet: static grid */}
-        <div className="hidden md:grid md:grid-cols-4 gap-3 sm:gap-4">
+        <div className="hidden md:grid md:grid-cols-3 gap-3 sm:gap-4">
           {isLoading
-            ? Array.from({ length: 8 }).map((_, i) => (
+            ? Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="rounded-2xl aspect-[3/2] bg-[#E5DFD4] animate-pulse" />
               ))
-            : featured.map((occ: any) => renderCard(occ))}
+            : featured.map((cat: any, i: number) => renderCard(cat, i))}
         </div>
 
         {/* Mobile: 2x2 pages, swipeable + arrow navigation */}
@@ -138,9 +153,9 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
                     key={i}
                     className="flex-shrink-0 w-full snap-start grid grid-cols-2 grid-rows-2 gap-3 pb-2"
                   >
-                    {quad.map((occ: any) => (
-                      <div key={occ.slug} className="h-40">
-                        {renderCard(occ)}
+                    {quad.map((cat: any, j: number) => (
+                      <div key={cat.slug} className="h-40">
+                        {renderCard(cat, i * 4 + j)}
                       </div>
                     ))}
                   </div>
@@ -155,7 +170,7 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
               <button
                 type="button"
                 onClick={() => scrollByPage('prev')}
-                aria-label="Previous occasions"
+                aria-label="Previous categories"
                 className="absolute left-1 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-white/90 shadow-md flex items-center justify-center active:scale-95 transition"
               >
                 <ChevronLeft className="h-5 w-5 text-[#800020]" />
@@ -163,7 +178,7 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
               <button
                 type="button"
                 onClick={() => scrollByPage('next')}
-                aria-label="Next occasions"
+                aria-label="Next categories"
                 className="absolute right-1 top-1/2 -translate-y-1/2 z-20 h-9 w-9 rounded-full bg-white/90 shadow-md flex items-center justify-center active:scale-95 transition"
               >
                 <ChevronRight className="h-5 w-5 text-[#800020]" />
@@ -172,12 +187,12 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
           )}
         </div>
 
-        {/* Hub link — desktop only: the grid above is capped at 8 occasions,
+        {/* Hub link — desktop only: the grid above is capped at 6 categories,
             while the mobile slider already pages through all of them. */}
         {!isLoading && featured.length > 0 && (
           <div className="mt-8 md:mt-10 hidden md:flex justify-center">
             <Link
-              href="/occasions"
+              href="/categories"
               className="flex items-center justify-center rounded-full border border-[#800020] px-8 py-2.5 text-sm font-semibold text-[#800020] transition hover:bg-[#800020] hover:text-white"
             >
               See All →

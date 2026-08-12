@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { X, Upload, ArrowLeft, ImageIcon, Package } from 'lucide-react';
 import { RichTextField } from '@/components/admin/rich-text-field';
+import { MediaLibraryModal } from '@/components/admin/media-library-modal';
 import { slugify } from '@/lib/slug';
 
 interface CategoryProduct {
@@ -51,6 +52,7 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [productSort, setProductSort] = useState<'az' | 'za'>('az');
   const [formData, setFormData] = useState({
     name: category?.name || '',
@@ -106,6 +108,13 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
     } finally {
       setImageLoading(false);
     }
+  };
+
+  const handlePickExisting = (picked: { url: string }[]) => {
+    const url = picked[0]?.url;
+    if (!url) return;
+    setFormData((prev) => ({ ...prev, imageUrl: url }));
+    setImagePreview(url);
   };
 
   const handleRemoveImage = () => {
@@ -310,6 +319,16 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
                 <input type="file" accept="image/*" onChange={handleImageUpload} disabled={imageLoading} className="hidden" />
               </label>
             )}
+
+            {/* Reuse an image already uploaded elsewhere instead of re-uploading. */}
+            <button
+              type="button"
+              onClick={() => setLibraryOpen(true)}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-bdr px-3 py-2 text-sm font-medium text-ink transition hover:bg-gray-50"
+            >
+              <ImageIcon className="h-4 w-4 text-em" />
+              {imagePreview ? 'Replace from library' : 'Select existing image'}
+            </button>
           </div>
 
           {/* Organization */}
@@ -340,6 +359,15 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
           </div>
         </div>
       </div>
+
+      {libraryOpen && (
+        <MediaLibraryModal
+          multiple={false}
+          title="Select category image"
+          onClose={() => setLibraryOpen(false)}
+          onConfirm={handlePickExisting}
+        />
+      )}
     </form>
   );
 }
