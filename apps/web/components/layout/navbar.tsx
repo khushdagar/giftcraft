@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard, Phone, Search, ChevronDown } from "lucide-react";
+import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard, Phone, Search, ChevronDown, Heart } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/store/builder";
+import { useWishlistStore } from "@/store/wishlist";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { CONTACT_FALLBACK } from "@/lib/constants";
 
@@ -58,6 +59,7 @@ export function Navbar() {
   const [collections, setCollections] = useState<NavLink[]>([]);
   const [occasions, setOccasions] = useState<NavLink[]>(FALLBACK_OCCASIONS);
   const products = useBuilderStore((state) => state.products);
+  const wishlistItems = useWishlistStore((state) => state.items);
 
   // The builder store is persisted to localStorage, which only exists on the
   // client. Rendering its count before hydration would mismatch the server HTML
@@ -65,6 +67,7 @@ export function Navbar() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const productCount = mounted ? products.length : 0;
+  const wishlistCount = mounted ? wishlistItems.length : 0;
 
   // Until the session resolves we know neither "signed in" nor "signed out".
   // Rendering either one would flip to the other a moment later — that's the
@@ -400,6 +403,17 @@ export function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/orders"><Package className="h-4 w-4" /> My Orders</Link>
                 </DropdownMenuItem>
+                {/* Mobile home for the wishlist — the header icon is lg-only. */}
+                <DropdownMenuItem asChild className="lg:hidden">
+                  <Link href="/wishlist">
+                    <Heart className="h-4 w-4" /> Wishlist
+                    {wishlistCount > 0 && (
+                      <span className="ml-auto rounded-full bg-em px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        {wishlistCount}
+                      </span>
+                    )}
+                  </Link>
+                </DropdownMenuItem>
                 {session.user.role === "super_admin" && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin"><UserIcon className="h-4 w-4" /> Admin Panel</Link>
@@ -423,6 +437,17 @@ export function Navbar() {
               <UserIcon className="h-5 w-5" />
             </Link>
           )}
+
+          {/* Wishlist icon — desktop only; on mobile it lives in the account
+              dropdown instead so the icon row stays uncrowded. */}
+          <Link href="/wishlist" className="order-2 relative border border-[#800020] hidden lg:flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink" aria-label="Wishlist">
+            <Heart className="h-5 w-5" />
+            {wishlistCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-em text-white text-[10px] font-bold">
+                {wishlistCount}
+              </span>
+            )}
+          </Link>
 
           <Link href="/builder" className="order-2 relative border border-[#800020] flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink" aria-label="Gift Pack">
             <ShoppingBag className="h-5 w-5" />

@@ -202,6 +202,7 @@ model User {
   gocCampaigns      GocCampaign[]           @relation("CampaignCreatedBy")
   sampleOrders      SampleOrder[]
   savedAddresses    SavedAddress[]
+  savedPacks        SavedPack[]
   blogPosts         BlogPost[]              @relation("BlogPostAuthor")
   reviews           Review[]
   passwordResetTokens PasswordResetToken[]
@@ -295,6 +296,40 @@ model SavedAddress {
   @@index([userId])
 }
 
+// A gift-pack configuration a user saved from the builder so it can be
+// re-ordered in one click later (Diwali refills, onboarding kits, annual
+// events). Stores only what's needed to rebuild the pack in the builder:
+// the member products (with chosen variants) and the pack quantity —
+// pricing is always re-derived live from current tiers on reorder.
+model SavedPack {
+  id           String          @id @default(cuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String // e.g. "Diwali 2026 — Clients"
+  packQuantity Int             @default(25)
+  items        SavedPackItem[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([userId])
+}
+
+model SavedPackItem {
+  id          String    @id @default(cuid())
+  savedPackId String
+  savedPack   SavedPack @relation(fields: [savedPackId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sortOrder   Int       @default(0)
+  // Chosen variant picks at save time: [{ kind, value }]. Re-resolved against
+  // the product's live variants on reorder, so stale picks degrade gracefully.
+  variants    Json?
+
+  @@unique([savedPackId, productId])
+  @@index([savedPackId])
+  @@index([productId])
+}
+
 // ═══════════════════════════════════════════════════════════
 //   CATALOG — Products, Categories, Occasions, HSN
 // ═══════════════════════════════════════════════════════════
@@ -351,6 +386,7 @@ model Product {
   giftPackItems GiftPackItem[]
   reviews       Review[]
   slugHistory   ProductSlugHistory[]
+  savedPackItems SavedPackItem[]
 
   // ── Curated Pack support ──────────────────────────────────────────────────
   // A pack is a Product (isPack=true) that bundles other products. It gets every
