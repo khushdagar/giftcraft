@@ -140,9 +140,9 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-1">
+                  {/* <label className="block text-sm font-medium text-ink mb-1">
                     Company Name *
-                  </label>
+                  </label> */}
                   <input
                     type="text"
                     name="companyName"
@@ -152,15 +152,15 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     required
                     aria-invalid={!!fieldErrors.companyName}
                     className={inputClass(fieldErrors.companyName)}
-                    placeholder="TechCorp India"
+                    placeholder="Company Name *"
                   />
                   <FieldError message={fieldErrors.companyName} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-1">
+                  {/* <label className="block text-sm font-medium text-ink mb-1">
                     Contact Name *
-                  </label>
+                  </label> */}
                   <input
                     type="text"
                     name="contactName"
@@ -170,15 +170,15 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     required
                     aria-invalid={!!fieldErrors.contactName}
                     className={inputClass(fieldErrors.contactName)}
-                    placeholder="Priya Sharma"
+                    placeholder="Contact Name *"
                   />
                   <FieldError message={fieldErrors.contactName} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-1">
+                  {/* <label className="block text-sm font-medium text-ink mb-1">
                     Email *
-                  </label>
+                  </label> */}
                   <input
                     type="email"
                     name="email"
@@ -188,15 +188,15 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     required
                     aria-invalid={!!fieldErrors.email}
                     className={inputClass(fieldErrors.email)}
-                    placeholder="priya@techcorp.com"
+                    placeholder="Email *"
                   />
                   <FieldError message={fieldErrors.email} />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ink mb-1">
+                  {/* <label className="block text-sm font-medium text-ink mb-1">
                     Phone *
-                  </label>
+                  </label> */}
                   <input
                     type="tel"
                     name="phone"
@@ -207,15 +207,15 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     required
                     aria-invalid={!!fieldErrors.phone}
                     className={inputClass(fieldErrors.phone)}
-                    placeholder="+91 98765 43210"
+                    placeholder="Phone *"
                   />
                   <FieldError message={fieldErrors.phone} />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-ink mb-1">
+                  {/* <label className="block text-sm font-medium text-ink mb-1">
                     Quantity
-                  </label>
+                  </label> */}
                   <input
                     type="number"
                     name="quantity"
@@ -226,15 +226,15 @@ export function EnquiryForm({ isOpen, onClose, productName, productId }: Enquiry
                     onBlur={handleBlur}
                     aria-invalid={!!fieldErrors.quantity}
                     className={inputClass(fieldErrors.quantity)}
-                    placeholder="250"
+                    placeholder="Quantity (optional)"
                   />
                   <FieldError message={fieldErrors.quantity} />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-ink mb-1">
+                  {/* <label className="block text-sm font-medium text-ink mb-1">
                     Message
-                  </label>
+                  </label> */}
                   <textarea
                     name="message"
                     value={formData.message}
