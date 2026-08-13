@@ -62,11 +62,11 @@ function Collage({ tiles }: { tiles: (string | null)[] }) {
   };
 
   return (
-    <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1 bg-white p-1">
+    <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 bg-white">
       {t.map((src, i) => (
         <div
           key={i}
-          className={`relative overflow-hidden rounded-sm bg-gray-50 flex items-center justify-center ${spanClass(i)}`}
+          className={`relative overflow-hidden bg-gray-50 flex items-center justify-center ${spanClass(i)}`}
         >
           {src ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -370,18 +370,18 @@ export function PacksBrowser({
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
                   <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-                    <h2 className="font-serif text-2xl md:text-3xl text-white mb-2 leading-tight">
+                    <h2 className="font-serif text-xl text-white mb-2 leading-tight">
                       {c.name}
                     </h2>
-                    {c.description && (
+                    {/* {c.description && (
                       <p className="text-white/70 text-sm mb-3 line-clamp-2">{c.description}</p>
                     )}
                     <div className="flex items-center gap-3 text-white/60 text-xs font-medium">
                       <span>
                         {c.packs.length} pack{c.packs.length === 1 ? '' : 's'}
                       </span>
-                    </div>
-                    <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-white/10 rounded-full text-white text-sm font-medium group-hover:bg-white/20 transition">
+                    </div> */}
+                    <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-white rounded-full text-em text-sm font-medium group-hover:bg-em/90 transition group-hover:text-white">
                       Browse Packs →
                     </div>
                   </div>
