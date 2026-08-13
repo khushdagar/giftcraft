@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { X, Plus, Minus, ChevronDown, Bookmark, Truck } from 'lucide-react';
+import { X, Plus, Minus, ChevronDown, Bookmark, Truck, Share2, MessageCircle } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
 import { toast } from '@/lib/stores/toast-store';
@@ -181,6 +181,50 @@ export function GiftPackSummary() {
     };
     return `${fmt(win.min)} – ${fmt(win.max)}`;
   }, [selected, shippingZone]);
+
+  // ── Share this pack ───────────────────────────────────────────────────────
+  // The whole configuration fits in the same /builder?pack=…&qty=…&pv=… URL the
+  // curated packs use, so "sharing a pack" is just sharing a link — whoever
+  // opens it lands in the builder with this exact pack, priced at live tiers.
+  const buildShareUrl = () => {
+    const ids = selected.map((p) => p.id).join(',');
+    const pvEntries = selected.flatMap((p) =>
+      (p.variants ?? []).map(
+        (v) => `${encodeURIComponent(p.id)}~${encodeURIComponent(v.kind)}~${encodeURIComponent(v.value)}`
+      )
+    );
+    const pv = pvEntries.length ? `&pv=${encodeURIComponent(pvEntries.join('|'))}` : '';
+    return `${window.location.origin}/builder?pack=${encodeURIComponent(ids)}&qty=${packQuantity}${pv}`;
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const url = buildShareUrl();
+    const payload = {
+      title: 'GIVOO Gift Pack',
+      text: `Have a look at this gift pack I put together on GIVOO (${selected.length} products × ${packQuantity} packs)`,
+      url,
+    };
+    try {
+      // Native share sheet on mobile; clipboard everywhere else.
+      if (navigator.share && (!navigator.canShare || navigator.canShare(payload))) {
+        await navigator.share(payload);
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast.success('Pack link copied — send it to whoever needs to approve');
+    } catch (err) {
+      // Dismissing the native share sheet rejects with AbortError — not an error.
+      if ((err as Error)?.name === 'AbortError') return;
+      toast.error('Could not share this pack');
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    const url = buildShareUrl();
+    const text = `Have a look at this gift pack I put together on GIVOO: ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  };
 
   // ── Save pack for later ───────────────────────────────────────────────────
   const router = useRouter();
@@ -484,15 +528,19 @@ export function GiftPackSummary() {
             )}
             </div>
 
-            {/* Estimated delivery — order today, arrives in this window. */}
+            {/* Estimated delivery — order today, arrives in this window. The
+                flex row lives on its own element: `details` sets lg:block,
+                which would override a `flex` on the same node at desktop. */}
             {deliveryEstimate && (
-              <div className={`${details} rounded-md bg-white px-3 py-2.5 flex items-center gap-2`}>
-                <Truck className="h-4 w-4 text-em-700 flex-shrink-0" />
-                <p className="text-xs text-ink-2">
-                  Order today, delivered{' '}
-                  <span className="font-semibold text-ink">{deliveryEstimate}</span>
-                  {!shippingZone && <span className="text-ink-3"> (est.)</span>}
-                </p>
+              <div className={details}>
+                <div className="flex items-center gap-2 rounded-md bg-white px-3 py-2.5">
+                  <Truck className="h-4 w-4 text-em-700 flex-shrink-0" />
+                  <p className="text-xs text-ink-2">
+                    Order today, delivered{' '}
+                    <span className="font-semibold text-ink">{deliveryEstimate}</span>
+                    {!shippingZone && <span className="text-ink-3"> (est.)</span>}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -625,14 +673,35 @@ export function GiftPackSummary() {
                   </div>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={openSave}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-full border-2 border-emerald-200 bg-white py-2 text-xs font-bold text-em-700 transition hover:border-em"
-                >
-                  <Bookmark className="h-3.5 w-3.5" />
-                  Save pack for later
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={openSave}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-emerald-200 bg-white py-2 text-xs font-bold text-em-700 transition hover:border-em"
+                  >
+                    <Bookmark className="h-3.5 w-3.5" />
+                    Save for later
+                  </button>
+                  {/* Share the exact pack as a link — for the teammate/CFO who
+                      approves the budget but didn't build the pack. */}
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-emerald-200 bg-white py-2 text-xs font-bold text-em-700 transition hover:border-em"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                    Share
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleWhatsAppShare}
+                    aria-label="Share pack on WhatsApp"
+                    title="Share on WhatsApp"
+                    className="flex w-9 items-center justify-center rounded-full border-2 border-emerald-200 bg-white text-em-700 transition hover:border-em"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               )}
             </div>
 

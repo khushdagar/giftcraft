@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Truck, AlertCircle, CalendarCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { formatRupees } from '@/lib/utils';
 import { deliveryWindowDays } from '@/lib/shipping';
 
 interface ShippingEstimate {
@@ -115,17 +114,6 @@ export function DeliveryEstimator({ leadTimeDays }: { leadTimeDays?: number }) {
                 <span className="text-xs text-ink-2">Zone:</span>
                 <span className="text-sm font-semibold text-ink">{estimate.zoneName}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-ink-2">Shipping:</span>
-                <span className="text-sm font-semibold tabnum">
-                  {estimate.ratePerKg > 0
-                    ? `${formatRupees(estimate.ratePerKg)}/kg`
-                    : formatRupees(estimate.minCharge || estimate.flatRate)}
-                </span>
-              </div>
-              <p className="text-[10px] text-ink-3 leading-snug">
-                Final shipping is calculated by total weight in the gift builder.
-              </p>
               {/* Total window (production + assembly/QC + courier), so this row
                   always agrees with the delivery dates shown above. */}
               {deliveryWindow && (

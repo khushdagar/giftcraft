@@ -2,11 +2,14 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatRupees } from '@/lib/utils';
 import { VariantTag } from '@/components/orders/variant-tag';
+import { buildReorderHref } from '@/lib/reorder';
 
 function getStatusVariant(status: string): "em" | "gold" | "grey" {
   if (status === "mockup_pending") return "gold";
@@ -43,6 +46,7 @@ interface Order {
   itemCount: number;
   items: {
     id: string;
+    productId: string;
     name: string;
     quantity: number;
     unitPrice: number;
@@ -53,6 +57,7 @@ interface Order {
 
 export default function OrdersPage() {
   const [filter, setFilter] = useState<string | null>(null);
+  const router = useRouter();
 
   const { data, isLoading, error } = useQuery<{ orders: Order[]; total: number }>({
     queryKey: ['orders', filter],
@@ -186,6 +191,29 @@ export default function OrdersPage() {
                 </div>
                 <p className="w-28 text-right font-normal tabnum">{formatRupees(Number(o.grandTotal))}</p>
               </div>
+
+              {/* One-click reorder — rebuilds this order in the builder at
+                  today's prices. Inside the row-link, so swallow the click. */}
+              {(o.items?.length ?? 0) > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    router.push(
+                      buildReorderHref(
+                        o.items.map((it) => ({ productId: it.productId, variants: it.variants })),
+                        o.itemCount || 25
+                      )
+                    );
+                  }}
+                  title="Reorder this pack"
+                  className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full border border-bdr px-3 py-1.5 text-xs font-semibold text-ink-2 transition hover:border-em hover:text-em"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Reorder</span>
+                </button>
+              )}
 
               <div className="w-4 flex-shrink-0 text-right text-ink-3">→</div>
             </Link>

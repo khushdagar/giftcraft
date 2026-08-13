@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart, Trash2, ArrowRight } from 'lucide-react';
+import { Heart, Trash2, ArrowRight, ArrowLeftRight } from 'lucide-react';
 import { useWishlistStore } from '@/store/wishlist';
+import { useCompareStore, MAX_COMPARE } from '@/store/compare';
+import { CompareBar } from '@/components/compare/compare-bar';
+import { toast } from '@/lib/stores/toast-store';
 
 /**
  * The wishlist ("shortlist") page. Everything here is localStorage-backed via
@@ -16,6 +19,8 @@ export function WishlistContent() {
   const items = useWishlistStore((s) => s.items);
   const remove = useWishlistStore((s) => s.remove);
   const clear = useWishlistStore((s) => s.clear);
+  const compareItems = useCompareStore((s) => s.items);
+  const toggleCompare = useCompareStore((s) => s.toggle);
 
   // localStorage only exists client-side; render the empty frame until mounted
   // so server and client HTML agree.
@@ -115,6 +120,28 @@ export function WishlistContent() {
                   </Link>
                   <button
                     type="button"
+                    onClick={() => {
+                      const ok = toggleCompare({
+                        id: item.id,
+                        name: item.name,
+                        slug: item.slug,
+                        image: item.image,
+                      });
+                      if (!ok) toast.error(`You can compare up to ${MAX_COMPARE} products`);
+                    }}
+                    aria-pressed={compareItems.some((c) => c.id === item.id)}
+                    aria-label={`Compare ${item.name}`}
+                    title="Compare"
+                    className={`flex h-9 w-9 items-center justify-center rounded-full border transition ${
+                      compareItems.some((c) => c.id === item.id)
+                        ? 'border-em bg-em text-white'
+                        : 'border-bdr text-ink-2 hover:border-em hover:text-em'
+                    }`}
+                  >
+                    <ArrowLeftRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => remove(item.id)}
                     aria-label={`Remove ${item.name} from wishlist`}
                     className="flex h-9 w-9 items-center justify-center rounded-full border border-bdr text-ink-2 transition hover:border-red-500 hover:text-red-600"
@@ -127,6 +154,9 @@ export function WishlistContent() {
           </div>
         )}
       </div>
+
+      {/* Floating comparison tray */}
+      <CompareBar />
     </div>
   );
 }

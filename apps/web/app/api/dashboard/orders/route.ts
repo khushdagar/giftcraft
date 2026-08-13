@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
           items: {
             select: {
               id: true,
+              productId: true,
               quantity: true,
               unitPrice: true,
               variantsJson: true,
@@ -72,6 +73,7 @@ export async function GET(req: NextRequest) {
           itemCount: o.packQuantity,
           items: o.items.map((it: any) => ({
             id: it.id,
+            productId: it.productId,
             name: it.product?.name || 'Product',
             quantity: it.quantity,
             unitPrice: Number(it.unitPrice),

@@ -102,8 +102,10 @@ function CheckoutContent() {
   // re-type the address they logged in with.
   const { data: session } = useSession();
 
-  // Price lock is the recommended path, so it starts selected.
-  const [selectedPath, setSelectedPath] = useState<'mockup' | 'lock'>('lock');
+  // The 10% price-lock path is DISABLED for now (no advance payments taken) —
+  // mockup-first is the only offered path. Restore the 'lock' default and the
+  // commented card in path-selection.tsx to bring it back.
+  const [selectedPath, setSelectedPath] = useState<'mockup' | 'lock'>('mockup');
   const [showSignIn, setShowSignIn] = useState(false);
 
   const [billingData, setBillingData] = useState<BillingFormData>({
@@ -135,7 +137,9 @@ function CheckoutContent() {
       const saved = JSON.parse(raw);
       if (saved.billingData) setBillingData(saved.billingData);
       if (saved.contactData) setContactData(saved.contactData);
-      if (saved.selectedPath) setSelectedPath(saved.selectedPath);
+      // Only the mockup path is offered while price-lock is disabled — a saved
+      // 'lock' selection from an older session must not resurrect it.
+      if (saved.selectedPath === 'mockup') setSelectedPath(saved.selectedPath);
       sessionStorage.removeItem(`checkout-form-${quoteId}`);
     } catch {
       /* corrupted/unavailable storage — start with empty forms */

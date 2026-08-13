@@ -61,17 +61,11 @@ export function Navbar() {
   const products = useBuilderStore((state) => state.products);
   const wishlistItems = useWishlistStore((state) => state.items);
 
-  // The builder store is persisted to localStorage, which only exists on the
-  // client. Rendering its count before hydration would mismatch the server HTML
-  // and make the cart badge pop in and out — wait until we're mounted.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const productCount = mounted ? products.length : 0;
   const wishlistCount = mounted ? wishlistItems.length : 0;
 
-  // Until the session resolves we know neither "signed in" nor "signed out".
-  // Rendering either one would flip to the other a moment later — that's the
-  // flicker. Hold a same-sized placeholder instead.
   const authLoading = status === "loading";
 
   useEffect(() => {
@@ -115,8 +109,6 @@ export function Navbar() {
     return () => { active = false; };
   }, []);
 
-  // Typeahead. Debounced so a fast typist fires one request, not one per key;
-  // `reqId` drops responses that land after a newer query was already issued.
   const suggestReq = useRef(0);
   useEffect(() => {
     const q = query.trim();
@@ -144,7 +136,6 @@ export function Navbar() {
   }, [query]);
 
   const userInitial = session?.user?.name?.[0]?.toUpperCase() ?? "G";
-  // tel: links only accept digits and a leading + — strip the display spacing.
   const phoneHref = `tel:${phone.replace(/[^\d+]/g, "")}`;
 
   const submitSearch = (e: React.FormEvent) => {
@@ -154,8 +145,7 @@ export function Navbar() {
     setMobileOpen(false);
     setMobileSearchOpen(false);
     setSuggestOpen(false);
-    // The catalog seeds its own box from ?search=, so leaving the term in the
-    // navbar would just duplicate it — reset for the next search.
+  
     setQuery("");
     router.push(`/catalog?search=${encodeURIComponent(q)}`);
   };
@@ -223,9 +213,7 @@ export function Navbar() {
             >
               <span className="h-9 w-9 shrink-0 overflow-hidden rounded-md bg-elevated">
                 {p.image && (
-                  // Suggestion thumbnails are tiny and short-lived — plain img avoids
-                  // queueing a next/image optimisation per keystroke.
-                  // eslint-disable-next-line @next/next/no-img-element
+                
                   <img src={p.image} alt="" className="h-full w-full object-cover" />
                 )}
               </span>
@@ -253,9 +241,18 @@ export function Navbar() {
 
   return (
     <>
+     
+      <div className="sticky top-0 z-[700] flex h-8 items-center justify-center bg-em px-4 text-white">
+        <span className="truncate text-[11px] sm:text-xs">
+          <span className="sm:hidden">Pay only after you approve your mockup — <b>₹0 today.</b></span>
+          <span className="hidden sm:inline">
+            Order with zero payment today — pay only after you approve your branded mockup.
+          </span>
+        </span>
+      </div>
       <nav
         className={cn(
-          "glass sticky top-0 z-[700] flex h-14 items-center justify-between px-4 sm:px-8 lg:px-10 transition-shadow",
+          "glass sticky top-8 z-[700] flex h-14 items-center justify-between px-4 sm:px-8 lg:px-10 transition-shadow",
           scrolled && "shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.04)]"
         )}
       >
@@ -481,7 +478,7 @@ export function Navbar() {
 
       {/* Mobile search drop-down (below the bar, above page content) */}
       {mobileSearchOpen && (
-        <div className="sticky top-14 z-[690] border-b border-bdr bg-white px-4 py-3 nav:hidden">
+        <div className="sticky top-[5.5rem] z-[690] border-b border-bdr bg-white px-4 py-3 nav:hidden">
           <form role="search" onSubmit={submitSearch} className="relative flex items-center">
             <Search className="pointer-events-none absolute left-4 h-4 w-4 text-ink-3" />
             <input

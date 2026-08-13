@@ -7,6 +7,8 @@ import { useBuilderStore } from '@/store/builder';
 import { useBoxStore } from '@/store/box';
 import { useCartStore } from '@/store/cart';
 import { useWishlistStore } from '@/store/wishlist';
+import { useCompareStore } from '@/store/compare';
+import { useRecentlyViewedStore } from '@/store/recently-viewed';
 
 /**
  * Which account the shopping state on this device belongs to.
@@ -45,6 +47,8 @@ function clearShoppingState() {
   useBoxStore.getState().reset();
   useCartStore.getState().clearCart();
   useWishlistStore.getState().clear();
+  useCompareStore.getState().clear();
+  useRecentlyViewedStore.getState().clear();
 }
 
 /**
