@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRupees } from "@/lib/utils";
 import { DashboardPaymentModal } from "./components/payment-modal";
+import { OccasionReminderBanner } from "@/components/dashboard/occasion-reminder-banner";
 
 interface KpiProps {
   label: string;
@@ -122,6 +123,9 @@ export default async function DashboardPage() {
     0
   );
 
+  // Saved packs feed the occasion banner's "reorder a saved pack" shortcut.
+  const savedPackCount = await prisma.savedPack.count({ where: { userId } });
+
   // Fetch recent orders with product details
   const recentOrders = await prisma.order.findMany({
     where: orderScope,
@@ -199,6 +203,9 @@ export default async function DashboardPage() {
           </Link>
         </Button>
       </div>
+
+      {/* Upcoming occasion reminder — renders only when one is within 75 days */}
+      <OccasionReminderBanner savedPackCount={savedPackCount} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

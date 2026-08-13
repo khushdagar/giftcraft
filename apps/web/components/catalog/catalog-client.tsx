@@ -3,8 +3,11 @@
 import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Search, ArrowRight } from 'lucide-react';
+import { Search, ArrowRight, Heart, ArrowLeftRight } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
+import { useWishlistStore } from '@/store/wishlist';
+import { useCompareStore, MAX_COMPARE } from '@/store/compare';
+import { CompareBar } from '@/components/compare/compare-bar';
 import { useTopLoading } from '@/components/ui/top-loading-bar';
 import { toast } from '@/lib/stores/toast-store';
 import { resolveSwatchHex } from '@/lib/color-name';
@@ -207,6 +210,14 @@ export function CatalogClient({
   initialFilters?: { categories: Category[]; occasions: Occasion[] };
 } = {}) {
   const addProduct = useBuilderStore((state) => state.addProduct);
+  const wishlistItems = useWishlistStore((state) => state.items);
+  const toggleWishlist = useWishlistStore((state) => state.toggle);
+  const compareItems = useCompareStore((state) => state.items);
+  const toggleCompare = useCompareStore((state) => state.toggle);
+  // The wishlist persists to localStorage, so the server renders it empty —
+  // wait for hydration before painting filled hearts to avoid a mismatch.
+  const [wishlistMounted, setWishlistMounted] = useState(false);
+  useEffect(() => setWishlistMounted(true), []);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('featured');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1093,6 +1104,36 @@ export function CatalogClient({
                     toast.success(`${p.name} added to pack!`, 3000);
                   };
 
+                  const wishlisted =
+                    wishlistMounted && wishlistItems.some((i) => i.id === p.id);
+                  const handleToggleWishlist = (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleWishlist({
+                      id: p.id,
+                      name: p.name,
+                      slug: p.slug,
+                      image: p.images?.find((img) => img.isPrimary)?.url || p.images?.[0]?.url,
+                    });
+                    toast.success(
+                      wishlisted ? `${p.name} removed from wishlist` : `${p.name} added to wishlist`,
+                      3000
+                    );
+                  };
+
+                  const compared = wishlistMounted && compareItems.some((i) => i.id === p.id);
+                  const handleToggleCompare = (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const ok = toggleCompare({
+                      id: p.id,
+                      name: p.name,
+                      slug: p.slug,
+                      image: p.images?.find((img) => img.isPrimary)?.url || p.images?.[0]?.url,
+                    });
+                    if (!ok) toast.error(`You can compare up to ${MAX_COMPARE} products`, 3000);
+                  };
+
                   const colorVariants = (p.variants || []).filter((v) => (v.kind ?? 'color') === 'color');
                   const baseUrl = p.images?.find(img => img.isPrimary)?.url || p.images?.[0]?.url;
                   // A second, distinct image to reveal on hover (if the product has one).
@@ -1121,7 +1162,30 @@ export function CatalogClient({
                             <span className="text-5xl opacity-70 transition hover:scale-110">{p.icon || '📦'}</span>
                           )}
                           {p.moq && <span className="absolute top-2 left-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#F5F1EB', color: '#222222' }}>Min {p.moq}</span>}
-                          {p.isEcoCertified && <span className="absolute top-2 right-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#FBF4F5', color: '#560015' }}>Eco</span>}
+                          <button
+                            type="button"
+                            onClick={handleToggleWishlist}
+                            aria-pressed={wishlisted}
+                            aria-label={wishlisted ? `Remove ${p.name} from wishlist` : `Add ${p.name} to wishlist`}
+                            className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur transition hover:bg-white"
+                            style={{ border: '1px solid #E5DFD4' }}
+                          >
+                            <Heart className={`h-3.5 w-3.5 transition ${wishlisted ? 'fill-em text-em' : 'text-ink'}`} />
+                          </button>
+                          {p.isEcoCertified && <span className="absolute top-10 right-2 text-[9px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: '#FBF4F5', color: '#560015' }}>Eco</span>}
+                          <button
+                            type="button"
+                            onClick={handleToggleCompare}
+                            aria-pressed={compared}
+                            aria-label={compared ? `Remove ${p.name} from comparison` : `Compare ${p.name}`}
+                            title="Compare"
+                            className={`absolute bottom-2 left-2 flex h-7 w-7 items-center justify-center rounded-full shadow-sm backdrop-blur transition ${
+                              compared ? 'bg-em text-white' : 'bg-white/90 text-ink hover:bg-white'
+                            }`}
+                            style={compared ? undefined : { border: '1px solid #E5DFD4' }}
+                          >
+                            <ArrowLeftRight className="h-3.5 w-3.5" />
+                          </button>
                           {/* Only badge techniques we have a label for — an unmapped value must render nothing, not a fallback. */}
                           {printingTechniqueLabel(p.printingTechnique) && <span className="absolute bottom-2 right-2 text-[8px] font-bold px-2 py-1 rounded-full uppercase" style={{ background: 'rgba(128, 0, 32,.08)', color: '#560015' }}>{printingTechniqueLabel(p.printingTechnique)}</span>}
                         </div>
@@ -1166,6 +1230,9 @@ export function CatalogClient({
           </div>
         </div>
       </div>
+
+      {/* Floating comparison tray — appears while products are ticked */}
+      <CompareBar />
     </div>
   );
 }

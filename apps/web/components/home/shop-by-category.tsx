@@ -116,7 +116,7 @@ export function ShopByCategory({ initialData }: { initialData?: any[] }) {
   );
 
   return (
-    <section className="py-16 md:pt-24 md:pb-0 bg-[#F5F1EB]">
+    <section className="py-16 md:pt-24 pb-0 bg-[#F5F1EB]">
       <div className="container">
         <h2 className="text-4xl md:text-5xl text-center mb-2 font-serif font-normal">
           Shop by <span className="italic text-[#800020]">Categories</span>

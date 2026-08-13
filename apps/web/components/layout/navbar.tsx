@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard, Phone, Search, ChevronDown } from "lucide-react";
+import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard, Phone, Search, ChevronDown, Heart } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useBuilderStore } from "@/store/builder";
+import { useWishlistStore } from "@/store/wishlist";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { CONTACT_FALLBACK } from "@/lib/constants";
 
@@ -58,17 +59,13 @@ export function Navbar() {
   const [collections, setCollections] = useState<NavLink[]>([]);
   const [occasions, setOccasions] = useState<NavLink[]>(FALLBACK_OCCASIONS);
   const products = useBuilderStore((state) => state.products);
+  const wishlistItems = useWishlistStore((state) => state.items);
 
-  // The builder store is persisted to localStorage, which only exists on the
-  // client. Rendering its count before hydration would mismatch the server HTML
-  // and make the cart badge pop in and out — wait until we're mounted.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const productCount = mounted ? products.length : 0;
+  const wishlistCount = mounted ? wishlistItems.length : 0;
 
-  // Until the session resolves we know neither "signed in" nor "signed out".
-  // Rendering either one would flip to the other a moment later — that's the
-  // flicker. Hold a same-sized placeholder instead.
   const authLoading = status === "loading";
 
   useEffect(() => {
@@ -112,8 +109,6 @@ export function Navbar() {
     return () => { active = false; };
   }, []);
 
-  // Typeahead. Debounced so a fast typist fires one request, not one per key;
-  // `reqId` drops responses that land after a newer query was already issued.
   const suggestReq = useRef(0);
   useEffect(() => {
     const q = query.trim();
@@ -141,7 +136,6 @@ export function Navbar() {
   }, [query]);
 
   const userInitial = session?.user?.name?.[0]?.toUpperCase() ?? "G";
-  // tel: links only accept digits and a leading + — strip the display spacing.
   const phoneHref = `tel:${phone.replace(/[^\d+]/g, "")}`;
 
   const submitSearch = (e: React.FormEvent) => {
@@ -151,8 +145,7 @@ export function Navbar() {
     setMobileOpen(false);
     setMobileSearchOpen(false);
     setSuggestOpen(false);
-    // The catalog seeds its own box from ?search=, so leaving the term in the
-    // navbar would just duplicate it — reset for the next search.
+  
     setQuery("");
     router.push(`/catalog?search=${encodeURIComponent(q)}`);
   };
@@ -220,9 +213,7 @@ export function Navbar() {
             >
               <span className="h-9 w-9 shrink-0 overflow-hidden rounded-md bg-elevated">
                 {p.image && (
-                  // Suggestion thumbnails are tiny and short-lived — plain img avoids
-                  // queueing a next/image optimisation per keystroke.
-                  // eslint-disable-next-line @next/next/no-img-element
+                
                   <img src={p.image} alt="" className="h-full w-full object-cover" />
                 )}
               </span>
@@ -250,9 +241,18 @@ export function Navbar() {
 
   return (
     <>
+     
+      <div className="sticky top-0 z-[700] flex h-8 items-center justify-center bg-em px-4 text-white">
+        <span className="truncate text-[11px] sm:text-xs">
+          <span className="sm:hidden">Pay only after you approve your mockup — <b>₹0 today.</b></span>
+          <span className="hidden sm:inline">
+            Order with zero payment today — pay only after you approve your branded mockup.
+          </span>
+        </span>
+      </div>
       <nav
         className={cn(
-          "glass sticky top-0 z-[700] flex h-14 items-center justify-between px-4 sm:px-8 lg:px-10 transition-shadow",
+          "glass sticky top-8 z-[700] flex h-14 items-center justify-between px-4 sm:px-8 lg:px-10 transition-shadow",
           scrolled && "shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.04)]"
         )}
       >
@@ -400,6 +400,17 @@ export function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/orders"><Package className="h-4 w-4" /> My Orders</Link>
                 </DropdownMenuItem>
+                {/* Mobile home for the wishlist — the header icon is lg-only. */}
+                <DropdownMenuItem asChild className="lg:hidden">
+                  <Link href="/wishlist">
+                    <Heart className="h-4 w-4" /> Wishlist
+                    {wishlistCount > 0 && (
+                      <span className="ml-auto rounded-full bg-em px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        {wishlistCount}
+                      </span>
+                    )}
+                  </Link>
+                </DropdownMenuItem>
                 {session.user.role === "super_admin" && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin"><UserIcon className="h-4 w-4" /> Admin Panel</Link>
@@ -423,6 +434,17 @@ export function Navbar() {
               <UserIcon className="h-5 w-5" />
             </Link>
           )}
+
+          {/* Wishlist icon — desktop only; on mobile it lives in the account
+              dropdown instead so the icon row stays uncrowded. */}
+          <Link href="/wishlist" className="order-2 relative border border-[#800020] hidden lg:flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink" aria-label="Wishlist">
+            <Heart className="h-5 w-5" />
+            {wishlistCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-em text-white text-[10px] font-bold">
+                {wishlistCount}
+              </span>
+            )}
+          </Link>
 
           <Link href="/builder" className="order-2 relative border border-[#800020] flex h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink" aria-label="Gift Pack">
             <ShoppingBag className="h-5 w-5" />
@@ -456,7 +478,7 @@ export function Navbar() {
 
       {/* Mobile search drop-down (below the bar, above page content) */}
       {mobileSearchOpen && (
-        <div className="sticky top-14 z-[690] border-b border-bdr bg-white px-4 py-3 nav:hidden">
+        <div className="sticky top-[5.5rem] z-[690] border-b border-bdr bg-white px-4 py-3 nav:hidden">
           <form role="search" onSubmit={submitSearch} className="relative flex items-center">
             <Search className="pointer-events-none absolute left-4 h-4 w-4 text-ink-3" />
             <input

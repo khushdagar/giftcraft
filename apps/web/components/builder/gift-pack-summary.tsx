@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
-import { X, Plus, Minus, ChevronDown } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { X, Plus, Minus, ChevronDown, Bookmark, Truck, Share2, MessageCircle } from 'lucide-react';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
+import { toast } from '@/lib/stores/toast-store';
 import { computePricing } from '@giftcraft/pricing';
-import { computeOrderShipping } from '@/lib/shipping';
+import { computeOrderShipping, deliveryWindowDays } from '@/lib/shipping';
 import { SELLER_STATE_CODE } from '@/lib/constants';
 import { resolveBuyerStateCode } from '@/lib/pincode-to-state';
 
@@ -159,6 +161,115 @@ export function GiftPackSummary() {
   // sticky side column with room to show everything, so it's always expanded.
   const [expanded, setExpanded] = useState(false);
   const details = expanded ? 'block' : 'hidden lg:block';
+
+  // ── Estimated delivery ────────────────────────────────────────────────────
+  // Same formula as the Delivery step (longest product lead time + assembly/QC
+  // + courier transit). Before a pincode is validated we fall back to the 4–7
+  // day default transit window the Delivery step uses, so the range can only
+  // tighten, never worsen, once the zone is known.
+  const deliveryEstimate = useMemo(() => {
+    if (selected.length === 0) return null;
+    const win = deliveryWindowDays({
+      leadTimeDays: Math.max(...selected.map((p) => p.leadTimeDays || 0)),
+      etaMinDays: shippingZone?.etaMinDays ?? 4,
+      etaMaxDays: shippingZone?.etaMaxDays ?? 7,
+    });
+    const fmt = (days: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    };
+    return `${fmt(win.min)} – ${fmt(win.max)}`;
+  }, [selected, shippingZone]);
+
+  // ── Share this pack ───────────────────────────────────────────────────────
+  // The whole configuration fits in the same /builder?pack=…&qty=…&pv=… URL the
+  // curated packs use, so "sharing a pack" is just sharing a link — whoever
+  // opens it lands in the builder with this exact pack, priced at live tiers.
+  const buildShareUrl = () => {
+    const ids = selected.map((p) => p.id).join(',');
+    const pvEntries = selected.flatMap((p) =>
+      (p.variants ?? []).map(
+        (v) => `${encodeURIComponent(p.id)}~${encodeURIComponent(v.kind)}~${encodeURIComponent(v.value)}`
+      )
+    );
+    const pv = pvEntries.length ? `&pv=${encodeURIComponent(pvEntries.join('|'))}` : '';
+    return `${window.location.origin}/builder?pack=${encodeURIComponent(ids)}&qty=${packQuantity}${pv}`;
+  };
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const url = buildShareUrl();
+    const payload = {
+      title: 'GIVOO Gift Pack',
+      text: `Have a look at this gift pack I put together on GIVOO (${selected.length} products × ${packQuantity} packs)`,
+      url,
+    };
+    try {
+      // Native share sheet on mobile; clipboard everywhere else.
+      if (navigator.share && (!navigator.canShare || navigator.canShare(payload))) {
+        await navigator.share(payload);
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast.success('Pack link copied — send it to whoever needs to approve');
+    } catch (err) {
+      // Dismissing the native share sheet rejects with AbortError — not an error.
+      if ((err as Error)?.name === 'AbortError') return;
+      toast.error('Could not share this pack');
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    const url = buildShareUrl();
+    const text = `Have a look at this gift pack I put together on GIVOO: ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  };
+
+  // ── Save pack for later ───────────────────────────────────────────────────
+  const router = useRouter();
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const openSave = () => {
+    setSaveName(
+      `Gift Pack — ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+    );
+    setSaveOpen(true);
+  };
+
+  const handleSavePack = async () => {
+    const name = saveName.trim();
+    if (!name || saving) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/dashboard/saved-packs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          packQuantity,
+          items: selected.map((p) => ({
+            productId: p.id,
+            variants: p.variants?.map((v) => ({ kind: v.kind, value: v.value })),
+          })),
+        }),
+      });
+      if (res.status === 401) {
+        toast.error('Sign in to save your pack');
+        router.push('/login?from=/builder');
+        return;
+      }
+      if (!res.ok) throw new Error('save failed');
+      toast.success(`"${name}" saved — reorder it anytime from your dashboard`);
+      setSaveOpen(false);
+    } catch {
+      toast.error('Could not save your pack. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     // order-first puts the pack above the step content on mobile, where the
@@ -417,6 +528,22 @@ export function GiftPackSummary() {
             )}
             </div>
 
+            {/* Estimated delivery — order today, arrives in this window. The
+                flex row lives on its own element: `details` sets lg:block,
+                which would override a `flex` on the same node at desktop. */}
+            {deliveryEstimate && (
+              <div className={details}>
+                <div className="flex items-center gap-2 rounded-md bg-white px-3 py-2.5">
+                  <Truck className="h-4 w-4 text-em-700 flex-shrink-0" />
+                  <p className="text-xs text-ink-2">
+                    Order today, delivered{' '}
+                    <span className="font-semibold text-ink">{deliveryEstimate}</span>
+                    {!shippingZone && <span className="text-ink-3"> (est.)</span>}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Running total — grows the moment packaging, add-ons or shipping
                 are chosen, so the number never jumps unexpectedly at checkout. */}
             <div className="rounded-xl bg-dark text-white p-3 lg:p-4 space-y-3">
@@ -509,6 +636,73 @@ export function GiftPackSummary() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Save pack for later — one click to store this configuration on
+                the account and reorder it from the dashboard next season. */}
+            <div className={details}>
+              {saveOpen ? (
+                <div className="rounded-md bg-white p-2.5 space-y-2">
+                  <input
+                    type="text"
+                    value={saveName}
+                    onChange={(e) => setSaveName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSavePack()}
+                    maxLength={80}
+                    placeholder="Name this pack"
+                    aria-label="Pack name"
+                    autoFocus
+                    className="w-full rounded-md border-2 border-emerald-200 px-2.5 py-1.5 text-sm text-ink outline-none focus:border-em"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSavePack}
+                      disabled={saving || !saveName.trim()}
+                      className="flex-1 rounded-full bg-em py-1.5 text-xs font-bold text-white transition hover:bg-em-700 disabled:opacity-50"
+                    >
+                      {saving ? 'Saving…' : 'Save pack'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSaveOpen(false)}
+                      className="rounded-full border-2 border-emerald-200 px-3 py-1.5 text-xs font-bold text-ink-2 transition hover:border-em hover:text-em"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={openSave}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-emerald-200 bg-white py-2 text-xs font-bold text-em-700 transition hover:border-em"
+                  >
+                    <Bookmark className="h-3.5 w-3.5" />
+                    Save for later
+                  </button>
+                  {/* Share the exact pack as a link — for the teammate/CFO who
+                      approves the budget but didn't build the pack. */}
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full border-2 border-emerald-200 bg-white py-2 text-xs font-bold text-em-700 transition hover:border-em"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                    Share
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleWhatsAppShare}
+                    aria-label="Share pack on WhatsApp"
+                    title="Share on WhatsApp"
+                    className="flex w-9 items-center justify-center rounded-full border-2 border-emerald-200 bg-white text-em-700 transition hover:border-em"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Expand/collapse — mobile only; the lg side column shows it all. */}

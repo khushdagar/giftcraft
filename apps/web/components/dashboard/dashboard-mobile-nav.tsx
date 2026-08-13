@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import {
   LayoutDashboard, Package, FileText, FolderOpen, User,
-  Settings, LogOut, Bell, Menu, X, MapPin,
+  Settings, LogOut, Bell, Menu, X, MapPin, Bookmark,
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import Image from 'next/image';
@@ -14,6 +14,7 @@ import Image from 'next/image';
 const NAV = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
   { href: '/dashboard/orders', icon: Package, label: 'Orders' },
+  { href: '/dashboard/saved-packs', icon: Bookmark, label: 'Saved Packs' },
   // { href: '/dashboard/quotes', icon: FileText, label: 'Quotes' },
   { href: '/dashboard/assets', icon: FolderOpen, label: 'Brand Assets' },
   { href: '/dashboard/addresses', icon: MapPin, label: 'Saved Addresses' },

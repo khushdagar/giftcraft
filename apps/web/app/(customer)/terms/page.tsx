@@ -56,7 +56,9 @@ export default function TermsPage() {
       <InfoSection title="Orders, cancellation and delivery">
         <p>
           Minimum order quantities apply and are enforced when entering the Gift Builder. An order
-          may be cancelled before mockup approval; afterwards production has begun and it may not.
+          may be cancelled free of charge before production commences; after materials have been
+          procured, cancellation charges apply, and once customisation or branding has begun the
+          order can no longer be cancelled.
         </p>
         <p>
           Delivery dates are good-faith estimates, not guarantees. See{' '}

@@ -12,6 +12,8 @@ import { ProposalDownloadButton } from '@/components/checkout/proposal-download-
 import { PayBalanceButton } from './components/pay-balance-button';
 import { OrderAutoRefresh } from '@/components/orders/order-auto-refresh';
 import { VariantTag } from '@/components/orders/variant-tag';
+import { OrderActions } from '@/components/orders/order-actions';
+import { buildReorderHref } from '@/lib/reorder';
 
 function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
@@ -193,6 +195,18 @@ export default async function OrderDetailPage({
           );
         })()}
       </div>
+
+      {/* Reorder + public tracking link (shareable — the track page needs no login) */}
+      <OrderActions
+        orderId={order.id}
+        reorderHref={buildReorderHref(
+          order.items.map((it: any) => ({
+            productId: it.productId,
+            variants: it.variantsJson as Array<{ kind: string; value: string }> | null,
+          })),
+          order.packQuantity
+        )}
+      />
 
       {/* Mobile is one flex column so the cards from BOTH columns can be
           interleaved: alerts/mockups → items → pricing → timeline → billing →

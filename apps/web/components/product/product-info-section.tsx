@@ -6,6 +6,7 @@ import { PricingBlock } from './pricing-block';
 import { ColorSelector } from './color-selector';
 import { SizeSelector } from './size-selector';
 import { ExpertHelp } from './expert-help';
+import { DeliveryEstimator } from './delivery-estimator';
 import { AddonsSelector } from './addons-selector';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -227,6 +228,11 @@ export function ProductInfoSection({
         >
           <Link href="/box">Go to Box Planner</Link>
         </Button>
+      </div>
+
+      {/* Delivery date estimate — pincode → "order today, delivered by …" */}
+      <div className="mt-6">
+        <DeliveryEstimator leadTimeDays={product.leadTimeDays} />
       </div>
 
       {/* Expert help */}

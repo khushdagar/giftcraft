@@ -11,6 +11,7 @@ import { PricingBlock } from "@/components/product/pricing-block";
 import { PackagingSelector } from "@/components/product/packaging-selector";
 import { AddonsSelector } from "@/components/product/addons-selector";
 import { RelatedProducts } from "@/components/product/related-products";
+import { RecentlyViewed, RecentlyViewedTracker } from "@/components/product/recently-viewed";
 import { ExpertHelp } from "@/components/product/expert-help";
 import { ProductTabs } from "@/components/product/product-tabs";
 import { ProductReviews } from "@/components/product/product-reviews";
@@ -411,6 +412,16 @@ export default async function ProductPage({ params }: { params: { slug: string }
       {serializedRelated.length > 0 && (
         <RelatedProducts products={serializedRelated} canAddToPack={!isPack} />
       )}
+
+      {/* Recently viewed — records this visit, then shows the earlier ones */}
+      <RecentlyViewedTracker
+        id={product.id}
+        name={product.name}
+        slug={product.slug}
+        image={schemaImages[0]}
+        fromPrice={schemaTiers.length > 0 ? Math.min(...schemaTiers.map((t) => t.sellPrice)) : 0}
+      />
+      <RecentlyViewed excludeId={product.id} />
     </div>
   );
 }

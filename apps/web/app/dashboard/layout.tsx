@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LayoutDashboard, Package, FileText, FolderOpen, User, Settings, LogOut, Bell, MapPin } from "lucide-react";
+import { LayoutDashboard, Package, FileText, FolderOpen, User, Settings, LogOut, Bell, MapPin, Bookmark } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { DashboardMobileNav } from "@/components/dashboard/dashboard-mobile-nav";
@@ -17,6 +17,7 @@ export const revalidate = 0;
 const NAV = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
   { href: "/dashboard/orders", icon: Package, label: "Orders" },
+  { href: "/dashboard/saved-packs", icon: Bookmark, label: "Saved Packs" },
   // { href: "/dashboard/quotes", icon: FileText, label: "Quotes" },
   { href: "/dashboard/assets", icon: FolderOpen, label: "Brand Assets" },
   { href: "/dashboard/addresses", icon: MapPin, label: "Saved Addresses" },

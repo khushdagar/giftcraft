@@ -259,19 +259,17 @@ export function PricingPanel({
           outside the panel card above: that card uses backdrop-blur, and a
           backdrop-filter makes an element a containing block for its fixed
           descendants — inside it, `fixed` would anchor to the card, not the
-          viewport. Both paths are offered, so the choice and the order happen in
-          one tap; the selected path is solid, tapping the other switches to it
-          and submits. */}
+          viewport. Only the mockup path is offered while the 10% price-lock is
+          disabled — restore the commented lock button to bring it back. */}
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-[#D3CBBC] bg-white/95 px-4 py-2.5 backdrop-blur lg:hidden">
         <p className="mb-1.5 text-center text-[10px] text-[#8F8A82]">
-          Pay &amp; lock is recommended — or get mockups first, no payment now.
+          No payment now — confirm and get branded mockups first.
         </p>
         <div className="flex gap-2">
+          {/* Price-lock (10% advance) — DISABLED for now, no advance payments.
           <FillProgressButton
             onClick={() => onContinue('lock')}
             active={!!submitting && selectedPath === 'lock'}
-            // Both buttons lock while an order is in flight — only the one being
-            // used shows the fill.
             disabled={!!submitting}
             className={`h-11 flex-[1.2] rounded-full text-[13px] font-semibold flex items-center justify-center gap-1.5 transition-all disabled:cursor-default ${
               selectedPath === 'lock'
@@ -282,6 +280,7 @@ export function PricingPanel({
             label={`🔒 Pay ${formatRupees(advance10)} & Lock`}
             activeLabel="Opening payment…"
           />
+          */}
           <FillProgressButton
             onClick={() => onContinue('mockup')}
             active={!!submitting && selectedPath === 'mockup'}

@@ -10,7 +10,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
       <main className="min-h-[calc(100vh-56px)]">{children}</main>
       <Footer />
       <WhatsAppWidget />
-      {/* <LaunchOfferPopup /> */}
+      <LaunchOfferPopup />
     </>
   );
 }

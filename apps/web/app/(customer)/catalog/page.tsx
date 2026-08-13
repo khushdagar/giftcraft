@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { CatalogClient } from '@/components/catalog/catalog-client';
+import { RecentlyViewed } from '@/components/product/recently-viewed';
 import { getCatalogProducts, getCatalogFilters } from '@/lib/catalog-data';
 import { JsonLd } from '@/components/seo/json-ld';
 import { itemListSchema, breadcrumbSchema } from '@/lib/schema';
@@ -48,6 +49,7 @@ export default async function CatalogPage() {
       <Suspense>
         <CatalogClient initialProducts={products as any[]} initialFilters={filters} />
       </Suspense>
+      <RecentlyViewed />
     </>
   );
 }

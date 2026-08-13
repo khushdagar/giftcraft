@@ -32,8 +32,11 @@ export function PathSelection({
         production. Choose how you'd like to move forward:
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-        {/* Lock Path — shown first and flagged as recommended */}
+      {/* Was md:grid-cols-2 while the 10% price-lock card was offered. */}
+      <div className="grid grid-cols-1 gap-3 mb-6">
+        {/* Lock Path (10% advance) — DISABLED for now: we're not taking any
+            advance payment. Restore this block (and the 'lock' default in the
+            checkout page) to bring it back.
         <button
           onClick={() => onSelectPath('lock')}
           className={`text-left border-2 rounded-2xl p-4 md:p-6 cursor-pointer transition-all relative ${
@@ -86,6 +89,7 @@ export function PathSelection({
             </div>
           </div>
         </button>
+        */}
 
         {/* Mockup Path */}
         <button
