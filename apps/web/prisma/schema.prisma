@@ -204,12 +204,26 @@ model User {
   savedAddresses    SavedAddress[]
   blogPosts         BlogPost[]              @relation("BlogPostAuthor")
   reviews           Review[]
+  passwordResetTokens PasswordResetToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([companyId])
   @@index([role])
+}
+
+// Single-use, hashed tokens for the forgot-password flow. The raw token only
+// ever lives in the emailed link; the DB stores its SHA-256 hash.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Company {
