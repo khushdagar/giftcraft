@@ -34,11 +34,11 @@ export function PackImageGallery({
 
   const collage = (padding: string) => (
     <div
-      className={`absolute inset-0 grid gap-1 bg-white ${padding}`}
+      className={`absolute inset-0 grid bg-white`}
       style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr' }}
     >
       {imgs.map((src, i) => (
-        <div key={i} className="relative overflow-hidden rounded-sm bg-elevated">
+        <div key={i} className="relative overflow-hidden bg-elevated">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
         </div>
