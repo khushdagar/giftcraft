@@ -19,7 +19,7 @@ const COL_COMPANY: FooterLink[] = [
 const LEGAL_LINKS: FooterLink[] = [
   ["/privacy", "Privacy Policy"],
   ["/shipping", "Shipping Policy"],
-  ["/returns", "Refund Policy"],
+  ["/returns", "Return & Refund Policy"],
   ["/terms", "Terms & Conditions"],
 ];
 
