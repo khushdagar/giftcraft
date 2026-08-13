@@ -261,6 +261,38 @@ export function renderEmail(opts: {
 </html>`;
 }
 
+/**
+ * Password-reset link email. Uncategorised on purpose — it's security-critical
+ * and must never be blocked by notification preferences.
+ */
+export async function sendPasswordResetEmail(options: {
+  to: string;
+  name?: string | null;
+  resetUrl: string;
+}) {
+  const { to, name, resetUrl } = options;
+
+  const contentHtml =
+    p(`Hi ${esc(name || 'there')},`) +
+    p(
+      `We received a request to reset the password for your GIVOO account. Click the button below to choose a new one. This link is valid for <strong>1 hour</strong> and can be used once.`
+    ) +
+    button('Reset your password', resetUrl) +
+    note(
+      `If you didn't request this, you can safely ignore this email — your password won't change. If the button doesn't work, paste this link into your browser:<br /><a href="${resetUrl}" style="color:${COLORS.brand};word-break:break-all;">${resetUrl}</a>`
+    );
+
+  return sendEmail({
+    to,
+    subject: 'Reset your GIVOO password',
+    html: renderEmail({
+      heading: 'Reset your password',
+      contentHtml,
+      preheader: 'Choose a new password for your GIVOO account — link valid for 1 hour.',
+    }),
+  });
+}
+
 // Status → label / blurb / badge colour, used by the order-status email.
 const STATUS_LABELS: Record<string, string> = {
   confirmed: 'Confirmed',

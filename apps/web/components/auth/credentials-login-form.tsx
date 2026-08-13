@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -73,9 +74,17 @@ export function CredentialsLoginForm({ callbackUrl }: { callbackUrl: string }) {
         <FieldError message={emailError ?? undefined} />
       </div>
       <div>
-        <label htmlFor="password" className="mb-1.5 block text-sm font-normal text-ink">
-          Password
-        </label>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label htmlFor="password" className="block text-sm font-normal text-ink">
+            Password
+          </label>
+          <Link
+            href="/forgot-password"
+            className="text-sm font-normal text-em underline-offset-2 hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
         <Input
           id="password"
           type="password"
