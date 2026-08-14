@@ -35,7 +35,9 @@ export async function getFeaturedProducts(limit = 6) {
         categories: { include: { category: true } },
         occasions: { include: { occasion: true } },
       },
-      orderBy: { isFeatured: 'desc' },
+      // The homepage "Trending" rail: admin-flagged featured products lead, and
+      // real view counts decide the order within (and after) them.
+      orderBy: [{ isFeatured: 'desc' }, { viewCount: 'desc' }, { createdAt: 'desc' }],
       take: limit,
     });
     return { products: products.map(serializeProduct) };
@@ -117,7 +119,7 @@ export async function getHomeOccasions() {
   try {
     const occasions = await prisma.occasionConfig.findMany({
       where: { isActive: true, isCollection: false },
-      orderBy: { sortOrder: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }],
     });
 
     const hiddenCategoryIds = await getHiddenCategoryIds();
@@ -161,7 +163,10 @@ export async function getHomeCollections() {
       where: { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
       include: {
-        packProducts: { where: { isPack: true, status: 'active' }, select: { id: true } },
+        packProducts: {
+          where: { isPack: true, status: 'active' },
+          select: { id: true, viewCount: true },
+        },
       },
     });
     return collections
@@ -173,8 +178,13 @@ export async function getHomeCollections() {
         image: c.image,
         gradient: c.gradient,
         packCount: c.packProducts.length,
+        // Collections are browsed through their packs — total pack views is the
+        // collection's popularity. Mirrors GET /api/collections.
+        views: c.packProducts.reduce((sum, p) => sum + p.viewCount, 0),
+        sortOrder: c.sortOrder,
       }))
-      .filter((c) => c.packCount > 0);
+      .filter((c) => c.packCount > 0)
+      .sort((a, b) => a.sortOrder - b.sortOrder || b.views - a.views);
   } catch (error) {
     console.error('getHomeCollections failed:', error);
     return [];

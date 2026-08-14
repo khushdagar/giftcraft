@@ -51,7 +51,7 @@ export function CatalogContent({
   const { filters, setFilter, clearAll, getActiveFilters } = useCatalogFilters();
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(filters.search);
-  const [sort, setSort] = useState(filters.sort || 'featured');
+  const [sort, setSort] = useState(filters.sort || 'popular');
 
   // Debounce search
   const handleSearchChange = (value: string) => {
@@ -275,6 +275,7 @@ export function CatalogContent({
               }}
               className="rounded-md px-3 py-1.5 text-sm border border-bdr"
             >
+              <option value="popular">Most Popular</option>
               <option value="featured">Featured</option>
               <option value="newest">Newest</option>
               <option value="price_asc">Price: Low to High</option>

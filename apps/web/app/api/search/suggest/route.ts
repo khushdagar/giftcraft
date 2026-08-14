@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
           images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } },
           priceTiers: { orderBy: { tier: 'asc' }, take: 1, select: { sellPrice: true } },
         },
-        orderBy: [{ isFeatured: 'desc' }, { sortOrder: 'asc' }],
+        orderBy: [{ isFeatured: 'desc' }, { sortOrder: 'asc' }, { viewCount: 'desc' }],
         take: 8,
       }),
       // Curated packs match on the same words. Price is the "From ₹x /pack"
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: [{ isFeatured: 'desc' }, { sortOrder: 'asc' }],
+        orderBy: [{ isFeatured: 'desc' }, { sortOrder: 'asc' }, { viewCount: 'desc' }],
         take: 4,
       }),
       prisma.category.findMany({

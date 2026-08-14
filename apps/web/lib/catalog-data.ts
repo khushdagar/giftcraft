@@ -49,7 +49,9 @@ export async function getCatalogProducts(
         categories: { include: { category: true } },
         occasions: { include: { occasion: true } },
       },
-      orderBy: { isFeatured: 'desc' },
+      // Popularity-ranked, matching /api/products: admin `sortOrder` leads,
+      // viewCount breaks ties, createdAt keeps zero-view products stable.
+      orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }, { createdAt: 'desc' }],
       take: limit,
     });
 
