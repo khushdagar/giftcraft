@@ -34,7 +34,7 @@ export async function GET() {
           },
         },
       },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+      orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }, { createdAt: 'desc' }],
     });
 
     return NextResponse.json(

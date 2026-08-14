@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     if (wantCollections) {
       const collections = await prisma.occasionConfig.findMany({
         where: { isActive: true, isCollection: true },
-        orderBy: { sortOrder: "asc" },
+        orderBy: [{ sortOrder: "asc" }, { viewCount: "desc" }],
       });
       return NextResponse.json(
         collections.map((c) => ({
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     // "Shop by Occasion" tiles/filters never include curated collections.
     const occasions = await prisma.occasionConfig.findMany({
       where: { isActive: true, isCollection: false },
-      orderBy: { sortOrder: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { viewCount: "desc" }],
     });
 
     // Only surface occasions that actually have at least one purchasable

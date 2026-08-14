@@ -59,7 +59,8 @@ export async function getOccasionSummaries(
     const [occasions, products] = await Promise.all([
       prisma.occasionConfig.findMany({
         where: { isActive: true, isCollection },
-        orderBy: { sortOrder: 'asc' },
+        // Manual `sortOrder` leads; the most-viewed occasions lead within a band.
+        orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }],
       }),
       prisma.product.findMany({
         where: {
@@ -79,7 +80,7 @@ export async function getOccasionSummaries(
           },
           priceTiers: { where: { tier: 1 }, take: 1, select: { sellPrice: true } },
         },
-        orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [{ isFeatured: 'desc' }, { viewCount: 'desc' }, { createdAt: 'desc' }],
       }),
     ]);
 
@@ -131,7 +132,7 @@ export async function getOccasionNav(
     return await prisma.occasionConfig.findMany({
       where: { isActive: true, isCollection },
       select: { id: true, name: true, slug: true },
-      orderBy: { sortOrder: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }],
     });
   } catch (error) {
     console.error('getOccasionNav failed:', error);

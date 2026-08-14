@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const priceMax = searchParams.get('priceMax') ? Number(searchParams.get('priceMax')) : undefined;
     const page = Math.max(1, Number(searchParams.get('page') || '1'));
     const limit = Math.min(1000, Number(searchParams.get('limit') || '24'));
-    const sort = searchParams.get('sort') || 'featured';
+    const sort = searchParams.get('sort') || 'popular';
 
     // Packaging/add-on products are managed in their own tables and must never
     // surface in the customer catalog — exclude any product in those categories.
@@ -90,10 +90,18 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    // Build orderBy - note: price sorting done client-side
-    let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: 'desc' };
-    if (sort === 'newest') orderBy = { createdAt: 'desc' };
-    if (sort === 'featured') orderBy = { isFeatured: 'desc' };
+    // Build orderBy - note: price sorting done client-side.
+    // `popular` is the default: admin `sortOrder` still leads, so manual
+    // merchandising wins, and viewCount only breaks ties between equally-ranked
+    // products. createdAt is the final tie-break so zero-view products (every
+    // brand-new one) land in a stable, sensible order instead of at random.
+    let orderBy: Prisma.ProductOrderByWithRelationInput[] = [
+      { sortOrder: 'asc' },
+      { viewCount: 'desc' },
+      { createdAt: 'desc' },
+    ];
+    if (sort === 'newest') orderBy = [{ createdAt: 'desc' }];
+    if (sort === 'featured') orderBy = [{ isFeatured: 'desc' }, { viewCount: 'desc' }];
 
     // Fetch products and total count in parallel
     const [products, total] = await Promise.all([

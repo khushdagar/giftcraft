@@ -17,7 +17,7 @@ export async function GET() {
       include: {
         packProducts: {
           where: { isPack: true, status: "active" },
-          select: { id: true },
+          select: { id: true, viewCount: true },
         },
       },
     });
@@ -31,8 +31,14 @@ export async function GET() {
         image: c.image,
         gradient: c.gradient,
         packCount: c.packProducts.length,
+        // A collection is browsed through its packs, so its popularity is the
+        // total views of the packs inside it.
+        views: c.packProducts.reduce((sum, p) => sum + p.viewCount, 0),
+        sortOrder: c.sortOrder,
       }))
-      .filter((c) => c.packCount > 0);
+      .filter((c) => c.packCount > 0)
+      // Admin `sortOrder` leads; most-viewed collections lead within a band.
+      .sort((a, b) => a.sortOrder - b.sortOrder || b.views - a.views);
 
     return NextResponse.json(data);
   } catch (error) {

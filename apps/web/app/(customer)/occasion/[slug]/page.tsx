@@ -8,6 +8,7 @@ import { toMetaDescription } from '@/lib/category-content';
 import { toRichHtml } from '@/lib/rich-text';
 import { stripHtml } from '@/lib/strip-html';
 import { CatalogClient } from '@/components/catalog/catalog-client';
+import { ViewTracker } from '@/components/analytics/view-tracker';
 import { JsonLd } from '@/components/seo/json-ld';
 import { breadcrumbSchema, collectionPageSchema } from '@/lib/schema';
 
@@ -85,6 +86,8 @@ export default async function OccasionPage({ params }: { params: { slug: string 
 
   return (
     <>
+      {/* Popularity counter — ranks the occasion/collection tiles */}
+      <ViewTracker type="occasion" id={occasion.id} />
       <JsonLd
         data={collectionPageSchema({
           name: copy.title,

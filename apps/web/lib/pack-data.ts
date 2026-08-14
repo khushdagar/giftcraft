@@ -16,7 +16,9 @@ export async function getPackCollections() {
     include: {
       packProducts: {
         where: { isPack: true, status: 'active' },
-        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+        // Popularity-ranked under the admin's manual `sortOrder` — same rule as
+        // the product catalog, so packs and products rank consistently.
+        orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }, { createdAt: 'desc' }],
         include: {
           images: { where: { isPrimary: true }, take: 1 },
           packItems: {
@@ -94,6 +96,12 @@ export async function getPackCollections() {
           recipients,
         };
       }),
+      // A GiftCollection has no views of its own — it is browsed through its
+      // packs — so its popularity is the total views of the packs inside it.
+      views: c.packProducts.reduce((sum, p) => sum + p.viewCount, 0),
+      sortOrder: c.sortOrder,
     }))
-    .filter((c) => c.packs.length > 0);
+    .filter((c) => c.packs.length > 0)
+    // Admin `sortOrder` leads; the most-viewed collections lead within a band.
+    .sort((a, b) => a.sortOrder - b.sortOrder || b.views - a.views);
 }

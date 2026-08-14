@@ -369,6 +369,10 @@ model Product {
   tags              String[]          @default([]) // Free-form tags — drive tag-based occasions/collections (e.g. "budget-friendly", "eco-friendly")
   isFeatured        Boolean           @default(false)
   sortOrder         Int               @default(0)
+  // Popularity signal — bumped once per session from the product/pack detail
+  // page (POST /api/views). Listings sort by it AFTER `sortOrder`, so manual
+  // merchandising still wins and views only break ties.
+  viewCount         Int               @default(0)
   metaTitle         String?
   metaDescription   String?
 
@@ -406,6 +410,7 @@ model Product {
   @@index([isFeatured])
   @@index([isPack])
   @@index([packCollectionId])
+  @@index([viewCount])
 }
 
 // Every slug a product has ever had. Written whenever an admin changes a
@@ -927,6 +932,9 @@ model OccasionConfig {
   // Rich text, rendered BELOW the product grid (SEO/editorial copy).
   contentBelow String?           @db.Text
   sortOrder    Int               @default(0)
+  // Popularity signal for occasion/collection tiles — bumped once per session
+  // from /occasion/[slug]. Sorts after `sortOrder`, same as Product.viewCount.
+  viewCount    Int               @default(0)
   isActive     Boolean           @default(true)
   // When true, this entry is a curated "Collection" (homepage Curated Collections
   // section) rather than a "Shop by Occasion" tile. Hidden from occasion tiles/filters.
