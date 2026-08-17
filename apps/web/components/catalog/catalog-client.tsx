@@ -65,7 +65,8 @@ interface Occasion {
 }
 
 function formatPrice(n: number) {
-  return '₹' + n.toLocaleString('en-IN');
+  // Drop paise entirely — catalog only ever shows the whole-rupee part.
+  return '₹' + Math.trunc(n).toLocaleString('en-IN');
 }
 
 // When `pack` is passed, the catalog renders scoped to a single curated pack:
