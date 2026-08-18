@@ -353,11 +353,13 @@ export function ProductForm({
       .catch(() => {});
   }, [isPack]);
 
-  // Auto-fill SKU/slug for packs from the name (SKU is required but irrelevant
-  // for a bundle, so we generate it and hide the field).
+  // Auto-fill SKU/slug for packs from the name, so the admin never has to invent
+  // a code for a bundle. The field is still shown and editable — once
+  // the admin types their own, stop overwriting it on every name keystroke.
+  const [skuTouched, setSkuTouched] = useState(false);
   const watchedName = form.watch('name');
   useEffect(() => {
-    if (!isPack || mode !== 'create') return;
+    if (!isPack || mode !== 'create' || skuTouched) return;
     const slugified = (watchedName || '')
       .toLowerCase()
       .trim()
@@ -367,7 +369,7 @@ export function ProductForm({
       form.setValue('sku', `PACK-${slugified}`.toUpperCase());
       if (!form.getValues('slug')) form.setValue('slug', slugified);
     }
-  }, [watchedName, isPack, mode]);
+  }, [watchedName, isPack, mode, skuTouched]);
 
   const searchMembers = async (q: string) => {
     setPackSearch(q);
@@ -851,12 +853,24 @@ export function ProductForm({
                 <label className="block text-sm font-normal text-gray-900 mb-1">Slug</label>
                 <Input {...form.register('slug')} placeholder="auto-generated from name" />
               </div>
-              {!isPack && (
-                <div>
-                  <label className="block text-sm font-normal text-gray-900 mb-1">SKU *</label>
-                  <Input {...form.register('sku')} placeholder="e.g. FLASK-500-SS" />
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-normal text-gray-900 mb-1">
+                  {isPack ? 'Pack SKU *' : 'SKU *'}
+                </label>
+                <Input
+                  {...form.register('sku', { onChange: () => setSkuTouched(true) })}
+                  placeholder={isPack ? 'auto-generated from the name' : 'e.g. FLASK-500-SS'}
+                />
+                {form.formState.errors.sku && (
+                  <p className="text-xs text-red-600 mt-1">{form.formState.errors.sku.message}</p>
+                )}
+                {isPack && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Identifies the pack on POs, invoices and the bulk-upload sheet. Derived from the
+                    name until you edit it.
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
