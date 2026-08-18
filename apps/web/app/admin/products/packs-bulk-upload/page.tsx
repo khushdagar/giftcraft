@@ -130,6 +130,13 @@ export default function PacksBulkUploadPage() {
               A pack has no prices, HSN or dimensions of its own — those are derived from its members,
               exactly like the pack form does.
             </p>
+            <p className="mt-2 rounded-lg bg-em-50 px-3 py-2 text-sm text-ink-2">
+              To file a pack inside a <strong>sub-collection</strong>, write the collection cell as{' '}
+              <code className="rounded bg-white px-1 py-0.5 text-xs">Festive Hampers &gt; Diwali</code>.
+              Both levels are created if they don&apos;t exist yet. Without the{' '}
+              <code className="rounded bg-white px-1 py-0.5 text-xs">&gt;</code> the pack sits
+              directly in a main collection, as before.
+            </p>
             <div className="mt-3 flex flex-wrap gap-3">
               <a
                 href="/api/admin/packs/bulk-upload/template"
@@ -173,7 +180,9 @@ export default function PacksBulkUploadPage() {
               </li>
               <li>
                 <strong>collection</strong> is matched by name and <strong>created if it doesn&apos;t exist</strong> —
-                new collections of packs come straight from the sheet. Leave it blank for a standalone pack.
+                new collections of packs come straight from the sheet. Write it as{' '}
+                <strong>Parent &gt; Child</strong> to file the pack under a sub-collection; both
+                levels are created on demand. Leave it blank for a standalone pack.
               </li>
               <li>
                 <strong>Pricing is automatic.</strong> A pack&apos;s tiers are the sum of its members&apos; tier
@@ -187,6 +196,11 @@ export default function PacksBulkUploadPage() {
               </li>
               <li>Weight, lead time, MOQ and box dimensions are derived from the members too.</li>
               <li><strong>sku</strong> and <strong>slug</strong> are generated from the pack name if left blank.</li>
+              <li>
+                <strong>metaTitle</strong> and <strong>metaDescription</strong> set the pack&apos;s SEO
+                title and description. Leave them blank and the pack page falls back to its name and
+                short description. Aim for ~60 and ~155 characters.
+              </li>
               <li><strong>category</strong>, <strong>occasions</strong> are matched by name and created if missing. yes/no field: <code>isFeatured</code>.</li>
               <li>Rows whose pack SKU already exists are skipped (reported below), so re-uploading is safe.</li>
             </ul>

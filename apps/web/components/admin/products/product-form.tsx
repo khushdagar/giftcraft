@@ -203,10 +203,20 @@ export function ProductForm({
   const [packCollectionId, setPackCollectionId] = useState<string>(
     (initialData as any)?.packCollectionId ?? ''
   );
-  const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
+  const [collections, setCollections] = useState<
+    Array<{ id: string; name: string; parentId: string | null; parentName: string | null; hasChildren: boolean }>
+  >([]);
   const [packSearch, setPackSearch] = useState('');
   const [packResults, setPackResults] = useState<any[]>([]);
   const [packSearching, setPackSearching] = useState(false);
+
+  // The collection dropdown offers only leaves — a collection that holds
+  // sub-collections shows those, never packs. `strandedCollection` is the one
+  // exception: a pack still filed on a parent from before it gained children.
+  const topLevelLeaves = collections.filter((c) => !c.parentId && !c.hasChildren);
+  const parentCollections = collections.filter((c) => c.hasChildren);
+  const strandedCollection =
+    parentCollections.find((c) => c.id === packCollectionId) ?? null;
 
   // Initialize variants properly from initialData
   useEffect(() => {
@@ -347,7 +357,15 @@ export function ProductForm({
       .then((r) => (r.ok ? r.json() : []))
       .then((d) =>
         setCollections(
-          Array.isArray(d) ? d.map((c: any) => ({ id: c.id, name: c.name })) : []
+          Array.isArray(d)
+            ? d.map((c: any) => ({
+                id: c.id,
+                name: c.name,
+                parentId: c.parent?.id ?? null,
+                parentName: c.parent?.name ?? null,
+                hasChildren: (c.children?.length ?? 0) > 0,
+              }))
+            : []
         )
       )
       .catch(() => {});
@@ -1022,15 +1040,49 @@ export function ProductForm({
                   className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white"
                 >
                   <option value="">— None (standalone) —</option>
-                  {collections.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
+                  {/* A collection that holds sub-collections is not itself a
+                      valid home for a pack: its page shows those
+                      sub-collections, so a pack filed there is unreachable.
+                      Only leaves are offered — except a stale assignment, which
+                      is surfaced at the top so it can be corrected. */}
+                  {strandedCollection && (
+                    <option value={strandedCollection.id}>
+                      ⚠ {strandedCollection.name} — pick a sub-collection below
                     </option>
+                  )}
+                  {topLevelLeaves.length > 0 && (
+                    <optgroup label="Collections">
+                      {topLevelLeaves.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {parentCollections.map((parent) => (
+                    <optgroup key={parent.id} label={`${parent.name} — sub-collections`}>
+                      {collections
+                        .filter((c) => c.parentId === parent.id)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </optgroup>
                   ))}
                 </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  The collection this pack appears under on the storefront.
-                </p>
+                {strandedCollection ? (
+                  <p className="text-xs text-red-600 mt-1">
+                    This pack sits on <strong>{strandedCollection.name}</strong>, which now holds
+                    sub-collections — customers browsing that collection see the sub-collections,
+                    not this pack. Move it into one of them.
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Where this pack appears on the storefront. Names under a
+                    “… — sub-collections” heading sit one level in.
+                  </p>
+                )}
               </div>
 
               <div>

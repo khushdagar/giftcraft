@@ -18,6 +18,16 @@ import { CONTACT_FALLBACK } from "@/lib/constants";
 
 interface NavLink { name: string; slug: string }
 
+// The Curated Packs dropdown cascades three levels: collection →
+// sub-collection → pack. A leaf collection has no children, so its own packs
+// take the second column instead.
+interface NavPack { name: string; slug: string }
+interface NavSubCollection extends NavLink { packs: NavPack[] }
+interface NavCollection extends NavLink {
+  children: NavSubCollection[];
+  packs: NavPack[];
+}
+
 interface SuggestProduct { id: string; name: string; slug: string; brand: string | null; image: string | null; price: number | null }
 interface SuggestPack { id: string; name: string; slug: string; image: string | null; price: number | null }
 interface SuggestCategory { id: string; name: string; slug: string }
@@ -56,7 +66,11 @@ export function Navbar() {
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [categories, setCategories] = useState<NavLink[]>([]);
-  const [collections, setCollections] = useState<NavLink[]>([]);
+  const [collections, setCollections] = useState<NavCollection[]>([]);
+  // Which row each cascade column is anchored to. Slugs, not indices, so a
+  // refetch mid-hover can't point the columns at the wrong rows.
+  const [hoveredCollection, setHoveredCollection] = useState<string | null>(null);
+  const [hoveredSub, setHoveredSub] = useState<string | null>(null);
   const [occasions, setOccasions] = useState<NavLink[]>(FALLBACK_OCCASIONS);
   const products = useBuilderStore((state) => state.products);
   const wishlistItems = useWishlistStore((state) => state.items);
@@ -67,6 +81,11 @@ export function Navbar() {
   const wishlistCount = mounted ? wishlistItems.length : 0;
 
   const authLoading = status === "loading";
+
+  // Resolved from the hovered slugs each render, so a column never points at a
+  // row that has since disappeared from the fetched tree.
+  const activeCollection = collections.find((c) => c.slug === hoveredCollection) ?? null;
+  const activeSub = activeCollection?.children.find((sub) => sub.slug === hoveredSub) ?? null;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -89,7 +108,14 @@ export function Navbar() {
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!active || !Array.isArray(data)) return;
-        setCollections(data.map((c: any) => ({ name: c.name, slug: c.slug })));
+        setCollections(
+          data.map((c: any) => ({
+            name: c.name,
+            slug: c.slug,
+            packs: Array.isArray(c.packs) ? c.packs : [],
+            children: Array.isArray(c.children) ? c.children : [],
+          }))
+        );
       })
       .catch(() => {/* no dropdown if it fails */});
     fetch("/api/occasions")
@@ -282,26 +308,104 @@ export function Navbar() {
             )}
           </li>
 
-          {/* Curated Packs dropdown — curated collections */}
-          <li className="group relative py-4">
+          {/* Curated Packs dropdown — a three-column cascade: collections,
+              then the hovered one's sub-collections (or its own packs when it
+              has none), then the hovered sub-collection's packs. */}
+          <li
+            className="group relative py-4"
+            onMouseLeave={() => {
+              setHoveredCollection(null);
+              setHoveredSub(null);
+            }}
+          >
             <Link href="/curated-packs" className="text-sm font-medium text-ink-2 hover:text-ink">Curated Packs ▾</Link>
             {collections.length > 0 && (
-              <div className="invisible absolute left-0 top-full grid min-w-[280px] grid-cols-1 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
-                <Link
-                  href="/curated-packs"
-                  className="rounded-md px-3 py-2 text-[13px] font-semibold text-ink transition hover:bg-elevated"
-                >
-                  All Packs
-                </Link>
-                {collections.map((c) => (
+              <div className="invisible absolute left-0 top-full flex rounded-md-s border border-bdr bg-white p-2 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+                {/* Column 1 — collections */}
+                <div className="flex w-[240px] flex-col gap-1 p-2">
                   <Link
-                    key={c.slug}
-                    href={`/curated-packs/${c.slug}`}
-                    className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
+                    href="/curated-packs"
+                    className="rounded-md px-3 py-2 text-[13px] font-semibold text-ink transition hover:bg-elevated"
+                    onMouseEnter={() => {
+                      setHoveredCollection(null);
+                      setHoveredSub(null);
+                    }}
                   >
-                    {c.name}
+                    All Packs
                   </Link>
-                ))}
+                  {collections.map((c) => {
+                    const hasMore = c.children.length > 0 || c.packs.length > 0;
+                    return (
+                      <Link
+                        key={c.slug}
+                        href={`/curated-packs/${c.slug}`}
+                        onMouseEnter={() => {
+                          setHoveredCollection(c.slug);
+                          setHoveredSub(null);
+                        }}
+                        className={cn(
+                          "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-[13px] font-medium transition hover:bg-elevated hover:text-ink",
+                          hoveredCollection === c.slug ? "bg-elevated text-ink" : "text-ink-2"
+                        )}
+                      >
+                        <span className="truncate">{c.name}</span>
+                        {hasMore && <span className="text-ink-3">›</span>}
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {/* Column 2 — the hovered collection's sub-collections, or its
+                    own packs when it is a leaf. */}
+                {activeCollection && (activeCollection.children.length > 0 || activeCollection.packs.length > 0) && (
+                  <div className="flex w-[240px] flex-col gap-1 border-l border-bdr p-2">
+                    <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                      {activeCollection.children.length > 0 ? "Collections" : "Packs"}
+                    </p>
+                    {activeCollection.children.length > 0
+                      ? activeCollection.children.map((sub) => (
+                          <Link
+                            key={sub.slug}
+                            href={`/curated-packs/${activeCollection.slug}/${sub.slug}`}
+                            onMouseEnter={() => setHoveredSub(sub.slug)}
+                            className={cn(
+                              "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-[13px] font-medium transition hover:bg-elevated hover:text-ink",
+                              hoveredSub === sub.slug ? "bg-elevated text-ink" : "text-ink-2"
+                            )}
+                          >
+                            <span className="truncate">{sub.name}</span>
+                            {sub.packs.length > 0 && <span className="text-ink-3">›</span>}
+                          </Link>
+                        ))
+                      : activeCollection.packs.map((pack) => (
+                          <Link
+                            key={pack.slug}
+                            href={`/products/${pack.slug}`}
+                            className="truncate rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
+                          >
+                            {pack.name}
+                          </Link>
+                        ))}
+                  </div>
+                )}
+
+                {/* Column 3 — the hovered sub-collection's packs */}
+                {activeSub && activeSub.packs.length > 0 && (
+                  <div className="flex w-[240px] flex-col gap-1 border-l border-bdr p-2">
+                    <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                      Packs
+                    </p>
+                    {activeSub.packs.map((pack) => (
+                      <Link
+                        key={pack.slug}
+                        href={`/products/${pack.slug}`}
+                        className="truncate rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
+                      >
+                        {pack.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </li>
@@ -534,7 +638,7 @@ export function Navbar() {
                 header itself still links to the landing page; the chevron toggles. */}
             {[
               { key: "products", label: "Products", href: "/catalog", items: categories, hrefFor: (s: string) => `/category/${s}` },
-              { key: "packs", label: "Curated Packs", href: "/curated-packs", items: collections, hrefFor: (s: string) => `/curated-packs/${s}` },
+              { key: "packs", label: "Curated Packs", href: "/curated-packs", items: collections as NavLink[], hrefFor: (s: string) => `/curated-packs/${s}` },
               { key: "occasions", label: "Occasions", href: null, items: occasions, hrefFor: (s: string) => `/occasion/${s}` },
             ].map((section) => {
               const open = mobileSection === section.key;

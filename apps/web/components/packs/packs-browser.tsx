@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search, Package, SlidersHorizontal } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
+import {
+  CollectionTileGrid,
+  type CollectionTile,
+} from '@/components/packs/collection-tile-grid';
 
 interface NamedRef {
   id: string;
@@ -80,14 +84,6 @@ function Collage({ tiles }: { tiles: (string | null)[] }) {
   );
 }
 
-// Used for a collection tile when no cover image is set in the admin.
-const FALLBACK_GRADIENTS = [
-  'linear-gradient(145deg, #D7AC55 0%, #9A6E2E 55%, #6F4D1E 100%)',
-  'linear-gradient(145deg, #34332F 0%, #222222 55%, #0C0C0B 100%)',
-  'linear-gradient(145deg, #3FA978 0%, #1F8A5C 45%, #134E36 100%)',
-  'linear-gradient(145deg, #4A90D9 0%, #2D5A9E 55%, #1A3C6E 100%)',
-];
-
 function checkoutHref(pack: PackCard) {
   return `/builder?pack=${encodeURIComponent(pack.productIds.join(','))}&qty=${DEFAULT_PACK_QTY}`;
 }
@@ -102,9 +98,18 @@ const toggle = (arr: string[], val: string) =>
 export function PacksBrowser({
   collections,
   collection,
+  parent,
+  tiles,
 }: {
   collections: CollectionCard[];
   collection?: { id: string; name: string; description: string | null };
+  /** Set when `collection` is a sub-collection — drives the breadcrumb and the
+      back link, so "up one level" returns to the parent, not the hub. */
+  parent?: { name: string; slug: string };
+  /** Level-1 tiles. The hub passes only top-level collections, so a
+      sub-collection never surfaces as a sibling of its own parent. Omitted
+      elsewhere, where every loaded collection is a valid tile. */
+  tiles?: CollectionTile[];
 }) {
   const searchParams = useSearchParams();
   const [browsing, setBrowsing] = useState(!!collection);
@@ -300,7 +305,16 @@ export function PacksBrowser({
                 <Link href="/curated-packs" style={{ color: '#800020' }}>
                   Curated Packs
                 </Link>{' '}
-                / <span>{collection.name}</span>
+                /{' '}
+                {parent && (
+                  <>
+                    <Link href={`/curated-packs/${parent.slug}`} style={{ color: '#800020' }}>
+                      {parent.name}
+                    </Link>{' '}
+                    /{' '}
+                  </>
+                )}
+                <span>{collection.name}</span>
               </>
             ) : (
               <span>Curated Packs</span>
@@ -343,52 +357,19 @@ export function PacksBrowser({
           </div>
         ) : !browsing ? (
           /* ── Level 1: pick a collection ─────────────────────────────────── */
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {collections.map((c, idx) => (
-                // Each collection has its own crawlable page.
-                <Link
-                  key={c.id}
-                  href={`/curated-packs/${c.slug}`}
-                  className="relative overflow-hidden rounded-md min-h-64 group text-left transition transform hover:-translate-y-1"
-                >
-                  {c.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={c.image}
-                      alt={c.name}
-                      className="absolute inset-0 h-full w-full object-cover transition transform group-hover:scale-105"
-                    />
-                  ) : (
-                    <div
-                      className="absolute inset-0 transition transform group-hover:scale-105"
-                      style={{
-                        background: c.gradient || FALLBACK_GRADIENTS[idx % FALLBACK_GRADIENTS.length],
-                      }}
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-
-                  <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-                    <h2 className="font-serif text-xl text-white mb-2 leading-tight">
-                      {c.name}
-                    </h2>
-                    {/* {c.description && (
-                      <p className="text-white/70 text-sm mb-3 line-clamp-2">{c.description}</p>
-                    )}
-                    <div className="flex items-center gap-3 text-white/60 text-xs font-medium">
-                      <span>
-                        {c.packs.length} pack{c.packs.length === 1 ? '' : 's'}
-                      </span>
-                    </div> */}
-                    <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-white rounded-full text-em text-sm font-medium group-hover:bg-em/90 transition group-hover:text-white">
-                      Browse Packs →
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </>
+          <CollectionTileGrid
+            tiles={
+              tiles ??
+              collections.map((c) => ({
+                id: c.id,
+                name: c.name,
+                slug: c.slug,
+                image: c.image,
+                gradient: c.gradient,
+                href: `/curated-packs/${c.slug}`,
+              }))
+            }
+          />
         ) : (
           /* ── Level 2: that collection's packs (filter bar + cards) ──────── */
           <>
@@ -398,11 +379,11 @@ export function PacksBrowser({
                   so the link leaves for the collections hub. */}
               {collection ? (
                 <Link
-                  href="/curated-packs"
+                  href={parent ? `/curated-packs/${parent.slug}` : '/curated-packs'}
                   className="inline-flex items-center gap-1.5 text-sm font-medium mb-4 transition hover:opacity-80"
                   style={{ color: '#800020' }}
                 >
-                  ← All Collections
+                  ← {parent ? parent.name : 'All Collections'}
                 </Link>
               ) : (
                 <button

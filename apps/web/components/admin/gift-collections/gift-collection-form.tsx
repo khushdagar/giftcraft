@@ -23,7 +23,17 @@ interface GiftCollectionFormProps {
     isActive: boolean;
     isFeatured: boolean;
     sortOrder: number;
+    parentId: string | null;
   };
+  /** Top-level collections this one may be nested under (self excluded). Empty
+      when the collection already has sub-collections, since the tree is capped
+      at two levels. */
+  parentOptions?: { id: string; name: string; slug: string }[];
+  /** True when this collection already holds sub-collections — it then cannot
+      itself become one. */
+  hasChildren?: boolean;
+  /** Create mode only: pre-selects a parent (from "+ Sub-collection"). */
+  presetParentId?: string | null;
   /** Server-rendered "Packs in this collection" panel, shown atop the main column. */
   packsSlot?: ReactNode;
   /** Counts for the sidebar summary (edit mode only). */
@@ -37,6 +47,9 @@ interface GiftCollectionFormProps {
 export function GiftCollectionForm({
   mode = 'create',
   collection,
+  parentOptions = [],
+  hasChildren = false,
+  presetParentId = null,
   packsSlot,
   stats,
 }: GiftCollectionFormProps) {
@@ -54,9 +67,17 @@ export function GiftCollectionForm({
     isActive: collection?.isActive ?? true,
     isFeatured: collection?.isFeatured ?? false,
     sortOrder: collection?.sortOrder ?? 0,
+    parentId: collection?.parentId ?? presetParentId ?? '',
   });
 
   const backHref = '/admin/products?view=packs';
+
+  // A sub-collection lives one segment deeper — the preview link and the "URL"
+  // row must point at the address customers actually land on.
+  const parentSlug = parentOptions.find((o) => o.id === formData.parentId)?.slug;
+  const storefrontPath = parentSlug
+    ? `/curated-packs/${parentSlug}/${formData.slug}`
+    : `/curated-packs/${formData.slug}`;
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
@@ -234,6 +255,94 @@ export function GiftCollectionForm({
             </div>
 
             <div>
+              <label className="block text-sm font-normal text-ink mb-2">
+                What is this?
+              </label>
+              {/* A radio pair, not a "parent" dropdown: the choice is what the
+                  collection IS, and the dropdown is only the follow-up question
+                  when it is a sub-collection. */}
+              <div className="space-y-2">
+                <label
+                  className={`flex cursor-pointer items-start gap-3 rounded-lg border-2 p-3 transition ${
+                    formData.parentId ? 'border-bdr hover:border-slate-300' : 'border-em bg-em-50'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="collectionLevel"
+                    checked={!formData.parentId}
+                    onChange={() => setFormData({ ...formData, parentId: '' })}
+                    className="mt-0.5 h-4 w-4 accent-em"
+                  />
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium text-ink">Main collection</span>
+                    <span className="block text-xs text-ink-2">
+                      Shows on the Curated Packs page. Can hold packs directly, or be split into
+                      sub-collections later.
+                    </span>
+                  </span>
+                </label>
+
+                <label
+                  className={`flex items-start gap-3 rounded-lg border-2 p-3 transition ${
+                    hasChildren || parentOptions.length === 0
+                      ? 'cursor-not-allowed border-bdr opacity-50'
+                      : formData.parentId
+                      ? 'cursor-pointer border-em bg-em-50'
+                      : 'cursor-pointer border-bdr hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="collectionLevel"
+                    checked={!!formData.parentId}
+                    disabled={hasChildren || parentOptions.length === 0}
+                    onChange={() =>
+                      setFormData({ ...formData, parentId: parentOptions[0]?.id ?? '' })
+                    }
+                    className="mt-0.5 h-4 w-4 accent-em"
+                  />
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium text-ink">Sub-collection</span>
+                    <span className="block text-xs text-ink-2">
+                      Sits inside a main collection. Customers open the main collection first, then
+                      this one, then its packs.
+                    </span>
+                  </span>
+                </label>
+              </div>
+
+              {formData.parentId && (
+                <div className="mt-3">
+                  <label className="block text-sm font-normal text-ink mb-2">Inside which collection?</label>
+                  <select
+                    value={formData.parentId}
+                    onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
+                    className="w-full rounded-lg border-2 border-bdr px-3 py-2 text-sm text-ink focus:border-em focus:outline-none"
+                  >
+                    {parentOptions.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {hasChildren && (
+                <p className="text-xs text-ink-2 mt-2">
+                  This one already holds sub-collections, so it has to stay a main collection. Move
+                  its sub-collections out first if you want to change that.
+                </p>
+              )}
+              {!hasChildren && parentOptions.length === 0 && (
+                <p className="text-xs text-ink-2 mt-2">
+                  There is no other main collection to sit inside yet.
+                </p>
+              )}
+            </div>
+
+            <div>
               <label className="block text-sm font-normal text-ink mb-2">Description</label>
               <Textarea
                 value={formData.description}
@@ -363,7 +472,7 @@ export function GiftCollectionForm({
             </div>
             {mode === 'edit' && formData.slug && (
               <a
-                href={`/curated-packs/${formData.slug}`}
+                href={storefrontPath}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs font-medium text-em hover:underline"
@@ -436,7 +545,7 @@ export function GiftCollectionForm({
                 <div className="flex items-center justify-between gap-3 border-t border-bdr pt-2">
                   <dt className="text-ink-2">URL</dt>
                   <dd className="truncate font-mono text-xs text-ink-2">
-                    /curated-packs/{formData.slug}
+                    {storefrontPath}
                   </dd>
                 </div>
               </dl>

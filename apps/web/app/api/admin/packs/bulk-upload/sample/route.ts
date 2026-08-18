@@ -5,7 +5,8 @@ import { buildPackCsv } from '@/lib/pack-csv';
 
 /**
  * GET /api/admin/packs/bulk-upload/sample
- * Downloads a filled-in SAMPLE sheet showing three packs across collections —
+ * Downloads a filled-in SAMPLE sheet showing four packs — two in a plain
+ * collection, two nested in sub-collections via the "Parent > Child" syntax —
  * built from REAL SKUs in the catalogue so it imports without editing. Falls
  * back to illustrative SKUs when the catalogue is empty.
  */
@@ -23,7 +24,15 @@ export async function GET() {
         orderBy: { createdAt: 'desc' },
         take: 9,
       }),
-      prisma.giftCollection.findMany({ select: { name: true }, orderBy: { sortOrder: 'asc' }, take: 2 }),
+      // Top-level only: the sample demonstrates nesting by writing
+      // "Parent > Child" itself, so a real sub-collection name here would
+      // produce a confusing three-level cell.
+      prisma.giftCollection.findMany({
+        where: { parentId: null },
+        select: { name: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 2,
+      }),
     ]);
 
     const skus = products.map((p) => p.sku);
@@ -48,6 +57,9 @@ export async function GET() {
         descriptionLong: 'A lean welcome bundle — the daily-carry essentials, branded and boxed together.',
         keyFeatures: 'Ships as one branded box; Fully customisable in the builder',
         shippingDelivery: 'Dispatched in 10-12 working days after artwork approval.',
+        metaTitle: 'Welcome Kit — Starter | Employee Onboarding Gifts',
+        metaDescription:
+          'A two-piece branded welcome kit for new joiners. Bulk pricing from 25 packs, custom logo printing, pan-India delivery.',
       },
       {
         name: 'Welcome Kit — Pro',
@@ -63,10 +75,15 @@ export async function GET() {
         descriptionLong: 'Everything in the Starter kit plus a second bottle and two premium extras.',
         keyFeatures: 'Four branded items; Premium rigid box; Bulk pricing from 25 packs',
         shippingDelivery: 'Dispatched in 10-12 working days after artwork approval.',
+        metaTitle: 'Welcome Kit — Pro | Premium Onboarding Gift Box',
+        metaDescription:
+          'A four-piece premium onboarding kit for senior hires, presented in a rigid branded box. Bulk pricing from 25 packs.',
       },
       {
+        // Nesting: "Parent > Child". Both rungs are created if they don't
+        // exist, and the pack lands in the child.
         name: 'Festive Hamper — Classic',
-        collection: colB,
+        collection: `${colB} > Diwali`,
         status: 'active', isFeatured: 'yes', sortOrder: '1',
         products: pick(3, 3).join(', '),
         category: 'Gift Packs',
@@ -77,6 +94,28 @@ export async function GET() {
         descriptionLong: 'A classic festive assortment presented in a branded hamper box.',
         keyFeatures: 'Three curated items; Festive packaging; Personalised gift note',
         shippingDelivery: 'Order by 15 days before the festival for guaranteed dispatch.',
+        metaTitle: 'Festive Hamper — Classic | Corporate Diwali Gifts',
+        metaDescription:
+          'A three-piece festive hamper for clients and staff, in branded packaging with a personalised gift note. Bulk Diwali dispatch.',
+      },
+      {
+        // A second pack in a DIFFERENT sub-collection of the same parent —
+        // "Festive Hampers" is reused, "New Year" is created alongside "Diwali".
+        name: 'Festive Hamper — New Year',
+        collection: `${colB} > New Year`,
+        status: 'active', isFeatured: 'no', sortOrder: '2',
+        products: pick(5, 2).join(', '),
+        category: 'Gift Packs',
+        occasions: 'New Year',
+        tags: 'festive, new-year',
+        recipientTags: 'Clients',
+        descriptionShort: 'A two-piece desk refresh to open the new year with.',
+        descriptionLong: 'A compact new-year gift pairing, branded and boxed for client dispatch.',
+        keyFeatures: 'Two curated items; Branded gift box; Personalised gift note',
+        shippingDelivery: 'Dispatched in 10-12 working days after artwork approval.',
+        metaTitle: 'Festive Hamper — New Year | Corporate New Year Gifts',
+        metaDescription:
+          'A two-piece new-year gift pack for clients, branded and boxed with a personalised note. Bulk pricing and pan-India delivery.',
       },
     ];
 

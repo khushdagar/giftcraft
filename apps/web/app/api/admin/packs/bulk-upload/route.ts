@@ -19,7 +19,9 @@ import { mirrorImageUrls } from '@/lib/import-image-url';
  *   • box L/W/H  — widest L & W, heights stacked
  *
  * The `collection` column is matched by name and created if it doesn't exist,
- * so new collections of packs can be introduced straight from the sheet.
+ * so new collections of packs can be introduced straight from the sheet. Write
+ * it as "Parent > Child" to file the pack under a sub-collection — both rungs
+ * are created on demand.
  * Each row is processed independently. Streams NDJSON progress like the product
  * importer; finishes with { created, failed, errors }.
  */
@@ -50,6 +52,11 @@ const ALIASES: Record<string, string> = {
   specifications: 'specifications', specification: 'specifications', specs: 'specifications',
   'shipping delivery': 'shippingDelivery', 'shipping and delivery': 'shippingDelivery',
   'shipping & delivery': 'shippingDelivery', shippingdelivery: 'shippingDelivery', shipping: 'shippingDelivery',
+  'meta title': 'metaTitle', metatitle: 'metaTitle', 'seo title': 'metaTitle',
+  'page title': 'metaTitle', 'title tag': 'metaTitle',
+  'meta description': 'metaDescription', metadescription: 'metaDescription',
+  'meta desc': 'metaDescription', 'seo description': 'metaDescription',
+  'page description': 'metaDescription',
   'image urls': 'imageUrls', imageurls: 'imageUrls', images: 'imageUrls', 'image url': 'imageUrls',
   'pack image': 'imageUrls', image: 'imageUrls', photo: 'imageUrls', photos: 'imageUrls',
 };
@@ -199,19 +206,50 @@ export async function POST(request: NextRequest) {
     return p;
   }
 
-  async function getOrCreateCollection(name: string): Promise<string> {
-    const key = name.toLowerCase();
+  // "Parent > Child" nests the pack one level down: the parent is found or
+  // created as top-level, the child under it. A plain "Name" stays top-level,
+  // so every existing sheet imports exactly as it did before.
+  async function getOrCreateCollection(
+    name: string,
+    parentId: string | null = null
+  ): Promise<string> {
+    const arrow = name.split(/s*>s*/).map((s) => s.trim()).filter(Boolean);
+    if (arrow.length > 1 && parentId === null) {
+      const parent = await getOrCreateCollection(arrow[0]!);
+      // Only two levels — anything deeper collapses into the second.
+      return getOrCreateCollection(arrow.slice(1).join(' '), parent);
+    }
+
+    const key = `${parentId ?? ''}::${name.toLowerCase()}`;
     if (collectionCache.has(key)) return collectionCache.get(key)!;
     let col = await prisma.giftCollection.findFirst({
-      where: { name: { equals: name, mode: 'insensitive' } },
+      where: { name: { equals: name, mode: 'insensitive' }, parentId },
     });
     if (!col) {
       try {
         col = await prisma.giftCollection.create({
-          data: { name, slug: slugify(name) || `collection-${Date.now().toString(36)}` },
+          data: {
+            name,
+            slug: slugify(name) || `collection-${Date.now().toString(36)}`,
+            parentId,
+          },
         });
       } catch {
-        col = await prisma.giftCollection.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
+        // The slug is globally unique, so two sub-collections sharing a name
+        // under different parents would collide. Re-check by name, then fall
+        // back to a suffixed slug rather than failing the row.
+        col = await prisma.giftCollection.findFirst({
+          where: { name: { equals: name, mode: 'insensitive' }, parentId },
+        });
+        if (!col) {
+          col = await prisma.giftCollection.create({
+            data: {
+              name,
+              slug: `${slugify(name) || 'collection'}-${Date.now().toString(36)}`,
+              parentId,
+            },
+          });
+        }
       }
     }
     collectionCache.set(key, col!.id);
@@ -386,6 +424,9 @@ export async function POST(request: NextRequest) {
             keyFeatures: get('keyFeatures') || null,
             specifications: get('specifications') || null,
             shippingDelivery: get('shippingDelivery') || null,
+            // SEO — the pack page falls back to name/short description when blank.
+            metaTitle: get('metaTitle') || null,
+            metaDescription: get('metaDescription') || null,
             status: status as any,
             isFeatured: toBool(get('isFeatured')),
             ...(toNum(get('sortOrder')) != null && { sortOrder: toNum(get('sortOrder'))! }),
