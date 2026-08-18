@@ -56,9 +56,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
         select: { slug: true, updatedAt: true },
       }),
+      // Both levels of the tree. A sub-collection's canonical URL nests under
+      // its parent, so the parent slug comes along for the path.
       prisma.giftCollection.findMany({
-        where: { isActive: true, packProducts: { some: { isPack: true, status: 'active' } } },
-        select: { slug: true, updatedAt: true },
+        where: {
+          isActive: true,
+          OR: [
+            { packProducts: { some: { isPack: true, status: 'active' } } },
+            {
+              children: {
+                some: {
+                  isActive: true,
+                  packProducts: { some: { isPack: true, status: 'active' } },
+                },
+              },
+            },
+          ],
+        },
+        select: {
+          slug: true,
+          updatedAt: true,
+          parent: { select: { slug: true, isActive: true } },
+        },
       }),
       // Posts marked noIndex are deliberately kept out of search — so keep them
       // out of the sitemap too.
@@ -107,12 +126,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'weekly' as const,
         priority: 0.8,
       })),
-      ...collections.map((c) => ({
-        url: `${SITE_URL}/curated-packs/${c.slug}`,
-        lastModified: c.updatedAt,
-        changeFrequency: 'weekly' as const,
-        priority: 0.7,
-      })),
+      // A sub-collection under an inactive parent is unreachable — skip it
+      // rather than list a URL that 404s.
+      ...collections.flatMap((c) => {
+        if (c.parent && !c.parent.isActive) return [];
+        const path = c.parent
+          ? `/curated-packs/${c.parent.slug}/${c.slug}`
+          : `/curated-packs/${c.slug}`;
+        return [
+          {
+            url: `${SITE_URL}${path}`,
+            lastModified: c.updatedAt,
+            changeFrequency: 'weekly' as const,
+            priority: 0.7,
+          },
+        ];
+      }),
       ...posts.map((post) => ({
         url: `${SITE_URL}/blog/${post.slug}`,
         lastModified: post.updatedAt,

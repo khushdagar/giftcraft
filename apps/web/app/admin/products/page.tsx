@@ -54,7 +54,7 @@ export default async function AdminProductsPage({
     const [collections, packs] = await Promise.all([
       prisma.giftCollection.findMany({
         include: { packProducts: { where: { isPack: true }, select: { id: true, status: true } } },
-        orderBy: { sortOrder: 'asc' },
+        orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       }),
       prisma.product.findMany({
         where: { isPack: true },
@@ -106,7 +106,7 @@ export default async function AdminProductsPage({
       memberNames: p.packItems.map((it) => it.product.name),
     }));
 
-    const collectionsView = collections.map((c) => ({
+    const toRow = (c: (typeof collections)[number], depth: number, childCount: number) => ({
       id: c.id,
       name: c.name,
       slug: c.slug,
@@ -114,9 +114,23 @@ export default async function AdminProductsPage({
       gradient: c.gradient,
       isActive: c.isActive,
       isFeatured: c.isFeatured,
+      depth,
+      childCount,
       packCount: c.packProducts.length,
       activePackCount: c.packProducts.filter((p) => p.status === 'active').length,
-    }));
+    });
+
+    // Flatten the two-level tree into display order: each top-level collection
+    // followed by its own sub-collections, indented one step.
+    const collectionsView = collections
+      .filter((c) => c.parentId === null)
+      .flatMap((parent) => {
+        const children = collections.filter((c) => c.parentId === parent.id);
+        return [
+          toRow(parent, 0, children.length),
+          ...children.map((child) => toRow(child, 1, 0)),
+        ];
+      });
 
     return (
       <div className="space-y-6">
@@ -158,7 +172,8 @@ export default async function AdminProductsPage({
                   <thead className="bg-elevated border-b border-bdr">
                     <tr>
                       <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Collection</th>
-                      <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Packs</th>
+                      <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Type</th>
+                      <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Contains</th>
                       <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Status</th>
                       <th className="px-6 py-4 text-right text-xs font-normal text-ink-2 uppercase">Actions</th>
                     </tr>
@@ -167,7 +182,15 @@ export default async function AdminProductsPage({
                     {collectionsView.map((c) => (
                       <tr key={c.id} className="hover:bg-canvas transition">
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
+                          <div
+                            className="flex items-center gap-3"
+                            style={{ paddingLeft: c.depth * 28 }}
+                          >
+                            {c.depth > 0 && (
+                              <span className="text-ink-3 select-none" aria-hidden="true">
+                                └
+                              </span>
+                            )}
                             <div
                               className="w-12 h-9 rounded-md flex-shrink-0 overflow-hidden bg-gray-100"
                               style={{ background: c.image ? undefined : c.gradient || '#E5DFD4' }}
@@ -187,12 +210,32 @@ export default async function AdminProductsPage({
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="text-sm text-ink-2">
-                            {c.packCount} pack{c.packCount === 1 ? '' : 's'}
-                            {c.packCount > 0 && (
-                              <span className="text-ink-3"> · {c.activePackCount} active</span>
-                            )}
-                          </p>
+                          <Badge variant={c.depth > 0 ? 'grey' : 'em'}>
+                            {c.depth > 0 ? 'Sub-collection' : 'Main collection'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          {/* A collection shows EITHER its sub-collections or
+                              its packs to customers — say which, so it's clear
+                              where new packs should go. */}
+                          {c.childCount > 0 ? (
+                            <p className="text-sm text-ink-2">
+                              {c.childCount} sub-collection{c.childCount === 1 ? '' : 's'}
+                              {c.packCount > 0 && (
+                                <span className="text-amber-700">
+                                  {' '}
+                                  · {c.packCount} pack{c.packCount === 1 ? '' : 's'} hidden here
+                                </span>
+                              )}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-ink-2">
+                              {c.packCount} pack{c.packCount === 1 ? '' : 's'}
+                              {c.packCount > 0 && (
+                                <span className="text-ink-3"> · {c.activePackCount} active</span>
+                              )}
+                            </p>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <Badge variant={c.isActive ? 'em' : 'grey'}>
@@ -200,12 +243,24 @@ export default async function AdminProductsPage({
                           </Badge>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <Link href={`/admin/gift-collections/${c.id}/edit`} className="inline-block">
-                            <Button variant="outline" size="sm" className="rounded-lg">
-                              <Edit2 className="w-4 h-4 mr-1" />
-                              Manage
-                            </Button>
-                          </Link>
+                          <div className="inline-flex items-center gap-2">
+                            {c.depth === 0 && (
+                              <Link
+                                href={`/admin/gift-collections/new?parent=${c.id}`}
+                                className="inline-block"
+                              >
+                                <Button variant="ghost" size="sm" className="rounded-lg text-ink-2">
+                                  + Sub-collection
+                                </Button>
+                              </Link>
+                            )}
+                            <Link href={`/admin/gift-collections/${c.id}/edit`} className="inline-block">
+                              <Button variant="outline" size="sm" className="rounded-lg">
+                                <Edit2 className="w-4 h-4 mr-1" />
+                                Manage
+                              </Button>
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     ))}

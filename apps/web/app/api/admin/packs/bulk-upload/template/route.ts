@@ -23,7 +23,13 @@ export async function GET() {
         orderBy: { createdAt: 'desc' },
         take: 3,
       }),
-      prisma.giftCollection.findFirst({ select: { name: true }, orderBy: { sortOrder: 'asc' } }),
+      // Top-level only — the example cell shows the "Parent > Child" nesting
+      // syntax itself, so a sub-collection name here would nest three deep.
+      prisma.giftCollection.findFirst({
+        where: { parentId: null },
+        select: { name: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
     ]);
 
     const skus = products.map((p) => p.sku);
@@ -33,7 +39,10 @@ export async function GET() {
 
     const example: Record<string, string> = {
       name: 'Welcome Kit — Essentials',
-      collection: collection?.name || 'Onboarding Kits',
+      // "Parent > Child" files the pack in a sub-collection; both rungs are
+      // created if they don't exist yet. Drop the "> Child" half for a pack
+      // that sits directly in a main collection.
+      collection: `${collection?.name || 'Onboarding Kits'} > Starter Kits`,
       slug: '',
       sku: '',
       status: 'active',
@@ -49,6 +58,9 @@ export async function GET() {
       keyFeatures: 'Ships as one branded box; Fully customisable in the builder',
       specifications: '',
       shippingDelivery: 'Dispatched in 10-12 working days after artwork approval.',
+      metaTitle: 'Welcome Kit — Essentials | Corporate Onboarding Gifts',
+      metaDescription:
+        'A ready-to-ship branded welcome bundle for new joiners — bulk pricing, custom logo printing and pan-India delivery.',
       imageUrls: '',
     };
 

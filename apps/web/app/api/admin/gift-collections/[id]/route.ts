@@ -43,6 +43,9 @@ const UpdateCollectionSchema = z.object({
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
+  // null = top-level. Set it to nest this collection one level down; the
+  // handlers reject anything that would make the tree deeper than two.
+  parentId: z.string().nullish(),
 });
 
 export async function PUT(
@@ -63,6 +66,42 @@ export async function PUT(
       return NextResponse.json({ error: 'Slug already exists' }, { status: 409 });
     }
 
+    if (data.parentId) {
+      if (data.parentId === params.id) {
+        return NextResponse.json(
+          { error: 'A collection cannot be its own parent.' },
+          { status: 400 }
+        );
+      }
+      const [parent, ownChildren] = await Promise.all([
+        prisma.giftCollection.findUnique({
+          where: { id: data.parentId },
+          select: { parentId: true },
+        }),
+        prisma.giftCollection.count({ where: { parentId: params.id } }),
+      ]);
+      if (!parent) {
+        return NextResponse.json({ error: 'Parent collection not found' }, { status: 400 });
+      }
+      // Both guards keep the tree exactly two levels deep — the parent must be
+      // top-level, and a collection that already has children cannot be nested.
+      if (parent.parentId) {
+        return NextResponse.json(
+          { error: 'A sub-collection cannot hold sub-collections — pick a top-level parent.' },
+          { status: 400 }
+        );
+      }
+      if (ownChildren > 0) {
+        return NextResponse.json(
+          {
+            error:
+              'This collection has sub-collections of its own, so it cannot be nested under another. Move its sub-collections out first.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const collection = await prisma.giftCollection.update({
       where: { id: params.id },
       data: {
@@ -74,6 +113,7 @@ export async function PUT(
         isActive: data.isActive,
         isFeatured: data.isFeatured,
         sortOrder: data.sortOrder,
+        parentId: data.parentId || null,
       },
     });
 

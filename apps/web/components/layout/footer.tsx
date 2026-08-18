@@ -47,13 +47,20 @@ async function getFooterData() {
         orderBy: { sortOrder: "asc" },
       }),
       prisma.giftCollection.findMany({
-        where: { isActive: true },
+        // Top level only — the footer links to hubs, not to nested pages.
+        where: { isActive: true, parentId: null },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
         include: {
           packProducts: {
             where: { isPack: true, status: "active" },
             orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
             select: { id: true, name: true, slug: true },
+          },
+          // A parent's packs live one level down — count them so it isn't
+          // dropped as empty.
+          children: {
+            where: { isActive: true },
+            select: { id: true },
           },
         },
       }),
@@ -65,7 +72,9 @@ async function getFooterData() {
     ]);
 
     const categories = rawCategories.filter((c) => !isHiddenCategory(c));
-    const liveCollections = collections.filter((c) => c.packProducts.length > 0);
+    const liveCollections = collections.filter(
+      (c) => c.packProducts.length > 0 || c.children.length > 0
+    );
 
     // Only occasions with at least one active, catalog-visible product — mirrors
     // /api/occasions so the footer never links to a dead-end "0 products" page.

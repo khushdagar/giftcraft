@@ -962,6 +962,16 @@ model GiftCollection {
   isActive     Boolean    @default(true)
   isFeatured   Boolean    @default(false)
   sortOrder    Int        @default(0)
+  // Self-referencing tree, capped at TWO levels by the API: a top-level
+  // collection (parentId = null) holds sub-collections, and a sub-collection
+  // holds the packs. A collection with no children still holds its packs
+  // directly, so every pre-existing collection keeps working untouched.
+  parentId     String?
+  // SetNull, not Cascade: deleting a parent promotes its sub-collections to
+  // top-level rather than destroying them and orphaning their packs — the same
+  // forgiving rule the packs themselves already follow.
+  parent       GiftCollection?  @relation("CollectionTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     GiftCollection[] @relation("CollectionTree")
   packs        GiftPack[]
   packProducts Product[]  @relation("PackCollectionProducts")
   createdAt    DateTime   @default(now())
@@ -969,6 +979,7 @@ model GiftCollection {
 
   @@index([slug])
   @@index([isActive])
+  @@index([parentId])
 }
 
 model GiftPack {

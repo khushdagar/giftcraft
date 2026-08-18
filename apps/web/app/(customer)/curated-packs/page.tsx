@@ -1,4 +1,4 @@
-import { getPackCollections } from '@/lib/pack-data';
+import { getPackCollections, getCollectionTiles } from '@/lib/pack-data';
 import { PacksBrowser } from '@/components/packs/packs-browser';
 import { JsonLd } from '@/components/seo/json-ld';
 import { breadcrumbSchema, collectionPageSchema } from '@/lib/schema';
@@ -25,7 +25,10 @@ export const metadata = {
 // Lists every pack from every collection. `?collection=<slug>` pre-selects one
 // collection in the sidebar (used by the navbar and footer links).
 export default async function CuratedPacksPage() {
-  const collections = await getPackCollections();
+  // `collections` feeds the filter sidebar and the flat pack list (every level
+  // of the tree); `tiles` is level 1 only, so a sub-collection never appears
+  // beside its own parent on the hub.
+  const [collections, tiles] = await Promise.all([getPackCollections(), getCollectionTiles(null)]);
   const packs = collections.flatMap((c) => c.packs);
 
   return (
@@ -45,7 +48,18 @@ export default async function CuratedPacksPage() {
           { name: 'Curated Packs', path: '/curated-packs' },
         ])}
       />
-      <PacksBrowser collections={collections} />
+      <PacksBrowser
+        collections={collections}
+        tiles={tiles.map((t) => ({
+          id: t.id,
+          name: t.name,
+          slug: t.slug,
+          image: t.image,
+          gradient: t.gradient,
+          childCount: t.childCount,
+          href: `/curated-packs/${t.slug}`,
+        }))}
+      />
     </>
   );
 }

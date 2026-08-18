@@ -75,6 +75,15 @@ export default async function EditProductPage({ params }: { params: { id: string
         maxQty: t.maxQty,
         sellPrice: Number(t.sellPrice),
       })),
+      // The form re-derives the pack's weight/lead time/MOQ/box from these on
+      // every render. Omitting them made it derive from zeroes and blank the
+      // pack's stored values the moment the editor opened.
+      weightG: it.product.weightG,
+      leadTimeDays: it.product.leadTimeDays,
+      moq: it.product.moq,
+      lengthCm: it.product.dimensionL,
+      widthCm: it.product.dimensionW,
+      heightCm: it.product.dimensionH,
     })),
   };
 

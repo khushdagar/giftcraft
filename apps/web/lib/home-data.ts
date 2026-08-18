@@ -160,12 +160,25 @@ export async function getHomeOccasions() {
 export async function getHomeCollections() {
   try {
     const collections = await prisma.giftCollection.findMany({
-      where: { isActive: true },
+      // Top level only — a sub-collection is reached through its parent, never
+      // shown beside it.
+      where: { isActive: true, parentId: null },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
       include: {
         packProducts: {
           where: { isPack: true, status: 'active' },
           select: { id: true, viewCount: true },
+        },
+        // A parent holds no packs of its own — its count and popularity come
+        // from the sub-collections one level down.
+        children: {
+          where: { isActive: true },
+          select: {
+            packProducts: {
+              where: { isPack: true, status: 'active' },
+              select: { id: true, viewCount: true },
+            },
+          },
         },
       },
     });
@@ -177,13 +190,21 @@ export async function getHomeCollections() {
         description: c.description || '',
         image: c.image,
         gradient: c.gradient,
-        packCount: c.packProducts.length,
+        childCount: c.children.length,
+        packCount:
+          c.packProducts.length +
+          c.children.reduce((sum, ch) => sum + ch.packProducts.length, 0),
         // Collections are browsed through their packs — total pack views is the
         // collection's popularity. Mirrors GET /api/collections.
-        views: c.packProducts.reduce((sum, p) => sum + p.viewCount, 0),
+        views: [c, ...c.children].reduce(
+          (sum, node) => sum + node.packProducts.reduce((s, p) => s + p.viewCount, 0),
+          0
+        ),
         sortOrder: c.sortOrder,
       }))
-      .filter((c) => c.packCount > 0)
+      // A collection with sub-collections stays listed even at zero packs of
+      // its own — the sub-collections are the destination.
+      .filter((c) => c.packCount > 0 || c.childCount > 0)
       .sort((a, b) => a.sortOrder - b.sortOrder || b.views - a.views);
   } catch (error) {
     console.error('getHomeCollections failed:', error);

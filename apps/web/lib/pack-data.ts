@@ -105,3 +105,51 @@ export async function getPackCollections() {
     // Admin `sortOrder` leads; the most-viewed collections lead within a band.
     .sort((a, b) => a.sortOrder - b.sortOrder || b.views - a.views);
 }
+
+// Tiles for one level of the collection tree: pass `null` for the top-level
+// hub (/curated-packs), or a parent's id for its sub-collections
+// (/curated-packs/<parent>). `childCount` tells the caller whether clicking a
+// tile lands on more sub-collections or straight on the packs.
+export async function getCollectionTiles(parentId: string | null = null) {
+  const rows = await prisma.giftCollection.findMany({
+    where: { isActive: true, parentId },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      image: true,
+      gradient: true,
+      // The pack count shown on a tile: its own packs plus every pack sitting
+      // one level down, so a parent tile isn't misreported as empty.
+      packProducts: { where: { isPack: true, status: 'active' }, select: { id: true } },
+      children: {
+        where: { isActive: true },
+        select: {
+          id: true,
+          packProducts: { where: { isPack: true, status: 'active' }, select: { id: true } },
+        },
+      },
+      // Grandchildren don't exist (the tree is capped at two levels), but a
+      // sub-collection still reports its own count of zero honestly.
+    },
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+  });
+
+  return rows
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      image: c.image,
+      gradient: c.gradient,
+      childCount: c.children.length,
+      packCount:
+        c.packProducts.length + c.children.reduce((sum, ch) => sum + ch.packProducts.length, 0),
+    }))
+    // Hide only a truly empty leaf. A collection that holds sub-collections
+    // stays visible even at zero packs — it is a real destination the admin
+    // built, and its sub-collections are what the customer came to browse.
+    .filter((c) => c.packCount > 0 || c.childCount > 0);
+}
