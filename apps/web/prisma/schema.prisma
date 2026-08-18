@@ -1698,3 +1698,31 @@ model Review {
   @@index([productId, status])
   @@index([status])
 }
+
+// A price rung on /curated-packs/budget. Admin-managed like OccasionConfig, so
+// bands can be renamed, re-imaged and re-priced without a deploy.
+//
+// Membership is NOT stored: a pack belongs to the band its computed "from"
+// price falls into, so a price change moves it automatically and there is
+// nothing to keep in sync.
+model BudgetBand {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  // Hero image for the tile (Digital Ocean Spaces CDN URL). Falls back to
+  // `gradient`, then to the grid's own rotation, so a bare band still looks
+  // deliberate.
+  imageUrl    String?
+  gradient    String?
+  // Inclusive floor, exclusive ceiling — ₹500 sits in "₹500 – ₹1,000" and never
+  // in two bands at once. A null ceiling means "and above".
+  minPrice    Int
+  maxPrice    Int?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sortOrder])
+}

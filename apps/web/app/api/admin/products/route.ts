@@ -170,7 +170,6 @@ const CreateProductSchema = z.object({
   // Curated pack fields. When isPack, HSN/price-tiers are not required — the
   // pack's price derives from its member products.
   isPack: z.boolean().optional().default(false),
-  packCollectionId: z.string().nullable().optional(),
   packItems: z.array(
     z.object({
       productId: z.string().min(1),
@@ -288,7 +287,6 @@ export async function POST(request: NextRequest) {
 
         // Curated pack: flag, parent collection, and member products.
         isPack: data.isPack ?? false,
-        packCollectionId: data.packCollectionId || null,
         ...(data.isPack && data.packItems?.length && {
           packItems: {
             createMany: {

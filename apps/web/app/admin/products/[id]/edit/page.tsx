@@ -63,7 +63,6 @@ export default async function EditProductPage({ params }: { params: { id: string
   const initialData = {
     ...serialized,
     isPack: product.isPack,
-    packCollectionId: product.packCollectionId,
     packItems: product.packItems.map((it) => ({
       productId: it.product.id,
       name: it.product.name,

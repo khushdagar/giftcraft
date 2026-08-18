@@ -16,17 +16,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const [products, collection] = await Promise.all([
+    const [products, occasion] = await Promise.all([
       prisma.product.findMany({
         where: { isPack: false, status: 'active' },
         select: { sku: true },
         orderBy: { createdAt: 'desc' },
         take: 3,
       }),
-      // Top-level only — the example cell shows the "Parent > Child" nesting
-      // syntax itself, so a sub-collection name here would nest three deep.
-      prisma.giftCollection.findFirst({
-        where: { parentId: null },
+      // `isCollection` entries are the homepage's curated tiles, not occasions.
+      prisma.occasionConfig.findFirst({
+        where: { isActive: true, isCollection: false },
         select: { name: true },
         orderBy: { sortOrder: 'asc' },
       }),
@@ -39,10 +38,6 @@ export async function GET() {
 
     const example: Record<string, string> = {
       name: 'Welcome Kit — Essentials',
-      // "Parent > Child" files the pack in a sub-collection; both rungs are
-      // created if they don't exist yet. Drop the "> Child" half for a pack
-      // that sits directly in a main collection.
-      collection: `${collection?.name || 'Onboarding Kits'} > Starter Kits`,
       slug: '',
       sku: '',
       status: 'active',
@@ -50,7 +45,10 @@ export async function GET() {
       sortOrder: '1',
       products: productsCell,
       category: 'Gift Packs',
-      occasions: 'Onboarding',
+      // Where the pack surfaces on the storefront. Comma-separate for several;
+      // an occasion that doesn't exist yet is created from this cell. The
+      // budget band comes from the members' prices — there is no column for it.
+      occasions: occasion?.name || 'Onboarding',
       tags: 'welcome, onboarding',
       recipientTags: 'New joiners',
       descriptionShort: 'A ready-to-ship welcome bundle for new joiners.',

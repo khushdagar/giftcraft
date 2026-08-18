@@ -10,9 +10,6 @@
  */
 export const PACK_CSV_HEADERS = [
   'name',
-  // "Main collection" files the pack directly; "Main collection > Sub" files it
-  // in a sub-collection. Either level is created on demand if it's new.
-  'collection',
   'slug', 'sku', 'status', 'isFeatured', 'sortOrder',
   // The members: "SKU x2, SKU, SKU x4" — quantity defaults to 1 when omitted.
   'products',

@@ -111,7 +111,7 @@ export default function PacksBulkUploadPage() {
     <div className="max-w-3xl space-y-6">
       <div>
         <Link href="/admin/products?view=packs" className="inline-flex items-center gap-1 text-sm text-ink-2 hover:text-ink mb-3">
-          <ArrowLeft className="h-4 w-4" /> Back to Curated Collections
+          <ArrowLeft className="h-4 w-4" /> Back to Curated Packs
         </Link>
         <h1 className="text-3xl font-normal text-ink">Bulk Upload Curated Packs</h1>
         <p className="mt-1 text-sm text-ink-2">
@@ -126,16 +126,15 @@ export default function PacksBulkUploadPage() {
           <div className="flex-1">
             <h2 className="text-base font-medium text-ink">Download the template</h2>
             <p className="mt-1 text-sm text-ink-2">
-              One row per pack: its name, the collection it belongs to, and the products inside it.
+              One row per pack: its name, the occasions it belongs to, and the products inside it.
               A pack has no prices, HSN or dimensions of its own — those are derived from its members,
               exactly like the pack form does.
             </p>
             <p className="mt-2 rounded-lg bg-em-50 px-3 py-2 text-sm text-ink-2">
-              To file a pack inside a <strong>sub-collection</strong>, write the collection cell as{' '}
-              <code className="rounded bg-white px-1 py-0.5 text-xs">Festive Hampers &gt; Diwali</code>.
-              Both levels are created if they don&apos;t exist yet. Without the{' '}
-              <code className="rounded bg-white px-1 py-0.5 text-xs">&gt;</code> the pack sits
-              directly in a main collection, as before.
+              Customers reach a pack two ways. The{' '}
+              <code className="rounded bg-white px-1 py-0.5 text-xs">occasions</code> cell decides
+              which occasion pages it appears on — comma-separate for several. Its budget band is
+              worked out from the members&apos; prices, so there is nothing to fill in for that.
             </p>
             <div className="mt-3 flex flex-wrap gap-3">
               <a
@@ -179,10 +178,9 @@ export default function PacksBulkUploadPage() {
                 found is reported and the whole row is skipped, so a pack is never created half-filled.
               </li>
               <li>
-                <strong>collection</strong> is matched by name and <strong>created if it doesn&apos;t exist</strong> —
-                new collections of packs come straight from the sheet. Write it as{' '}
-                <strong>Parent &gt; Child</strong> to file the pack under a sub-collection; both
-                levels are created on demand. Leave it blank for a standalone pack.
+                <strong>occasions</strong> are matched by name and{' '}
+                <strong>created if they don&apos;t exist</strong> — a new occasion comes straight
+                from the sheet. Leave it blank and the pack is reachable by budget only.
               </li>
               <li>
                 <strong>Pricing is automatic.</strong> A pack&apos;s tiers are the sum of its members&apos; tier
@@ -377,7 +375,7 @@ export default function PacksBulkUploadPage() {
               onClick={() => router.push('/admin/products?view=packs')}
               className="rounded-md bg-em px-5 py-2.5 text-sm font-medium text-white hover:bg-em-600"
             >
-              View Collections
+              View Packs
             </Button>
             <Button
               variant="outline"

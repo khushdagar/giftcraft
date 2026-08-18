@@ -89,7 +89,6 @@ const UpdateProductSchema = z.object({
 
   // Curated pack fields
   isPack: z.boolean().nullable().optional(),
-  packCollectionId: z.string().nullable().optional(),
   packItems: z.array(
     z.object({
       productId: z.string().min(1),
@@ -232,7 +231,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           ...(data.metaTitle !== undefined && { metaTitle: data.metaTitle }),
           ...(data.metaDescription !== undefined && { metaDescription: data.metaDescription }),
           ...(data.isPack != null && { isPack: data.isPack }),
-          ...(data.packCollectionId !== undefined && { packCollectionId: data.packCollectionId || null }),
         },
         include: {
           priceTiers: true,

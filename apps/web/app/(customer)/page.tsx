@@ -12,21 +12,19 @@ import {
   getFeaturedProducts,
   getHomeOccasions,
   getHomeCategories,
-  getHomeCollections,
   getFeaturedReviews,
 } from '@/lib/home-data';
 
-// Homepage content (products, occasions, collections, reviews) is fetched
+// Homepage content (products, occasions, categories, reviews) is fetched
 // server-side so it is present in the initial HTML for search engines; the
 // client components hydrate React Query from this data with zero refetch flash.
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const [featuredProducts, occasions, categories, collections, reviews] = await Promise.all([
+  const [featuredProducts, occasions, categories, reviews] = await Promise.all([
     getFeaturedProducts(6),
     getHomeOccasions(),
     getHomeCategories(),
-    getHomeCollections(),
     getFeaturedReviews(),
   ]);
 
@@ -39,7 +37,7 @@ export default async function HomePage() {
         <TrendingProducts initialData={featuredProducts} />
         <ShopByCategory initialData={categories} />
         <HowItWorks />
-        <CuratedCollections initialData={collections} />
+        <CuratedCollections />
         <CustomerReviews initialData={reviews} />
         <CTASection />
       </div>

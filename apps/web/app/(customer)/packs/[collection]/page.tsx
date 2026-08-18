@@ -1,7 +1,8 @@
 import { permanentRedirect } from 'next/navigation';
 
-// Collection pages moved to /curated-packs/<slug>. 308 permanent redirect so
-// search engines transfer the old URL's equity.
-export default function CollectionRedirect({ params }: { params: { collection: string } }) {
-  permanentRedirect(`/curated-packs/${params.collection}`);
+// Gift collections are no longer a customer-facing rung — curated packs are
+// browsed by budget and by occasion. Every old collection URL lands on the hub
+// so the link keeps working and its equity transfers.
+export default function CollectionRedirect() {
+  permanentRedirect('/curated-packs');
 }
