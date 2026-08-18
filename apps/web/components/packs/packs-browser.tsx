@@ -44,6 +44,8 @@ interface CollectionCard {
 }
 
 type FlatPack = PackCard & {
+  // Empty strings on the budget/occasion pages, where packs are loaded flat
+  // rather than through a collection.
   collectionId: string;
   collectionName: string;
   collectionSlug: string;
@@ -96,12 +98,25 @@ const toggle = (arr: string[], val: string) =>
 // A collection page (/curated-packs/<slug>) passes `collection`, which starts
 // on level 2 with that collection pre-selected and its own heading.
 export function PacksBrowser({
-  collections,
+  collections = [],
+  packs,
+  scope,
   collection,
   parent,
   tiles,
 }: {
-  collections: CollectionCard[];
+  /** Legacy collection grouping. Omitted by the budget/occasion pages. */
+  collections?: CollectionCard[];
+  /** Flat pack list — how the budget and occasion pages supply their packs. */
+  packs?: PackCard[];
+  /** Heading, breadcrumb and back link for a budget band or an occasion. */
+  scope?: {
+    title: string;
+    description: string | null;
+    breadcrumb: { name: string; href: string }[];
+    backHref: string;
+    backLabel: string;
+  };
   collection?: { id: string; name: string; description: string | null };
   /** Set when `collection` is a sub-collection — drives the breadcrumb and the
       back link, so "up one level" returns to the parent, not the hub. */
@@ -112,7 +127,7 @@ export function PacksBrowser({
   tiles?: CollectionTile[];
 }) {
   const searchParams = useSearchParams();
-  const [browsing, setBrowsing] = useState(!!collection);
+  const [browsing, setBrowsing] = useState(!!collection || !!scope);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
@@ -127,7 +142,9 @@ export function PacksBrowser({
 
   const allPacks: FlatPack[] = useMemo(
     () =>
-      collections.flatMap((c) =>
+      packs
+        ? packs.map((p) => ({ ...p, collectionId: '', collectionName: '', collectionSlug: '' }))
+        : collections.flatMap((c) =>
         c.packs.map((p) => ({
           ...p,
           collectionId: c.id,
@@ -135,7 +152,7 @@ export function PacksBrowser({
           collectionSlug: c.slug,
         }))
       ),
-    [collections]
+    [packs, collections]
   );
 
   // ── Filter option lists (derived from the products inside every pack) ──────
@@ -300,7 +317,19 @@ export function PacksBrowser({
               Home
             </Link>{' '}
             /{' '}
-            {collection ? (
+            {scope ? (
+              <>
+                {scope.breadcrumb.map((b) => (
+                  <span key={b.href}>
+                    <Link href={b.href} style={{ color: '#800020' }}>
+                      {b.name}
+                    </Link>{' '}
+                    /{' '}
+                  </span>
+                ))}
+                <span>{scope.title}</span>
+              </>
+            ) : collection ? (
               <>
                 <Link href="/curated-packs" style={{ color: '#800020' }}>
                   Curated Packs
@@ -320,7 +349,16 @@ export function PacksBrowser({
               <span>Curated Packs</span>
             )}
           </p>
-          {collection ? (
+          {scope ? (
+            <>
+              <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{scope.title}</h1>
+              {scope.description && (
+                <p className="mt-2 text-base max-w-2xl" style={{ color: '#5C5852' }}>
+                  {scope.description}
+                </p>
+              )}
+            </>
+          ) : collection ? (
             <>
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{collection.name}</h1>
               {collection.description && (
@@ -345,7 +383,7 @@ export function PacksBrowser({
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 md:px-10 pb-20">
-        {collections.length === 0 ? (
+        {allPacks.length === 0 ? (
           <div className="text-center py-20 rounded-md border-2 border-dashed border-bdr bg-white">
             <p className="text-lg text-ink">No curated packs yet</p>
             <p className="mt-1 text-sm text-ink-2">
@@ -377,7 +415,15 @@ export function PacksBrowser({
             <div className="mb-4">
               {/* On a collection page there is no in-page level 1 to return to,
                   so the link leaves for the collections hub. */}
-              {collection ? (
+              {scope ? (
+                <Link
+                  href={scope.backHref}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium mb-4 transition hover:opacity-80"
+                  style={{ color: '#800020' }}
+                >
+                  ← {scope.backLabel}
+                </Link>
+              ) : collection ? (
                 <Link
                   href={parent ? `/curated-packs/${parent.slug}` : '/curated-packs'}
                   className="inline-flex items-center gap-1.5 text-sm font-medium mb-4 transition hover:opacity-80"
@@ -544,7 +590,9 @@ export function PacksBrowser({
                     })()}
                   </div>
 
-                  {/* Collections */}
+                  {/* Collections — legacy grouping; absent on the budget and
+                      occasion pages, which pass no collections at all. */}
+                  {collections.length > 0 && (
                   <div className="mb-5 pb-4 border-b border-bdr">
                     <p className="text-sm font-semibold text-ink mb-3">Collections</p>
                     <div className="space-y-2">
@@ -567,6 +615,7 @@ export function PacksBrowser({
                       ))}
                     </div>
                   </div>
+                  )}
 
                   {/* Brand */}
                   {brandFacets.length > 0 && (

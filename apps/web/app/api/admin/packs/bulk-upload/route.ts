@@ -18,10 +18,9 @@ import { mirrorImageUrls } from '@/lib/import-image-url';
  *   • lead time  — max member lead time      • MOQ  — max member MOQ
  *   • box L/W/H  — widest L & W, heights stacked
  *
- * The `collection` column is matched by name and created if it doesn't exist,
- * so new collections of packs can be introduced straight from the sheet. Write
- * it as "Parent > Child" to file the pack under a sub-collection — both rungs
- * are created on demand.
+ * The `occasions` column is matched by name and created if it doesn't exist —
+ * an occasion is one of the two rungs a pack reaches customers through (the
+ * other, its budget band, is derived from price and needs no column).
  * Each row is processed independently. Streams NDJSON progress like the product
  * importer; finishes with { created, failed, errors }.
  */
@@ -31,8 +30,6 @@ const VALID_STATUS = ['active', 'draft', 'archived', 'seasonal'];
 // Map a human column label (normalised) → canonical field name
 const ALIASES: Record<string, string> = {
   'pack name': 'name', name: 'name', pack: 'name',
-  collection: 'collection', 'collection name': 'collection', 'pack collection': 'collection',
-  'curated collection': 'collection', 'gift collection': 'collection',
   slug: 'slug',
   sku: 'sku', 'pack id': 'sku', 'pack sku': 'sku',
   status: 'status',
@@ -168,7 +165,6 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Caches ──
-  const collectionCache = new Map<string, string>();
   const categoryCache = new Map<string, string>();
   const occasionCache = new Map<string, string>();
   const memberCache = new Map<string, MemberProduct | null>();
@@ -206,55 +202,6 @@ export async function POST(request: NextRequest) {
     return p;
   }
 
-  // "Parent > Child" nests the pack one level down: the parent is found or
-  // created as top-level, the child under it. A plain "Name" stays top-level,
-  // so every existing sheet imports exactly as it did before.
-  async function getOrCreateCollection(
-    name: string,
-    parentId: string | null = null
-  ): Promise<string> {
-    const arrow = name.split(/s*>s*/).map((s) => s.trim()).filter(Boolean);
-    if (arrow.length > 1 && parentId === null) {
-      const parent = await getOrCreateCollection(arrow[0]!);
-      // Only two levels — anything deeper collapses into the second.
-      return getOrCreateCollection(arrow.slice(1).join(' '), parent);
-    }
-
-    const key = `${parentId ?? ''}::${name.toLowerCase()}`;
-    if (collectionCache.has(key)) return collectionCache.get(key)!;
-    let col = await prisma.giftCollection.findFirst({
-      where: { name: { equals: name, mode: 'insensitive' }, parentId },
-    });
-    if (!col) {
-      try {
-        col = await prisma.giftCollection.create({
-          data: {
-            name,
-            slug: slugify(name) || `collection-${Date.now().toString(36)}`,
-            parentId,
-          },
-        });
-      } catch {
-        // The slug is globally unique, so two sub-collections sharing a name
-        // under different parents would collide. Re-check by name, then fall
-        // back to a suffixed slug rather than failing the row.
-        col = await prisma.giftCollection.findFirst({
-          where: { name: { equals: name, mode: 'insensitive' }, parentId },
-        });
-        if (!col) {
-          col = await prisma.giftCollection.create({
-            data: {
-              name,
-              slug: `${slugify(name) || 'collection'}-${Date.now().toString(36)}`,
-              parentId,
-            },
-          });
-        }
-      }
-    }
-    collectionCache.set(key, col!.id);
-    return col!.id;
-  }
   async function getOrCreateCategory(name: string): Promise<string> {
     const key = name.toLowerCase();
     if (categoryCache.has(key)) return categoryCache.get(key)!;
@@ -378,9 +325,6 @@ export async function POST(request: NextRequest) {
         const statusRaw = get('status').toLowerCase();
         const status = VALID_STATUS.includes(statusRaw) ? statusRaw : 'active';
 
-        const collectionName = get('collection');
-        const collectionId = collectionName ? await getOrCreateCollection(collectionName) : null;
-
         const tags = toList(get('tags'));
         const recipientTags = toList(get('recipientTags'));
         // Drive share links and any other public image URL are downloaded and
@@ -418,7 +362,6 @@ export async function POST(request: NextRequest) {
             slug,
             sku,
             isPack: true,
-            packCollectionId: collectionId,
             descriptionShort: get('descriptionShort') || null,
             descriptionLong: get('descriptionLong') || null,
             keyFeatures: get('keyFeatures') || null,

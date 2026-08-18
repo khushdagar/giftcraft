@@ -15,8 +15,10 @@ export interface PackRow {
   slug: string;
   sku: string;
   status: string;
-  collectionId: string | null;
-  collectionName: string | null;
+  /** Where the pack shows up on the storefront — its occasion rungs. */
+  occasions: { id: string; name: string }[];
+  /** The budget band this pack's price lands in, resolved server-side. */
+  budgetBand: string | null;
   itemCount: number;
   /** Sum of the members' tier-1 sell prices × quantity — the pack's from-price. */
   price: number;
@@ -72,7 +74,7 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const [collection, setCollection] = useState('');
+  const [occasion, setOccasion] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -81,14 +83,13 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
   const editHref = (id: string) =>
     `/admin/products/${id}/edit?returnTo=${encodeURIComponent(returnTo)}`;
 
-  // Every collection that actually holds packs, for the filter dropdown.
-  const collections = useMemo(() => {
+  // Every occasion that actually holds packs, for the filter dropdown.
+  const occasions = useMemo(() => {
     const map = new Map<string, string>();
-    for (const p of packs) {
-      if (p.collectionId && p.collectionName) map.set(p.collectionId, p.collectionName);
-    }
+    for (const p of packs) for (const o of p.occasions) map.set(o.id, o.name);
     return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [packs]);
+
 
   // Filtering is client-side: a catalogue holds far fewer packs than products,
   // so there is no pagination to fetch around.
@@ -96,9 +97,9 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
     const q = search.trim().toLowerCase();
     return packs.filter((p) => {
       if (status && p.status !== status) return false;
-      if (collection === '__none') {
-        if (p.collectionId != null) return false;
-      } else if (collection && p.collectionId !== collection) {
+      if (occasion === '__none') {
+        if (p.occasions.length > 0) return false;
+      } else if (occasion && !p.occasions.some((o) => o.id === occasion)) {
         return false;
       }
       if (!q) return true;
@@ -108,7 +109,7 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
         p.memberNames.some((n) => n.toLowerCase().includes(q))
       );
     });
-  }, [packs, search, status, collection]);
+  }, [packs, search, status, occasion]);
 
   const allSelected = rows.length > 0 && rows.every((p) => selected.has(p.id));
 
@@ -202,19 +203,19 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
         />
-        {collections.length > 0 && (
+        {occasions.length > 0 && (
           <select
-            value={collection}
-            onChange={(e) => setCollection(e.target.value)}
+            value={occasion}
+            onChange={(e) => setOccasion(e.target.value)}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700"
           >
-            <option value="">All collections</option>
-            {collections.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
+            <option value="">All occasions</option>
+            {occasions.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
               </option>
             ))}
-            <option value="__none">Ungrouped</option>
+            <option value="__none">No occasion</option>
           </select>
         )}
         <div className="flex gap-1 border-b border-gray-200">
@@ -276,7 +277,7 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
                   />
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Pack</th>
-                <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Collection</th>
+                <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Occasion</th>
                 <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Contains</th>
                 <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Price</th>
                 <th className="px-4 py-3 text-left text-xs font-normal text-gray-600 uppercase">Status</th>
@@ -315,10 +316,14 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    {pack.collectionName ? (
-                      <p className="text-sm text-gray-600">{pack.collectionName}</p>
+                    {pack.occasions.length > 0 ? (
+                      <p className="max-w-[200px] text-sm text-gray-600">
+                        {pack.occasions.map((o) => o.name).join(', ')}
+                      </p>
                     ) : (
-                      <Badge variant="grey">Ungrouped</Badge>
+                      // Without an occasion a pack is only reachable by budget,
+                      // so say so rather than leaving the cell blank.
+                      <Badge variant="grey">Budget only</Badge>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -331,6 +336,8 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-sm font-normal text-gray-900 tabnum">{formatRupees(pack.price)}</p>
+                    {/* The budget rung this price puts the pack on. */}
+                    <p className="text-xs text-gray-500">{pack.budgetBand ?? '—'}</p>
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={statusVariants[pack.status] || 'grey'}>{pack.status}</Badge>

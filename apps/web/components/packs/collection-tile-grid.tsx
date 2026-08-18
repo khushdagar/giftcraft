@@ -18,6 +18,10 @@ export interface CollectionTile {
   href: string;
   /** Present on sub-collection tiles; absent on the top-level hub. */
   childCount?: number;
+  /** Small line under the title — "12 packs", a price range, a nudge. */
+  caption?: string | null;
+  /** Overrides the button label when neither "Collections" nor "Packs" fits. */
+  cta?: string;
 }
 
 // One grid of collection tiles. Shared by the top-level hub, the
@@ -52,10 +56,11 @@ export function CollectionTileGrid({ tiles }: { tiles: CollectionTile[] }) {
 
           <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
             <h2 className="font-serif text-xl text-white mb-2 leading-tight">{c.name}</h2>
+            {c.caption && <p className="text-[13px] text-white/80 leading-snug">{c.caption}</p>}
             <div className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-white rounded-full text-em text-sm font-medium group-hover:bg-em/90 transition group-hover:text-white">
               {/* A tile with children opens another tile level, not the packs —
                   the label says which, so the click is never a surprise. */}
-              {c.childCount ? 'Browse Collections →' : 'Browse Packs →'}
+              {c.cta ?? (c.childCount ? 'Browse Collections →' : 'Browse Packs →')}
             </div>
           </div>
         </Link>

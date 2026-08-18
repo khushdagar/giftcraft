@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { Button } from '@/components/ui/button';
-import { Settings, Building2, Truck, DollarSign, Users, Clock } from 'lucide-react';
+import { Settings, Building2, Truck, DollarSign, Users, Clock, Gift } from 'lucide-react';
 import { AdminPushCard } from '@/components/admin/admin-push-card';
 
 interface SettingsCard {
@@ -31,6 +31,12 @@ const SETTINGS: SettingsCard[] = [
     description: 'Manage HSN codes and GST rates',
     href: '/admin/settings/taxes',
     icon: DollarSign,
+  },
+  {
+    title: 'Curated Packs entries',
+    description: 'Cover image and blurb for the By Budget and By Occasion cards',
+    href: '/admin/settings/curated-packs',
+    icon: Gift,
   },
   {
     title: 'Users & Roles',

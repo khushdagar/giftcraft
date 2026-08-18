@@ -27,7 +27,7 @@ const LEGAL_LINKS: FooterLink[] = [
 // Wrapped so a DB hiccup degrades to fewer links instead of breaking every page.
 async function getFooterData() {
   try {
-    const [rawCategories, collections, occasionRows, hiddenCategoryIds] = await Promise.all([
+    const [rawCategories, occasionRows, hiddenCategoryIds] = await Promise.all([
       // Top-level categories only. Sub-categories belong on the category
       // landing page, not in the footer — listing every one of them turns this
       // column into an unreadable wall.
@@ -46,24 +46,6 @@ async function getFooterData() {
         },
         orderBy: { sortOrder: "asc" },
       }),
-      prisma.giftCollection.findMany({
-        // Top level only — the footer links to hubs, not to nested pages.
-        where: { isActive: true, parentId: null },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-        include: {
-          packProducts: {
-            where: { isPack: true, status: "active" },
-            orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-            select: { id: true, name: true, slug: true },
-          },
-          // A parent's packs live one level down — count them so it isn't
-          // dropped as empty.
-          children: {
-            where: { isActive: true },
-            select: { id: true },
-          },
-        },
-      }),
       prisma.occasionConfig.findMany({
         where: { isActive: true, isCollection: false },
         orderBy: { sortOrder: "asc" },
@@ -72,9 +54,6 @@ async function getFooterData() {
     ]);
 
     const categories = rawCategories.filter((c) => !isHiddenCategory(c));
-    const liveCollections = collections.filter(
-      (c) => c.packProducts.length > 0 || c.children.length > 0
-    );
 
     // Only occasions with at least one active, catalog-visible product — mirrors
     // /api/occasions so the footer never links to a dead-end "0 products" page.
@@ -93,10 +72,10 @@ async function getFooterData() {
     const withProducts = new Set(occWithProducts.map((o) => o.occasionId));
     const occasions = occasionRows.filter((o) => withProducts.has(o.id));
 
-    return { categories, collections: liveCollections, occasions };
+    return { categories, occasions };
   } catch (error) {
     console.error("Footer data fetch failed:", error);
-    return { categories: [], collections: [], occasions: [] };
+    return { categories: [], occasions: [] };
   }
 }
 
@@ -125,7 +104,7 @@ function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) 
 }
 
 export async function Footer() {
-  const { categories, collections, occasions } = await getFooterData();
+  const { categories, occasions } = await getFooterData();
 
   const productLinks: FooterLink[] = ([
     ["/catalog", "All Products"],
@@ -133,10 +112,13 @@ export async function Footer() {
     // Indexable category landing pages, not filtered ?category= URLs.
     ...categories.map((c): FooterLink => [`/category/${c.slug}`, c.name]),
   ] as FooterLink[]).slice(0, MAX_COLUMN_LINKS);
-  const packLinks: FooterLink[] = ([
+  // Two ways in, both always populated — no risk of linking a band or an
+  // occasion that happens to hold nothing this week.
+  const packLinks: FooterLink[] = [
     ["/curated-packs", "All Packs"],
-    ...collections.map((c): FooterLink => [`/curated-packs/${c.slug}`, c.name]),
-  ] as FooterLink[]).slice(0, MAX_COLUMN_LINKS);
+    ["/curated-packs/budget", "Shop by Budget"],
+    ["/curated-packs/occasions", "Shop by Occasion"],
+  ];
   const occasionLinks: FooterLink[] = occasions
     .map((o): FooterLink => [`/occasion/${o.slug}`, o.name])
     .slice(0, MAX_COLUMN_LINKS);

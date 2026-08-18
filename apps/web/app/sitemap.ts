@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { getPacks, getBudgetTiles, getPackOccasionTiles } from '@/lib/pack-data';
 import { prisma } from '@/lib/prisma';
 import { publishedPostWhere, POSTS_PER_PAGE } from '@/lib/blog';
 import { getHiddenCategoryIds } from '@/lib/catalog-visibility';
@@ -37,7 +38,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const hiddenCategoryIds = await getHiddenCategoryIds();
 
-    const [categories, occasions, products, collections, posts, blogCategories] = await Promise.all([
+    const [categories, occasions, products, packs, posts, blogCategories] = await Promise.all([
       // Category landing pages — only those with live products (getCategoryNav
       // already drops empty ones, which are noindex and must not be submitted).
       getCategoryNav(),
@@ -56,29 +57,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
         select: { slug: true, updatedAt: true },
       }),
-      // Both levels of the tree. A sub-collection's canonical URL nests under
-      // its parent, so the parent slug comes along for the path.
-      prisma.giftCollection.findMany({
-        where: {
-          isActive: true,
-          OR: [
-            { packProducts: { some: { isPack: true, status: 'active' } } },
-            {
-              children: {
-                some: {
-                  isActive: true,
-                  packProducts: { some: { isPack: true, status: 'active' } },
-                },
-              },
-            },
-          ],
-        },
-        select: {
-          slug: true,
-          updatedAt: true,
-          parent: { select: { slug: true, isActive: true } },
-        },
-      }),
+      // Curated packs are browsed by budget and by occasion — the collection
+      // tree is an admin grouping only and has no customer-facing URLs left.
+      getPacks(),
       // Posts marked noIndex are deliberately kept out of search — so keep them
       // out of the sitemap too.
       prisma.blogPost.findMany({
@@ -93,6 +74,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         select: { slug: true },
       }),
     ]);
+
+    // Only bands and occasions that actually hold packs — an empty rung is a
+    // thin page, not a destination.
+    const budgetBands = await getBudgetTiles(packs);
+    const packOccasions = await getPackOccasionTiles(packs);
 
     // /blog?page=2… — without these, everything past the first page is only
     // reachable by crawling the pagination links.
@@ -126,22 +112,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         changeFrequency: 'weekly' as const,
         priority: 0.8,
       })),
-      // A sub-collection under an inactive parent is unreachable — skip it
-      // rather than list a URL that 404s.
-      ...collections.flatMap((c) => {
-        if (c.parent && !c.parent.isActive) return [];
-        const path = c.parent
-          ? `/curated-packs/${c.parent.slug}/${c.slug}`
-          : `/curated-packs/${c.slug}`;
-        return [
-          {
-            url: `${SITE_URL}${path}`,
-            lastModified: c.updatedAt,
-            changeFrequency: 'weekly' as const,
-            priority: 0.7,
-          },
-        ];
-      }),
+      { url: `${SITE_URL}/curated-packs/budget`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.8 },
+      { url: `${SITE_URL}/curated-packs/occasions`, lastModified: now, changeFrequency: 'weekly' as const, priority: 0.8 },
+      ...budgetBands.map((b) => ({
+        url: `${SITE_URL}/curated-packs/budget/${b.band.slug}`,
+        lastModified: now,
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+      })),
+      ...packOccasions.map((o) => ({
+        url: `${SITE_URL}/curated-packs/occasions/${o.slug}`,
+        lastModified: now,
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+      })),
       ...posts.map((post) => ({
         url: `${SITE_URL}/blog/${post.slug}`,
         lastModified: post.updatedAt,

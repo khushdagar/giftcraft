@@ -5,10 +5,12 @@ import { buildPackCsv } from '@/lib/pack-csv';
 
 /**
  * GET /api/admin/packs/bulk-upload/sample
- * Downloads a filled-in SAMPLE sheet showing four packs — two in a plain
- * collection, two nested in sub-collections via the "Parent > Child" syntax —
- * built from REAL SKUs in the catalogue so it imports without editing. Falls
- * back to illustrative SKUs when the catalogue is empty.
+ * Downloads a filled-in SAMPLE sheet of four packs, built from REAL SKUs and
+ * REAL occasion names in the catalogue so it imports without editing. Falls
+ * back to illustrative values when the catalogue is empty.
+ *
+ * Each row carries the occasion it should surface under; its budget band is
+ * derived from the members' prices, so there is nothing to fill in for that.
  */
 export async function GET() {
   try {
@@ -17,18 +19,16 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const [products, collections] = await Promise.all([
+    const [products, occasionRows] = await Promise.all([
       prisma.product.findMany({
         where: { isPack: false, status: 'active' },
         select: { sku: true },
         orderBy: { createdAt: 'desc' },
         take: 9,
       }),
-      // Top-level only: the sample demonstrates nesting by writing
-      // "Parent > Child" itself, so a real sub-collection name here would
-      // produce a confusing three-level cell.
-      prisma.giftCollection.findMany({
-        where: { parentId: null },
+      // `isCollection` entries are the homepage's curated tiles, not occasions.
+      prisma.occasionConfig.findMany({
+        where: { isActive: true, isCollection: false },
         select: { name: true },
         orderBy: { sortOrder: 'asc' },
         take: 2,
@@ -40,17 +40,17 @@ export async function GET() {
     const pick = (i: number, n: number) =>
       Array.from({ length: n }, (_, k) => skus[(i + k) % (skus.length || 1)] || fallback[(i + k) % fallback.length]);
 
-    const colA = collections[0]?.name || 'Onboarding Kits';
-    const colB = collections[1]?.name || 'Festive Hampers';
+    const occA = occasionRows[0]?.name || 'Onboarding';
+    const occB = occasionRows[1]?.name || 'Diwali';
 
     const rows: Record<string, string>[] = [
       {
         name: 'Welcome Kit — Starter',
-        collection: colA,
         status: 'active', isFeatured: 'yes', sortOrder: '1',
         products: pick(0, 2).join(', '),
         category: 'Gift Packs',
-        occasions: 'Onboarding',
+        // An occasion that doesn't exist yet is created from this cell.
+        occasions: occA,
         tags: 'welcome, onboarding',
         recipientTags: 'New joiners',
         descriptionShort: 'The two essentials every new joiner gets on day one.',
@@ -63,12 +63,11 @@ export async function GET() {
       },
       {
         name: 'Welcome Kit — Pro',
-        collection: colA,
         status: 'active', isFeatured: 'no', sortOrder: '2',
         // "x2" after a SKU sets that member's quantity inside the pack.
         products: `${pick(0, 1)[0]} x2, ${pick(1, 3).join(', ')}`,
         category: 'Gift Packs',
-        occasions: 'Onboarding',
+        occasions: occA,
         tags: 'welcome, onboarding, premium',
         recipientTags: 'New joiners, Managers',
         descriptionShort: 'The full onboarding bundle for senior hires.',
@@ -80,17 +79,15 @@ export async function GET() {
           'A four-piece premium onboarding kit for senior hires, presented in a rigid branded box. Bulk pricing from 25 packs.',
       },
       {
-        // Nesting: "Parent > Child". Both rungs are created if they don't
-        // exist, and the pack lands in the child.
         name: 'Festive Hamper — Classic',
-        collection: `${colB} > Diwali`,
         status: 'active', isFeatured: 'yes', sortOrder: '1',
         products: pick(3, 3).join(', '),
         category: 'Gift Packs',
-        occasions: 'Diwali, Festive',
+        // Several occasions, comma-separated — the pack appears under each.
+        occasions: `${occB}, Festive`,
         tags: 'festive, diwali',
         recipientTags: 'Clients, All staff',
-        descriptionShort: 'A three-piece festive hamper ready for Diwali dispatch.',
+        descriptionShort: 'A three-piece festive hamper ready for dispatch.',
         descriptionLong: 'A classic festive assortment presented in a branded hamper box.',
         keyFeatures: 'Three curated items; Festive packaging; Personalised gift note',
         shippingDelivery: 'Order by 15 days before the festival for guaranteed dispatch.',
@@ -99,10 +96,7 @@ export async function GET() {
           'A three-piece festive hamper for clients and staff, in branded packaging with a personalised gift note. Bulk Diwali dispatch.',
       },
       {
-        // A second pack in a DIFFERENT sub-collection of the same parent —
-        // "Festive Hampers" is reused, "New Year" is created alongside "Diwali".
         name: 'Festive Hamper — New Year',
-        collection: `${colB} > New Year`,
         status: 'active', isFeatured: 'no', sortOrder: '2',
         products: pick(5, 2).join(', '),
         category: 'Gift Packs',

@@ -6,7 +6,7 @@ import { getHiddenCategoryIds, isHiddenCategory } from '@/lib/catalog-visibility
  * Server-side data for the homepage sections.
  *
  * These mirror the public API routes the client components hydrate from
- * (/api/products?sort=featured, /api/occasions, /api/collections,
+ * (/api/products?sort=featured, /api/occasions,
  * /api/reviews/featured) so the SAME content is server-rendered into the
  * initial HTML — Google gets full product links + copy without executing JS,
  * and React Query hydrates from `initialData` with zero flash.
@@ -152,62 +152,6 @@ export async function getHomeOccasions() {
       }));
   } catch (error) {
     console.error('getHomeOccasions failed:', error);
-    return [];
-  }
-}
-
-/** Matches CuratedCollections: shape of GET /api/collections */
-export async function getHomeCollections() {
-  try {
-    const collections = await prisma.giftCollection.findMany({
-      // Top level only — a sub-collection is reached through its parent, never
-      // shown beside it.
-      where: { isActive: true, parentId: null },
-      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
-      include: {
-        packProducts: {
-          where: { isPack: true, status: 'active' },
-          select: { id: true, viewCount: true },
-        },
-        // A parent holds no packs of its own — its count and popularity come
-        // from the sub-collections one level down.
-        children: {
-          where: { isActive: true },
-          select: {
-            packProducts: {
-              where: { isPack: true, status: 'active' },
-              select: { id: true, viewCount: true },
-            },
-          },
-        },
-      },
-    });
-    return collections
-      .map((c) => ({
-        id: c.id,
-        slug: c.slug,
-        name: c.name,
-        description: c.description || '',
-        image: c.image,
-        gradient: c.gradient,
-        childCount: c.children.length,
-        packCount:
-          c.packProducts.length +
-          c.children.reduce((sum, ch) => sum + ch.packProducts.length, 0),
-        // Collections are browsed through their packs — total pack views is the
-        // collection's popularity. Mirrors GET /api/collections.
-        views: [c, ...c.children].reduce(
-          (sum, node) => sum + node.packProducts.reduce((s, p) => s + p.viewCount, 0),
-          0
-        ),
-        sortOrder: c.sortOrder,
-      }))
-      // A collection with sub-collections stays listed even at zero packs of
-      // its own — the sub-collections are the destination.
-      .filter((c) => c.packCount > 0 || c.childCount > 0)
-      .sort((a, b) => a.sortOrder - b.sortOrder || b.views - a.views);
-  } catch (error) {
-    console.error('getHomeCollections failed:', error);
     return [];
   }
 }

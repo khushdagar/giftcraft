@@ -188,7 +188,9 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const categorySlug = product.categories?.[0]?.category?.slug;
   const categoryHref = categorySlug ? `/category/${categorySlug}` : "/catalog";
 
-  // Related: for a pack show sibling packs (same collection) with a derived
+  const occasionIds = product.occasions?.map((po: any) => po.occasionId) ?? [];
+
+  // Related: for a pack show sibling packs sharing an occasion with a derived
   // "from" price; for a normal product show same-category products (never packs).
   const related: any[] = isPack
     ? await prisma.product.findMany({
@@ -196,7 +198,11 @@ export default async function ProductPage({ params }: { params: { slug: string }
           status: "active",
           isPack: true,
           id: { not: product.id },
-          ...(product.packCollectionId ? { packCollectionId: product.packCollectionId } : {}),
+          // Occasion is the rung packs are grouped by now. With none set, any
+          // other pack is a fair suggestion.
+          ...(occasionIds.length > 0
+            ? { occasions: { some: { occasionId: { in: occasionIds } } } }
+            : {}),
         },
         include: {
           images: { where: { isPrimary: true }, take: 1 },

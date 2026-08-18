@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard, Phone, Search, ChevronDown, Heart } from "lucide-react";
+import { Menu, ShoppingBag, Package, User as UserIcon, LogOut, LayoutDashboard, Phone, Search, ChevronDown, Heart, X } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
@@ -18,14 +18,12 @@ import { CONTACT_FALLBACK } from "@/lib/constants";
 
 interface NavLink { name: string; slug: string }
 
-// The Curated Packs dropdown cascades three levels: collection →
-// sub-collection → pack. A leaf collection has no children, so its own packs
-// take the second column instead.
-interface NavPack { name: string; slug: string }
-interface NavSubCollection extends NavLink { packs: NavPack[] }
+// The Curated Packs dropdown cascades two levels: entry ("By Budget", "By
+// Occasion") → its rungs. Individual packs are deliberately absent — the menu
+// hands you to a listing page, it isn't a catalogue of its own.
+interface NavSubCollection extends NavLink {}
 interface NavCollection extends NavLink {
   children: NavSubCollection[];
-  packs: NavPack[];
 }
 
 interface SuggestProduct { id: string; name: string; slug: string; brand: string | null; image: string | null; price: number | null }
@@ -64,13 +62,16 @@ export function Navbar() {
   const [phone, setPhone] = useState(DEFAULT_PHONE);
   const [suggestions, setSuggestions] = useState<{ products: SuggestProduct[]; packs: SuggestPack[]; categories: SuggestCategory[] }>({ products: [], packs: [], categories: [] });
   const [suggestOpen, setSuggestOpen] = useState(false);
+  // The nav only carries a search icon; the field itself lives in a
+  // full-screen overlay so it has room to breathe on every viewport.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [categories, setCategories] = useState<NavLink[]>([]);
   const [collections, setCollections] = useState<NavCollection[]>([]);
-  // Which row each cascade column is anchored to. Slugs, not indices, so a
-  // refetch mid-hover can't point the columns at the wrong rows.
+  // Which row the second column is anchored to. A slug, not an index, so a
+  // refetch mid-hover can't point the column at the wrong row.
   const [hoveredCollection, setHoveredCollection] = useState<string | null>(null);
-  const [hoveredSub, setHoveredSub] = useState<string | null>(null);
   const [occasions, setOccasions] = useState<NavLink[]>(FALLBACK_OCCASIONS);
   const products = useBuilderStore((state) => state.products);
   const wishlistItems = useWishlistStore((state) => state.items);
@@ -82,10 +83,25 @@ export function Navbar() {
 
   const authLoading = status === "loading";
 
-  // Resolved from the hovered slugs each render, so a column never points at a
+  // Resolved from the hovered slug each render, so the column never points at a
   // row that has since disappeared from the fetched tree.
   const activeCollection = collections.find((c) => c.slug === hoveredCollection) ?? null;
-  const activeSub = activeCollection?.children.find((sub) => sub.slug === hoveredSub) ?? null;
+
+  // Opening is a click, so the caret has to follow it into the overlay.
+  // Escape closes from anywhere, and the page behind is frozen so the
+  // overlay doesn't scroll the catalogue underneath it.
+  useEffect(() => {
+    if (!searchOpen) return;
+    searchInputRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSearchOpen(false); };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [searchOpen]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -104,7 +120,7 @@ export function Navbar() {
         setCategories(res.data.map((c: any) => ({ name: c.name, slug: c.slug })));
       })
       .catch(() => {/* no dropdown if it fails */});
-    fetch("/api/collections")
+    fetch("/api/pack-nav")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!active || !Array.isArray(data)) return;
@@ -112,7 +128,6 @@ export function Navbar() {
           data.map((c: any) => ({
             name: c.name,
             slug: c.slug,
-            packs: Array.isArray(c.packs) ? c.packs : [],
             children: Array.isArray(c.children) ? c.children : [],
           }))
         );
@@ -171,6 +186,7 @@ export function Navbar() {
     setMobileOpen(false);
     setMobileSearchOpen(false);
     setSuggestOpen(false);
+    setSearchOpen(false);
   
     setQuery("");
     router.push(`/catalog?search=${encodeURIComponent(q)}`);
@@ -178,6 +194,7 @@ export function Navbar() {
 
   const goToSuggestion = (href: string) => {
     setSuggestOpen(false);
+    setSearchOpen(false);
     setMobileOpen(false);
     setMobileSearchOpen(false);
     setQuery("");
@@ -313,10 +330,7 @@ export function Navbar() {
               has none), then the hovered sub-collection's packs. */}
           <li
             className="group relative py-4"
-            onMouseLeave={() => {
-              setHoveredCollection(null);
-              setHoveredSub(null);
-            }}
+            onMouseLeave={() => setHoveredCollection(null)}
           >
             <Link href="/curated-packs" className="text-sm font-medium text-ink-2 hover:text-ink">Curated Packs ▾</Link>
             {collections.length > 0 && (
@@ -326,23 +340,17 @@ export function Navbar() {
                   <Link
                     href="/curated-packs"
                     className="rounded-md px-3 py-2 text-[13px] font-semibold text-ink transition hover:bg-elevated"
-                    onMouseEnter={() => {
-                      setHoveredCollection(null);
-                      setHoveredSub(null);
-                    }}
+                    onMouseEnter={() => setHoveredCollection(null)}
                   >
                     All Packs
                   </Link>
                   {collections.map((c) => {
-                    const hasMore = c.children.length > 0 || c.packs.length > 0;
+                    const hasMore = c.children.length > 0;
                     return (
                       <Link
                         key={c.slug}
                         href={`/curated-packs/${c.slug}`}
-                        onMouseEnter={() => {
-                          setHoveredCollection(c.slug);
-                          setHoveredSub(null);
-                        }}
+                        onMouseEnter={() => setHoveredCollection(c.slug)}
                         className={cn(
                           "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-[13px] font-medium transition hover:bg-elevated hover:text-ink",
                           hoveredCollection === c.slug ? "bg-elevated text-ink" : "text-ink-2"
@@ -355,53 +363,21 @@ export function Navbar() {
                   })}
                 </div>
 
-                {/* Column 2 — the hovered collection's sub-collections, or its
-                    own packs when it is a leaf. */}
-                {activeCollection && (activeCollection.children.length > 0 || activeCollection.packs.length > 0) && (
+                {/* Column 2 — the hovered entry's rungs (price bands or
+                    occasions). The cascade stops here; packs live on the
+                    listing page each rung opens. */}
+                {activeCollection && activeCollection.children.length > 0 && (
                   <div className="flex w-[240px] flex-col gap-1 border-l border-bdr p-2">
                     <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                      {activeCollection.children.length > 0 ? "Collections" : "Packs"}
+                      {activeCollection.name.replace(/^By /, "")}
                     </p>
-                    {activeCollection.children.length > 0
-                      ? activeCollection.children.map((sub) => (
-                          <Link
-                            key={sub.slug}
-                            href={`/curated-packs/${activeCollection.slug}/${sub.slug}`}
-                            onMouseEnter={() => setHoveredSub(sub.slug)}
-                            className={cn(
-                              "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-[13px] font-medium transition hover:bg-elevated hover:text-ink",
-                              hoveredSub === sub.slug ? "bg-elevated text-ink" : "text-ink-2"
-                            )}
-                          >
-                            <span className="truncate">{sub.name}</span>
-                            {sub.packs.length > 0 && <span className="text-ink-3">›</span>}
-                          </Link>
-                        ))
-                      : activeCollection.packs.map((pack) => (
-                          <Link
-                            key={pack.slug}
-                            href={`/products/${pack.slug}`}
-                            className="truncate rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
-                          >
-                            {pack.name}
-                          </Link>
-                        ))}
-                  </div>
-                )}
-
-                {/* Column 3 — the hovered sub-collection's packs */}
-                {activeSub && activeSub.packs.length > 0 && (
-                  <div className="flex w-[240px] flex-col gap-1 border-l border-bdr p-2">
-                    <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                      Packs
-                    </p>
-                    {activeSub.packs.map((pack) => (
+                    {activeCollection.children.map((sub) => (
                       <Link
-                        key={pack.slug}
-                        href={`/products/${pack.slug}`}
+                        key={sub.slug}
+                        href={`/curated-packs/${activeCollection.slug}/${sub.slug}`}
                         className="truncate rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
                       >
-                        {pack.name}
+                        {sub.name}
                       </Link>
                     ))}
                   </div>
@@ -434,28 +410,17 @@ export function Navbar() {
         </ul>
 
         <div className="flex items-center gap-3">
-          {/* Search — submits to the catalog, which seeds its search box from ?search= */}
-          <form
-            role="search"
-            onSubmit={submitSearch}
-            className="relative hidden items-center nav:flex"
+          {/* Search — the nav holds only the trigger; the field opens as a
+              full-screen overlay so it never squeezes the nav links. */}
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label="Search products"
+            aria-expanded={searchOpen}
+            className="hidden h-9 w-9 items-center justify-center rounded-full border border-[#800020] text-ink-2 transition hover:bg-elevated hover:text-ink nav:flex"
           >
-            <Search className="pointer-events-none absolute left-3 h-4 w-4 text-ink-3" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); setSuggestOpen(true); }}
-              onFocus={() => setSuggestOpen(true)}
-              onBlur={() => setSuggestOpen(false)}
-              onKeyDown={(e) => { if (e.key === "Escape") setSuggestOpen(false); }}
-              placeholder="Search gifts..."
-              aria-label="Search products"
-              className="h-9 w-36 rounded-full border border-bdr bg-white pl-9 pr-3 text-[13px] text-ink outline-none transition placeholder:text-ink-3 focus:border-em xl:w-52"
-            />
-            {suggestOpen && query.trim().length >= 2 && (
-              <div className="absolute left-1/2 top-full w-80 -translate-x-1/2">{suggestionPanel}</div>
-            )}
-          </form>
+            <Search className="h-5 w-5" />
+          </button>
 
           <a
             href={phoneHref}
@@ -579,6 +544,93 @@ export function Navbar() {
           </button>
         </div>
       </nav>
+
+      {/* Full-screen search overlay. Opened from the nav icon, dismissed by
+          the backdrop, the ✕, or Escape. */}
+      {searchOpen && (
+        <div className="fixed inset-0 z-[900] flex justify-center overflow-y-auto bg-ink/40 px-4 py-[12vh] backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Search">
+          {/* Backdrop sits behind the card so a click outside closes, but a
+              click on the card itself does not. */}
+          <button
+            type="button"
+            aria-label="Close search"
+            tabIndex={-1}
+            onClick={() => setSearchOpen(false)}
+            className="absolute inset-0 h-full w-full cursor-default"
+          />
+          <div className="relative z-10 h-fit w-full max-w-2xl rounded-md-p border border-bdr bg-white p-5 shadow-float sm:p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-3">Search</p>
+              <button
+                type="button"
+                onClick={() => setSearchOpen(false)}
+                aria-label="Close search"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form role="search" onSubmit={submitSearch} className="relative flex items-center">
+              <Search className="pointer-events-none absolute left-4 h-5 w-5 text-ink-3" />
+              <input
+                ref={searchInputRef}
+                type="search"
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setSuggestOpen(true); }}
+                onFocus={() => setSuggestOpen(true)}
+                placeholder="Search gifts, packs, categories…"
+                aria-label="Search products"
+                className="h-14 w-full rounded-full border border-bdr bg-white pl-12 pr-4 text-base text-ink outline-none transition placeholder:text-ink-3 focus:border-em"
+              />
+              {suggestOpen && query.trim().length >= 2 && suggestionPanel}
+            </form>
+
+            {/* Empty state — somewhere to go before a single key is pressed. */}
+            {query.trim().length < 2 && (
+              <div className="mt-6 space-y-5">
+                {categories.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">Browse categories</p>
+                    <div className="flex flex-wrap gap-2">
+                      {categories.slice(0, 8).map((c) => (
+                        <button
+                          key={c.slug}
+                          type="button"
+                          onClick={() => goToSuggestion(`/category/${c.slug}`)}
+                          className="rounded-full border border-bdr px-3.5 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-em hover:text-em"
+                        >
+                          {c.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {occasions.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">Shop by occasion</p>
+                    <div className="flex flex-wrap gap-2">
+                      {occasions.slice(0, 8).map((o) => (
+                        <button
+                          key={o.slug}
+                          type="button"
+                          onClick={() => goToSuggestion(`/occasion/${o.slug}`)}
+                          className="rounded-full border border-bdr px-3.5 py-1.5 text-[13px] font-medium text-ink-2 transition hover:border-em hover:text-em"
+                        >
+                          {o.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-[12px] text-ink-3">
+                  Press <kbd className="rounded border border-bdr px-1.5 py-0.5 text-[11px] font-semibold text-ink-2">Esc</kbd> to close
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Mobile search drop-down (below the bar, above page content) */}
       {mobileSearchOpen && (

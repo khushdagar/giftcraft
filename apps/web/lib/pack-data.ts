@@ -1,8 +1,7 @@
 import { prisma } from '@/lib/prisma';
+import { bandContains, type BudgetBand } from '@/lib/budget-bands';
 
-// Shared loader for the curated-pack pages: /packs (collection hub) and
-// /curated-packs (flat list of every pack). Both need the same shape, so the
-// query lives here rather than being duplicated per route.
+// Shared loaders for the curated-pack pages.
 
 function uniqueById(list: { id: string; name: string }[]) {
   const map = new Map<string, { id: string; name: string }>();
@@ -10,146 +9,171 @@ function uniqueById(list: { id: string; name: string }[]) {
   return Array.from(map.values());
 }
 
-export async function getPackCollections() {
-  const collections = await prisma.giftCollection.findMany({
-    where: { isActive: true },
+// ──────────────────────────────────────────────────────────────────────────
+// Budget / occasion taxonomy
+//
+// Curated packs are no longer browsed through GiftCollections. The two ways in
+// are "By Budget" and "By Occasion", so these loaders read packs directly —
+// which also means a pack with no collection at all is finally reachable.
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface PackListItem {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  descriptionShort: string | null;
+  image: string | null;
+  gradient: null;
+  productCount: number;
+  fromPrice: number;
+  productImages: (string | null)[];
+  productIds: string[];
+  categories: { id: string; name: string }[];
+  brands: string[];
+  occasions: { id: string; name: string }[];
+  recipients: string[];
+  /** Occasion slugs this pack is filed under — drives the occasion pages. */
+  occasionSlugs: string[];
+}
+
+export async function getPacks(): Promise<PackListItem[]> {
+  const packs = await prisma.product.findMany({
+    where: { isPack: true, status: 'active' },
+    // Popularity-ranked under the admin's manual `sortOrder` — same rule as the
+    // product catalog, so packs and products rank consistently.
+    orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }, { createdAt: 'desc' }],
     include: {
-      packProducts: {
-        where: { isPack: true, status: 'active' },
-        // Popularity-ranked under the admin's manual `sortOrder` — same rule as
-        // the product catalog, so packs and products rank consistently.
-        orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }, { createdAt: 'desc' }],
+      images: { where: { isPrimary: true }, take: 1 },
+      occasions: {
+        select: { occasion: { select: { id: true, name: true, slug: true, isCollection: true } } },
+      },
+      packItems: {
+        orderBy: { sortOrder: 'asc' },
         include: {
-          images: { where: { isPrimary: true }, take: 1 },
-          packItems: {
-            orderBy: { sortOrder: 'asc' },
-            include: {
-              product: {
-                select: {
-                  brand: true,
-                  recipientTags: true,
-                  images: { orderBy: { sortOrder: 'asc' }, take: 1 },
-                  // Highest-quantity tier — the cheapest per-unit rate, which is
-                  // what the "From ₹x /pack" figure on the listing quotes.
-                  priceTiers: {
-                    orderBy: { minQty: 'desc' },
-                    take: 1,
-                    select: { sellPrice: true },
-                  },
-                  categories: { select: { category: { select: { id: true, name: true } } } },
-                  occasions: {
-                    select: { occasion: { select: { id: true, name: true, isCollection: true } } },
-                  },
-                },
+          product: {
+            select: {
+              brand: true,
+              recipientTags: true,
+              images: { orderBy: { sortOrder: 'asc' }, take: 1 },
+              // Highest-quantity tier — the cheapest per-unit rate, which is
+              // what the "From ₹x /pack" figure on the listing quotes.
+              priceTiers: { orderBy: { minQty: 'desc' }, take: 1, select: { sellPrice: true } },
+              categories: { select: { category: { select: { id: true, name: true } } } },
+              occasions: {
+                select: { occasion: { select: { id: true, name: true, slug: true, isCollection: true } } },
               },
             },
           },
         },
       },
     },
-    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
   });
 
-  return collections
-    .map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      description: c.description,
-      image: c.image,
-      gradient: c.gradient,
-      packs: c.packProducts.map((pack) => {
-        const members = pack.packItems;
-        const categories = uniqueById(
-          members.flatMap((it) => it.product.categories.map((pc) => pc.category))
-        );
-        const occasions = uniqueById(
-          members
-            .flatMap((it) => it.product.occasions.map((po) => po.occasion))
-            .filter((o) => !o.isCollection)
-            .map((o) => ({ id: o.id, name: o.name }))
-        );
-        const brands = Array.from(
-          new Set(members.map((it) => it.product.brand).filter((b): b is string => Boolean(b)))
-        );
-        const recipients = Array.from(
-          new Set(members.flatMap((it) => it.product.recipientTags).filter(Boolean))
-        );
-        return {
-          id: pack.id,
-          name: pack.name,
-          slug: pack.slug,
-          description: pack.descriptionLong,
-          descriptionShort: pack.descriptionShort,
-          image: pack.images[0]?.url ?? null,
-          gradient: null,
-          productCount: members.length,
-          fromPrice: members.reduce((sum, it) => {
-            const bestTier = it.product.priceTiers[0];
-            return sum + (bestTier ? Number(bestTier.sellPrice) : 0) * it.quantity;
-          }, 0),
-          productImages: members.map((it) => it.product.images[0]?.url ?? null),
-          productIds: members.map((it) => it.productId),
-          categories,
-          brands,
-          occasions,
-          recipients,
-        };
-      }),
-      // A GiftCollection has no views of its own — it is browsed through its
-      // packs — so its popularity is the total views of the packs inside it.
-      views: c.packProducts.reduce((sum, p) => sum + p.viewCount, 0),
-      sortOrder: c.sortOrder,
-    }))
-    .filter((c) => c.packs.length > 0)
-    // Admin `sortOrder` leads; the most-viewed collections lead within a band.
-    .sort((a, b) => a.sortOrder - b.sortOrder || b.views - a.views);
+  return packs.map((pack) => {
+    const members = pack.packItems;
+    const categories = uniqueById(
+      members.flatMap((it) => it.product.categories.map((pc) => pc.category))
+    );
+
+    // The admin's own tagging on the pack wins. Only when a pack carries no
+    // occasion of its own do we fall back to what its members are tagged with,
+    // so packs created before this taxonomy existed still surface somewhere.
+    const ownOccasions = pack.occasions.map((po) => po.occasion).filter((o) => !o.isCollection);
+    const memberOccasions = members
+      .flatMap((it) => it.product.occasions.map((po) => po.occasion))
+      .filter((o) => !o.isCollection);
+    const resolved = ownOccasions.length > 0 ? ownOccasions : memberOccasions;
+    const occasionMap = new Map(resolved.map((o) => [o.id, o]));
+    const occasionList = Array.from(occasionMap.values());
+
+    return {
+      id: pack.id,
+      name: pack.name,
+      slug: pack.slug,
+      description: pack.descriptionLong,
+      descriptionShort: pack.descriptionShort,
+      image: pack.images[0]?.url ?? null,
+      gradient: null as null,
+      productCount: members.length,
+      fromPrice: members.reduce((sum, it) => {
+        const bestTier = it.product.priceTiers[0];
+        return sum + (bestTier ? Number(bestTier.sellPrice) : 0) * it.quantity;
+      }, 0),
+      productImages: members.map((it) => it.product.images[0]?.url ?? null),
+      productIds: members.map((it) => it.productId),
+      categories,
+      brands: Array.from(
+        new Set(members.map((it) => it.product.brand).filter((b): b is string => Boolean(b)))
+      ),
+      occasions: occasionList.map((o) => ({ id: o.id, name: o.name })),
+      recipients: Array.from(
+        new Set(members.flatMap((it) => it.product.recipientTags).filter(Boolean))
+      ),
+      occasionSlugs: occasionList.map((o) => o.slug),
+    };
+  });
 }
 
-// Tiles for one level of the collection tree: pass `null` for the top-level
-// hub (/curated-packs), or a parent's id for its sub-collections
-// (/curated-packs/<parent>). `childCount` tells the caller whether clicking a
-// tile lands on more sub-collections or straight on the packs.
-export async function getCollectionTiles(parentId: string | null = null) {
-  const rows = await prisma.giftCollection.findMany({
-    where: { isActive: true, parentId },
+/** Every active band, in the admin's display order. */
+export async function getBudgetBands(): Promise<BudgetBand[]> {
+  const rows = await prisma.budgetBand.findMany({
+    where: { isActive: true },
+    orderBy: [{ sortOrder: 'asc' }, { minPrice: 'asc' }],
+  });
+  return rows.map((b) => ({
+    id: b.id,
+    slug: b.slug,
+    name: b.name,
+    description: b.description,
+    image: b.imageUrl,
+    gradient: b.gradient,
+    min: b.minPrice,
+    max: b.maxPrice,
+  }));
+}
+
+/** One band by slug, or null. Inactive bands are not reachable. */
+export async function getBudgetBand(slug: string) {
+  const bands = await getBudgetBands();
+  return bands.find((b) => b.slug === slug) ?? null;
+}
+
+/** Bands that actually hold packs — an empty band is not a destination. */
+export async function getBudgetTiles(packs: PackListItem[]) {
+  const bands = await getBudgetBands();
+  return bands
+    .map((band) => ({
+      band,
+      count: packs.filter((p) => bandContains(band, p.fromPrice)).length,
+    }))
+    .filter((b) => b.count > 0);
+}
+
+/** Occasions that actually hold packs, in the admin's own display order. */
+export async function getPackOccasionTiles(packs: PackListItem[]) {
+  const occasions = await prisma.occasionConfig.findMany({
+    // `isCollection` entries are the homepage's curated collections, not
+    // occasions — they never belong on the occasion tiles.
+    where: { isActive: true, isCollection: false },
     select: {
       id: true,
       name: true,
       slug: true,
-      description: true,
-      image: true,
+      imageUrl: true,
       gradient: true,
-      // The pack count shown on a tile: its own packs plus every pack sitting
-      // one level down, so a parent tile isn't misreported as empty.
-      packProducts: { where: { isPack: true, status: 'active' }, select: { id: true } },
-      children: {
-        where: { isActive: true },
-        select: {
-          id: true,
-          packProducts: { where: { isPack: true, status: 'active' }, select: { id: true } },
-        },
-      },
-      // Grandchildren don't exist (the tree is capped at two levels), but a
-      // sub-collection still reports its own count of zero honestly.
     },
-    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+    orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }],
   });
 
-  return rows
-    .map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      description: c.description,
-      image: c.image,
-      gradient: c.gradient,
-      childCount: c.children.length,
-      packCount:
-        c.packProducts.length + c.children.reduce((sum, ch) => sum + ch.packProducts.length, 0),
+  return occasions
+    .map((o) => ({
+      id: o.id,
+      name: o.name,
+      slug: o.slug,
+      image: o.imageUrl,
+      gradient: o.gradient,
+      count: packs.filter((p) => p.occasionSlugs.includes(o.slug)).length,
     }))
-    // Hide only a truly empty leaf. A collection that holds sub-collections
-    // stays visible even at zero packs — it is a real destination the admin
-    // built, and its sub-collections are what the customer came to browse.
-    .filter((c) => c.packCount > 0 || c.childCount > 0);
+    .filter((o) => o.count > 0);
 }

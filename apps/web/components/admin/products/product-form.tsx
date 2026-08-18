@@ -200,23 +200,9 @@ export function ProductForm({
   const [packItems, setPackItems] = useState<PackMember[]>(
     ((initialData as any)?.packItems as PackMember[]) ?? []
   );
-  const [packCollectionId, setPackCollectionId] = useState<string>(
-    (initialData as any)?.packCollectionId ?? ''
-  );
-  const [collections, setCollections] = useState<
-    Array<{ id: string; name: string; parentId: string | null; parentName: string | null; hasChildren: boolean }>
-  >([]);
   const [packSearch, setPackSearch] = useState('');
   const [packResults, setPackResults] = useState<any[]>([]);
   const [packSearching, setPackSearching] = useState(false);
-
-  // The collection dropdown offers only leaves — a collection that holds
-  // sub-collections shows those, never packs. `strandedCollection` is the one
-  // exception: a pack still filed on a parent from before it gained children.
-  const topLevelLeaves = collections.filter((c) => !c.parentId && !c.hasChildren);
-  const parentCollections = collections.filter((c) => c.hasChildren);
-  const strandedCollection =
-    parentCollections.find((c) => c.id === packCollectionId) ?? null;
 
   // Initialize variants properly from initialData
   useEffect(() => {
@@ -350,27 +336,6 @@ export function ProductForm({
   }, []);
 
   // ── Curated pack helpers ───────────────────────────────────────────────────
-  // Load collections (for the pack's collection dropdown).
-  useEffect(() => {
-    if (!isPack) return;
-    fetch('/api/admin/gift-collections')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) =>
-        setCollections(
-          Array.isArray(d)
-            ? d.map((c: any) => ({
-                id: c.id,
-                name: c.name,
-                parentId: c.parent?.id ?? null,
-                parentName: c.parent?.name ?? null,
-                hasChildren: (c.children?.length ?? 0) > 0,
-              }))
-            : []
-        )
-      )
-      .catch(() => {});
-  }, [isPack]);
-
   // Auto-fill SKU/slug for packs from the name, so the admin never has to invent
   // a code for a bundle. The field is still shown and editable — once
   // the admin types their own, stop overwriting it on every name keystroke.
@@ -637,12 +602,11 @@ export function ProductForm({
           lastPriceConfirmedAt: v.lastPriceConfirmedAt || null,
         }));
 
-      // Curated pack payload: flag, collection, member products, and no manual
-      // tiers (price is derived from the members).
+      // Curated pack payload: flag, member products, and no manual tiers
+      // (price is derived from the members).
       const packPayload = isPack
         ? {
             isPack: true,
-            packCollectionId: packCollectionId || null,
             packItems: packItems.map((it, idx) => ({
               productId: it.productId,
               quantity: it.quantity,
@@ -1031,59 +995,6 @@ export function ProductForm({
               <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">
                 Pack Contents
               </h2>
-
-              <div>
-                <label className="block text-sm font-normal text-gray-900 mb-1">Curated Collection</label>
-                <select
-                  value={packCollectionId}
-                  onChange={(e) => setPackCollectionId(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white"
-                >
-                  <option value="">— None (standalone) —</option>
-                  {/* A collection that holds sub-collections is not itself a
-                      valid home for a pack: its page shows those
-                      sub-collections, so a pack filed there is unreachable.
-                      Only leaves are offered — except a stale assignment, which
-                      is surfaced at the top so it can be corrected. */}
-                  {strandedCollection && (
-                    <option value={strandedCollection.id}>
-                      ⚠ {strandedCollection.name} — pick a sub-collection below
-                    </option>
-                  )}
-                  {topLevelLeaves.length > 0 && (
-                    <optgroup label="Collections">
-                      {topLevelLeaves.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                  {parentCollections.map((parent) => (
-                    <optgroup key={parent.id} label={`${parent.name} — sub-collections`}>
-                      {collections
-                        .filter((c) => c.parentId === parent.id)
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                    </optgroup>
-                  ))}
-                </select>
-                {strandedCollection ? (
-                  <p className="text-xs text-red-600 mt-1">
-                    This pack sits on <strong>{strandedCollection.name}</strong>, which now holds
-                    sub-collections — customers browsing that collection see the sub-collections,
-                    not this pack. Move it into one of them.
-                  </p>
-                ) : (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Where this pack appears on the storefront. Names under a
-                    “… — sub-collections” heading sit one level in.
-                  </p>
-                )}
-              </div>
 
               <div>
                 <label className="block text-sm font-normal text-gray-900 mb-1">
