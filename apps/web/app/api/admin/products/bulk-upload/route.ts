@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import * as XLSX from 'xlsx';
+import { mirrorImageUrls } from '@/lib/import-image-url';
 
 /**
  * POST /api/admin/products/bulk-upload
@@ -300,7 +301,10 @@ export async function POST(request: NextRequest) {
   }
 
   const errors: { row: number; sku: string; message: string }[] = [];
+  // Image links that could not be fetched. Non-fatal — the row still imports.
+  const warnings: { row: number; sku: string; message: string }[] = [];
   let created = 0;
+  let imagesUploaded = 0;
 
   // Stream NDJSON progress so the client can show a real progress bar
   const encoder = new TextEncoder();
@@ -311,7 +315,7 @@ export async function POST(request: NextRequest) {
 
       await runImport(send);
 
-      send({ type: 'done', success: true, created, failed: errors.length, total: dataRows.length, errors });
+      send({ type: 'done', success: true, created, failed: errors.length, total: dataRows.length, errors, warnings, images: imagesUploaded });
       controller.close();
     },
   });
@@ -382,7 +386,35 @@ export async function POST(request: NextRequest) {
       toList(get('sizes')).forEach((value, i) => variants.push({ kind: 'size', value, sortOrder: variants.length + i }));
 
       const recipientTags = toList(get('recipientTags'));
-      const imageUrls = toList(get('imageUrls'));
+      // Sheet image links — Google Drive share links included — are downloaded
+      // and re-hosted on our CDN, so nothing depends on someone's Drive staying
+      // up, and every image gets the same WebP/variant treatment as an upload.
+      const rawImageUrls = toList(get('imageUrls'));
+      // Images dominate the wall-clock time of an import, so report them at image
+      // granularity — a row-only bar looks frozen while 10 photos download.
+      const imageProgress = (done: number, total: number) =>
+        send({
+          type: 'progress',
+          current: r,
+          total: dataRows.length,
+          created,
+          failed: errors.length,
+          images: imagesUploaded + done,
+          imgDone: done,
+          imgTotal: total,
+          note:
+            total === 0
+              ? `Reading image links for ${sku}…`
+              : `${sku}: image ${Math.min(done + 1, total)} of ${total}…`,
+        });
+      if (rawImageUrls.length) imageProgress(0, 0);
+      const { urls: imageUrls, warnings: imageWarnings } = await mirrorImageUrls(
+        rawImageUrls,
+        'products',
+        imageProgress,
+      );
+      imagesUploaded += imageUrls.length;
+      for (const message of imageWarnings) warnings.push({ row: rowNum, sku, message });
 
       const product = await prisma.product.create({
         data: {
@@ -494,7 +526,7 @@ export async function POST(request: NextRequest) {
         message: err?.code === 'P2002' ? 'Duplicate value (SKU/slug already exists)' : (err?.message || 'Failed to create'),
       });
     } finally {
-      send({ type: 'progress', current: r + 1, total: dataRows.length, created, failed: errors.length });
+      send({ type: 'progress', current: r + 1, total: dataRows.length, created, failed: errors.length, images: imagesUploaded });
     }
   }
   }

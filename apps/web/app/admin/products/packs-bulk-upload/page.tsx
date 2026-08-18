@@ -4,20 +4,20 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Download, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Download, Upload, FileSpreadsheet, CheckCircle2, AlertCircle, ArrowLeft, ListChecks } from 'lucide-react';
 
 interface UploadResult {
   created: number;
   failed: number;
   total: number;
-  errors: { row: number; sku: string; message: string }[];
+  errors: { row: number; pack: string; message: string }[];
   /** Total images downloaded + uploaded across the whole import. */
   images: number;
-  /** Image links that could not be fetched — the product itself still imported. */
-  warnings: { row: number; sku: string; message: string }[];
+  /** Image links that could not be fetched — the pack itself still imported. */
+  warnings: { row: number; pack: string; message: string }[];
 }
 
-export default function BulkUploadPage() {
+export default function PacksBulkUploadPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -45,7 +45,7 @@ export default function BulkUploadPage() {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/admin/products/bulk-upload', { method: 'POST', body: fd });
+      const res = await fetch('/api/admin/packs/bulk-upload', { method: 'POST', body: fd });
 
       // Validation errors come back as a normal JSON response (non-200)
       if (!res.ok) {
@@ -75,7 +75,6 @@ export default function BulkUploadPage() {
           handleLine(line);
         }
       }
-      // flush any trailing line with no final newline
       if (buffer.trim()) handleLine(buffer);
       if (final) setResult(final);
 
@@ -111,11 +110,13 @@ export default function BulkUploadPage() {
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <Link href="/admin/products" className="inline-flex items-center gap-1 text-sm text-ink-2 hover:text-ink mb-3">
-          <ArrowLeft className="h-4 w-4" /> Back to Products
+        <Link href="/admin/products?view=packs" className="inline-flex items-center gap-1 text-sm text-ink-2 hover:text-ink mb-3">
+          <ArrowLeft className="h-4 w-4" /> Back to Curated Collections
         </Link>
-        <h1 className="text-3xl font-normal text-ink">Bulk Upload Products</h1>
-        <p className="mt-1 text-sm text-ink-2">Import many products at once from a CSV or Excel (.xlsx) file.</p>
+        <h1 className="text-3xl font-normal text-ink">Bulk Upload Curated Packs</h1>
+        <p className="mt-1 text-sm text-ink-2">
+          Import many packs at once from a CSV or Excel (.xlsx) file — one row per pack, member products listed by SKU.
+        </p>
       </div>
 
       {/* Step 1 — template */}
@@ -125,27 +126,33 @@ export default function BulkUploadPage() {
           <div className="flex-1">
             <h2 className="text-base font-medium text-ink">Download the template</h2>
             <p className="mt-1 text-sm text-ink-2">
-              The CSV has a column for every field in the product master sheet — specs, dimensions, MOQ,
-              branding, eco, 6 price tiers, occasions, recipient tags, vendor sourcing, and the product-page
-              content tabs (description, key features, specifications, shipping &amp; delivery). The first row
-              is a filled-in example you can replace.
+              One row per pack: its name, the collection it belongs to, and the products inside it.
+              A pack has no prices, HSN or dimensions of its own — those are derived from its members,
+              exactly like the pack form does.
             </p>
             <div className="mt-3 flex flex-wrap gap-3">
               <a
-                href="/api/admin/products/bulk-upload/template"
+                href="/api/admin/packs/bulk-upload/template"
                 className="inline-flex items-center gap-2 rounded-md border-2 border-bdr px-4 py-2 text-sm font-medium text-ink transition hover:bg-gray-50"
               >
                 <Download className="h-4 w-4" /> Blank template
               </a>
               <a
-                href="/api/admin/products/bulk-upload/sample"
+                href="/api/admin/packs/bulk-upload/sample"
                 className="inline-flex items-center gap-2 rounded-md border-2 border-em bg-em-50 px-4 py-2 text-sm font-medium text-em transition hover:bg-em-50/70"
               >
                 <Download className="h-4 w-4" /> Download sample sheet
               </a>
+              <a
+                href="/api/admin/packs/bulk-upload/skus"
+                className="inline-flex items-center gap-2 rounded-md border-2 border-bdr px-4 py-2 text-sm font-medium text-ink transition hover:bg-gray-50"
+              >
+                <ListChecks className="h-4 w-4" /> Product SKU list
+              </a>
             </div>
             <p className="mt-2 text-xs text-ink-3">
-              The sample sheet has 6 real products filled across different categories — copy its format.
+              The template and sample are filled with SKUs from your real catalogue, so they import as-is.
+              The SKU list is a reference of every product you can put inside a pack.
             </p>
           </div>
         </div>
@@ -158,20 +165,30 @@ export default function BulkUploadPage() {
           <div className="flex-1">
             <h2 className="text-base font-medium text-ink">Fill it in — a few rules</h2>
             <ul className="mt-2 space-y-1.5 text-sm text-ink-2 list-disc pl-5">
-              <li><strong>name</strong>, <strong>sku</strong>, <strong>hsnCode</strong> and at least one price tier are required per row.</li>
-              <li><strong>hsnCode</strong> must already exist in the system (e.g. 7323, 6109).</li>
-              <li>Multiple values in one cell — colours, sizes, occasions, recipientTags, imageUrls — are <strong>comma-separated</strong> (keep the cell quoted, as the template does).</li>
+              <li><strong>name</strong> and <strong>products</strong> are the only required columns.</li>
               <li>
-                <strong>imageUrls</strong> takes a <strong>Google Drive link</strong> — either a single file, or a{' '}
-                <strong>folder link, in which case every image inside it is imported</strong> for that row (ordered
-                by filename, first one becomes the cover). Any other public image URL works too. Each image is
-                downloaded and re-hosted on our CDN during the import, so you don&apos;t need to upload images
-                separately. The file or folder must be shared with{' '}
-                <strong>&ldquo;Anyone with the link&rdquo;</strong>.
+                <strong>products</strong> is a comma-separated list of member SKUs. Add a quantity with{' '}
+                <code>x</code> — e.g. <code>DRIN-Insula-4 x2, NOTE-A5-1</code>. A SKU that isn&apos;t
+                found is reported and the whole row is skipped, so a pack is never created half-filled.
               </li>
-              <li><strong>category</strong>, <strong>subcategory</strong>, <strong>occasions</strong> and vendors are matched by name and <strong>created if they don&apos;t exist</strong>.</li>
-              <li>yes/no fields: <code>isFeatured</code>, <code>isEcoCertified</code>, <code>sampleAvailable</code>.</li>
-              <li>Rows with an existing SKU are skipped (reported below), so re-uploading is safe.</li>
+              <li>
+                <strong>collection</strong> is matched by name and <strong>created if it doesn&apos;t exist</strong> —
+                new collections of packs come straight from the sheet. Leave it blank for a standalone pack.
+              </li>
+              <li>
+                <strong>Pricing is automatic.</strong> A pack&apos;s tiers are the sum of its members&apos; tier
+                prices × quantity. Don&apos;t put prices in the sheet.
+              </li>
+              <li>
+                <strong>Images are automatic.</strong> The pack tile and detail page collage the member
+                products&apos; images. Only fill <code>imageUrls</code> if you want a custom hero image instead —
+                a <strong>Google Drive file link</strong> shared with &ldquo;Anyone with the link&rdquo; works, and
+                gets downloaded onto our CDN during the import.
+              </li>
+              <li>Weight, lead time, MOQ and box dimensions are derived from the members too.</li>
+              <li><strong>sku</strong> and <strong>slug</strong> are generated from the pack name if left blank.</li>
+              <li><strong>category</strong>, <strong>occasions</strong> are matched by name and created if missing. yes/no field: <code>isFeatured</code>.</li>
+              <li>Rows whose pack SKU already exists are skipped (reported below), so re-uploading is safe.</li>
             </ul>
           </div>
         </div>
@@ -206,12 +223,12 @@ export default function BulkUploadPage() {
               </div>
             )}
 
-            {/* Progress bar (fills as each product imports) */}
+            {/* Progress bar (fills as each pack imports) */}
             {loading && progress && progress.total > 0 && (
               <div className="mt-4">
                 <div className="mb-1.5 flex items-center justify-between text-sm">
                   <span className="font-medium text-ink">
-                    Importing {progress.current} of {progress.total} products…
+                    Importing {progress.current} of {progress.total} packs…
                   </span>
                   <span className="text-ink-2">
                     {Math.round((progress.current / progress.total) * 100)}%
@@ -256,7 +273,7 @@ export default function BulkUploadPage() {
               disabled={!file || loading}
               className="mt-4 inline-flex items-center gap-2 rounded-md bg-em px-5 py-2.5 text-sm font-medium text-white hover:bg-em-600 disabled:opacity-60"
             >
-              <Upload className="h-4 w-4" /> {loading ? 'Importing…' : 'Import Products'}
+              <Upload className="h-4 w-4" /> {loading ? 'Importing…' : 'Import Packs'}
             </Button>
           </div>
         </div>
@@ -295,7 +312,7 @@ export default function BulkUploadPage() {
                   <thead className="bg-gray-50 text-left">
                     <tr>
                       <th className="px-3 py-2 text-xs font-normal text-ink-2">Row</th>
-                      <th className="px-3 py-2 text-xs font-normal text-ink-2">SKU</th>
+                      <th className="px-3 py-2 text-xs font-normal text-ink-2">Pack</th>
                       <th className="px-3 py-2 text-xs font-normal text-ink-2">Reason</th>
                     </tr>
                   </thead>
@@ -303,7 +320,7 @@ export default function BulkUploadPage() {
                     {result.errors.map((e, i) => (
                       <tr key={i}>
                         <td className="px-3 py-2 text-ink-2">{e.row}</td>
-                        <td className="px-3 py-2 text-ink-2">{e.sku || '—'}</td>
+                        <td className="px-3 py-2 text-ink-2">{e.pack || '—'}</td>
                         <td className="px-3 py-2 text-ink">{e.message}</td>
                       </tr>
                     ))}
@@ -323,7 +340,7 @@ export default function BulkUploadPage() {
                   <thead className="text-left">
                     <tr>
                       <th className="px-3 py-2 text-xs font-normal text-ink-2">Row</th>
-                      <th className="px-3 py-2 text-xs font-normal text-ink-2">SKU</th>
+                      <th className="px-3 py-2 text-xs font-normal text-ink-2">Pack</th>
                       <th className="px-3 py-2 text-xs font-normal text-ink-2">Image link</th>
                     </tr>
                   </thead>
@@ -331,7 +348,7 @@ export default function BulkUploadPage() {
                     {result.warnings.map((w, i) => (
                       <tr key={i}>
                         <td className="px-3 py-2 align-top text-ink-2">{w.row}</td>
-                        <td className="px-3 py-2 align-top text-ink-2">{w.sku || '—'}</td>
+                        <td className="px-3 py-2 align-top text-ink-2">{w.pack || '—'}</td>
                         <td className="px-3 py-2 break-all text-ink">{w.message}</td>
                       </tr>
                     ))}
@@ -343,10 +360,10 @@ export default function BulkUploadPage() {
 
           <div className="mt-5 flex gap-3">
             <Button
-              onClick={() => router.push('/admin/products')}
+              onClick={() => router.push('/admin/products?view=packs')}
               className="rounded-md bg-em px-5 py-2.5 text-sm font-medium text-white hover:bg-em-600"
             >
-              View Products
+              View Collections
             </Button>
             <Button
               variant="outline"

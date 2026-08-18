@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Star } from 'lucide-react';
@@ -100,7 +100,17 @@ export function AdminNav() {
     };
   }, [pathname]);
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+  // Exactly one item highlights: nav hrefs nest (/admin/settings is a prefix of
+  // /admin/settings/users, and /admin is a prefix of everything), so a plain
+  // prefix test lights up several rows at once. Take the LONGEST matching href.
+  const activeHref = useMemo(() => {
+    const matches = NAV.flatMap((s) => s.items.map((i) => i.href)).filter(
+      (href) => pathname === href || pathname.startsWith(href + '/')
+    );
+    return matches.sort((a, b) => b.length - a.length)[0] ?? null;
+  }, [pathname]);
+
+  const isActive = (href: string) => href === activeHref;
 
   const badgeFor = (href: string): string | null =>
     href === '/admin/orders' && ordersCount > 0 ? String(ordersCount) : null;
