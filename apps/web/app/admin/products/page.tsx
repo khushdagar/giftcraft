@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit2 } from 'lucide-react';
 import { ProductDataTable } from '@/components/admin/products/product-data-table';
+import { PackDataTable, type PackRow } from '@/components/admin/products/pack-data-table';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,23 +47,64 @@ export default async function AdminProductsPage({
   const view = searchParams.view === 'packs' ? 'packs' : 'products';
 
   // ── Curated Collections view ──────────────────────────────────────────────
-  // A collection groups several packs. We list collections (each links to its
-  // editor where packs are managed) plus any legacy standalone packs.
+  // A collection groups several packs. We list the collections (each links to
+  // its editor) above a searchable table of every pack, where packs are edited
+  // and deleted directly.
   if (view === 'packs') {
-    const [collections, ungroupedPacks] = await Promise.all([
+    const [collections, packs] = await Promise.all([
       prisma.giftCollection.findMany({
         include: { packProducts: { where: { isPack: true }, select: { id: true, status: true } } },
         orderBy: { sortOrder: 'asc' },
       }),
       prisma.product.findMany({
-        where: { isPack: true, packCollectionId: null },
+        where: { isPack: true },
         include: {
-          packItems: { select: { id: true } },
-          images: { where: { isPrimary: true }, take: 1 },
+          images: { where: { isPrimary: true }, take: 1, select: { url: true } },
+          packCollection: { select: { id: true, name: true } },
+          packItems: {
+            orderBy: { sortOrder: 'asc' },
+            select: {
+              quantity: true,
+              product: {
+                select: {
+                  name: true,
+                  images: { where: { isPrimary: true }, take: 1, select: { url: true } },
+                  priceTiers: { where: { tier: 1 }, take: 1, select: { sellPrice: true } },
+                },
+              },
+            },
+          },
         },
-        orderBy: { sortOrder: 'asc' },
+        // Active first, then draft/archived/seasonal (enum declaration order),
+        // newest first within each band — same ordering as the products list.
+        orderBy: [{ status: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'desc' }],
       }),
     ]);
+
+    // A pack stores no price or image of its own: the from-price is the sum of
+    // its members' tier-1 prices × quantity, and the thumbnail is their collage
+    // (unless the pack was given a custom hero image).
+    const packsView: PackRow[] = packs.map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      sku: p.sku,
+      status: p.status,
+      collectionId: p.packCollection?.id ?? null,
+      collectionName: p.packCollection?.name ?? null,
+      itemCount: p.packItems.length,
+      price: p.packItems.reduce(
+        (sum, it) => sum + Number(it.product.priceTiers[0]?.sellPrice ?? 0) * it.quantity,
+        0
+      ),
+      images: p.images[0]?.url
+        ? [p.images[0].url]
+        : p.packItems.flatMap((it) => {
+            const url = it.product.images[0]?.url;
+            return url ? [url] : [];
+          }),
+      memberNames: p.packItems.map((it) => it.product.name),
+    }));
 
     const collectionsView = collections.map((c) => ({
       id: c.id,
@@ -101,7 +143,7 @@ export default async function AdminProductsPage({
 
         <ViewTabs view="packs" />
 
-        {collectionsView.length === 0 && ungroupedPacks.length === 0 ? (
+        {collectionsView.length === 0 && packsView.length === 0 ? (
           <div className="text-center py-12 bg-canvas rounded-lg border-2 border-bdr">
             <p className="text-ink-2 mb-4 text-lg">No curated collections yet</p>
             <Button asChild>
@@ -172,65 +214,18 @@ export default async function AdminProductsPage({
               </div>
             )}
 
-            {/* Legacy standalone packs (not yet in a collection). */}
-            {ungroupedPacks.length > 0 && (
-              <div>
-                <div className="mb-3">
-                  <h2 className="text-lg font-normal text-ink">Ungrouped packs</h2>
-                  <p className="text-sm text-ink-2">
-                    These packs aren’t in a collection yet. Open one and assign it to a collection.
-                  </p>
-                </div>
-                <div className="border border-bdr rounded-lg overflow-x-auto bg-white">
-                  <table className="w-full min-w-[560px]">
-                    <thead className="bg-elevated border-b border-bdr">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Pack</th>
-                        <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Products</th>
-                        <th className="px-6 py-4 text-left text-xs font-normal text-ink-2 uppercase">Status</th>
-                        <th className="px-6 py-4 text-right text-xs font-normal text-ink-2 uppercase">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-bdr">
-                      {ungroupedPacks.map((pack) => (
-                        <tr key={pack.id} className="hover:bg-canvas transition">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-12 h-9 rounded-md flex-shrink-0 overflow-hidden bg-gray-100">
-                                {pack.images[0]?.url && (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={pack.images[0].url} alt={pack.name} className="w-full h-full object-cover" />
-                                )}
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-ink">{pack.name}</p>
-                                <p className="text-xs text-ink-2 mt-1">/{pack.slug}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <p className="text-sm text-ink-2">{pack.packItems.length} products</p>
-                          </td>
-                          <td className="px-6 py-4">
-                            <Badge variant={pack.status === 'active' ? 'em' : 'grey'}>
-                              {pack.status === 'active' ? 'Active' : 'Draft'}
-                            </Badge>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            <Link href={`/admin/products/${pack.id}/edit`} className="inline-block">
-                              <Button variant="outline" size="sm" className="rounded-lg">
-                                <Edit2 className="w-4 h-4 mr-1" />
-                                Edit
-                              </Button>
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            {/* Every pack, searchable and selectable — the collections table
+                above manages the groups, this manages the packs themselves. */}
+            <div>
+              <div className="mb-3">
+                <h2 className="text-lg font-normal text-ink">All curated packs</h2>
+                <p className="text-sm text-ink-2">
+                  Select packs to delete them, or click a row to edit. Deleting a pack never
+                  touches the products inside it.
+                </p>
               </div>
-            )}
+              <PackDataTable packs={packsView} />
+            </div>
           </div>
         )}
       </div>
