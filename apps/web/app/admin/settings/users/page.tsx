@@ -40,6 +40,32 @@ async function updateUserRole(formData: FormData) {
 }
 
 /**
+ * Server action: revoke a user's elevated access.
+ * Drops them back to company_member — the normal customer role — so they keep
+ * their account and order history but disappear from this list. Deleting the
+ * User row is deliberately NOT offered: it would cascade their orders away.
+ */
+async function revokeAccess(formData: FormData) {
+  "use server";
+  const session = await auth();
+  if (!session || session.user.role !== "super_admin") {
+    throw new Error("Forbidden");
+  }
+  const userId = String(formData.get("userId"));
+  if (userId === session.user.id) {
+    // Don't let the last admin lock themselves out of the admin.
+    throw new Error("You cannot remove your own access.");
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { role: "company_member" },
+  });
+
+  revalidatePath("/admin/settings/users");
+}
+
+/**
  * Server action: grant an elevated role to a registered user by email.
  * The user must already have signed in with Google once.
  */
@@ -122,8 +148,8 @@ export default async function AdminUsersPage({
         <div className="grid grid-cols-12 gap-3 border-b border-bdr bg-canvas px-4 py-2.5 text-[10px] font-normal uppercase tracking-wider text-ink-3">
           <div className="col-span-4">User</div>
           <div className="col-span-3">Company</div>
-          <div className="col-span-3">Role</div>
-          <div className="col-span-2 text-right">Joined</div>
+          <div className="col-span-2">Role</div>
+          <div className="col-span-3 text-right">Joined</div>
         </div>
 
         {users.length === 0 ? (
@@ -166,7 +192,7 @@ export default async function AdminUsersPage({
                 </select>
               </div>
 
-              <div className="col-span-3">
+              <div className="col-span-2">
                 <select
                   name="role"
                   defaultValue={u.role}
@@ -179,7 +205,7 @@ export default async function AdminUsersPage({
                 </select>
               </div>
 
-              <div className="col-span-2 flex items-center justify-end gap-2">
+              <div className="col-span-3 flex items-center justify-end gap-2">
                 <span className="text-[11px] text-ink-3">
                   {new Date(u.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
                 </span>
@@ -190,6 +216,17 @@ export default async function AdminUsersPage({
                 >
                   Save
                 </button>
+                {/* Same form, different action — one click drops them to
+                    company_member without hunting through the role dropdown. */}
+                <button
+                  type="submit"
+                  formAction={revokeAccess}
+                  className="rounded-md border border-rose-200 bg-white px-2.5 py-1 text-[11px] font-normal text-rose-600 hover:bg-rose-50 disabled:opacity-40"
+                  disabled={u.id === session.user.id}
+                  title="Remove admin access — keeps their customer account"
+                >
+                  Remove access
+                </button>
               </div>
             </form>
           ))
@@ -199,8 +236,10 @@ export default async function AdminUsersPage({
       <div className="rounded-md border border-gold/20 bg-gold-50 p-4 text-[12px] text-gold-700">
         <p className="font-normal">Tip</p>
         <p className="mt-0.5">
-          To remove someone&apos;s access, set their role back to &quot;company member&quot; —
-          they&apos;ll disappear from this list but keep their normal customer account.
+          <span className="font-medium">Remove access</span> drops a user back to a normal
+          customer: they leave this list but keep their account, company and order history.
+          Nothing is deleted, and you can grant access again any time by email above.
+          You cannot remove your own access.
         </p>
       </div>
     </div>
