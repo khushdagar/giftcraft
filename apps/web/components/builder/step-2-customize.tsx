@@ -352,12 +352,9 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
           <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">
             Select Your Packaging <span className="text-red-500">*</span>
           </p>
-          {/* Auto-picked size — the customer chooses only the design; the size is
-              set from the pack and locked. Shown once, here in the top-right. */}
+        
           <div className="flex items-center gap-3">
-            {/* {!packaging && (
-              <p className="text-xs font-semibold text-red-600">Required to continue</p>
-            )} */}
+         
             {!noBoxSelected && (
               <span
                 title={`Box size ${autoSize}, set automatically from your pack`}
@@ -410,14 +407,13 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                 <div className="p-3 space-y-2">
                   <div>
                     <p className="font-bold text-sm text-ink">No Box</p>
-                    {/* Description + "Add cost" label are desktop-only — on mobile
-                        the card carries just the name and the price. */}
+                   
                     <p className="hidden lg:block text-xs text-ink-3 mt-1 line-clamp-2">
                       Ship the products without a gift box
                     </p>
                   </div>
                   <div>
-                    <p className="hidden lg:block text-xs text-ink-3">Add cost</p>
+                    {/* <p className="hidden lg:block text-xs text-ink-3">Add cost</p> */}
                     <p className="text-sm font-black text-em">+{formatRupees(0)}</p>
                   </div>
                 </div>
@@ -476,14 +472,14 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                     <div className="p-3 space-y-2">
                       <div>
                         <p className="font-bold text-sm text-ink line-clamp-2">{design.name}</p>
-                        {design.description && (
+                        {/* {design.description && (
                           <p className="hidden lg:block text-xs text-ink-3 mt-1 line-clamp-2">{design.description}</p>
-                        )}
+                        )} */}
                       </div>
 
                       {/* Price */}
                       <div>
-                        <p className="hidden lg:block text-xs text-ink-3">Add cost</p>
+                        {/* <p className="hidden lg:block text-xs text-ink-3">Add cost</p> */}
                         <p className="text-sm font-black text-em">+{formatRupees(price)}</p>
                       </div>
                     </div>
@@ -553,15 +549,15 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                   <div className="p-3 space-y-2">
                     <div>
                       <p className="font-bold text-sm text-ink line-clamp-2">{addon.name}</p>
-                      {addon.description && (
+                      {/* {addon.description && (
                         <p className="hidden lg:block text-xs text-ink-3 mt-1 line-clamp-2">{addon.description}</p>
-                      )}
+                      )} */}
                     </div>
 
                     {/* Price */}
                     {addon.price > 0 ? (
                       <div>
-                        <p className="hidden lg:block text-xs text-ink-3">Add cost</p>
+                        {/* <p className="hidden lg:block text-xs text-ink-3">Add cost</p> */}
                         <p className="text-sm font-black text-em">+{formatRupees(addon.price)}</p>
                       </div>
                     ) : (
