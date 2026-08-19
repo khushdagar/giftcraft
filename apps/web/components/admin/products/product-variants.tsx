@@ -129,34 +129,19 @@ export function ProductVariants({
   const updateVariant = (idx: number, patch: Partial<Variant>) =>
     setVariants((prev) => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
 
-  const deleteVariantAt = async (idx: number) => {
-    const v = variants[idx];
-    if (v?.id && mode === 'edit' && productId) {
-      try {
-        await fetch(`/api/admin/products/${productId}/variants?variantId=${v.id}`, {
-          method: 'DELETE',
-        });
-      } catch {
-        /* best-effort; local removal still applies */
-      }
-    }
+  // Removals are local only. The product's save rewrites the whole variant set,
+  // so nothing is lost — and nothing is destroyed if the admin walks away.
+  const deleteVariantAt = (idx: number) => {
     setVariants((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const deleteOption = async (optName: string) => {
-    const toDelete = variants.filter((v) => v.kind === optName);
-    if (mode === 'edit' && productId) {
-      for (const v of toDelete) {
-        if (v.id) {
-          await fetch(`/api/admin/products/${productId}/variants?variantId=${v.id}`, {
-            method: 'DELETE',
-          }).catch(() => {});
-        }
-      }
-    }
+  const deleteOption = (optName: string) => {
     setVariants((prev) => prev.filter((v) => v.kind !== optName));
     setOptions((prev) => prev.filter((o) => o.name !== optName));
-    toast.success('✅ Option removed', 1500);
+    toast.success(
+      mode === 'edit' ? '✅ Option removed — Save Changes to apply' : '✅ Option removed',
+      1500
+    );
   };
 
   // Flat-index entries for one option (so image upload gets the right index).

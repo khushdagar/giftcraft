@@ -22,10 +22,10 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
   };
 
   const { data: occasions, isLoading } = useQuery({
-    queryKey: ['occasions'],
+    queryKey: ['pack-occasions'],
     queryFn: async () => {
-      const res = await fetch('/api/occasions');
-      if (!res.ok) throw new Error('Failed to fetch occasions');
+      const res = await fetch('/api/pack-occasions');
+      if (!res.ok) throw new Error('Failed to fetch pack occasions');
       return res.json();
     },
     // Server-rendered on the homepage so occasion links are crawlable.
@@ -71,7 +71,7 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
   const renderCard = (occ: any) => (
     <Link
       key={occ.slug}
-      href={`/occasion/${occ.slug}`}
+      href={`/curated-packs/occasions/${occ.slug}`}
       className="block w-full h-full aspect-[3/2] rounded-3xl overflow-hidden group cursor-pointer relative shadow-md hover:shadow-lg transition-shadow"
     >
       {occ.image ? (
@@ -177,7 +177,7 @@ export function ShopByOccasion({ initialData }: { initialData?: any[] }) {
         {!isLoading && featured.length > 0 && (
           <div className="mt-8 md:mt-10 hidden md:flex justify-center">
             <Link
-              href="/occasions"
+              href="/curated-packs/occasions"
               className="flex items-center justify-center rounded-full border border-[#800020] px-8 py-2.5 text-sm font-semibold text-[#800020] transition hover:bg-[#800020] hover:text-white"
             >
               See All →

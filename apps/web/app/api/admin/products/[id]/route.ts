@@ -63,6 +63,18 @@ const UpdateProductSchema = z.object({
   reason: z.string().nullable().optional(),
   categoryIds: z.array(z.string()).nullable().optional(),
   occasionIds: z.array(z.string()).nullable().optional(),
+  // The full desired image list, in display order. The editor now holds image
+  // edits locally until Save, so the gallery is reconciled here in one pass:
+  // entries with an id are kept (re-ordered / re-flagged), ids that are absent
+  // get deleted, and id-less entries are created.
+  images: z.array(
+    z.object({
+      id: z.string().optional(),
+      url: z.string().min(1),
+      altText: z.string().nullable().optional(),
+      isPrimary: z.boolean().optional(),
+    })
+  ).nullable().optional(),
   variants: z.array(
     z.object({
       id: z.string().optional(),
@@ -338,6 +350,35 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
               sortOrder: it.sortOrder ?? idx,
             })),
           });
+        }
+      }
+
+      // Reconcile the gallery against exactly what the editor is showing.
+      if (data.images) {
+        const keepIds = data.images
+          .map((img) => img.id)
+          .filter((id): id is string => !!id);
+        await tx.productImage.deleteMany({
+          where: {
+            productId: params.id,
+            ...(keepIds.length > 0 ? { id: { notIn: keepIds } } : {}),
+          },
+        });
+        // The first entry is the cover unless one is explicitly flagged.
+        const flagged = data.images.findIndex((img) => img.isPrimary);
+        const primaryIdx = flagged >= 0 ? flagged : 0;
+        for (const [idx, img] of data.images.entries()) {
+          const common = {
+            url: img.url,
+            altText: img.altText ?? null,
+            isPrimary: idx === primaryIdx,
+            sortOrder: idx,
+          };
+          if (img.id) {
+            await tx.productImage.update({ where: { id: img.id }, data: common });
+          } else {
+            await tx.productImage.create({ data: { productId: params.id, ...common } });
+          }
         }
       }
 

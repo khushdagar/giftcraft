@@ -1,16 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useBuilderStore } from '@/store/builder';
 import { resolveSwatchHex } from '@/lib/color-name';
+import { CarouselRow } from '@/components/home/carousel-row';
 
 export function TrendingProducts({ initialData }: { initialData?: { products: any[] } }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const reduceMotion = useReducedMotion();
   const { addProduct, removeProduct, products: cartProducts } = useBuilderStore();
   // Per-card image override when a colour swatch is hovered/selected.
   const [variantImg, setVariantImg] = useState<Record<string, string | null>>({});
@@ -20,7 +18,7 @@ export function TrendingProducts({ initialData }: { initialData?: { products: an
   const { data: featuredProducts, isLoading } = useQuery({
     queryKey: ['products', 'featured'],
     queryFn: async () => {
-      const res = await fetch('/api/products?sort=featured&limit=6');
+      const res = await fetch('/api/products?sort=featured&limit=12');
       if (!res.ok) throw new Error('Failed to fetch products');
       return res.json();
     },
@@ -58,71 +56,12 @@ export function TrendingProducts({ initialData }: { initialData?: { products: an
     }
   };
 
-  // Auto-scroll the carousel horizontally; loops back to the start at the end,
-  // pauses on hover, and is disabled when the user prefers reduced motion.
-  useEffect(() => {
-    const el = scrollRef.current;
-    const count = featuredProducts?.products?.length ?? 0;
-    if (!el || count === 0 || reduceMotion) return;
-
-    let hovered = false;
-    // Any manual interaction parks the auto-scroll for a while, so the carousel
-    // never yanks the row out from under a finger that's still swiping.
-    const IDLE_MS = 6000;
-    let pausedUntil = 0;
-    // Our own scrollBy/scrollTo also fire `scroll`; ignore those so a programmatic
-    // step doesn't read as user input and pause the timer forever.
-    let autoUntil = 0;
-
-    const hold = () => { pausedUntil = Date.now() + IDLE_MS; };
-    const onScroll = () => { if (Date.now() > autoUntil) hold(); };
-    const onEnter = () => { hovered = true; };
-    const onLeave = () => { hovered = false; };
-
-    el.addEventListener('mouseenter', onEnter);
-    el.addEventListener('mouseleave', onLeave);
-    el.addEventListener('touchstart', hold, { passive: true });
-    el.addEventListener('touchmove', hold, { passive: true });
-    el.addEventListener('wheel', hold, { passive: true });
-    el.addEventListener('pointerdown', hold);
-    el.addEventListener('scroll', onScroll, { passive: true });
-
-    const timer = setInterval(() => {
-      if (hovered || Date.now() < pausedUntil) return;
-      const { scrollLeft, scrollWidth, clientWidth } = el;
-      // Smooth scrolling keeps firing `scroll` events after the call returns —
-      // stay in "auto" mode long enough to cover the whole animation.
-      autoUntil = Date.now() + 1200;
-      // Near the end → loop back to the start; otherwise advance one card width.
-      if (scrollLeft + clientWidth >= scrollWidth - 8) {
-        el.scrollTo({ left: 0, behavior: 'smooth' });
-      } else {
-        // Step exactly one card + gap, measured from the DOM so the row always
-        // lands on a card edge at whatever width the cards currently are.
-        const card = el.firstElementChild?.firstElementChild as HTMLElement | undefined;
-        const step = card ? card.offsetWidth + 12 : clientWidth * 0.4;
-        el.scrollBy({ left: step, behavior: 'smooth' });
-      }
-    }, 3000);
-
-    return () => {
-      clearInterval(timer);
-      el.removeEventListener('mouseenter', onEnter);
-      el.removeEventListener('mouseleave', onLeave);
-      el.removeEventListener('touchstart', hold);
-      el.removeEventListener('touchmove', hold);
-      el.removeEventListener('wheel', hold);
-      el.removeEventListener('pointerdown', hold);
-      el.removeEventListener('scroll', onScroll);
-    };
-  }, [featuredProducts?.products, reduceMotion]);
-
   return (
     <section className="bg-white py-12 md:py-28">
       <div className="container">
         <div className="flex justify-between items-end mb-8 md:mb-16">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-normal">
-            Trending <span className="italic text-[#800020]">Now</span>
+            Trending <span className="italic text-[#800020]">Products</span>
           </h2>
           {/* On mobile the link lives under the row instead — see below. */}
           <Link href="/catalog" className="hidden sm:block text-sm font-semibold text-[#800020] hover:opacity-70">
@@ -130,10 +69,9 @@ export function TrendingProducts({ initialData }: { initialData?: { products: an
           </Link>
         </div>
 
-        <div ref={scrollRef} className="overflow-x-auto no-scrollbar scroll-smooth">
-          <div className="flex gap-3 pb-4 min-w-min sm:gap-6">
+        <CarouselRow autoScroll ariaLabel="products">
             {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
+              Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className="flex-shrink-0 w-[calc(50vw-22px)] sm:w-64 lg:w-72 bg-white border border-[#E5DFD4] rounded-2xl overflow-hidden">
                   <div className="aspect-square bg-[#E5DFD4] animate-pulse" />
                   <div className="p-3 sm:p-5 space-y-3">
@@ -240,8 +178,7 @@ export function TrendingProducts({ initialData }: { initialData?: { products: an
                 );
               })
             )}
-          </div>
-        </div>
+        </CarouselRow>
 
         {/* Mobile placement of "See All" — below the row, where the thumb is. */}
         <Link

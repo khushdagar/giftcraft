@@ -144,8 +144,28 @@ export default function BuildYourBoxPage() {
 
   // Budget is edited inline in the tracker; keep a local string for the custom field.
   const [budgetInput, setBudgetInput] = useState('');
+  // Height of the fixed checkout bar, measured rather than guessed — it grows a
+  // row on mobile, and the sticky sidebar has to end above it or its own
+  // Proceed button sits underneath the bar, unreachable.
+  const checkoutBarRef = useRef<HTMLDivElement>(null);
+  const [checkoutBarH, setCheckoutBarH] = useState(0);
   const [search, setSearch] = useState('');
   const [selectedCat, setSelectedCat] = useState<string>('all');
+
+  // The bar mounts only once the box has items, and changes height when the
+  // budget line wraps — so track it live instead of hard-coding a number.
+  useEffect(() => {
+    const el = checkoutBarRef.current;
+    if (!el) {
+      setCheckoutBarH(0);
+      return;
+    }
+    const sync = () => setCheckoutBarH(el.offsetHeight);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [boxProducts.length]);
   // Auto-fit: by default only show products that fit the remaining budget.
   const [fitOnly, setFitOnly] = useState(true);
   // Mobile-only: collapse the box's item list + breakdown behind a "See details"
@@ -389,7 +409,12 @@ export default function BuildYourBoxPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 md:gap-8">
           {/* Left: budget box + simple tracking line + your box */}
           <div className="lg:col-span-1">
-            <div className="sticky top-20 space-y-6 max-h-[calc(100vh-6rem)] overflow-y-auto pr-1">
+            <div
+              className="sticky top-20 space-y-6 overflow-y-auto pr-1 pb-2"
+              // Ends above the fixed checkout bar, so the panel's own Proceed
+              // button is always scrollable into view rather than hiding behind it.
+              style={{ maxHeight: `calc(100vh - 6rem - ${checkoutBarH}px)` }}
+            >
               {/* Budget box */}
               <div className="bg-white rounded-md border-2 border-amber-200 p-4">
                 {/* On mobile the box-count stepper rides alongside the heading
@@ -881,7 +906,10 @@ export default function BuildYourBoxPage() {
           the box fills, so pin one to the bottom of the viewport. Stays on screen
           the whole time the user is adding products, with the CTA bottom-right. */}
       {boxProducts.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t-2 border-bdr shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <div
+          ref={checkoutBarRef}
+          className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t-2 border-bdr shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
+        >
           {/* Mobile-only budget line — replaces the full tracking card above. */}
           <div className="lg:hidden border-b border-bdr px-4 pt-2 pb-1.5">
             <div className="flex items-baseline justify-between gap-2 text-[11px] tabnum">

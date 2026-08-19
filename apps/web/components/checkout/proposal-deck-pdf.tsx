@@ -230,6 +230,41 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cardBody: { fontSize: 9.5, lineHeight: 1.55, color: INK_2 },
+  // ── Options overview: "what's inside" list on each option card ───────────
+  optCard: {
+    flex: 1,
+    backgroundColor: NEUTRAL,
+    borderRadius: 6,
+    padding: 14,
+  },
+  optInsideLabel: {
+    fontFamily: FONT,
+    fontWeight: 700,
+    fontSize: 7.5,
+    letterSpacing: 0.8,
+    color: INK_2,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  optItem: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 5 },
+  optThumb: {
+    width: 26,
+    height: 26,
+    borderRadius: 3,
+    backgroundColor: "#FFFFFF",
+    padding: 2,
+  },
+  optThumbImg: { objectFit: "contain", width: "100%", height: "100%" },
+  optItemName: { flex: 1 },
+  optItemText: { fontSize: 8.5, lineHeight: 1.3 },
+  optItemBrand: { fontSize: 7.5, color: INK_2 },
+  optPrice: {
+    fontFamily: FONT,
+    fontWeight: 700,
+    fontSize: 13,
+    marginTop: 10,
+  },
+
   cardBullet: { flexDirection: "row", marginTop: 5 },
   cardBulletDot: { width: 10, fontSize: 9.5, color: INK_2 },
   cardBulletText: { flex: 1, fontSize: 9.5, lineHeight: 1.45, color: INK_2 },
@@ -1199,6 +1234,12 @@ export interface DeckOptionSummary {
   perPack: number;
   /** Grand total incl. GST, shipping and the payment fee. */
   grandTotal: number;
+  /** What's actually in the pack — shown as thumbnails on the overview card. */
+  products: { name: string; brand?: string | null; imageData?: string | null }[];
+  /** Box the pack is presented in, if one was chosen. */
+  packagingName?: string | null;
+  /** Add-on names, listed under the contents. */
+  addonNames?: string[];
 }
 
 /**
@@ -1243,27 +1284,82 @@ export function MultiProposalDeckPDF({
           {Array.from({ length: Math.ceil(options.length / 3) }).map(
             (_, rowIdx) => (
               <View key={rowIdx} style={styles.cardRow}>
-                {options.slice(rowIdx * 3, rowIdx * 3 + 3).map((opt, i) => (
-                  <View key={opt.label + i} style={styles.card}>
-                    <Text style={styles.cardTitle}>
-                      {rowIdx * 3 + i + 1}. {opt.label}
-                    </Text>
-                    {opt.tagline ? (
-                      <Text style={styles.cardBody}>{opt.tagline}</Text>
-                    ) : null}
-                    <Text style={styles.cardBody}>
-                      {opt.productCount}{" "}
-                      {opt.productCount === 1 ? "product" : "products"} ·{" "}
-                      {opt.packQuantity} packs
-                    </Text>
-                    <Text style={styles.cardTitle}>
-                      {rupees(opt.perPack)} per pack
-                    </Text>
-                    <Text style={styles.cardBody}>
-                      {rupees(opt.grandTotal)} total incl. GST
-                    </Text>
-                  </View>
-                ))}
+                {options.slice(rowIdx * 3, rowIdx * 3 + 3).map((opt, i) => {
+                  // Six thumbnails keep three cards on one landscape slide;
+                  // the rest are counted, and every product gets its own slide
+                  // later in the deck anyway.
+                  const shown = (opt.products ?? []).slice(0, 6);
+                  const extra = (opt.products?.length ?? 0) - shown.length;
+                  return (
+                    <View key={opt.label + i} style={styles.optCard}>
+                      <Text style={styles.cardTitle}>
+                        {rowIdx * 3 + i + 1}. {opt.label}
+                      </Text>
+                      {opt.tagline ? (
+                        <Text style={styles.cardBody}>{opt.tagline}</Text>
+                      ) : null}
+                      <Text style={styles.cardBody}>
+                        {opt.productCount}{" "}
+                        {opt.productCount === 1 ? "product" : "products"} ·{" "}
+                        {opt.packQuantity} packs
+                      </Text>
+
+                      {/* What's inside — the same contents list the client sees
+                          on the compare page, images and all. */}
+                      {shown.length > 0 ? (
+                        <>
+                          <Text style={styles.optInsideLabel}>
+                            WHAT&apos;S INSIDE
+                          </Text>
+                          {shown.map((p, pi) => (
+                            <View key={p.name + pi} style={styles.optItem}>
+                              <View style={styles.optThumb}>
+                                {p.imageData ? (
+                                  <Image
+                                    src={p.imageData}
+                                    style={styles.optThumbImg}
+                                  />
+                                ) : null}
+                              </View>
+                              <View style={styles.optItemName}>
+                                <Text style={styles.optItemText}>{p.name}</Text>
+                                {p.brand ? (
+                                  <Text style={styles.optItemBrand}>
+                                    {p.brand}
+                                  </Text>
+                                ) : null}
+                              </View>
+                            </View>
+                          ))}
+                          {extra > 0 ? (
+                            <Text style={styles.cardBody}>
+                              + {extra} more{" "}
+                              {extra === 1 ? "product" : "products"}
+                            </Text>
+                          ) : null}
+                        </>
+                      ) : null}
+
+                      {opt.packagingName ? (
+                        <Text style={styles.cardBody}>
+                          Presented in {opt.packagingName}
+                        </Text>
+                      ) : null}
+                      {(opt.addonNames ?? []).map((a) => (
+                        <Text key={a} style={styles.cardBody}>
+                          + {a}
+                        </Text>
+                      ))}
+
+                      <Text style={styles.optPrice}>
+                        {rupees(opt.perPack)} per pack
+                      </Text>
+                      <Text style={styles.cardBody}>
+                        {rupees(opt.grandTotal)} total incl. GST
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
             ),
           )}

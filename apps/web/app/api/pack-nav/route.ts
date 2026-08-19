@@ -16,6 +16,8 @@ export async function GET() {
   try {
     const packs = await getPacks();
     const bands = await getBudgetTiles(packs);
+    // Every occasion that holds packs, with the featured ones leading — same
+    // order the homepage tiles use.
     const occasions = await getPackOccasionTiles(packs);
 
     const tree = [

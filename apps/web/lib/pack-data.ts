@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { bandContains, type BudgetBand } from '@/lib/budget-bands';
+import { orderPackOccasions } from '@/lib/pack-occasion-order';
 
 // Shared loaders for the curated-pack pages.
 
@@ -150,7 +151,7 @@ export async function getBudgetTiles(packs: PackListItem[]) {
     .filter((b) => b.count > 0);
 }
 
-/** Occasions that actually hold packs, in the admin's own display order. */
+/** Occasions that actually hold packs — featured ones first, then admin order. */
 export async function getPackOccasionTiles(packs: PackListItem[]) {
   const occasions = await prisma.occasionConfig.findMany({
     // `isCollection` entries are the homepage's curated collections, not
@@ -166,7 +167,7 @@ export async function getPackOccasionTiles(packs: PackListItem[]) {
     orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }],
   });
 
-  return occasions
+  const tiles = occasions
     .map((o) => ({
       id: o.id,
       name: o.name,
@@ -176,4 +177,9 @@ export async function getPackOccasionTiles(packs: PackListItem[]) {
       count: packs.filter((p) => p.occasionSlugs.includes(o.slug)).length,
     }))
     .filter((o) => o.count > 0);
+
+  // Featured occasions lead everywhere these tiles are used — homepage,
+  // /curated-packs, the nav cascade — so the eight that matter are the eight
+  // the homepage teaser shows.
+  return orderPackOccasions(tiles);
 }

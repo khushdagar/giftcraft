@@ -101,7 +101,7 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   // Which mobile accordion is expanded — one at a time, mirroring the desktop
-  // hover dropdowns (Products / Curated Packs / Occasions).
+  // hover dropdowns (Products / Curated Packs).
   const [mobileSection, setMobileSection] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [phone, setPhone] = useState(DEFAULT_PHONE);
@@ -117,6 +117,8 @@ export function Navbar() {
   // Which row the second column is anchored to. A slug, not an index, so a
   // refetch mid-hover can't point the column at the wrong row.
   const [hoveredCollection, setHoveredCollection] = useState<string | null>(null);
+  // Same idea for the Products menu — which of its two entries is open.
+  const [hoveredProductEntry, setHoveredProductEntry] = useState<string | null>(null);
   const [occasions, setOccasions] = useState<NavLink[]>(FALLBACK_OCCASIONS);
   const products = useBuilderStore((state) => state.products);
   const wishlistItems = useWishlistStore((state) => state.items);
@@ -131,6 +133,28 @@ export function Navbar() {
   // Resolved from the hovered slug each render, so the column never points at a
   // row that has since disappeared from the fetched tree.
   const activeCollection = collections.find((c) => c.slug === hoveredCollection) ?? null;
+
+  // Products cascades the same way Curated Packs does: two ways in, and the
+  // long lists stay behind them until one is hovered.
+  const productEntries = [
+    {
+      key: "categories",
+      label: "By Categories",
+      href: "/catalog",
+      items: categories,
+      // Indexable category landing page, not a filtered ?category= URL.
+      hrefFor: (s: string) => `/category/${s}`,
+    },
+    {
+      key: "occasions",
+      label: "By Occasions",
+      href: "/occasions",
+      items: orderOccasionRungs(occasions),
+      hrefFor: (s: string) => `/occasion/${s}`,
+    },
+  ].filter((e) => e.items.length > 0);
+  const activeProductEntry =
+    productEntries.find((e) => e.key === hoveredProductEntry) ?? null;
 
   // Opening is a click, so the caret has to follow it into the overlay.
   // Escape closes from anywhere, and the page behind is frozen so the
@@ -350,26 +374,63 @@ export function Navbar() {
 
         <ul className="hidden items-center gap-7 nav:flex">
           {/* <li><Link href="/" className="text-sm font-medium text-ink-2 hover:text-ink">Home</Link></li> */}
-          {/* Products dropdown — all categories in 4 columns */}
-          <li className="group relative py-4">
-            <Link href="/catalog" className={topLinkClass(inProducts)}>Products ▾</Link>
-            {activeBar(inProducts)}
-            {categories.length > 0 && (
-              <div className="invisible absolute left-0 top-full grid max-h-[calc(100vh-8rem)] min-w-[640px] grid-cols-4 gap-x-1 gap-y-0 overflow-y-auto overscroll-contain rounded-md-s border border-bdr bg-white p-3 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
-                {categories.map((c) => (
-                  <Link
-                    key={c.slug}
-                    // Indexable category landing page, not a filtered ?category= URL.
-                    href={`/category/${c.slug}`}
-                    className={menuItemClass(
-                      path === `/category/${c.slug}`,
-                      "px-2.5 py-1.5 leading-snug"
-                    )}
-                  >
-                    {c.name}
-                  </Link>
-                ))}
-                
+          {/* Products dropdown — two ways to browse the catalogue side by
+              side: by category, and by occasion (which used to be its own
+              top-level tab). */}
+          <li
+            className="group relative py-4"
+            onMouseLeave={() => setHoveredProductEntry(null)}
+          >
+            <Link href="/catalog" className={topLinkClass(inProducts || inOccasions)}>Products ▾</Link>
+            {activeBar(inProducts || inOccasions)}
+            {productEntries.length > 0 && (
+              <div className="invisible absolute left-0 top-full flex rounded-md-s border border-bdr bg-white p-2 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+                {/* Column 1 — the two ways in. Nothing else opens until one of
+                    them is hovered, so the menu starts short. */}
+                <div className="flex w-[240px] flex-col gap-1 p-2">
+                  {productEntries.map((entry) => (
+                    <Link
+                      key={entry.key}
+                      href={entry.href}
+                      onMouseEnter={() => setHoveredProductEntry(entry.key)}
+                      className={cn(
+                        "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-[13px] transition-colors",
+                        hoveredProductEntry === entry.key
+                          ? "bg-em-50 font-semibold text-em"
+                          : "font-medium text-ink-2 hover:bg-em-50 hover:text-em"
+                      )}
+                    >
+                      <span className="truncate">{entry.label}</span>
+                      <span className="text-ink-3">›</span>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Column 2 — the hovered entry's rungs, split across two
+                    columns since both lists run long. */}
+                {activeProductEntry && (
+                  <div className="max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain border-l border-bdr p-2">
+                    <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                      {activeProductEntry.label.replace(/^By /, "")}
+                    </p>
+                    {/* Three columns — both lists run long enough that two
+                        overflow the viewport and force a scroll. */}
+                    <div className="grid w-[min(41rem,calc(100vw-20rem))] grid-cols-3 gap-x-1">
+                      {activeProductEntry.items.map((i) => (
+                        <Link
+                          key={i.slug}
+                          href={activeProductEntry.hrefFor(i.slug)}
+                          className={menuItemClass(
+                            path === activeProductEntry.hrefFor(i.slug),
+                            "px-2.5 py-1.5 leading-snug"
+                          )}
+                        >
+                          {i.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </li>
@@ -387,13 +448,7 @@ export function Navbar() {
               <div className="invisible absolute left-0 top-full flex rounded-md-s border border-bdr bg-white p-2 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
                 {/* Column 1 — collections */}
                 <div className="flex w-[240px] flex-col gap-1 p-2">
-                  <Link
-                    href="/curated-packs"
-                    className={menuItemClass(path === "/curated-packs", "font-semibold")}
-                    onMouseEnter={() => setHoveredCollection(null)}
-                  >
-                    All Packs
-                  </Link>
+                  {/* Only the two ways in — the hub itself is the tab above. */}
                   {collections.map((c) => {
                     const hasMore = c.children.length > 0;
                     return (
@@ -421,9 +476,10 @@ export function Navbar() {
                     occasions). The cascade stops here; packs live on the
                     listing page each rung opens. */}
                 {activeCollection && activeCollection.children.length > 0 && (() => {
-                  // A long rung list (occasions) overruns the viewport in one
-                  // column, so split it evenly across two — festivals first.
-                  const rungs = orderOccasionRungs(activeCollection.children);
+                  // Server order is deliberate (price bands ascending, the
+                  // curated occasion shortlist in its own order), so it is kept
+                  // as-is; a long list still splits across two columns.
+                  const rungs = activeCollection.children;
                   const twoCol = rungs.length > 10;
                   const half = Math.ceil(rungs.length / 2);
                   const columns = twoCol ? [rungs.slice(0, half), rungs.slice(half)] : [rungs];
@@ -453,28 +509,6 @@ export function Navbar() {
                     </div>
                   );
                 })()}
-              </div>
-            )}
-          </li>
-
-          {/* Occasions dropdown — seasonal & gifting occasions */}
-          <li className="group relative py-4">
-            <button className={topLinkClass(inOccasions)}>Occasions ▾</button>
-            {activeBar(inOccasions)}
-            {occasions.length > 0 && (
-              <div className="invisible absolute left-0 top-full grid max-h-[calc(100vh-8rem)] w-[min(44rem,calc(100vw-2rem))] grid-cols-3 gap-x-1 gap-y-0 overflow-y-auto overscroll-contain rounded-md-s border border-bdr bg-white p-3 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100 lg:grid-cols-4">
-                {orderOccasionRungs(occasions).map((o) => (
-                  <Link
-                    key={o.slug}
-                    href={`/occasion/${o.slug}`}
-                    className={menuItemClass(
-                      path === `/occasion/${o.slug}`,
-                      "px-2.5 py-1.5 leading-snug"
-                    )}
-                  >
-                    {o.name}
-                  </Link>
-                ))}
               </div>
             )}
           </li>
@@ -767,14 +801,30 @@ export function Navbar() {
               Home
             </Link>
 
-            {/* Same three dropdowns as desktop, as tap-to-expand accordions. The
-                header itself still links to the landing page; the chevron toggles. */}
+            {/* Same two dropdowns as desktop, as tap-to-expand accordions. The
+                header itself still links to the landing page; the chevron toggles.
+                Occasions live inside Products, as they do on desktop. */}
             {[
-              { key: "products", label: "Products", href: "/catalog", items: categories, hrefFor: (s: string) => `/category/${s}` },
-              { key: "packs", label: "Curated Packs", href: "/curated-packs", items: collections as NavLink[], hrefFor: (s: string) => `/curated-packs/${s}` },
-              { key: "occasions", label: "Occasions", href: null, items: occasions, hrefFor: (s: string) => `/occasion/${s}` },
+              {
+                key: "products",
+                label: "Products",
+                href: "/catalog",
+                groups: [
+                  { title: "By Categories", items: categories, hrefFor: (s: string) => `/category/${s}` },
+                  { title: "By Occasions", items: orderOccasionRungs(occasions), hrefFor: (s: string) => `/occasion/${s}` },
+                ],
+              },
+              {
+                key: "packs",
+                label: "Curated Packs",
+                href: "/curated-packs",
+                groups: [
+                  { title: null, items: collections as NavLink[], hrefFor: (s: string) => `/curated-packs/${s}` },
+                ],
+              },
             ].map((section) => {
               const open = mobileSection === section.key;
+              const items = section.groups.flatMap((g) => g.items);
               return (
                 <div key={section.key} className="border-b border-bdr">
                   <div className="flex items-center justify-between">
@@ -789,7 +839,7 @@ export function Navbar() {
                     ) : (
                       <span className="block flex-1 py-4 text-lg font-medium text-ink">{section.label}</span>
                     )}
-                    {section.items.length > 0 && (
+                    {items.length > 0 && (
                       <button
                         type="button"
                         onClick={() => setMobileSection(open ? null : section.key)}
@@ -801,27 +851,40 @@ export function Navbar() {
                       </button>
                     )}
                   </div>
-                  {open && section.items.length > 0 && (
-                    <div className="grid grid-cols-2 gap-1 pb-3">
+                  {open && items.length > 0 && (
+                    <div className="pb-3">
                       {section.key === "packs" && (
                         <Link
                           href="/curated-packs"
                           onClick={() => setMobileOpen(false)}
-                          className="col-span-2 rounded-md px-3 py-2 text-[13px] font-semibold text-ink hover:bg-elevated"
+                          className="block rounded-md px-3 py-2 text-[13px] font-semibold text-ink hover:bg-elevated"
                         >
                           All Packs
                         </Link>
                       )}
-                      {section.items.map((i) => (
-                        <Link
-                          key={i.slug}
-                          href={section.hrefFor(i.slug)}
-                          onClick={() => setMobileOpen(false)}
-                          className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 hover:bg-elevated hover:text-ink"
-                        >
-                          {i.name}
-                        </Link>
-                      ))}
+                      {section.groups
+                        .filter((g) => g.items.length > 0)
+                        .map((g, gi) => (
+                          <div key={g.title ?? gi}>
+                            {g.title && (
+                              <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                                {g.title}
+                              </p>
+                            )}
+                            <div className="grid grid-cols-2 gap-1">
+                              {g.items.map((i) => (
+                                <Link
+                                  key={i.slug}
+                                  href={g.hrefFor(i.slug)}
+                                  onClick={() => setMobileOpen(false)}
+                                  className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 hover:bg-elevated hover:text-ink"
+                                >
+                                  {i.name}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                     </div>
                   )}
                 </div>

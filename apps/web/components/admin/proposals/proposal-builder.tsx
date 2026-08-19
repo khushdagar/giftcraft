@@ -18,11 +18,15 @@ import {
   Layers,
   MailCheck,
   AlertTriangle,
+  Eye,
 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
 import { FieldError } from '@/components/ui/field-error';
 import { validateEmail } from '@/lib/validation';
+import {
+  Dialog, DialogContent, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 
 interface PriceTier {
   minQty: number;
@@ -126,6 +130,13 @@ export function ProposalBuilder({
   const [companyName, setCompanyName] = useState(prefill.company);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  // "Preview proposal" — the deck PDF for the current draft, built by the same
+  // pricer and renderer the send uses, but nothing is saved or emailed.
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  // Object URL for the rendered deck. Revoked whenever it is replaced or the
+  // dialog closes, so a long editing session doesn't leak blobs.
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   // Set once the proposal is created — replaces the form with a delivery
   // receipt, so "did the email actually go out?" is never a guess.
   const [sent, setSent] = useState<{
@@ -361,15 +372,21 @@ export function ProposalBuilder({
   );
 
   // Pack grid honours the same search box — matches the pack's name or any
-  // product inside it. Filtered client-side; the list is small.
+  // product inside it. Filtered client-side over the full list.
   const packQuery = search.trim().toLowerCase();
-  const filteredPacks = packQuery
+  const matchedPacks = packQuery
     ? curatedPacks.filter(
         (cp) =>
           cp.name.toLowerCase().includes(packQuery) ||
           cp.items.some((it) => it.name.toLowerCase().includes(packQuery))
       )
     : curatedPacks;
+  // Browsing shows a first page only — scrolling hundreds of collage tiles is
+  // slower than typing a name. Searching still looks at every pack, and its
+  // results are capped the same way.
+  const PACK_PAGE = 50;
+  const filteredPacks = matchedPacks.slice(0, PACK_PAGE);
+  const hiddenPackCount = matchedPacks.length - filteredPacks.length;
 
   const activeIndex = Math.max(0, packs.findIndex((p) => p.key === activeKey));
   const active = priced[activeIndex];
@@ -377,6 +394,68 @@ export function ProposalBuilder({
   const recipientEmailError = recipientEmail.trim() ? validateEmail(recipientEmail) : null;
   const readyPacks = priced.filter((p) => p.pack.items.length > 0);
   const canSend = !!recipientEmail.trim() && !recipientEmailError && readyPacks.length === packs.length;
+
+  // Same pack payload the send posts — one shape, so a preview can never
+  // describe something different from what goes out.
+  const packsPayload = () =>
+    priced.map(({ pack, box, boxPrice, autoSize, addons }) => ({
+      label: pack.label.trim() || undefined,
+      tagline: pack.tagline.trim() || undefined,
+      productIds: pack.items.map((it) => it.id),
+      packQuantity: pack.packQuantity,
+      discount: pack.discount || undefined,
+      packaging: box
+        ? { id: box.id, name: box.name, price: boxPrice, size: autoSize.toLowerCase() }
+        : null,
+      addons: addons.map((a) => ({ id: a.id, name: a.name, price: a.price })),
+    }));
+
+  // Preview needs products, but not a recipient — an admin can check the layout
+  // and the numbers before deciding who it goes to.
+  const canPreview = readyPacks.length === packs.length;
+
+  const handlePreview = async () => {
+    const empty = priced.find((p) => p.pack.items.length === 0);
+    if (empty) {
+      toast.error(`"${empty.pack.label}" has no products — add at least one or remove the pack`);
+      setActiveKey(empty.pack.key);
+      return;
+    }
+    setPreviewOpen(true);
+    setPreviewLoading(true);
+    // Drop the previous render — the packs have probably changed since.
+    setPreviewUrl((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return null;
+    });
+    try {
+      const res = await fetch('/api/admin/proposals/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: companyName.trim() || undefined,
+          packs: packsPayload(),
+        }),
+      });
+      if (!res.ok) throw new Error((await res.text()) || 'Failed to build preview');
+      setPreviewUrl(URL.createObjectURL(await res.blob()));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to build preview');
+      setPreviewOpen(false);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // The blob outlives the dialog otherwise — free it on close and on unmount.
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewUrl((old) => {
+      if (old) URL.revokeObjectURL(old);
+      return null;
+    });
+  };
+  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
   const handleSend = async () => {
     const emailProblem = validateEmail(recipientEmail);
@@ -400,17 +479,7 @@ export function ProposalBuilder({
           recipientName: recipientName.trim() || undefined,
           companyName: companyName.trim() || undefined,
           message: message.trim() || undefined,
-          packs: priced.map(({ pack, box, boxPrice, autoSize, addons }) => ({
-            label: pack.label.trim() || undefined,
-            tagline: pack.tagline.trim() || undefined,
-            productIds: pack.items.map((it) => it.id),
-            packQuantity: pack.packQuantity,
-            discount: pack.discount || undefined,
-            packaging: box
-              ? { id: box.id, name: box.name, price: boxPrice, size: autoSize.toLowerCase() }
-              : null,
-            addons: addons.map((a) => ({ id: a.id, name: a.name, price: a.price })),
-          })),
+          packs: packsPayload(),
         }),
       });
       const data = await res.json();
@@ -594,15 +663,31 @@ export function ProposalBuilder({
             </span>
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={sending || !canSend}
-          className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-        >
-          {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          {sending ? 'Sending…' : 'Send proposal'}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Check it the way the client will see it, before anything is sent. */}
+          <button
+            type="button"
+            onClick={handlePreview}
+            disabled={previewLoading || !canPreview}
+            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
+          >
+            {previewLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+            Preview
+          </button>
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={sending || !canSend}
+            className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {sending ? 'Sending…' : 'Send proposal'}
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -1015,6 +1100,18 @@ export function ProposalBuilder({
                             );
                           })}
                         </div>
+
+                        {/* Never truncate silently — say how many are hidden
+                            and how to reach them. */}
+                        {hiddenPackCount > 0 && (
+                          <p className="px-1 pb-1 pt-3 text-center text-[11px] text-gray-500">
+                            Showing {filteredPacks.length} of {matchedPacks.length} packs —{' '}
+                            {packQuery
+                              ? 'narrow the search to see the rest.'
+                              : 'search by pack or product name to find the other ' +
+                                `${hiddenPackCount}.`}
+                          </p>
+                        )}
                       </div>
                     )
                   ) : loadingProducts ? (
@@ -1254,9 +1351,23 @@ export function ProposalBuilder({
 
             <button
               type="button"
+              onClick={handlePreview}
+              disabled={previewLoading || !canPreview}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
+            >
+              {previewLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+              Preview proposal
+            </button>
+
+            <button
+              type="button"
               onClick={handleSend}
               disabled={sending || !canSend}
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
             >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               {sending ? 'Sending…' : `Send ${packs.length} option${packs.length === 1 ? '' : 's'}`}
@@ -1268,6 +1379,59 @@ export function ProposalBuilder({
           </div>
         </div>
       </div>
+
+      {/* Preview — the deck PDF itself, rendered by the same builder and the
+          same renderer the send attaches to the email. Nothing is saved. */}
+      <Dialog open={previewOpen} onOpenChange={(open) => (open ? setPreviewOpen(true) : closePreview())}>
+        <DialogContent className="max-w-[min(80rem,calc(100vw-2rem))] overflow-hidden p-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-5 py-3">
+            <div className="min-w-0">
+              <DialogTitle className="text-base font-semibold text-gray-900">
+                Proposal preview (PDF)
+              </DialogTitle>
+              <DialogDescription className="text-xs text-gray-500">
+                The exact deck {recipientEmail.trim() || 'the recipient'} will receive. Nothing
+                has been sent yet.
+              </DialogDescription>
+            </div>
+            <div className="mr-8 flex items-center gap-2">
+              {previewUrl && (
+                <a
+                  href={previewUrl}
+                  download="givoo-proposal-preview.pdf"
+                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Download
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  closePreview();
+                  handleSend();
+                }}
+                disabled={sending || !canSend}
+                className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+              >
+                <Send className="h-4 w-4" />
+                Looks good — send
+              </button>
+            </div>
+          </div>
+
+          {previewLoading || !previewUrl ? (
+            <div className="flex items-center justify-center gap-2 py-24 text-sm text-gray-500">
+              <Loader2 className="h-4 w-4 animate-spin" /> Building the deck…
+            </div>
+          ) : (
+            <iframe
+              src={previewUrl}
+              title="Proposal deck preview"
+              className="h-[calc(100dvh-11rem)] w-full border-0 bg-gray-100"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

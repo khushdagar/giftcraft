@@ -907,7 +907,10 @@ export async function sendProposalEmail(options: {
         : `A curated gifting proposal — ${options.packQuantity} packs, valid until ${validUntilStr}`,
       contentHtml: content,
     }),
-    category: 'quotes',
+    // Deliberately uncategorised: a proposal is a one-to-one reply an admin
+    // types an address into and sends by hand, not a broadcast. It goes to
+    // whoever is in the box. The `quotes` preference still gates the automated
+    // quote mails the customer triggers themselves.
     attachments: options.attachments,
   });
 }

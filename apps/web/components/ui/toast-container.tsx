@@ -2,10 +2,11 @@
 
 import { useToastStore } from '@/lib/stores/toast-store';
 import { AlertCircle, CheckCircle, Info, X, AlertTriangle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 export function ToastContainer() {
   const { toasts, removeToast } = useToastStore();
+  const reduce = useReducedMotion();
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -38,15 +39,17 @@ export function ToastContainer() {
   };
 
   return (
-    <div className="fixed bottom-0 right-0 z-50 p-4 space-y-2 max-w-md pointer-events-none">
+    // Top-right, above the sticky admin header (z-50) so toasts are never
+    // hidden behind it.
+    <div className="fixed top-0 right-0 z-[60] p-4 space-y-2 max-w-md pointer-events-none">
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <motion.div
             key={toast.id}
-            initial={{ opacity: 0, y: 20, x: 100 }}
+            initial={reduce ? false : { opacity: 0, y: -20, x: 100 }}
             animate={{ opacity: 1, y: 0, x: 0 }}
-            exit={{ opacity: 0, y: -20, x: 100 }}
-            transition={{ duration: 0.2 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, y: -20, x: 100 }}
+            transition={{ duration: reduce ? 0 : 0.2 }}
             className={`flex items-start gap-3 rounded-lg border-2 p-4 pointer-events-auto ${getStyles(
               toast.type
             )}`}
