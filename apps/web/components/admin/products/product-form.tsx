@@ -139,6 +139,38 @@ interface SerializedProduct {
   [key: string]: any;
 }
 
+/**
+ * Flatten react-hook-form's nested error tree into `path: message` lines.
+ * A bare "priceTiers: Invalid value" hides which row and column actually failed,
+ * which made these save failures impossible to act on.
+ */
+function flattenFormErrors(
+  errors: any,
+  prefix = ''
+): Array<{ path: string; message: string }> {
+  const out: Array<{ path: string; message: string }> = [];
+  if (!errors || typeof errors !== 'object') return out;
+  for (const [key, value] of Object.entries<any>(errors)) {
+    if (!value) continue;
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (typeof value.message === 'string' && value.message) {
+      out.push({ path, message: value.message });
+    }
+    // `ref`/`type`/`message` are leaf metadata; anything else is a nested field.
+    const nested = Object.fromEntries(
+      Object.entries<any>(value).filter(
+        ([k, v]) => !['ref', 'type', 'message', 'types'].includes(k) && v && typeof v === 'object'
+      )
+    );
+    const children = flattenFormErrors(nested, path);
+    out.push(...children);
+    if (!value.message && children.length === 0) {
+      out.push({ path, message: 'Invalid value' });
+    }
+  }
+  return out;
+}
+
 export function ProductForm({
   mode,
   initialData,
@@ -256,6 +288,10 @@ export function ProductForm({
             '',
           categoryIds: (initialData as any).categoryIds || [],
           occasionIds: (initialData as any).occasionIds || [],
+          // Variants are edited through the `variants` state (see ProductVariants)
+          // and re-attached at submit — keeping the raw relation here only gave
+          // the resolver a shape to reject (Decimal price, extra columns).
+          variants: undefined,
         }
       : {
           status: 'draft',
@@ -486,8 +522,11 @@ export function ProductForm({
   const handleDeleteImage = async (idx: number) => {
     const img = images[idx];
     if (img?.id && mode === 'edit' && initialData?.id) {
+      // Sticky (duration 0) progress toast — must be removed by hand once the
+      // request settles, otherwise it sits on screen forever.
+      let deletingToastId: string | null = null;
       try {
-        toast.info('🗑️ Deleting image...', 0);
+        deletingToastId = toast.info('🗑️ Deleting image...', 0);
         const res = await fetch(
           `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
           { method: 'DELETE' }
@@ -497,10 +536,12 @@ export function ProductForm({
           throw new Error(error.error || 'Delete failed');
         }
         setImages((prev) => prev.filter((_, i) => i !== idx));
-        toast.success('✅ Image deleted');
+        toast.success('✅ Image deleted', 2500);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Delete failed';
-        toast.error(`❌ Error: ${errorMsg}`);
+        toast.error(`❌ Error: ${errorMsg}`, 3500);
+      } finally {
+        if (deletingToastId) useToastStore.getState().removeToast(deletingToastId);
       }
     } else {
       setImages((prev) => prev.filter((_, i) => i !== idx));
@@ -567,12 +608,14 @@ export function ProductForm({
   const onSubmit = async (data: ProductFormData) => {
     setLoading(true);
     setError(null);
+    // Sticky upload toast; cleared in the finally below however the save ends.
+    let uploadingToastId: string | null = null;
 
     try {
       // Show loading toast for image uploads
       const hasNewImages = images.some((img) => img.file);
       if (hasNewImages) {
-        toast.info('📤 Uploading images...', 0); // No auto-dismiss
+        uploadingToastId = toast.info('📤 Uploading images...', 0); // No auto-dismiss
       }
 
       // Use FormData to handle both JSON and files
@@ -757,6 +800,7 @@ export function ProductForm({
       setError(errorMsg);
       toast.error(`❌ Error: ${errorMsg}`, 6000);
     } finally {
+      if (uploadingToastId) useToastStore.getState().removeToast(uploadingToastId);
       setLoading(false);
     }
   };
@@ -810,8 +854,8 @@ export function ProductForm({
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <p className="text-sm font-normal text-yellow-900 mb-2">⚠️ Validation Errors - Please fix:</p>
           <ul className="text-sm text-yellow-800 space-y-1">
-            {Object.entries(form.formState.errors).map(([field, error]: any) => (
-              <li key={field}>• <strong>{field}:</strong> {error?.message || 'Invalid value'}</li>
+            {flattenFormErrors(form.formState.errors).map(({ path, message }) => (
+              <li key={path}>• <strong>{path}:</strong> {message}</li>
             ))}
           </ul>
         </div>
@@ -1215,14 +1259,22 @@ export function ProductForm({
                         <td className="px-2 py-2">
                           <input
                             type="number"
-                            {...form.register(`priceTiers.${idx}.minQty`, { valueAsNumber: true })}
+                            {...form.register(`priceTiers.${idx}.minQty`, {
+                              // Clearing a numeric input yields '' — valueAsNumber
+                              // turns that into NaN, which zod rejects as a whole
+                              // "priceTiers: Invalid value" with no usable message.
+                              setValueAs: (v) => (v === '' || v == null ? 1 : Number(v)),
+                            })}
                             className="w-16 border border-gray-300 rounded p-1 text-xs"
                           />
                         </td>
                         <td className="px-2 py-2">
                           <input
                             type="number"
-                            {...form.register(`priceTiers.${idx}.maxQty`, { valueAsNumber: true })}
+                            {...form.register(`priceTiers.${idx}.maxQty`, {
+                              // Blank = "no upper limit" (∞), stored as null.
+                              setValueAs: (v) => (v === '' || v == null ? null : Number(v)),
+                            })}
                             placeholder="∞"
                             className="w-16 border border-gray-300 rounded p-1 text-xs"
                           />
@@ -1231,7 +1283,9 @@ export function ProductForm({
                           <input
                             type="number"
                             step="0.01"
-                            {...form.register(`priceTiers.${idx}.costPrice`, { valueAsNumber: true })}
+                            {...form.register(`priceTiers.${idx}.costPrice`, {
+                              setValueAs: (v) => (v === '' || v == null ? 0 : Number(v)),
+                            })}
                             className="w-20 border border-gray-300 rounded p-1 text-xs"
                           />
                         </td>
@@ -1239,7 +1293,9 @@ export function ProductForm({
                           <input
                             type="number"
                             step="0.01"
-                            {...form.register(`priceTiers.${idx}.sellPrice`, { valueAsNumber: true })}
+                            {...form.register(`priceTiers.${idx}.sellPrice`, {
+                              setValueAs: (v) => (v === '' || v == null ? 0 : Number(v)),
+                            })}
                             className="w-20 border border-gray-300 rounded p-1 text-xs"
                           />
                         </td>
@@ -1250,7 +1306,12 @@ export function ProductForm({
                               type="button"
                               onClick={() => {
                                 const newTiers = form.getValues('priceTiers')?.filter((_, i) => i !== idx) || [];
-                                form.setValue('priceTiers', newTiers);
+                                // Drop the whole array first: the removed rows'
+                                // inputs unmount but stay registered, and their
+                                // leftover (empty) values kept failing validation
+                                // as a stray "priceTiers: Invalid value".
+                                form.unregister('priceTiers');
+                                form.setValue('priceTiers', newTiers, { shouldDirty: true });
                               }}
                               className="text-red-600 hover:text-red-800 transition inline-flex items-center justify-center"
                               title="Delete tier"

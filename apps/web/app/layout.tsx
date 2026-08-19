@@ -31,7 +31,25 @@ export const metadata: Metadata = {
   alternates: { canonical: "./" },
   // Site-wide kill switch (SITE_NOINDEX=true). Inherited by every page that
   // doesn't set its own `robots`, so one env var hides the whole site.
-  ...(SITE_NOINDEX ? { robots: { index: false, follow: false } } : {}),
+  //
+  // When indexable we emit the tag EXPLICITLY rather than relying on the
+  // implicit "no tag == index, follow" default. Same result for Google, but
+  // auditors/SEO tools report "robots meta tag is not defined" otherwise, and
+  // the googleBot block is the part that actually matters: without it Google
+  // truncates snippets and caps image previews on rich results.
+  robots: SITE_NOINDEX
+    ? { index: false, follow: false }
+    : {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+          "max-snippet": -1,
+          "max-image-preview": "large",
+          "max-video-preview": -1,
+        },
+      },
   openGraph: {
     type: "website",
     siteName: SITE_NAME,

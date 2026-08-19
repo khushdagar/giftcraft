@@ -45,11 +45,13 @@ export function variantKinds(member: PackMember) {
  * with whatever the warehouse picked. One selection covers ALL units of that
  * member (a member at ×4 ships 4 of the same colour).
  *
- * Members with no variants aren't listed — there is nothing to choose.
+ * Every member is listed, including those with nothing to choose — a pack of 4
+ * that showed only 3 rows read as "one item is missing" rather than "that item
+ * has no options". Fixed members show a plain "No options" note instead.
  */
 export function PackMemberVariants({ members, selections, onChange }: PackMemberVariantsProps) {
-  const selectable = members.filter((m) => m.variants.length > 0);
-  if (selectable.length === 0) return null;
+  // The panel only earns its place when at least one member is configurable.
+  if (!members.some((m) => m.variants.length > 0)) return null;
 
   return (
     <div className="mt-6 overflow-hidden rounded-md border-2 border-bdr bg-white">
@@ -64,8 +66,9 @@ export function PackMemberVariants({ members, selections, onChange }: PackMember
       </div>
 
       <div className="divide-y divide-bdr">
-        {selectable.map((member) => {
+        {members.map((member) => {
           const chosen = selections[member.id] ?? {};
+          const kinds = variantKinds(member);
           return (
             <div
               key={member.id}
@@ -97,7 +100,19 @@ export function PackMemberVariants({ members, selections, onChange }: PackMember
 
               {/* Options — fixed-width controls so every row lines up */}
               <div className="grid flex-shrink-0 grid-cols-2 gap-2 sm:flex">
-                {variantKinds(member).map((kind) => {
+                {/* Nothing to configure — say so, so the row isn't mistaken for
+                    a control that failed to load. */}
+                {kinds.length === 0 && (
+                  <div className="col-span-2 sm:w-40">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-ink-3">
+                      Options
+                    </span>
+                    <span className="flex h-9 items-center rounded-md border border-dashed border-bdr bg-gray-50 px-2.5 text-sm text-ink-3">
+                      As shown
+                    </span>
+                  </div>
+                )}
+                {kinds.map((kind) => {
                   const options = member.variants.filter((v) => v.kind === kind);
                   const value = chosen[kind] ?? '';
                   const swatch =
