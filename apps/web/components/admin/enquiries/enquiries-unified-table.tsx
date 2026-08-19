@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Trash2, Mail, Phone, FileText, RefreshCw, Send, Download, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
+import { Trash2, Mail, Phone, FileText, RefreshCw, Send, Download, ChevronDown, ChevronUp, Eye, EyeOff, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProposalBuilder } from '@/components/admin/proposals/proposal-builder';
 import { ProposalPdfPreview } from './proposal-pdf-preview';
@@ -152,8 +152,11 @@ export function EnquiriesUnifiedTable({
   downloads?: DeckDownload[];
 }) {
   const [websiteRows, setWebsiteRows] = useState(initialData);
+  const [downloadRows, setDownloadRows] = useState(downloads);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('website');
+  // Free-text filter, shared by the three table tabs.
+  const [search, setSearch] = useState('');
 
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -393,6 +396,41 @@ export function EnquiriesUnifiedTable({
     }
   };
 
+  // Deck downloads are just a log of who pulled a PDF — delete outright.
+  const removeDownloads = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    if (
+      !confirm(
+        ids.length === 1
+          ? 'Delete this download entry? This cannot be undone.'
+          : `Delete ${ids.length} download entries? This cannot be undone.`
+      )
+    )
+      return;
+    setBulkBusy(true);
+    setBusyId(ids.length === 1 ? ids[0]! : null);
+    try {
+      const results = await Promise.allSettled(
+        ids.map(async (id) => {
+          const res = await fetch(`/api/admin/proposal-downloads/${id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error(id);
+          return id;
+        })
+      );
+      const ok = new Set(results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : [])));
+      setDownloadRows((r) => r.filter((d) => !ok.has(d.id)));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        ok.forEach((id) => next.delete(`dl-${id}`));
+        return next;
+      });
+      if (ok.size < ids.length) alert(`${ids.length - ok.size} entry(ies) could not be deleted.`);
+    } finally {
+      setBulkBusy(false);
+      setBusyId(null);
+    }
+  };
+
   // Proposals are composed on their own page — a lead can be sent several pack
   // options at once, which needs more room than a dialog. The GHL lead id rides
   // along so the builder can flip its status to "quoted" after sending.
@@ -449,15 +487,38 @@ export function EnquiriesUnifiedTable({
     })),
   ].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
 
+  // Free-text search across every column an admin would look someone up by.
+  const q = search.trim().toLowerCase();
+  const matches = (...fields: (string | number | null | undefined)[]) =>
+    !q || fields.some((f) => f != null && String(f).toLowerCase().includes(q));
+
   // Hidden GHL leads drop out unless the toggle is on.
-  const rows = allRows.filter((r) => r.source === tab && (showHidden || !r.hidden));
+  const rows = allRows
+    .filter((r) => r.source === tab && (showHidden || !r.hidden))
+    .filter((r) =>
+      matches(
+        r.companyName,
+        r.contactName,
+        r.email,
+        r.phone,
+        r.productName,
+        r.message,
+        r.formName,
+        r.tags.join(' ')
+      )
+    );
   const hiddenCount = allRows.filter((r) => r.source === tab && r.hidden).length;
   const selectedInTab = rows.filter((r) => selected.has(r.key)).length;
+
+  const visibleDownloads = downloadRows.filter((d) =>
+    matches(d.name, d.email, d.phone, d.company)
+  );
+  const selectedDownloads = visibleDownloads.filter((d) => selected.has(`dl-${d.id}`));
 
   const TABS: { id: Tab; label: string; count: number | null }[] = [
     { id: 'website', label: 'Enquiries', count: websiteRows.length },
     { id: 'ghl', label: 'GHL Entries', count: ghlLeads.length },
-    { id: 'downloads', label: 'Deck Downloads', count: downloads.length },
+    { id: 'downloads', label: 'Deck Downloads', count: downloadRows.length },
     // Compose a proposal for anyone — no enquiry row needed.
     { id: 'create', label: 'Create Proposal', count: null },
   ];
@@ -485,6 +546,30 @@ export function EnquiriesUnifiedTable({
         ))}
       </div>
 
+      {/* One search box for all three table tabs — the composer has no rows. */}
+      {tab !== 'create' && (
+        <div className="relative max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, company, email, phone…"
+            className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-8 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              title="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      )}
+
       {ghlNote && tab === 'ghl' && (
         <div className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs text-gray-600">
           <span>{ghlNote}</span>
@@ -511,28 +596,85 @@ export function EnquiriesUnifiedTable({
         // admin types any email address and builds the pack options here.
         <ProposalBuilder prefill={{ email: '', name: '', company: '' }} />
       ) : tab === 'downloads' ? (
-        downloads.length === 0 ? (
+        visibleDownloads.length === 0 ? (
           <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
             <Download className="mx-auto mb-3 h-8 w-8 text-gray-300" />
             <p className="text-sm text-gray-500">
-              No downloads yet. They&apos;ll appear here as soon as someone downloads a proposal deck.
+              {q
+                ? 'No downloads match your search.'
+                : "No downloads yet. They'll appear here as soon as someone downloads a proposal deck."}
             </p>
           </div>
         ) : (
+          <>
+          {selectedDownloads.length > 0 && (
+            <div className="mb-3 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+              <span className="text-sm font-medium text-blue-900">
+                {selectedDownloads.length} selected
+              </span>
+              <button
+                onClick={() => removeDownloads(selectedDownloads.map((d) => d.id))}
+                disabled={bulkBusy}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {bulkBusy ? 'Deleting…' : `Delete ${selectedDownloads.length}`}
+              </button>
+              <button
+                onClick={() => setSelected(new Set())}
+                className="text-xs text-gray-500 hover:text-gray-900 hover:underline"
+              >
+                Clear
+              </button>
+            </div>
+          )}
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="w-full min-w-[880px]">
               <thead className="border-b border-gray-200 bg-gray-50">
                 <tr>
-                  {['Name', 'Reach', 'Company', 'Type', 'Quote', 'Downloaded'].map((h) => (
-                    <th key={h} className="px-3 py-3 text-left text-xs font-normal uppercase text-gray-600">
+                  <th className="px-3 py-3 text-left">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all downloads"
+                      checked={
+                        visibleDownloads.length > 0 &&
+                        selectedDownloads.length === visibleDownloads.length
+                      }
+                      ref={(el) => {
+                        if (el)
+                          el.indeterminate =
+                            selectedDownloads.length > 0 &&
+                            selectedDownloads.length < visibleDownloads.length;
+                      }}
+                      onChange={() =>
+                        setSelected(
+                          selectedDownloads.length === visibleDownloads.length
+                            ? new Set()
+                            : new Set(visibleDownloads.map((d) => `dl-${d.id}`))
+                        )
+                      }
+                      className="rounded"
+                    />
+                  </th>
+                  {['Name', 'Reach', 'Company', 'Type', 'Quote', 'Downloaded', ''].map((h, i) => (
+                    <th key={h || `col-${i}`} className="px-3 py-3 text-left text-xs font-normal uppercase text-gray-600">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {downloads.map((d) => (
+                {visibleDownloads.map((d) => (
                   <tr key={d.id} className="align-top hover:bg-gray-50">
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${d.name}`}
+                        checked={selected.has(`dl-${d.id}`)}
+                        onChange={() => toggleSelect(`dl-${d.id}`)}
+                        className="rounded"
+                      />
+                    </td>
                     <td className="px-3 py-3 text-sm font-medium text-gray-900">{d.name}</td>
                     <td className="px-3 py-3 text-sm">
                       <a href={`mailto:${d.email}`} className="flex items-center gap-1 text-emerald-700 hover:underline">
@@ -565,17 +707,32 @@ export function EnquiriesUnifiedTable({
                       </a>
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-xs text-gray-500">{fmtDate(d.createdAt)}</td>
+                    <td className="px-3 py-3 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => removeDownloads([d.id])}
+                        disabled={busyId === d.id || bulkBusy}
+                        title="Delete this entry"
+                        className="text-gray-500 hover:text-red-600 disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          </>
         )
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
           <Mail className="mx-auto mb-3 h-8 w-8 text-gray-300" />
           <p className="text-sm text-gray-500">
-            {tab === 'ghl' ? 'No GoHighLevel leads.' : 'No enquiries yet.'}
+            {q
+              ? 'Nothing matches your search.'
+              : tab === 'ghl'
+                ? 'No GoHighLevel leads.'
+                : 'No enquiries yet.'}
           </p>
         </div>
       ) : (

@@ -150,6 +150,12 @@ export function serializeProduct(
     categoryIds,
     occasionIds,
     vendors: vendors || [],
-    variants: product.variants || [],
+    // ProductVariant.price is a Decimal — leaving it raw made the admin edit
+    // form's zod resolver reject `variants` ("Invalid value") for any product
+    // with per-size pricing, blocking every save.
+    variants: (product.variants || []).map((v: any) => ({
+      ...v,
+      price: v.price != null ? Number(v.price) : null,
+    })),
   };
 }

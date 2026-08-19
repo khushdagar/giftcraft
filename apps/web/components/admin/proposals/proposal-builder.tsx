@@ -253,7 +253,14 @@ export function ProposalBuilder({
 
   const addPack = () => {
     packSeq.current += 1;
-    const next = emptyPack(packSeq.current);
+    // Every option of a proposal is quoted for the same order size, so a new
+    // pack inherits the quantity already set on the last one instead of
+    // resetting to the default and being retyped each time.
+    const last = packs[packs.length - 1];
+    const next: Pack = {
+      ...emptyPack(packSeq.current),
+      ...(last ? { packQuantity: last.packQuantity } : {}),
+    };
     setPacks((prev) => [...prev, next]);
     setActiveKey(next.key);
   };
@@ -899,8 +906,11 @@ export function ProposalBuilder({
                         No curated packs match this search.
                       </p>
                     ) : (
-                      <div className="max-h-[320px] overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
-                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+                      <div className="max-h-[420px] overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
+                        {/* Packs stay at 4 per row: each tile shows a collage of
+                            its member products plus their names, which needs far
+                            more room than a single-product tile. */}
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                           {filteredPacks.map((cp) => {
                             const allIn = cp.items.every((it) =>
                               active.pack.items.some((x) => x.id === it.id)
@@ -926,18 +936,45 @@ export function ProposalBuilder({
                                     : 'border-gray-200 hover:border-indigo-300 hover:shadow-sm'
                                 }`}
                               >
-                                <div className="relative aspect-square w-full bg-gray-50">
-                                  {cp.imageUrl ? (
-                                    <Image
-                                      src={cp.imageUrl}
-                                      alt={cp.name}
-                                      fill
-                                      className="object-cover"
-                                      sizes="120px"
-                                    />
-                                  ) : (
-                                    <Layers className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-gray-300" />
-                                  )}
+                                {/* Collage of the pack's members — one cell per
+                                    product (up to 4, then a "+n" cell), so the
+                                    contents are readable without opening it. */}
+                                <div className="relative aspect-[4/3] w-full bg-gray-50">
+                                  <div
+                                    className={`grid h-full w-full gap-px bg-gray-200 ${
+                                      cp.items.length <= 1
+                                        ? 'grid-cols-1'
+                                        : cp.items.length === 2
+                                          ? 'grid-cols-2'
+                                          : 'grid-cols-2 grid-rows-2'
+                                    }`}
+                                  >
+                                    {cp.items.slice(0, 4).map((it, i) => (
+                                      <div
+                                        key={it.id}
+                                        className={`relative bg-white ${
+                                          cp.items.length === 3 && i === 0 ? 'row-span-2' : ''
+                                        }`}
+                                      >
+                                        {it.imageUrl ? (
+                                          <Image
+                                            src={it.imageUrl}
+                                            alt={it.name}
+                                            fill
+                                            className="object-cover"
+                                            sizes="120px"
+                                          />
+                                        ) : (
+                                          <Layers className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 text-gray-300" />
+                                        )}
+                                      </div>
+                                    ))}
+                                    {cp.items.length > 4 && (
+                                      <span className="absolute bottom-1 right-1 rounded-full bg-gray-900/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                                        +{cp.items.length - 4}
+                                      </span>
+                                    )}
+                                  </div>
                                   <span className="absolute left-1 top-1 rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
                                     {cp.items.length} items
                                   </span>
@@ -949,13 +986,30 @@ export function ProposalBuilder({
                                     </span>
                                   )}
                                 </div>
-                                <div className="px-1.5 py-1">
-                                  <p className="truncate text-[11px] font-medium leading-tight text-gray-900">
+                                <div className="space-y-0.5 px-2 py-1.5">
+                                  <p className="truncate text-xs font-medium leading-tight text-gray-900">
                                     {cp.name}
                                   </p>
-                                  <p className="truncate text-[11px] tabular-nums text-gray-500">
+                                  <p className="text-[11px] tabular-nums text-gray-500">
                                     {formatRupees(perPack)}
                                   </p>
+                                  {/* The actual contents, spelled out. */}
+                                  <ul className="space-y-0.5 pt-0.5">
+                                    {cp.items.slice(0, 4).map((it) => (
+                                      <li
+                                        key={it.id}
+                                        className="truncate text-[11px] leading-snug text-gray-500"
+                                        title={it.name}
+                                      >
+                                        • {it.name}
+                                      </li>
+                                    ))}
+                                    {cp.items.length > 4 && (
+                                      <li className="text-[11px] leading-snug text-gray-400">
+                                        + {cp.items.length - 4} more
+                                      </li>
+                                    )}
+                                  </ul>
                                 </div>
                               </button>
                             );
