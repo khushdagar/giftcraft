@@ -64,9 +64,6 @@ export function AdminNav() {
     };
   }, []);
 
-  // Reaching a section counts as "seen" for its notifications — they're marked
-  // read on arrival (not on click), so the bell/dashboard clear only after the
-  // admin actually visited the page.
   useEffect(() => {
     const SECTION_TYPE: Array<[string, string]> = [
       ['/admin/orders', 'order'],
@@ -89,8 +86,7 @@ export function AdminNav() {
           body: JSON.stringify({ type: match[1] }),
         });
         if (active && match[1] === 'order') setOrdersCount(0);
-        // Tell the bell + dashboard widget to refresh right away instead of
-        // waiting for their next 60s poll.
+      
         window.dispatchEvent(new Event('admin-notifications-updated'));
       } catch {
         /* ignore — clears on next poll */
@@ -101,9 +97,6 @@ export function AdminNav() {
     };
   }, [pathname]);
 
-  // Exactly one item highlights: nav hrefs nest (/admin/settings is a prefix of
-  // /admin/settings/users, and /admin is a prefix of everything), so a plain
-  // prefix test lights up several rows at once. Take the LONGEST matching href.
   const activeHref = useMemo(() => {
     const matches = NAV.flatMap((s) => s.items.map((i) => i.href)).filter(
       (href) => pathname === href || pathname.startsWith(href + '/')

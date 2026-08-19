@@ -6,6 +6,8 @@ export interface RecentlyViewedItem {
   name: string;
   slug: string;
   image?: string;
+  /** Member-product shots for a pack — the rail rebuilds its collage from these. */
+  collageImages?: string[];
   /** Cheapest tier price — the same "From ₹…" figure the catalog cards show. */
   fromPrice: number;
   viewedAt: number;

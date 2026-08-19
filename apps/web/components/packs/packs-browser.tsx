@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search, Package, SlidersHorizontal } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
+import { usePagedList } from '@/hooks/use-paged-list';
 import {
   CollectionTileGrid,
   type CollectionTile,
@@ -50,6 +51,10 @@ type FlatPack = PackCard & {
   collectionName: string;
   collectionSlug: string;
 };
+
+// Stable empty default for the optional `collections` prop. An inline `= []`
+// mints a new array every render, which invalidates every memo derived from it.
+const NO_COLLECTIONS: CollectionCard[] = [];
 
 // Corporate MOQ (RULE 4) — packs enter checkout at the corporate minimum.
 const DEFAULT_PACK_QTY = 25;
@@ -98,7 +103,7 @@ const toggle = (arr: string[], val: string) =>
 // A collection page (/curated-packs/<slug>) passes `collection`, which starts
 // on level 2 with that collection pre-selected and its own heading.
 export function PacksBrowser({
-  collections = [],
+  collections = NO_COLLECTIONS,
   packs,
   scope,
   collection,
@@ -238,6 +243,24 @@ export function PacksBrowser({
   // option against the OTHER filters (not the fully-filtered list) is what lets
   // you tick more than one option in the same facet — otherwise selecting one
   // would drop every sibling to a count of 0 and hide it.
+  // Only a window of the matches is mounted; the rest stream in on scroll.
+  // The key is every input that changes what the grid shows — the window snaps
+  // back to page one on any of them, and stays put otherwise.
+  const { visible, shown, hasMore, loadMore } = usePagedList(
+    filtered,
+    [
+      fCollections.join(),
+      fCategories.join(),
+      fBrands.join(),
+      fOccasions.join(),
+      fRecipients.join(),
+      search,
+      priceMin,
+      priceMax,
+      sort,
+    ].join('|')
+  );
+
   const packsExcept = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (skip: 'categories' | 'brands' | 'occasions' | 'recipients') => {
@@ -477,7 +500,7 @@ export function PacksBrowser({
               </div>
               <div className="mt-3 flex items-center gap-3">
                 <p className="text-sm text-ink-2">
-                  Showing {filtered.length} pack{filtered.length === 1 ? '' : 's'}
+                  Showing {shown} of {filtered.length} pack{filtered.length === 1 ? '' : 's'}
                 </p>
                 {hasActiveFilters && (
                   <button
@@ -494,7 +517,7 @@ export function PacksBrowser({
             <div className="flex flex-col lg:flex-row gap-6 items-start">
               {/* Filter sidebar — static column on desktop, bottom-sheet drawer on mobile */}
               <aside
-                className={`w-full lg:w-64 flex-shrink-0 ${
+                className={`w-full lg:w-64 flex-shrink-0 lg:self-stretch ${
                   sidebarOpen
                     ? 'fixed inset-0 z-40 bg-black/30 lg:static lg:z-auto lg:bg-transparent lg:inset-auto'
                     : 'hidden lg:block'
@@ -728,8 +751,9 @@ export function PacksBrowser({
                     <p className="text-ink">No packs match your filters</p>
                   </div>
                 ) : (
+                  <>
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filtered.map((pack) => (
+                    {visible.map((pack) => (
                       <div
                         key={pack.id}
                         className="flex flex-col overflow-hidden rounded-md border-2 border-bdr bg-white group transition hover:shadow-md hover:border-em/40"
@@ -790,6 +814,21 @@ export function PacksBrowser({
                       </div>
                     ))}
                   </div>
+
+                  {/* Paging is button-only by design — an auto-loading grid
+                      makes the footer unreachable. */}
+                  {hasMore && (
+                    <div className="flex justify-center pt-8">
+                      <button
+                        type="button"
+                        onClick={loadMore}
+                        className="rounded-full border-2 border-em px-6 py-2.5 text-sm font-semibold text-em transition hover:bg-em-50"
+                      >
+                        Load more packs
+                      </button>
+                    </div>
+                  )}
+                  </>
                 )}
               </div>
             </div>

@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { useBuilderStore } from '@/store/builder';
+import { PackCollage } from '@/components/product/pack-collage';
 import { motion } from 'framer-motion';
 
 // Extra fields (hsnCode, gstRate, lead time…) ride along untyped and are
@@ -18,7 +19,10 @@ type SerializedProduct = {
   brand?: string | null;
   priceTiers?: Array<{ sellPrice: number }>;
   images?: Array<{ url: string }>;
+  // Packs have no image of their own — up to 4 member shots, collaged.
+  collageImages?: string[];
 };
+
 
 export function RelatedProducts({
   products,
@@ -136,7 +140,9 @@ export function RelatedProducts({
                   <Link href={`/products/${product.slug}`} className="block">
                     {/* Image */}
                     <div className="relative m-2.5 overflow-hidden rounded-md bg-elevated aspect-[3/4]">
-                      {product.images?.[0]?.url ? (
+                      {product.collageImages && product.collageImages.length > 0 ? (
+                        <PackCollage tiles={product.collageImages} />
+                      ) : product.images?.[0]?.url ? (
                         <Image
                           src={product.images[0].url}
                           alt={product.name}

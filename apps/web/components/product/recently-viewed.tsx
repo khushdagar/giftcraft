@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { useRecentlyViewedStore } from '@/store/recently-viewed';
+import { PackCollage } from '@/components/product/pack-collage';
 
 /**
  * Invisible helper dropped onto a product page to record the visit into the
@@ -18,6 +19,7 @@ export function RecentlyViewedTracker(props: {
   name: string;
   slug: string;
   image?: string;
+  collageImages?: string[];
   fromPrice: number;
 }) {
   const record = useRecentlyViewedStore((s) => s.record);
@@ -96,7 +98,9 @@ export function RecentlyViewed({ excludeId }: { excludeId?: string }) {
               <div className="flex h-full flex-col rounded-md overflow-hidden shadow-card hover:shadow-hover transition-shadow">
                 <Link href={`/products/${item.slug}`} className="block flex-1">
                   <div className="relative m-2.5 overflow-hidden rounded-md bg-elevated aspect-[3/4]">
-                    {item.image ? (
+                    {item.collageImages && item.collageImages.length > 0 ? (
+                      <PackCollage tiles={item.collageImages} />
+                    ) : item.image ? (
                       <Image
                         src={item.image}
                         alt={item.name}
