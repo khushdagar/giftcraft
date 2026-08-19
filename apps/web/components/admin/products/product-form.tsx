@@ -2,7 +2,7 @@
 
 import { compressAndUpload } from '@/hooks/use-compressed-upload';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, useWatch, Controller } from 'react-hook-form';
 import { RichTextField } from '@/components/admin/rich-text-field';
@@ -253,14 +253,25 @@ export function ProductForm({
         }));
       console.log('✅ Loaded variants:', validVariants);
       setVariants(validVariants);
+      baseline.current.variants = JSON.stringify(validVariants);
     }
   }, [mode, initialData?.id]);
+
+  // Nothing in this editor writes to the database until Save is pressed, so the
+  // button stays disabled until something actually differs from what was loaded.
+  // Form fields are covered by RHF's own isDirty; these side lists are not, so
+  // their loaded shape is snapshotted here and compared on every render.
+  const baseline = useRef({
+    images: '[]',
+    variants: '[]',
+    vendors: '[]',
+    packItems: JSON.stringify(((initialData as any)?.packItems as PackMember[]) ?? []),
+  });
 
   // Initialize vendor links from initialData (edit mode)
   useEffect(() => {
     if (mode === 'edit' && initialData?.vendors && Array.isArray(initialData.vendors)) {
-      setVendorLinks(
-        initialData.vendors.map((v: any) => ({
+      const loadedVendors = initialData.vendors.map((v: any) => ({
           vendorId: v.vendorId,
           isPrimary: !!v.isPrimary,
           costPrice: v.costPrice ?? null,
@@ -271,8 +282,9 @@ export function ProductForm({
           lastPriceConfirmedAt: v.lastPriceConfirmedAt
             ? String(v.lastPriceConfirmedAt).slice(0, 10)
             : '',
-        }))
-      );
+      }));
+      setVendorLinks(loadedVendors);
+      baseline.current.vendors = JSON.stringify(loadedVendors);
     }
   }, [mode, initialData?.id]);
 
@@ -484,14 +496,14 @@ export function ProductForm({
   // Load existing images when editing
   useEffect(() => {
     if (mode === 'edit' && initialData?.images) {
-      setImages(
-        initialData.images.map((img: any) => ({
-          id: img.id,
-          url: img.url,
-          isPrimary: img.isPrimary,
-          altText: img.altText || '',
-        }))
-      );
+      const loaded = initialData.images.map((img: any) => ({
+        id: img.id,
+        url: img.url,
+        isPrimary: img.isPrimary,
+        altText: img.altText || '',
+      }));
+      setImages(loaded);
+      baseline.current.images = JSON.stringify(loaded);
     }
   }, [mode, initialData]);
 
@@ -501,75 +513,50 @@ export function ProductForm({
     return i >= 0 ? i : images.length > 0 ? 0 : -1;
   })();
 
-  // Mark image #idx as the only primary (locally + in DB when already saved).
-  const handleSetPrimary = async (idx: number) => {
-    const img = images[idx];
+  // Is there anything worth saving? Form fields come from RHF; the side lists
+  // are compared against the snapshot taken when they were loaded.
+  const sideListsDirty =
+    JSON.stringify(images) !== baseline.current.images ||
+    JSON.stringify(variants) !== baseline.current.variants ||
+    JSON.stringify(vendorLinks) !== baseline.current.vendors ||
+    JSON.stringify(packItems) !== baseline.current.packItems;
+  const hasChanges =
+    mode === 'create' || form.formState.isDirty || sideListsDirty || priceReason.trim() !== '';
+
+  // Snapshot state as the new "nothing to save" baseline. Values just written
+  // by a save are passed in explicitly — the state setters have not flushed yet.
+  const resetBaseline = (next?: { images?: unknown; variants?: unknown }) => {
+    baseline.current = {
+      images: JSON.stringify(next?.images ?? images),
+      variants: JSON.stringify(next?.variants ?? variants),
+      vendors: JSON.stringify(vendorLinks),
+      packItems: JSON.stringify(packItems),
+    };
+  };
+
+  // Mark image #idx as the only cover. Local only — persisted on Save.
+  const handleSetPrimary = (idx: number) => {
     setImages((prev) => prev.map((p, i) => ({ ...p, isPrimary: i === idx })));
-    if (img?.id && mode === 'edit' && initialData?.id) {
-      try {
-        const res = await fetch(
-          `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
-          { method: 'PUT' }
-        );
-        if (!res.ok) toast.error('Failed to update primary image');
-      } catch (err) {
-        console.error('Error updating primary image:', err);
-      }
-    }
   };
 
-  // Remove image #idx (from DB when already saved, else just local state).
-  const handleDeleteImage = async (idx: number) => {
-    const img = images[idx];
-    if (img?.id && mode === 'edit' && initialData?.id) {
-      // Sticky (duration 0) progress toast — must be removed by hand once the
-      // request settles, otherwise it sits on screen forever.
-      let deletingToastId: string | null = null;
-      try {
-        deletingToastId = toast.info('🗑️ Deleting image...', 0);
-        const res = await fetch(
-          `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
-          { method: 'DELETE' }
-        );
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || 'Delete failed');
-        }
-        setImages((prev) => prev.filter((_, i) => i !== idx));
-        toast.success('✅ Image deleted', 2500);
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'Delete failed';
-        toast.error(`❌ Error: ${errorMsg}`, 3500);
-      } finally {
-        if (deletingToastId) useToastStore.getState().removeToast(deletingToastId);
-      }
-    } else {
-      setImages((prev) => prev.filter((_, i) => i !== idx));
-      toast.info('Image removed');
-    }
+  // Remove image #idx from the gallery. Local only: the DB row is dropped when
+  // the form is saved, so a mistaken delete is undone by leaving without saving.
+  const handleDeleteImage = (idx: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== idx));
     setZoomIdx(null);
+    toast.info(
+      mode === 'edit' ? 'Image removed — Save Changes to apply' : 'Image removed',
+      2500
+    );
   };
 
-  // Persist an image's alt text (saved images patch the DB; new ones stay local).
-  const handleSaveAlt = async (idx: number, altText: string) => {
-    const img = images[idx];
+  // Alt text is held on the local image row and written with the product.
+  const handleSaveAlt = (idx: number, altText: string) => {
     setImages((prev) => prev.map((p, i) => (i === idx ? { ...p, altText } : p)));
-    if (img?.id && mode === 'edit' && initialData?.id) {
-      try {
-        const res = await fetch(
-          `/api/admin/products/${initialData.id}/images?imageId=${img.id}`,
-          {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ altText }),
-          }
-        );
-        if (!res.ok) throw new Error('Save failed');
-        toast.success('✅ Alt text saved', 1500);
-      } catch (err) {
-        toast.error('❌ Failed to save alt text', 2500);
-      }
-    }
+    toast.info(
+      mode === 'edit' ? 'Alt text set — Save Changes to apply' : 'Alt text set',
+      1500
+    );
   };
 
   // Upload an image for a specific variant (e.g. the product shown in that
@@ -672,11 +659,25 @@ export function ProductForm({
         return arr.map((i) => i.url).filter((u): u is string => !!u && /^https?:\/\//.test(u));
       })();
 
+      // Edit mode sends the whole gallery — order, cover flag, alt text and
+      // deletions — so the API can reconcile it in one go at save time.
+      const imagesPayload = images
+        .filter((i) => !!i.url && /^https?:\/\//.test(i.url))
+        .map((i) => ({
+          ...(i.id ? { id: i.id } : {}),
+          url: i.url,
+          altText: i.altText || null,
+          // None flagged (possible after deleting the cover) → the API falls
+          // back to the first entry.
+          isPrimary: !!i.isPrimary,
+        }));
+
       // Add product data with variants - ensure proper data types
       const dataWithVariants = {
         ...data,
         ...packPayload,
         ...(mode === 'create' && { imageUrls: orderedImageUrls }),
+        ...(mode === 'edit' && { images: imagesPayload }),
         vendors: vendorsPayload,
         variants: validVariants.length > 0 ? validVariants.map((v, idx) => {
           const variant: any = {
@@ -763,18 +764,36 @@ export function ProductForm({
       const product = await res.json();
       console.log('✅ Product saved successfully:', { id: product.id, name: product.name });
 
-      // For edit mode, refresh variants from API
+      // For edit mode, refresh variants + images from what was actually saved,
+      // so the ids of newly created rows are known and the Save button settles
+      // back to disabled.
+      let savedVariants = variants;
+      let savedImages = images;
       if (mode === 'edit' && initialData?.id) {
         try {
           const variantsRes = await fetch(`/api/admin/products/${initialData.id}/variants`);
           if (variantsRes.ok) {
-            const variantsData = await variantsRes.json();
-            setVariants(variantsData || []);
+            savedVariants = (await variantsRes.json()) || [];
+            setVariants(savedVariants);
           }
         } catch (err) {
           console.error('Failed to refresh variants:', err);
         }
+        if (Array.isArray(product?.images)) {
+          savedImages = product.images.map((img: any) => ({
+            id: img.id,
+            url: img.url,
+            isPrimary: img.isPrimary,
+            altText: img.altText || '',
+          }));
+          setImages(savedImages);
+        }
       }
+      // Everything on screen is now what the server holds, so Save goes quiet
+      // again until the next edit.
+      form.reset(form.getValues(), { keepValues: true });
+      setPriceReason('');
+      resetBaseline({ images: savedImages, variants: savedVariants });
 
       // Show success toast with a small delay to ensure visibility
       const successMsg =
@@ -834,7 +853,7 @@ export function ProductForm({
           <Button type="button" variant="outline" size="sm" onClick={goBackToList}>
             Cancel
           </Button>
-          <Button type="submit" size="sm" disabled={loading}>
+          <Button type="submit" size="sm" disabled={loading || !hasChanges} title={hasChanges ? undefined : "No changes to save"}>
             {loading ? 'Saving...' : mode === 'create' ? 'Create Product' : 'Save Changes'}
           </Button>
         </div>
@@ -1642,7 +1661,7 @@ export function ProductForm({
 
       {/* Submit buttons */}
       <div className="flex gap-3 pt-6 border-t border-gray-200">
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading || !hasChanges} title={hasChanges ? undefined : "No changes to save"}>
           {loading ? 'Saving...' : mode === 'create' ? 'Create Product' : 'Save Changes'}
         </Button>
         <Button type="button" variant="outline" onClick={goBackToList}>

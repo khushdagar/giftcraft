@@ -39,28 +39,18 @@ interface ProductMediaProps {
   primaryImageIdx: number;
   /** Open the zoom/details lightbox for image #idx. */
   onZoom: (idx: number) => void;
-  /** Remove image #idx (handles DB delete in edit mode). */
+  /** Remove image #idx from the local gallery (applied on save). */
   onDelete: (idx: number) => void;
 }
 
 const MAX_MB = 5;
-
-/** Normalise a server image row into our local MediaImage shape. */
-function mapServerImages(rows: any[]): MediaImage[] {
-  return rows.map((img) => ({
-    id: img.id,
-    url: img.url,
-    isPrimary: img.isPrimary,
-    altText: img.altText || '',
-  }));
-}
 
 /**
  * Shopify-style product media manager.
  *
  * - First tile is the large "cover" (= primary). Drag any tile to the front to
  *   make it the cover.
- * - Drag-and-drop to reorder anywhere. Order persists immediately when editing.
+ * - Drag-and-drop to reorder anywhere. Order is applied on save, not instantly.
  * - Live per-file upload progress bars on placeholder tiles.
  * - "Select existing" pulls from previously uploaded media so images can be
  *   reused without re-uploading.
@@ -151,55 +141,27 @@ export function ProductMedia({
 
       if (uploaded.length === 0) return;
 
-      if (mode === 'edit' && productId) {
-        try {
-          const res = await fetch(`/api/admin/products/${productId}/images`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ urls: JSON.stringify(uploaded) }),
-          });
-          if (!res.ok) throw new Error((await res.json()).error || 'Failed to save images');
-          const result = await res.json();
-          setImages(mapServerImages(result.images || []));
-          toast.success(`✅ ${uploaded.length} image(s) added`);
-        } catch (err) {
-          toast.error(`❌ ${err instanceof Error ? err.message : 'Failed to save images'}`);
-        }
-      } else {
-        setImages((prev) => [
-          ...prev,
-          ...uploaded.map((u, i) => ({
-            url: u.url,
-            altText: u.altText,
-            isPrimary: prev.length === 0 && i === 0,
-          })),
-        ]);
-        toast.success(`✅ ${uploaded.length} image(s) added`);
-      }
+      // The file is on the CDN, but the product's gallery is not touched until
+      // the form is saved — editing must be reversible by simply not saving.
+      setImages((prev) => [
+        ...prev,
+        ...uploaded.map((u, i) => ({
+          url: u.url,
+          altText: u.altText,
+          isPrimary: prev.length === 0 && i === 0,
+        })),
+      ]);
+      toast.success(
+        mode === 'edit'
+          ? `✅ ${uploaded.length} image(s) added — Save Changes to apply`
+          : `✅ ${uploaded.length} image(s) added`,
+      );
     },
-    [mode, productId, setImages, updatePending],
+    [mode, setImages, updatePending],
   );
 
   // ── Reorder ─────────────────────────────────────────────────────────────
-  const persistOrder = useCallback(
-    async (next: MediaImage[]) => {
-      if (mode !== 'edit' || !productId) return;
-      const orderedIds = next.map((i) => i.id).filter((id): id is string => !!id);
-      if (orderedIds.length !== next.length) return; // some not yet saved
-      try {
-        const res = await fetch(`/api/admin/products/${productId}/images/reorder`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderedIds }),
-        });
-        if (!res.ok) throw new Error((await res.json()).error || 'Failed to reorder');
-      } catch (err) {
-        toast.error(`❌ ${err instanceof Error ? err.message : 'Failed to save order'}`);
-      }
-    },
-    [mode, productId],
-  );
-
+  // Order is local state only; it reaches the database with the next save.
   const move = useCallback(
     (from: number, to: number) => {
       if (from === to || from < 0 || to < 0) return;
@@ -209,12 +171,10 @@ export function ProductMedia({
         const [moved] = arr.splice(from, 1);
         if (!moved) return prev;
         arr.splice(to, 0, moved);
-        const next = arr.map((img, i) => ({ ...img, isPrimary: i === 0 }));
-        void persistOrder(next);
-        return next;
+        return arr.map((img, i) => ({ ...img, isPrimary: i === 0 }));
       });
     },
-    [persistOrder, setImages],
+    [setImages],
   );
 
   const handleDrop = (targetIdx: number) => {
@@ -449,33 +409,20 @@ async function addExisting(
     return;
   }
 
-  if (ctx.mode === 'edit' && ctx.productId) {
-    try {
-      const res = await fetch(`/api/admin/products/${ctx.productId}/images`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          urls: JSON.stringify(fresh.map((u) => ({ url: u.url, altText: u.altText || '' }))),
-        }),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Failed to add images');
-      const result = await res.json();
-      ctx.setImages(mapServerImages(result.images || []));
-      toast.success(`✅ ${fresh.length} image(s) added`);
-    } catch (err) {
-      toast.error(`❌ ${err instanceof Error ? err.message : 'Failed to add images'}`);
-    }
-  } else {
-    ctx.setImages((prev) => [
-      ...prev,
-      ...fresh.map((u, i) => ({
-        url: u.url,
-        altText: u.altText || '',
-        isPrimary: prev.length === 0 && i === 0,
-      })),
-    ]);
-    toast.success(`✅ ${fresh.length} image(s) added`);
-  }
+  // Attached locally; written to the product on save, like every other edit.
+  ctx.setImages((prev) => [
+    ...prev,
+    ...fresh.map((u, i) => ({
+      url: u.url,
+      altText: u.altText || '',
+      isPrimary: prev.length === 0 && i === 0,
+    })),
+  ]);
+  toast.success(
+    ctx.mode === 'edit'
+      ? `✅ ${fresh.length} image(s) added — Save Changes to apply`
+      : `✅ ${fresh.length} image(s) added`,
+  );
 }
 
 /** Hidden multi-file input shared by the upload buttons/tiles. */

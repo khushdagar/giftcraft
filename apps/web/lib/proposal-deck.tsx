@@ -579,6 +579,16 @@ export async function renderMultiProposalDeck(
       packQuantity,
       perPack: packQuantity > 0 ? grandTotal / packQuantity : grandTotal,
       grandTotal,
+      // Reuse the already-downloaded product art from this option's own
+      // slides — the overview card shows the same contents the client sees on
+      // the compare page, with no second round of image fetches.
+      products: props.products.map((p) => ({
+        name: p.name,
+        brand: p.brand ?? null,
+        imageData: p.imageData ?? null,
+      })),
+      packagingName: props.packaging?.name ?? null,
+      addonNames: (props.addons ?? []).map((a) => a.name),
     });
   }
 

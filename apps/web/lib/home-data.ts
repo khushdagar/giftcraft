@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { serializeProduct } from '@/lib/serialize';
 import { getHiddenCategoryIds, isHiddenCategory } from '@/lib/catalog-visibility';
+import { getPacks, getPackOccasionTiles } from '@/lib/pack-data';
 
 /**
  * Server-side data for the homepage sections.
@@ -181,6 +182,28 @@ export async function getFeaturedReviews() {
     }));
   } catch (error) {
     console.error('getFeaturedReviews failed:', error);
+    return [];
+  }
+}
+
+/**
+ * Homepage "Shop by Occasions" tiles. Sourced from the packs themselves rather
+ * than from products, so every tile opens a curated-pack page that has packs on
+ * it — an occasion with products but no packs is not a tile.
+ * Mirrors /api/pack-occasions, which the client hydrates from.
+ */
+export async function getHomePackOccasions() {
+  try {
+    const tiles = await getPackOccasionTiles(await getPacks());
+    return tiles.map((o) => ({
+      name: o.name,
+      slug: o.slug,
+      image: o.image,
+      bg: o.gradient || 'linear-gradient(135deg, #800020 0%, #3D000F 100%)',
+      packCount: o.count,
+    }));
+  } catch (error) {
+    console.error('getHomePackOccasions failed:', error);
     return [];
   }
 }
