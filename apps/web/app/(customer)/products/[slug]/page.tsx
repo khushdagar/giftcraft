@@ -208,7 +208,14 @@ export default async function ProductPage({ params }: { params: { slug: string }
           images: { where: { isPrimary: true }, take: 1 },
           packItems: {
             include: {
-              product: { select: { priceTiers: { where: { tier: 1 }, select: { sellPrice: true } } } },
+              product: {
+                select: {
+                  priceTiers: { where: { tier: 1 }, select: { sellPrice: true } },
+                  // Member shots build the card's collage — a pack has no
+                  // image of its own.
+                  images: { where: { isPrimary: true }, take: 1, select: { url: true } },
+                },
+              },
             },
           },
         },
@@ -260,6 +267,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
           slug: p.slug,
           brand: p.brand,
           images: p.images,
+          collageImages: p.packItems
+            .map((it: any) => it.product.images[0]?.url)
+            .filter(Boolean)
+            .slice(0, 4),
           priceTiers: [{ sellPrice: fromPrice }],
         };
       })
@@ -367,8 +378,12 @@ export default async function ProductPage({ params }: { params: { slug: string }
       </div>
 
       <div className="container-gc-w grid grid-cols-1 gap-12 py-8 lg:grid-cols-[1.2fr_1fr] lg:py-12">
-        {/* Gallery - Sticky on desktop */}
-        <div className="lg:sticky lg:top-6 lg:h-fit">
+        {/* Gallery - Sticky on desktop. `position: sticky` opens its own
+            stacking context, so the hover-zoom panel's z-50 is trapped inside
+            this column; the z-20 here lifts the whole column above the info
+            column, which otherwise paints over the panel (it comes later in
+            the DOM). */}
+        <div className="relative z-20 lg:sticky lg:top-6 lg:h-fit">
           {isPack ? (
             <PackImageGallery
               images={memberImages}
@@ -429,6 +444,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
         name={product.name}
         slug={product.slug}
         image={schemaImages[0]}
+        collageImages={isPack ? memberImages.slice(0, 4) : undefined}
         fromPrice={schemaTiers.length > 0 ? Math.min(...schemaTiers.map((t) => t.sellPrice)) : 0}
       />
       <RecentlyViewed excludeId={product.id} />

@@ -44,6 +44,20 @@ const FALLBACK_OCCASIONS: NavLink[] = [
   { name: "Anniversary", slug: "anniversary" },
 ];
 
+// Festival-style occasions, so the long occasion cascade can lead with them
+// instead of interleaving them with the evergreen themes.
+const FESTIVAL_RE =
+  /diwali|holi|christmas|new year|festive|eid|rakhi|raksha|navratri|pongal|onam|ganesh|dussehra|dasara|lohri|baisakhi|valentine|easter|halloween|ugadi|sankranti|janmashtami|thanksgiving|independence|republic/i;
+
+// Festivals first, everything else after — the cascade then splits the list
+// down the middle into two even columns.
+function orderOccasionRungs<T extends NavLink>(items: T[]): T[] {
+  return [
+    ...items.filter((i) => FESTIVAL_RE.test(i.name)),
+    ...items.filter((i) => !FESTIVAL_RE.test(i.name)),
+  ];
+}
+
 // Until /api/settings/contact answers — same default the contact API falls back
 // to, so the number never renders blank or shifts the layout.
 const DEFAULT_PHONE = CONTACT_FALLBACK.phone;
@@ -51,6 +65,37 @@ const DEFAULT_PHONE = CONTACT_FALLBACK.phone;
 export function Navbar() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const path = pathname ?? "";
+
+  // Top-level tab: brand-coloured label plus an underline, so the section you
+  // are in is readable at a glance.
+  const topLinkClass = (active: boolean) =>
+    cn(
+      "text-sm font-medium transition-colors hover:text-em",
+      active ? "text-em" : "text-ink-2"
+    );
+  const activeBar = (active: boolean) =>
+    active ? (
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-em" />
+    ) : null;
+
+  // Dropdown row: brand tint on hover, and the row for the page you are
+  // already on stays tinted.
+  const menuItemClass = (active: boolean, extra = "") =>
+    cn(
+      "rounded-md px-3 py-2 text-[13px] transition-colors",
+      active
+        ? "bg-em-50 font-semibold text-em"
+        : "font-medium text-ink-2 hover:bg-em-50 hover:text-em",
+      extra
+    );
+
+  const inProducts =
+    path.startsWith("/catalog") ||
+    path.startsWith("/category") ||
+    path.startsWith("/products");
+  const inPacks = path.startsWith("/curated-packs");
+  const inOccasions = path.startsWith("/occasion");
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -307,15 +352,19 @@ export function Navbar() {
           {/* <li><Link href="/" className="text-sm font-medium text-ink-2 hover:text-ink">Home</Link></li> */}
           {/* Products dropdown — all categories in 4 columns */}
           <li className="group relative py-4">
-            <Link href="/catalog" className="text-sm font-medium text-ink-2 hover:text-ink">Products ▾</Link>
+            <Link href="/catalog" className={topLinkClass(inProducts)}>Products ▾</Link>
+            {activeBar(inProducts)}
             {categories.length > 0 && (
-              <div className="invisible absolute left-0 top-full grid min-w-[640px] grid-cols-4 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+              <div className="invisible absolute left-0 top-full grid max-h-[calc(100vh-8rem)] min-w-[640px] grid-cols-4 gap-x-1 gap-y-0 overflow-y-auto overscroll-contain rounded-md-s border border-bdr bg-white p-3 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
                 {categories.map((c) => (
                   <Link
                     key={c.slug}
                     // Indexable category landing page, not a filtered ?category= URL.
                     href={`/category/${c.slug}`}
-                    className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
+                    className={menuItemClass(
+                      path === `/category/${c.slug}`,
+                      "px-2.5 py-1.5 leading-snug"
+                    )}
                   >
                     {c.name}
                   </Link>
@@ -332,14 +381,15 @@ export function Navbar() {
             className="group relative py-4"
             onMouseLeave={() => setHoveredCollection(null)}
           >
-            <Link href="/curated-packs" className="text-sm font-medium text-ink-2 hover:text-ink">Curated Packs ▾</Link>
+            <Link href="/curated-packs" className={topLinkClass(inPacks)}>Curated Packs ▾</Link>
+            {activeBar(inPacks)}
             {collections.length > 0 && (
               <div className="invisible absolute left-0 top-full flex rounded-md-s border border-bdr bg-white p-2 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
                 {/* Column 1 — collections */}
                 <div className="flex w-[240px] flex-col gap-1 p-2">
                   <Link
                     href="/curated-packs"
-                    className="rounded-md px-3 py-2 text-[13px] font-semibold text-ink transition hover:bg-elevated"
+                    className={menuItemClass(path === "/curated-packs", "font-semibold")}
                     onMouseEnter={() => setHoveredCollection(null)}
                   >
                     All Packs
@@ -352,8 +402,12 @@ export function Navbar() {
                         href={`/curated-packs/${c.slug}`}
                         onMouseEnter={() => setHoveredCollection(c.slug)}
                         className={cn(
-                          "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-[13px] font-medium transition hover:bg-elevated hover:text-ink",
-                          hoveredCollection === c.slug ? "bg-elevated text-ink" : "text-ink-2"
+                          "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-[13px] transition-colors",
+                          // Hovering a row previews its rungs, so it reads as
+                          // selected for as long as the cascade is open.
+                          hoveredCollection === c.slug || path.startsWith(`/curated-packs/${c.slug}`)
+                            ? "bg-em-50 font-semibold text-em"
+                            : "font-medium text-ink-2 hover:bg-em-50 hover:text-em"
                         )}
                       >
                         <span className="truncate">{c.name}</span>
@@ -366,36 +420,57 @@ export function Navbar() {
                 {/* Column 2 — the hovered entry's rungs (price bands or
                     occasions). The cascade stops here; packs live on the
                     listing page each rung opens. */}
-                {activeCollection && activeCollection.children.length > 0 && (
-                  <div className="flex w-[240px] flex-col gap-1 border-l border-bdr p-2">
-                    <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                      {activeCollection.name.replace(/^By /, "")}
-                    </p>
-                    {activeCollection.children.map((sub) => (
-                      <Link
-                        key={sub.slug}
-                        href={`/curated-packs/${activeCollection.slug}/${sub.slug}`}
-                        className="truncate rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
-                      >
-                        {sub.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
+                {activeCollection && activeCollection.children.length > 0 && (() => {
+                  // A long rung list (occasions) overruns the viewport in one
+                  // column, so split it evenly across two — festivals first.
+                  const rungs = orderOccasionRungs(activeCollection.children);
+                  const twoCol = rungs.length > 10;
+                  const half = Math.ceil(rungs.length / 2);
+                  const columns = twoCol ? [rungs.slice(0, half), rungs.slice(half)] : [rungs];
+                  return (
+                    <div className="border-l border-bdr p-2">
+                      <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                        {activeCollection.name.replace(/^By /, "")}
+                      </p>
+                      <div className="flex gap-1">
+                        {columns.map((col, ci) => (
+                          <div key={ci} className="flex w-[220px] flex-col gap-1">
+                            {col.map((sub) => (
+                              <Link
+                                key={sub.slug}
+                                href={`/curated-packs/${activeCollection.slug}/${sub.slug}`}
+                                className={menuItemClass(
+                                  path === `/curated-packs/${activeCollection.slug}/${sub.slug}`,
+                                  "truncate"
+                                )}
+                              >
+                                {sub.name}
+                              </Link>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </li>
 
           {/* Occasions dropdown — seasonal & gifting occasions */}
           <li className="group relative py-4">
-            <button className="text-sm font-medium text-ink-2 hover:text-ink">Occasions ▾</button>
+            <button className={topLinkClass(inOccasions)}>Occasions ▾</button>
+            {activeBar(inOccasions)}
             {occasions.length > 0 && (
-              <div className="invisible absolute left-0 top-full grid min-w-[640px] grid-cols-4 gap-1 rounded-md-s border border-bdr bg-white p-4 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
-                {occasions.map((o) => (
+              <div className="invisible absolute left-0 top-full grid max-h-[calc(100vh-8rem)] w-[min(44rem,calc(100vw-2rem))] grid-cols-3 gap-x-1 gap-y-0 overflow-y-auto overscroll-contain rounded-md-s border border-bdr bg-white p-3 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100 lg:grid-cols-4">
+                {orderOccasionRungs(occasions).map((o) => (
                   <Link
                     key={o.slug}
                     href={`/occasion/${o.slug}`}
-                    className="rounded-md px-3 py-2 text-[13px] font-medium text-ink-2 transition hover:bg-elevated hover:text-ink"
+                    className={menuItemClass(
+                      path === `/occasion/${o.slug}`,
+                      "px-2.5 py-1.5 leading-snug"
+                    )}
                   >
                     {o.name}
                   </Link>
@@ -404,9 +479,15 @@ export function Navbar() {
             )}
           </li>
 
-          <li><Link href="/box" className="text-sm font-medium text-ink-2 hover:text-ink">Build Your Pack</Link></li>
+          <li className="relative py-4">
+            <Link href="/box" className={topLinkClass(path.startsWith("/box"))}>Build Your Pack</Link>
+            {activeBar(path.startsWith("/box"))}
+          </li>
           {/* <li><Link href="/blog" className="text-sm font-medium text-ink-2 hover:text-ink">Blog</Link></li> */}
-          <li><Link href="/contact" className="text-sm font-medium text-ink-2 hover:text-ink">Contact</Link></li>
+          <li className="relative py-4">
+            <Link href="/contact" className={topLinkClass(path.startsWith("/contact"))}>Contact</Link>
+            {activeBar(path.startsWith("/contact"))}
+          </li>
         </ul>
 
         <div className="flex items-center gap-3">

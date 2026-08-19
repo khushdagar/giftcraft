@@ -31,7 +31,7 @@ export async function GET() {
         where: { isActive: true, isCollection: false },
         select: { name: true },
         orderBy: { sortOrder: 'asc' },
-        take: 2,
+        take: 3,
       }),
     ]);
 
@@ -42,6 +42,10 @@ export async function GET() {
 
     const occA = occasionRows[0]?.name || 'Onboarding';
     const occB = occasionRows[1]?.name || 'Diwali';
+    const occC = occasionRows[2]?.name || 'Festive';
+    // Deduped: the catalogue's first three occasions can collide with the
+    // literal fallbacks, and a cell reading 'Festive, Festive' teaches nothing.
+    const multiOccasion = Array.from(new Set([occB, occC])).join(', ');
 
     const rows: Record<string, string>[] = [
       {
@@ -84,7 +88,7 @@ export async function GET() {
         products: pick(3, 3).join(', '),
         category: 'Gift Packs',
         // Several occasions, comma-separated — the pack appears under each.
-        occasions: `${occB}, Festive`,
+        occasions: multiOccasion,
         tags: 'festive, diwali',
         recipientTags: 'Clients, All staff',
         descriptionShort: 'A three-piece festive hamper ready for dispatch.',

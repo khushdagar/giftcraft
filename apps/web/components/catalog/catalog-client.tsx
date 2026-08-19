@@ -13,6 +13,7 @@ import { toast } from '@/lib/stores/toast-store';
 import { resolveSwatchHex } from '@/lib/color-name';
 import { CollapsibleRichText } from '@/components/catalog/collapsible-rich-text';
 import { printingTechniqueLabel } from '@/lib/printing';
+import { usePagedList } from '@/hooks/use-paged-list';
 
 interface ProductImage {
   id: string;
@@ -556,6 +557,28 @@ export function CatalogClient({
     return result;
   }, [productsExcept, sort]);
 
+  // Only a window of the matches is mounted; the rest stream in on scroll,
+  // so a 200-product category page doesn't pay for every card up front.
+  // The key is every input that changes what the grid shows — the window snaps
+  // back to page one on any of them, and stays put otherwise.
+  const { visible, shown, hasMore, loadMore } = usePagedList(
+    filtered,
+    [
+      search,
+      sort,
+      [...selectedCats].join(),
+      [...selectedBrands].join(),
+      [...selectedOccasions].join(),
+      [...selectedRecipients].join(),
+      [...scopeExtras].join(),
+      ecoOnly,
+      brandingOnly,
+      priceMin,
+      priceMax,
+      products.length,
+    ].join('|')
+  );
+
   // ── Facet options ─────────────────────────────────────────────────────────
   // Each option carries a live count and only survives if that count is > 0 —
   // a filter that can't narrow anything is noise. An option the user has already
@@ -854,7 +877,7 @@ export function CatalogClient({
           </div>
         )}
 
-        <p className="text-xs mb-4" style={{ color: '#8F8A82' }}>Showing {filtered.length} product{filtered.length !== 1 ? 's' : ''}</p>
+        <p className="text-xs mb-4" style={{ color: '#8F8A82' }}>Showing {shown} of {filtered.length} product{filtered.length !== 1 ? 's' : ''}</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
@@ -1074,8 +1097,9 @@ export function CatalogClient({
                 </div>
               </div>
             ) : (
+              <>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {filtered.map(p => {
+                {visible.map(p => {
                   const tierPrice = p.priceTiers?.[0]?.sellPrice || 0;
 
                   const handleAddToPack = (e: React.MouseEvent) => {
@@ -1227,6 +1251,21 @@ export function CatalogClient({
                   );
                 })}
               </div>
+
+              {/* Paging is button-only by design — an auto-loading grid
+                  makes the footer unreachable. */}
+              {hasMore && (
+                <div className="flex justify-center pt-8">
+                  <button
+                    type="button"
+                    onClick={loadMore}
+                    className="rounded-full border-2 border-em px-6 py-2.5 text-sm font-semibold text-em transition hover:bg-em-50"
+                  >
+                    Load more products
+                  </button>
+                </div>
+              )}
+              </>
             )}
           </div>
         </div>
