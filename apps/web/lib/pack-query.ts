@@ -63,37 +63,9 @@ export interface PackPage {
   facets: PackFacets | null;
 }
 
-// ── Shared in-process copy of the derived pack list ─────────────────────────
-//
-// Deriving the list means reading every pack with its members and folding their
-// categories, brands, occasions and prices together — far too expensive to redo
-// per request. React's cache() only dedupes within a single render, so this is a
-// plain module-level cache with a TTL: ONE copy in memory, shared by every
-// request and every prerendered page, instead of a copy embedded in each page.
-const CACHE_TTL_MS = 5 * 60_000;
-let packCache: { at: number; packs: PackListItem[] } | null = null;
-let inFlight: Promise<PackListItem[]> | null = null;
-
-async function allPacks(): Promise<PackListItem[]> {
-  if (packCache && Date.now() - packCache.at < CACHE_TTL_MS) return packCache.packs;
-  // A cold cache under concurrent requests must not start N identical derives.
-  if (!inFlight) {
-    inFlight = getPacks()
-      .then((packs) => {
-        packCache = { at: Date.now(), packs };
-        return packs;
-      })
-      .finally(() => {
-        inFlight = null;
-      });
-  }
-  return inFlight;
-}
-
-/** Drop the cached list — call after an admin edit changes packs. */
-export function invalidatePackCache() {
-  packCache = null;
-}
+// The pack list is cached inside getPacks() itself (lib/pack-data.ts) so that
+// every caller shares one copy — not just this module. Nothing extra to do here.
+const allPacks = getPacks;
 
 // ── Scope ───────────────────────────────────────────────────────────────────
 
