@@ -325,7 +325,7 @@ export function CatalogClient({
       try {
         setLoading(true);
         const [productsRes, categoriesRes] = await Promise.all([
-          fetch('/api/products?limit=1000'),
+          fetch('/api/products?limit=1000&view=card'),
           fetch('/api/catalog/filters'),
         ]);
 
@@ -376,7 +376,7 @@ export function CatalogClient({
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/products?limit=1000');
+        const res = await fetch('/api/products?limit=1000&view=card');
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled) return;

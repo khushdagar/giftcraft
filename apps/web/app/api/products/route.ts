@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { serializeProduct } from '@/lib/serialize';
 import { getHiddenCategoryIds } from '@/lib/catalog-visibility';
+import { toCatalogCard } from '@/lib/catalog-data';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,6 +21,8 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, Number(searchParams.get('page') || '1'));
     const limit = Math.min(1000, Number(searchParams.get('limit') || '24'));
     const sort = searchParams.get('sort') || 'popular';
+    // 'card' returns the grid projection instead of the full product record.
+    const view = searchParams.get('view');
 
     // Packaging/add-on products are managed in their own tables and must never
     // surface in the customer catalog — exclude any product in those categories.
@@ -170,8 +173,13 @@ export async function GET(request: NextRequest) {
       return s;
     });
 
+    // `view=card` trims each product to what a grid card and the sidebar
+    // filters read. Opt-in, so existing callers (admin pickers, the builder,
+    // the proposal tool) keep getting the full record.
+    const payload = view === 'card' ? serialized.map(toCatalogCard) : serialized;
+
     return NextResponse.json({
-      products: serialized,
+      products: payload,
       total,
       page,
       limit,

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search, Package, SlidersHorizontal } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
-import { usePagedList } from '@/hooks/use-paged-list';
+import { usePackListing } from '@/hooks/use-pack-listing';
+import type { PackFilters, PackPage, PackScope } from '@/lib/pack-query';
 import {
   CollectionTileGrid,
   type CollectionTile,
@@ -20,8 +21,6 @@ interface PackCard {
   id: string;
   name: string;
   slug: string;
-  description: string | null;
-  descriptionShort: string | null;
   image: string | null;
   gradient: string | null;
   productCount: number;
@@ -43,14 +42,6 @@ interface CollectionCard {
   gradient: string | null;
   packs: PackCard[];
 }
-
-type FlatPack = PackCard & {
-  // Empty strings on the budget/occasion pages, where packs are loaded flat
-  // rather than through a collection.
-  collectionId: string;
-  collectionName: string;
-  collectionSlug: string;
-};
 
 // Stable empty default for the optional `collections` prop. An inline `= []`
 // mints a new array every render, which invalidates every memo derived from it.
@@ -125,7 +116,8 @@ function PacksUrlParams({ onCollection }: { onCollection: (slug: string) => void
 // on level 2 with that collection pre-selected and its own heading.
 export function PacksBrowser({
   collections = NO_COLLECTIONS,
-  packs,
+  source,
+  initialPage,
   scope,
   collection,
   parent,
@@ -133,8 +125,14 @@ export function PacksBrowser({
 }: {
   /** Legacy collection grouping. Omitted by the budget/occasion pages. */
   collections?: CollectionCard[];
-  /** Flat pack list — how the budget and occasion pages supply their packs. */
-  packs?: PackCard[];
+  /** Which slice of the catalogue this page lists — sent with every request. */
+  source: PackScope;
+  /**
+   * Page 1, rendered on the server. The grid starts from this without a
+   * request; later pages and every filter change are fetched from
+   * /api/packs/list. The full catalogue is never sent to the browser.
+   */
+  initialPage: PackPage;
   /** Heading, breadcrumb and back link for a budget band or an occasion. */
   scope?: {
     title: string;
@@ -165,48 +163,37 @@ export function PacksBrowser({
   const [priceMin, setPriceMin] = useState<number | null>(null);
   const [priceMax, setPriceMax] = useState<number | null>(null);
 
-  const allPacks: FlatPack[] = useMemo(
-    () =>
-      packs
-        ? packs.map((p) => ({ ...p, collectionId: '', collectionName: '', collectionSlug: '' }))
-        : collections.flatMap((c) =>
-        c.packs.map((p) => ({
-          ...p,
-          collectionId: c.id,
-          collectionName: c.name,
-          collectionSlug: c.slug,
-        }))
-      ),
-    [packs, collections]
+  // Everything that decides which packs match, in the shape the server takes.
+  const filters: PackFilters = useMemo(
+    () => ({
+      categories: fCategories,
+      brands: fBrands,
+      occasions: fOccasions,
+      recipients: fRecipients,
+      priceMin,
+      priceMax,
+      search,
+      sort,
+    }),
+    [fCategories, fBrands, fOccasions, fRecipients, priceMin, priceMax, search, sort]
   );
 
-  // ── Filter option lists (derived from the products inside every pack) ──────
-  const catOptions = useMemo(() => {
-    const map = new Map<string, NamedRef>();
-    allPacks.forEach((p) => p.categories.forEach((c) => map.set(c.id, c)));
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [allPacks]);
+  // Filtering, faceting, sorting and paging all happen on the server now — see
+  // lib/pack-query.ts. Only the cards actually on screen cross the wire.
+  const listing = usePackListing({ scope: source, filters, initialPage });
 
-  const brandOptions = useMemo(
-    () => Array.from(new Set(allPacks.flatMap((p) => p.brands))).sort(),
-    [allPacks]
-  );
+  const visible = listing.packs;
+  const shown = visible.length;
+  const total = listing.total;
+  const { hasMore, loadMore } = listing;
 
-  const occasionOptions = useMemo(() => {
-    const map = new Map<string, NamedRef>();
-    allPacks.forEach((p) => p.occasions.forEach((o) => map.set(o.id, o)));
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [allPacks]);
-
-  const recipientOptions = useMemo(
-    () => Array.from(new Set(allPacks.flatMap((p) => p.recipients))).sort(),
-    [allPacks]
-  );
-
-  const priceBounds = useMemo(() => {
-    const prices = allPacks.map((p) => p.fromPrice).filter((n) => n > 0);
-    return { min: 0, max: prices.length ? Math.max(...prices) : 10000 };
-  }, [allPacks]);
+  // Facet lists arrive with page 1, already counted against the OTHER active
+  // filters and already stripped of options that can no longer narrow anything.
+  const catFacets = listing.facets.categories;
+  const brandFacets = listing.facets.brands;
+  const occasionFacets = listing.facets.occasions;
+  const recipientFacets = listing.facets.recipients;
+  const priceBounds = listing.facets.priceBounds;
 
   const openCollection = (id: string) => {
     setFCollections([id]);
@@ -237,100 +224,6 @@ export function PacksBrowser({
     },
     [collections]
   );
-
-  const filtered = useMemo(() => {
-    let list = allPacks;
-    if (fCollections.length) list = list.filter((p) => fCollections.includes(p.collectionId));
-    if (fCategories.length)
-      list = list.filter((p) => p.categories.some((c) => fCategories.includes(c.id)));
-    if (fBrands.length) list = list.filter((p) => p.brands.some((b) => fBrands.includes(b)));
-    if (fOccasions.length)
-      list = list.filter((p) => p.occasions.some((o) => fOccasions.includes(o.id)));
-    if (fRecipients.length)
-      list = list.filter((p) => p.recipients.some((r) => fRecipients.includes(r)));
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((p) => p.name.toLowerCase().includes(q));
-    }
-    if (priceMin != null) list = list.filter((p) => p.fromPrice >= priceMin);
-    if (priceMax != null) list = list.filter((p) => p.fromPrice <= priceMax);
-
-    if (sort === 'price-asc') list = [...list].sort((a, b) => a.fromPrice - b.fromPrice);
-    if (sort === 'price-desc') list = [...list].sort((a, b) => b.fromPrice - a.fromPrice);
-    return list;
-  }, [allPacks, fCollections, fCategories, fBrands, fOccasions, fRecipients, search, priceMin, priceMax, sort]);
-
-  // Packs matching every active filter EXCEPT the given facet. Measuring an
-  // option against the OTHER filters (not the fully-filtered list) is what lets
-  // you tick more than one option in the same facet — otherwise selecting one
-  // would drop every sibling to a count of 0 and hide it.
-  // Only a window of the matches is mounted; the rest stream in on scroll.
-  // The key is every input that changes what the grid shows — the window snaps
-  // back to page one on any of them, and stays put otherwise.
-  const { visible, shown, hasMore, loadMore } = usePagedList(
-    filtered,
-    [
-      fCollections.join(),
-      fCategories.join(),
-      fBrands.join(),
-      fOccasions.join(),
-      fRecipients.join(),
-      search,
-      priceMin,
-      priceMax,
-      sort,
-    ].join('|')
-  );
-
-  const packsExcept = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return (skip: 'categories' | 'brands' | 'occasions' | 'recipients') => {
-      let list = allPacks;
-      if (fCollections.length) list = list.filter((p) => fCollections.includes(p.collectionId));
-      if (skip !== 'categories' && fCategories.length)
-        list = list.filter((p) => p.categories.some((c) => fCategories.includes(c.id)));
-      if (skip !== 'brands' && fBrands.length)
-        list = list.filter((p) => p.brands.some((b) => fBrands.includes(b)));
-      if (skip !== 'occasions' && fOccasions.length)
-        list = list.filter((p) => p.occasions.some((o) => fOccasions.includes(o.id)));
-      if (skip !== 'recipients' && fRecipients.length)
-        list = list.filter((p) => p.recipients.some((r) => fRecipients.includes(r)));
-      if (q) list = list.filter((p) => p.name.toLowerCase().includes(q));
-      if (priceMin != null) list = list.filter((p) => p.fromPrice >= priceMin);
-      if (priceMax != null) list = list.filter((p) => p.fromPrice <= priceMax);
-      return list;
-    };
-  }, [allPacks, fCollections, fCategories, fBrands, fOccasions, fRecipients, search, priceMin, priceMax]);
-
-  // Only options that can still narrow the results survive (count > 0). A ticked
-  // option always stays visible so it can be unticked.
-  const catFacets = useMemo(() => {
-    const base = packsExcept('categories');
-    return catOptions
-      .map((c) => ({ ...c, count: base.filter((p) => p.categories.some((x) => x.id === c.id)).length }))
-      .filter((c) => c.count > 0 || fCategories.includes(c.id));
-  }, [catOptions, packsExcept, fCategories]);
-
-  const brandFacets = useMemo(() => {
-    const base = packsExcept('brands');
-    return brandOptions
-      .map((brand) => ({ brand, count: base.filter((p) => p.brands.includes(brand)).length }))
-      .filter((b) => b.count > 0 || fBrands.includes(b.brand));
-  }, [brandOptions, packsExcept, fBrands]);
-
-  const occasionFacets = useMemo(() => {
-    const base = packsExcept('occasions');
-    return occasionOptions
-      .map((o) => ({ ...o, count: base.filter((p) => p.occasions.some((x) => x.id === o.id)).length }))
-      .filter((o) => o.count > 0 || fOccasions.includes(o.id));
-  }, [occasionOptions, packsExcept, fOccasions]);
-
-  const recipientFacets = useMemo(() => {
-    const base = packsExcept('recipients');
-    return recipientOptions
-      .map((tag) => ({ tag, count: base.filter((p) => p.recipients.includes(tag)).length }))
-      .filter((r) => r.count > 0 || fRecipients.includes(r.tag));
-  }, [recipientOptions, packsExcept, fRecipients]);
 
   const hasActiveFilters =
     fCategories.length > 0 ||
@@ -430,7 +323,9 @@ export function PacksBrowser({
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 md:px-10 pb-20">
-        {allPacks.length === 0 ? (
+        {/* Nothing in this scope at all, as opposed to nothing matching the
+            current filters — initialPage is the unfiltered first page. */}
+        {initialPage.total === 0 ? (
           <div className="text-center py-20 rounded-md border-2 border-dashed border-bdr bg-white">
             <p className="text-lg text-ink">No curated packs yet</p>
             <p className="mt-1 text-sm text-ink-2">
@@ -524,7 +419,7 @@ export function PacksBrowser({
               </div>
               <div className="mt-3 flex items-center gap-3">
                 <p className="text-sm text-ink-2">
-                  Showing {shown} of {filtered.length} pack{filtered.length === 1 ? '' : 's'}
+                  Showing {shown} of {total} pack{total === 1 ? '' : 's'}
                 </p>
                 {hasActiveFilters && (
                   <button
@@ -750,7 +645,7 @@ export function PacksBrowser({
                         onClick={() => setSidebarOpen(false)}
                         className="flex-1 rounded-full bg-em px-4 py-2.5 text-sm font-semibold text-white"
                       >
-                        Show {filtered.length} pack{filtered.length === 1 ? '' : 's'}
+                        Show {total} pack{total === 1 ? '' : 's'}
                       </button>
                       {hasActiveFilters && (
                         <button
@@ -770,7 +665,7 @@ export function PacksBrowser({
                   catalog product grid. One full-width card per screen made
                   browsing a long list of packs feel much longer than it is. */}
               <div className="flex-1 w-full">
-                {filtered.length === 0 ? (
+                {total === 0 && !listing.isLoading ? (
                   <div className="text-center py-16 rounded-md border-2 border-dashed border-bdr bg-white">
                     <p className="text-ink">No packs match your filters</p>
                   </div>
@@ -804,7 +699,9 @@ export function PacksBrowser({
                           </div>
 
                           <div className="flex flex-1 flex-col px-4 pt-4">
-                            <p className="text-xs text-ink-3 mb-0.5">{pack.collectionName}</p>
+                            {/* The collection caption that used to sit here has
+                                been empty on every card since packs stopped
+                                being browsed through collections. */}
                             <h3 className="text-sm font-semibold text-ink leading-snug transition group-hover:text-em">
                               {pack.name}
                             </h3>
@@ -846,9 +743,13 @@ export function PacksBrowser({
                       <button
                         type="button"
                         onClick={loadMore}
-                        className="rounded-full border-2 border-em px-6 py-2.5 text-sm font-semibold text-em transition hover:bg-em-50"
+                        // The next page is a network round-trip now, not a slice
+                        // of an array already in memory, so the button has to say
+                        // it is working and refuse a second click meanwhile.
+                        disabled={listing.isLoadingMore}
+                        className="rounded-full border-2 border-em px-6 py-2.5 text-sm font-semibold text-em transition hover:bg-em-50 disabled:opacity-60"
                       >
-                        Load more packs
+                        {listing.isLoadingMore ? 'Loading…' : 'Load more packs'}
                       </button>
                     </div>
                   )}
