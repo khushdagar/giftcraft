@@ -6,7 +6,6 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { GoogleTagManager, GoogleTagManagerNoScript } from "@/components/analytics/gtm";
 import { organizationSchema, webSiteSchema } from "@/lib/schema";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, SITE_NOINDEX } from "@/lib/site";
-import { auth } from "@/auth";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -81,8 +80,14 @@ export const viewport: Viewport = {
   themeColor: "#800020",
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
+// NOT async, and deliberately does NOT call auth(). Reading the session here
+// reads cookies, which opts EVERY route in the app out of static/ISR rendering
+// - the `export const revalidate = 3600` on the storefront pages was dead while
+// this layout awaited auth(), so every page view was rendered on demand with a
+// database round-trip in front of it. SessionProvider resolves the session on
+// the client instead (/api/auth/session); Navbar and CartSessionGuard both
+// already handle the "loading" state.
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${playfair.variable}`}>
       <head>
@@ -95,7 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <JsonLd data={organizationSchema()} />
         <JsonLd data={webSiteSchema()} />
         <Providers>
-          <SessionProvider session={session}>{children}</SessionProvider>
+          <SessionProvider>{children}</SessionProvider>
         </Providers>
       </body>
     </html>

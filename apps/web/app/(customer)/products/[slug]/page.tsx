@@ -25,11 +25,10 @@ import { productSchema, breadcrumbSchema } from "@/lib/schema";
 
 // ISR: rendered on demand, then served from cache for an hour.
 //
-// Deliberately NO generateStaticParams: the root layout calls `await auth()`,
-// so every route is dynamic and build-time prerendering emits no static HTML —
-// it only opened ~150 concurrent Postgres connections during the build, which
-// exhausted the pool and failed it. On-demand rendering keeps the same ISR
-// caching without the build-time storm.
+// Deliberately NO generateStaticParams: prerendering every product at build
+// time opened ~150 concurrent Postgres connections and exhausted the pool,
+// failing the build. On-demand rendering keeps the same ISR caching without
+// the build-time storm.
 export const revalidate = 3600;
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {

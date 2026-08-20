@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search, Package, SlidersHorizontal } from 'lucide-react';
@@ -98,6 +98,27 @@ function checkoutHref(pack: PackCard) {
 const toggle = (arr: string[], val: string) =>
   arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 
+/**
+ * Reads the ?collection= deep link and hands the slug up.
+ *
+ * Separate component on purpose — same reason as CatalogUrlParams in
+ * catalog-client.tsx: useSearchParams() opts its whole client subtree out of
+ * static HTML. Called inside PacksBrowser it stripped the pack grid from the
+ * prerendered markup of every curated-pack page and failed `next build` with
+ * "useSearchParams() should be wrapped in a suspense boundary". Isolated here
+ * behind Suspense, only this empty node is client-only.
+ */
+function PacksUrlParams({ onCollection }: { onCollection: (slug: string) => void }) {
+  const searchParams = useSearchParams();
+  const slug = searchParams.get('collection');
+
+  useEffect(() => {
+    if (slug) onCollection(slug);
+  }, [slug, onCollection]);
+
+  return null;
+}
+
 // Two levels: the collection tiles first, then that collection's packs (with
 // the full filter sidebar). `?collection=<slug>` jumps straight to level 2.
 // A collection page (/curated-packs/<slug>) passes `collection`, which starts
@@ -131,7 +152,6 @@ export function PacksBrowser({
       elsewhere, where every loaded collection is a valid tile. */
   tiles?: CollectionTile[];
 }) {
-  const searchParams = useSearchParams();
   const [browsing, setBrowsing] = useState(!!collection || !!scope);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -207,15 +227,16 @@ export function PacksBrowser({
   };
 
   // Deep-link support: /curated-packs?collection=<slug> opens that collection
-  // (used by the homepage "Curated collections" cards).
-  useEffect(() => {
-    const slug = searchParams.get('collection');
-    if (!slug) return;
-    const match = collections.find((c) => c.slug === slug);
-    if (match) openCollection(match.id);
-    // Only run on mount / when the query param changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, collections]);
+  // (used by the homepage "Curated collections" cards). Fed by PacksUrlParams.
+  const openCollectionBySlug = useCallback(
+    (slug: string) => {
+      const match = collections.find((c) => c.slug === slug);
+      if (match) openCollection(match.id);
+      // openCollection only sets state — stable enough to leave out.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [collections]
+  );
 
   const filtered = useMemo(() => {
     let list = allPacks;
@@ -332,6 +353,9 @@ export function PacksBrowser({
 
   return (
     <div className="min-h-screen" style={{ background: '#F5F1EB' }}>
+      <Suspense fallback={null}>
+        <PacksUrlParams onCollection={openCollectionBySlug} />
+      </Suspense>
       {/* Header */}
       <div className="py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-4 md:px-10">

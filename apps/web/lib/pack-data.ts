@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 import { bandContains, type BudgetBand } from '@/lib/budget-bands';
 import { orderPackOccasions } from '@/lib/pack-occasion-order';
@@ -38,7 +39,12 @@ export interface PackListItem {
   occasionSlugs: string[];
 }
 
-export async function getPacks(): Promise<PackListItem[]> {
+// Every active pack with its members and their relations — the single most
+// expensive query on the storefront, and the homepage alone asks for it twice
+// (TrendingPacks + getHomePackOccasions). cache() collapses those to one.
+export const getPacks = cache(loadPacks);
+
+async function loadPacks(): Promise<PackListItem[]> {
   const packs = await prisma.product.findMany({
     where: { isPack: true, status: 'active' },
     // Popularity-ranked under the admin's manual `sortOrder` — same rule as the
