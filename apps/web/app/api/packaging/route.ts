@@ -2,6 +2,11 @@ import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 import { getPackagingCategoryIds } from '@/lib/catalog-visibility';
 
+// Route handlers with no request-dependent input are statically rendered at
+// build time in Next 14 — that froze admin price/dimension edits (and newly
+// added boxes) until the next deploy. Always read live from the DB.
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const categoryIds = await getPackagingCategoryIds();
