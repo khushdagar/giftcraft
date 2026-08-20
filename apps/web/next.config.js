@@ -23,6 +23,14 @@ const nextConfig = {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [320, 640, 1024, 1600, 2000],
   },
+  // Hard ceiling on the in-memory ISR page cache (default is 50 MB). Rendered
+  // pages are held here between revalidations; on a 512 MB instance a cache
+  // that size, holding pages that were megabytes each, left no headroom and the
+  // app thrashed at ~98% CPU. Pages are a few hundred KB now, so 32 MB still
+  // holds the hot set — and the ceiling means page size can never again take
+  // the instance down. Raise it if the instance is scaled up.
+  cacheMaxMemorySize: 32 * 1024 * 1024,
+
   experimental: {
     typedRoutes: false,
     // Static generation runs one worker per core by default, and every worker

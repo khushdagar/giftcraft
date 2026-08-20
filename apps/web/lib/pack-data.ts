@@ -23,9 +23,8 @@ export interface PackListItem {
   id: string;
   name: string;
   slug: string;
-  description: string | null;
-  descriptionShort: string | null;
   image: string | null;
+
   gradient: null;
   productCount: number;
   fromPrice: number;
@@ -50,19 +49,29 @@ async function loadPacks(): Promise<PackListItem[]> {
     // Popularity-ranked under the admin's manual `sortOrder` — same rule as the
     // product catalog, so packs and products rank consistently.
     orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }, { createdAt: 'desc' }],
-    include: {
-      images: { where: { isPrimary: true }, take: 1 },
+    // Explicit `select`, NOT `include`. `include` returns every scalar column of
+    // the pack, which dragged descriptionLong + descriptionShort out of Postgres
+    // for all 2088 active packs (~3.3 MB) and serialised them into the HTML of
+    // every curated-pack page — where neither is ever rendered. That alone made
+    // single pages 3.7 MB, and caching those pages exhausted the app instance.
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      images: { where: { isPrimary: true }, take: 1, select: { url: true } },
       occasions: {
         select: { occasion: { select: { id: true, name: true, slug: true, isCollection: true } } },
       },
       packItems: {
         orderBy: { sortOrder: 'asc' },
-        include: {
+        select: {
+          productId: true,
+          quantity: true,
           product: {
             select: {
               brand: true,
               recipientTags: true,
-              images: { orderBy: { sortOrder: 'asc' }, take: 1 },
+              images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } },
               // Highest-quantity tier — the cheapest per-unit rate, which is
               // what the "From ₹x /pack" figure on the listing quotes.
               priceTiers: { orderBy: { minQty: 'desc' }, take: 1, select: { sellPrice: true } },
@@ -98,8 +107,6 @@ async function loadPacks(): Promise<PackListItem[]> {
       id: pack.id,
       name: pack.name,
       slug: pack.slug,
-      description: pack.descriptionLong,
-      descriptionShort: pack.descriptionShort,
       image: pack.images[0]?.url ?? null,
       gradient: null as null,
       productCount: members.length,
