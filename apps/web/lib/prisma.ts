@@ -1,7 +1,9 @@
 import { PrismaClient } from "@prisma/client";
+import { auditExtension } from "./audit";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
+  prismaBase?: PrismaClient;
 };
 
 // Cap the connection pool so multiple app instances (web + api, and any scaled
@@ -29,12 +31,23 @@ function pooledDatabaseUrl(): string | undefined {
 
 const datasourceUrl = pooledDatabaseUrl();
 
-export const prisma =
-  globalForPrisma.prisma ??
+// The un-extended client. Used by the audit logger itself (so writing a log
+// entry can't re-enter the audit extension) and as the base for `prisma`.
+const base =
+  globalForPrisma.prismaBase ??
   new PrismaClient({
     ...(datasourceUrl ? { datasourceUrl } : {}),
     log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
   });
+globalForPrisma.prismaBase = base;
+
+// Everything in the app writes through this one, which records admin changes to
+// AdminActivityLog. Cast back to PrismaClient so existing call sites and the
+// NextAuth Prisma adapter keep their types — the extended client is a runtime
+// superset.
+export const prisma =
+  globalForPrisma.prisma ??
+  (base.$extends(auditExtension(base)) as unknown as PrismaClient);
 
 // Cache on globalThis in every environment. In dev this stops HMR from leaking a
 // client per reload; during `next build` (NODE_ENV=production) it stops each

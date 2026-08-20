@@ -2,11 +2,11 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { useBuilderStore } from '@/store/builder';
 import { formatRupees } from '@/lib/utils';
-import { Upload, X, FileIcon, Loader2 } from 'lucide-react';
+import { Upload, X, FileIcon, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import {
   packagingSizeForCount,
@@ -369,8 +369,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
         {packagingOptions.length === 0 ? (
           <p className="text-sm text-ink-3">No packaging designs available yet.</p>
         ) : (
-          <div className="overflow-x-auto no-scrollbar -mx-1 px-1">
-            <div className="flex w-max gap-3">
+          <ScrollRow>
               {/* "No Box" — explicit zero-cost choice for buyers who don't
                   want a gift box. Counts as a selection so the step validates. */}
               <motion.button
@@ -383,7 +382,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                     imageUrl: null,
                   })
                 }
-                className={`group flex-shrink-0 w-40 rounded-md border-2 overflow-hidden transition-all hover:shadow-lg ${
+                className={`group flex flex-col flex-shrink-0 w-40 rounded-md border-2 overflow-hidden transition-all hover:shadow-lg ${
                   noBoxSelected
                     ? 'border-em bg-em-50 shadow-md'
                     : 'border-bdr bg-white hover:border-em-300'
@@ -391,7 +390,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                 whileHover={{ y: -4 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <div className="relative aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+                <div className="relative aspect-square w-full flex-shrink-0 bg-gray-50 flex items-center justify-center overflow-hidden">
                   <div className="text-center">
                     <div className="text-5xl mb-2">🚫</div>
                     <p className="text-xs text-gray-500 font-semibold">No Box</p>
@@ -404,13 +403,13 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                     </div>
                   )}
                 </div>
-                <div className="p-3 space-y-2">
+                <div className="p-3 space-y-2 flex-1">
                   <div>
                     <p className="font-bold text-sm text-ink">No Box</p>
                    
-                    <p className="hidden lg:block text-xs text-ink-3 mt-1 line-clamp-2">
+                    {/* <p className="hidden lg:block text-xs text-ink-3 mt-1 line-clamp-2">
                       Ship the products without a gift box
-                    </p>
+                    </p> */}
                   </div>
                   <div>
                     {/* <p className="hidden lg:block text-xs text-ink-3">Add cost</p> */}
@@ -435,7 +434,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                         imageUrl: design.imageUrl ?? null,
                       })
                     }
-                    className={`group flex-shrink-0 w-40 rounded-md border-2 overflow-hidden transition-all hover:shadow-lg ${
+                    className={`group flex flex-col flex-shrink-0 w-40 rounded-md border-2 overflow-hidden transition-all hover:shadow-lg ${
                       isSelected
                         ? 'border-em bg-em-50 shadow-md'
                         : 'border-bdr bg-white hover:border-em-300'
@@ -444,7 +443,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                     whileTap={{ scale: 0.98 }}
                   >
                     {/* Image Section */}
-                    <div className="relative aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+                    <div className="relative aspect-square w-full flex-shrink-0 bg-gray-50 flex items-center justify-center overflow-hidden">
                       {design.imageUrl ? (
                         <img
                           src={design.imageUrl}
@@ -469,7 +468,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                     </div>
 
                     {/* Content Section */}
-                    <div className="p-3 space-y-2">
+                    <div className="p-3 space-y-2 flex-1">
                       <div>
                         <p className="font-bold text-sm text-ink line-clamp-2">{design.name}</p>
                         {/* {design.description && (
@@ -486,8 +485,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                   </motion.button>
                 );
               })}
-            </div>
-          </div>
+          </ScrollRow>
         )}
       </div>
 
@@ -505,7 +503,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                 <motion.button
                   key={addon.id}
                   onClick={() => toggleAddon(addon)}
-                  className={`group flex-shrink-0 w-40 rounded-md border-2 overflow-hidden transition-all hover:shadow-lg ${
+                  className={`group flex flex-col flex-shrink-0 w-40 rounded-md border-2 overflow-hidden transition-all hover:shadow-lg ${
                     isSelected
                       ? 'border-em bg-em-50 shadow-md'
                       : 'border-bdr bg-white hover:border-em-300'
@@ -514,7 +512,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                   whileTap={{ scale: 0.98 }}
                 >
                   {/* Image Section */}
-                  <div className="relative aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+                  <div className="relative aspect-square w-full flex-shrink-0 bg-gray-50 flex items-center justify-center overflow-hidden">
                     {addon.imageUrl ? (
                       <img
                         src={addon.imageUrl}
@@ -546,7 +544,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                   </div>
 
                   {/* Content Section */}
-                  <div className="p-3 space-y-2">
+                  <div className="p-3 space-y-2 flex-1">
                     <div>
                       <p className="font-bold text-sm text-ink line-clamp-2">{addon.name}</p>
                       {/* {addon.description && (
@@ -590,6 +588,86 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
       )}
       {/* The packaging + add-ons summary now lives in the "Your Gift Pack" panel
           on the right (GiftPackSummary), so it's not repeated on the page here. */}
+    </div>
+  );
+}
+
+/**
+ * Horizontal card row with prev/next arrows. The packaging row can hold more
+ * designs than fit on screen, and on desktop that overflow was invisible —
+ * there's no swipe gesture, so buyers never saw the boxes past the fold.
+ * Drag/scroll still works; the arrows are an extra affordance and hide
+ * themselves when there is nothing to scroll.
+ */
+function ScrollRow({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(true);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const sync = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      setAtStart(el.scrollLeft <= 1);
+      setAtEnd(el.scrollLeft >= max - 1);
+    };
+    sync();
+    el.addEventListener('scroll', sync, { passive: true });
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', sync);
+      ro.disconnect();
+    };
+  }, [children]);
+
+  const nudge = (dir: 1 | -1) => {
+    const el = ref.current;
+    if (!el) return;
+    el.scrollBy({
+      left: dir * el.clientWidth * 0.8,
+      behavior: reduceMotion ? 'auto' : 'smooth',
+    });
+  };
+
+  // Both edges reached at once = everything already fits.
+  const hasOverflow = !(atStart && atEnd);
+
+  const arrow =
+    'absolute top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white border-2 border-bdr shadow-md ' +
+    'flex items-center justify-center text-ink transition-all hover:border-em hover:text-em ' +
+    'disabled:opacity-0 disabled:pointer-events-none';
+
+  return (
+    <div className="relative">
+      <div ref={ref} className="overflow-x-auto no-scrollbar -mx-1 px-1 scroll-smooth">
+        <div className="flex w-max gap-3">{children}</div>
+      </div>
+
+      {hasOverflow && (
+        <>
+          <button
+            type="button"
+            aria-label="Show previous options"
+            onClick={() => nudge(-1)}
+            disabled={atStart}
+            className={`${arrow} -left-2 md:-left-4`}
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Show more options"
+            onClick={() => nudge(1)}
+            disabled={atEnd}
+            className={`${arrow} -right-2 md:-right-4`}
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </>
+      )}
     </div>
   );
 }
