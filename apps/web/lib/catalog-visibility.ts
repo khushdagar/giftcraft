@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 
 /**
@@ -32,9 +33,16 @@ export function isHiddenCategory(cat: { name?: string | null; slug?: string | nu
   return matchesKeys(cat, HIDDEN_CATEGORY_KEYS);
 }
 
+// One category scan per request, shared by every getHiddenCategoryIds /
+// getPackagingCategoryIds / getAddonCategoryIds call in that render — there
+// are 13 call sites and the table is small enough to hold whole.
+const allCategories = cache(() =>
+  prisma.category.findMany({ select: { id: true, name: true, slug: true } })
+);
+
 /** Category IDs whose normalised name/slug is in `keys`. */
 async function getCategoryIdsForKeys(keys: Set<string>): Promise<string[]> {
-  const cats = await prisma.category.findMany({ select: { id: true, name: true, slug: true } });
+  const cats = await allCategories();
   return cats.filter((c) => matchesKeys(c, keys)).map((c) => c.id);
 }
 

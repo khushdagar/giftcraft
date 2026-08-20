@@ -13,12 +13,11 @@ import { breadcrumbSchema, collectionPageSchema } from '@/lib/schema';
 // Server-rendered + ISR: the product grid (and every product link in it) is in
 // the initial HTML, and the page is cached between revalidations.
 //
-// Deliberately NO generateStaticParams: the root layout calls `await auth()`,
-// which makes every route dynamic, so build-time prerendering emits no static
-// HTML here — it only piles concurrent Postgres connections onto the build
-// (which has hit "too many connections" and failed outright). Rendering on
-// demand keeps ISR caching and guarantees a live DB connection, so a page can
-// never be cached with an empty product grid.
+// Deliberately NO generateStaticParams: prerendering every category at build
+// time piles concurrent Postgres connections onto the build (which has hit
+// "too many connections" and failed outright). Rendering on demand keeps ISR
+// caching and guarantees a live DB connection, so a page can never be cached
+// with an empty product grid.
 export const revalidate = 3600;
 
 export async function generateMetadata({

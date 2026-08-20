@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useBuilderStore } from '@/store/builder';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
@@ -122,5 +122,16 @@ export default function CheckoutSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// useSearchParams() reads the ?orderId= Razorpay redirects back with, and needs
+// a Suspense boundary above it or the route cannot be prerendered at all —
+// without this `next build` fails on /checkout/success.
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-canvas" />}>
+      <CheckoutSuccessContent />
+    </Suspense>
   );
 }

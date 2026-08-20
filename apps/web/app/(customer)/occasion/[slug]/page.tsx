@@ -14,8 +14,7 @@ import { breadcrumbSchema, collectionPageSchema } from '@/lib/schema';
 
 // Server-rendered + ISR, for the same reasons as /category/[slug]: the product
 // grid (and every product link in it) is in the initial HTML, and no
-// generateStaticParams because the root layout's `await auth()` makes every
-// route dynamic anyway.
+// generateStaticParams so the build does not open a connection per occasion.
 export const revalidate = 3600;
 
 export async function generateMetadata({

@@ -37,7 +37,10 @@ const base =
   globalForPrisma.prismaBase ??
   new PrismaClient({
     ...(datasourceUrl ? { datasourceUrl } : {}),
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+    // Query logging is opt-in (PRISMA_LOG_QUERIES=1). It was on for all of dev,
+    // where writing a line per query to the terminal measurably slowed page
+    // loads on pages that issue dozens of them.
+    log: process.env.PRISMA_LOG_QUERIES === "1" ? ["query", "error", "warn"] : ["error", "warn"],
   });
 globalForPrisma.prismaBase = base;
 

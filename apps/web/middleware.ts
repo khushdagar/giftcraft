@@ -57,7 +57,12 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // The catch-all entry exists so the x-audit-* strip above sees every request;
-  // static assets and image optimisation are skipped.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // The catch-all entry exists so the x-audit-* strip above sees every request.
+  // Anything that is a plain file — build output, images, fonts, sitemap — is
+  // excluded: middleware runs in the Node server on App Platform, so invoking it
+  // per static asset added latency to every page for no gain (a static file
+  // never reaches Prisma, so it cannot forge an audit-log entry either).
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\.(?:png|jpe?g|gif|webp|avif|svg|ico|css|js|mjs|map|woff2?|ttf|otf|txt|xml|json|pdf|mp4|webm)$).*)",
+  ],
 };
