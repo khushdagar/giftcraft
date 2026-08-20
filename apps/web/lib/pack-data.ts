@@ -1,4 +1,3 @@
-import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 import { bandContains, type BudgetBand } from '@/lib/budget-bands';
 import { orderPackOccasions } from '@/lib/pack-occasion-order';
@@ -39,9 +38,41 @@ export interface PackListItem {
 }
 
 // Every active pack with its members and their relations — the single most
-// expensive query on the storefront, and the homepage alone asks for it twice
-// (TrendingPacks + getHomePackOccasions). cache() collapses those to one.
-export const getPacks = cache(loadPacks);
+// expensive thing the storefront does. One call takes 1.2-2.4s and allocates
+// ~88 MB; three at once peaked at 321 MB, which OOM-kills a 1 GB container.
+//
+// The cache therefore lives HERE, not at one call site: nine places ask for
+// this list (both pack hub pages, the nav and occasion API routes, the sitemap,
+// the homepage rails, admin budget bands), and any one of them running
+// uncached is enough to blow the memory budget on its own. React's cache()
+// only dedupes within a single render, so it does NOT help across requests —
+// this is a module-level cache with a TTL, shared by every request the process
+// serves.
+const CACHE_TTL_MS = 5 * 60_000;
+let cached: { at: number; packs: PackListItem[] } | null = null;
+let inFlight: Promise<PackListItem[]> | null = null;
+
+export async function getPacks(): Promise<PackListItem[]> {
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.packs;
+  // A cold cache under concurrent requests must not start N identical loads —
+  // that is exactly the pile-up that ran the container out of memory.
+  if (!inFlight) {
+    inFlight = loadPacks()
+      .then((packs) => {
+        cached = { at: Date.now(), packs };
+        return packs;
+      })
+      .finally(() => {
+        inFlight = null;
+      });
+  }
+  return inFlight;
+}
+
+/** Drop the cached list — call after an admin edit changes packs. */
+export function invalidatePacks() {
+  cached = null;
+}
 
 async function loadPacks(): Promise<PackListItem[]> {
   const packs = await prisma.product.findMany({
