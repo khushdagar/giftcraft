@@ -1726,3 +1726,35 @@ model BudgetBand {
 
   @@index([sortOrder])
 }
+
+// ═══════════════════════════════════════════════════════════
+//   ADMIN ACTIVITY LOG
+// ═══════════════════════════════════════════════════════════
+// Every write made through an /api/admin/* request by a signed-in admin is
+// recorded here automatically by the Prisma extension in lib/audit.ts — routes
+// don't have to opt in, so new admin endpoints are covered the day they ship.
+model AdminActivityLog {
+  id          String   @id @default(cuid())
+  // Who — denormalised on purpose: the log must stay readable even if the user
+  // record is later renamed or deleted.
+  actorId     String?
+  actorName   String?
+  actorEmail  String?
+  actorRole   String?
+  // What
+  action      String // create | update | delete | createMany | updateMany | deleteMany | upsert
+  entity      String // Prisma model name, e.g. "Product"
+  entityId    String?
+  entityLabel String? // human name of the record at write time (name/title/slug/email)
+  // Field-level diff: { field: { from, to } } for updates, the submitted data
+  // for creates, the removed record's summary for deletes.
+  changes     Json?
+  // Where
+  path        String?
+  method      String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorEmail, createdAt])
+  @@index([entity, entityId])
+}
