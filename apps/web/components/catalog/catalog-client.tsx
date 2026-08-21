@@ -14,6 +14,8 @@ import { resolveSwatchHex } from '@/lib/color-name';
 import { CollapsibleRichText } from '@/components/catalog/collapsible-rich-text';
 import { printingTechniqueLabel } from '@/lib/printing';
 import { usePagedList } from '@/hooks/use-paged-list';
+import { usePersistedPriceRange } from '@/hooks/use-persisted-price-range';
+import { PriceRangeInputs } from '@/components/catalog/price-range-inputs';
 
 interface ProductImage {
   id: string;
@@ -259,13 +261,21 @@ export function CatalogClient({
   const [selectedRecipients, setSelectedRecipients] = useState<Set<string>>(new Set());
   const [ecoOnly, setEcoOnly] = useState(false);
   const [brandingOnly, setBrandingOnly] = useState(false);
-  const [priceMin, setPriceMin] = useState<number | null>(() =>
-    tierOnePrices(scopedInitial).length > 0 ? 0 : null
-  );
-  const [priceMax, setPriceMax] = useState<number | null>(() => {
-    const prices = tierOnePrices(scopedInitial);
-    return prices.length > 0 ? Math.max(...prices) : null;
+  // Price band. Kept in sessionStorage so it survives a trip to a product page
+  // and back — re-picking the same range on every return was the complaint.
+  const {
+    range: priceSel,
+    setUserRange: setPriceRange,
+    applyBounds: applyPriceBounds,
+    reset: resetPriceRange,
+  } = usePersistedPriceRange('catalog', {
+    min: tierOnePrices(scopedInitial).length > 0 ? 0 : null,
+    max: tierOnePrices(scopedInitial).length > 0 ? Math.max(...tierOnePrices(scopedInitial)) : null,
   });
+  const priceMin = priceSel.min;
+  const priceMax = priceSel.max;
+  const setPriceMin = (v: number | null) => setPriceRange({ min: v, max: priceSel.max });
+  const setPriceMax = (v: number | null) => setPriceRange({ min: priceSel.min, max: v });
 
   // Filter params lifted out of the URL by <CatalogUrlParams> below. Held as
   // plain strings so the seeding effect depends on primitives, not on the
@@ -341,11 +351,12 @@ export function CatalogClient({
           setHasFullCatalog(true);
           setProducts(prods);
 
-          // Set initial price range based on actual product prices
+          // Bounds follow the products; a band the visitor already picked is
+          // kept (clamped into the new bounds) rather than reset.
           const prices = tierOnePrices(prods);
           if (prices.length > 0) {
-            setPriceMin(0);
-            setPriceMax(Math.max(...prices));
+            const max = Math.max(...prices);
+            applyPriceBounds(0, max, { min: 0, max });
           }
         }
 
@@ -403,8 +414,8 @@ export function CatalogClient({
     setProducts(prods);
     const prices = tierOnePrices(prods);
     if (prices.length > 0) {
-      setPriceMin(0);
-      setPriceMax(Math.max(...prices));
+      const max = Math.max(...prices);
+      applyPriceBounds(0, max, { min: 0, max });
     }
     // pack/category/occasion are object props with a fresh identity every
     // render — listing them here would loop. They never change for a mounted
@@ -686,8 +697,7 @@ export function CatalogClient({
     setSelectedRecipients(new Set());
     setEcoOnly(false);
     setBrandingOnly(false);
-    setPriceMin(priceRange.min || null);
-    setPriceMax(priceRange.max || null);
+    resetPriceRange({ min: priceRange.min || null, max: priceRange.max || null });
     setSort('featured');
   };
 
@@ -871,7 +881,7 @@ export function CatalogClient({
             ))}
             {ecoOnly && <button onClick={() => setEcoOnly(false)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>Eco-Friendly ✕</button>}
             {brandingOnly && <button onClick={() => setBrandingOnly(false)} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>Branding Available ✕</button>}
-            {(priceMin !== null && priceMax !== null && (priceMin > (priceRange.min || 0) || priceMax < (priceRange.max || 3500))) && <button onClick={() => { setPriceMin(priceRange.min || null); setPriceMax(priceRange.max || null); }} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>Price: {formatPrice(priceMin)}–{formatPrice(priceMax)} ✕</button>}
+            {(priceMin !== null && priceMax !== null && (priceMin > (priceRange.min || 0) || priceMax < (priceRange.max || 3500))) && <button onClick={() => resetPriceRange({ min: priceRange.min || null, max: priceRange.max || null })} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>Price: {formatPrice(priceMin)}–{formatPrice(priceMax)} ✕</button>}
             {search && <button onClick={() => setSearch('')} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FBF4F5', color: '#560015' }}>Search: "{search}" ✕</button>}
             <button onClick={clearAll} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full" style={{ background: '#FAFAFA', color: '#5C5852' }}>Clear All</button>
           </div>
@@ -993,13 +1003,22 @@ export function CatalogClient({
                     const rightPct = ((vMax - rMin) / span) * 100
                     const thumb = "appearance-none pointer-events-none absolute inset-0 h-4 w-full bg-transparent focus:outline-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#800020] [&::-webkit-slider-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#800020] [&::-moz-range-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-moz-range-thumb]:cursor-pointer"
                     return (
-                      <div className="relative h-4">
-                        <div className="absolute left-[7px] right-[7px] top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-gray-200">
-                          <div className="absolute inset-y-0 rounded-full bg-[#800020]" style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }} />
+                      <>
+                        <div className="relative h-4">
+                          <div className="absolute left-[7px] right-[7px] top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-gray-200">
+                            <div className="absolute inset-y-0 rounded-full bg-[#800020]" style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }} />
+                          </div>
+                          <input type="range" min={rMin} max={rMax} value={vMin} onChange={(e) => setPriceMin(Math.min(parseInt(e.target.value), vMax - 100))} className={thumb} style={{ zIndex: vMin > rMax - 100 ? 4 : 3 }} />
+                          <input type="range" min={rMin} max={rMax} value={vMax} onChange={(e) => setPriceMax(Math.max(parseInt(e.target.value), vMin + 100))} className={thumb} style={{ zIndex: 4 }} />
                         </div>
-                        <input type="range" min={rMin} max={rMax} value={vMin} onChange={(e) => setPriceMin(Math.min(parseInt(e.target.value), vMax - 100))} className={thumb} style={{ zIndex: vMin > rMax - 100 ? 4 : 3 }} />
-                        <input type="range" min={rMin} max={rMax} value={vMax} onChange={(e) => setPriceMax(Math.max(parseInt(e.target.value), vMin + 100))} className={thumb} style={{ zIndex: 4 }} />
-                      </div>
+                        <PriceRangeInputs
+                          min={vMin}
+                          max={vMax}
+                          boundMin={rMin}
+                          boundMax={rMax}
+                          onCommit={(lo, hi) => setPriceRange({ min: lo, max: hi })}
+                        />
+                      </>
                     )
                   })()}
                 </div>
