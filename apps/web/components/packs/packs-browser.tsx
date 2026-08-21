@@ -11,6 +11,8 @@ import {
   CollectionTileGrid,
   type CollectionTile,
 } from '@/components/packs/collection-tile-grid';
+import { PriceRangeInputs } from '@/components/catalog/price-range-inputs';
+import { usePersistedPriceRange } from '@/hooks/use-persisted-price-range';
 
 interface NamedRef {
   id: string;
@@ -160,8 +162,18 @@ export function PacksBrowser({
   const [fBrands, setFBrands] = useState<string[]>([]);
   const [fOccasions, setFOccasions] = useState<string[]>([]);
   const [fRecipients, setFRecipients] = useState<string[]>([]);
-  const [priceMin, setPriceMin] = useState<number | null>(null);
-  const [priceMax, setPriceMax] = useState<number | null>(null);
+  // Price band. Held in sessionStorage so it survives navigating to a pack and
+  // back, and carries between the budget/occasion listings.
+  const {
+    range: priceSel,
+    setUserRange: setPriceRange,
+    applyBounds: applyPriceBounds,
+    reset: resetPriceRange,
+  } = usePersistedPriceRange('packs');
+  const priceMin = priceSel.min;
+  const priceMax = priceSel.max;
+  const setPriceMin = (v: number | null) => setPriceRange({ min: v, max: priceSel.max });
+  const setPriceMax = (v: number | null) => setPriceRange({ min: priceSel.min, max: v });
 
   // Everything that decides which packs match, in the shape the server takes.
   const filters: PackFilters = useMemo(
@@ -195,6 +207,12 @@ export function PacksBrowser({
   const recipientFacets = listing.facets.recipients;
   const priceBounds = listing.facets.priceBounds;
 
+  // A remembered band can come from a wider listing than this one — keep it
+  // inside this page's bounds (and drop it entirely if it can't overlap them).
+  useEffect(() => {
+    applyPriceBounds(priceBounds.min, priceBounds.max, { min: null, max: null });
+  }, [priceBounds.min, priceBounds.max, applyPriceBounds]);
+
   const openCollection = (id: string) => {
     setFCollections([id]);
     setFCategories([]);
@@ -202,8 +220,7 @@ export function PacksBrowser({
     setFOccasions([]);
     setFRecipients([]);
     setSearch('');
-    setPriceMin(null);
-    setPriceMax(null);
+    resetPriceRange();
     setBrowsing(true);
   };
 
@@ -239,8 +256,7 @@ export function PacksBrowser({
     setFBrands([]);
     setFOccasions([]);
     setFRecipients([]);
-    setPriceMin(null);
-    setPriceMax(null);
+    resetPriceRange();
     setSearch('');
   };
 
@@ -505,6 +521,7 @@ export function PacksBrowser({
                       const rightPct = ((vMax - rMin) / span) * 100
                       const thumb = "appearance-none pointer-events-none absolute inset-0 h-4 w-full bg-transparent focus:outline-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#800020] [&::-webkit-slider-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-[#800020] [&::-moz-range-thumb]:shadow-[0_1px_4px_rgba(0,0,0,0.25)] [&::-moz-range-thumb]:cursor-pointer"
                       return (
+                        <>
                         <div className="relative h-4">
                           <div className="absolute left-[7px] right-[7px] top-1/2 -translate-y-1/2 h-[3px] rounded-full bg-gray-200">
                             <div className="absolute inset-y-0 rounded-full bg-[#800020]" style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }} />
@@ -528,6 +545,16 @@ export function PacksBrowser({
                             style={{ zIndex: 4 }}
                           />
                         </div>
+                        <div className="mt-3">
+                          <PriceRangeInputs
+                            min={vMin}
+                            max={vMax}
+                            boundMin={rMin}
+                            boundMax={rMax}
+                            onCommit={(lo, hi) => setPriceRange({ min: lo, max: hi })}
+                          />
+                        </div>
+                        </>
                       )
                     })()}
                   </div>
