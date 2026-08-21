@@ -192,19 +192,19 @@ model User {
   sessions Session[]
   company  Company?  @relation(fields: [companyId], references: [id])
 
-  ordersPlaced      Order[]                 @relation("OrderPlacedBy")
-  quotesCreated     Quote[]                 @relation("QuoteCreatedBy")
-  disputesSubmitted DisputeTicket[]         @relation("DisputesSubmitted")
-  vendorCommLogs    VendorCommunication[]   @relation("VendorCommLogs")
-  notificationPref  NotificationPreference?
-  pushSubscriptions PushSubscription[]
-  consentLogs       ConsentLog[]
-  gocCampaigns      GocCampaign[]           @relation("CampaignCreatedBy")
-  sampleOrders      SampleOrder[]
-  savedAddresses    SavedAddress[]
-  savedPacks        SavedPack[]
-  blogPosts         BlogPost[]              @relation("BlogPostAuthor")
-  reviews           Review[]
+  ordersPlaced        Order[]                 @relation("OrderPlacedBy")
+  quotesCreated       Quote[]                 @relation("QuoteCreatedBy")
+  disputesSubmitted   DisputeTicket[]         @relation("DisputesSubmitted")
+  vendorCommLogs      VendorCommunication[]   @relation("VendorCommLogs")
+  notificationPref    NotificationPreference?
+  pushSubscriptions   PushSubscription[]
+  consentLogs         ConsentLog[]
+  gocCampaigns        GocCampaign[]           @relation("CampaignCreatedBy")
+  sampleOrders        SampleOrder[]
+  savedAddresses      SavedAddress[]
+  savedPacks          SavedPack[]
+  blogPosts           BlogPost[]              @relation("BlogPostAuthor")
+  reviews             Review[]
   passwordResetTokens PasswordResetToken[]
 
   createdAt DateTime @default(now())
@@ -376,20 +376,20 @@ model Product {
   metaTitle         String?
   metaDescription   String?
 
-  priceTiers    PriceTier[]
-  images        ProductImage[]
-  variants      ProductVariant[]
-  categories    ProductCategory[]
-  occasions     ProductOccasion[]
-  hsn           ProductHsn?
-  vendors       ProductVendor[]
-  orderItems    OrderItem[]
-  auditLogs     PriceAuditLog[]
-  gocOptions    GocOption[]
-  sampleOrders  SampleOrder[]
-  giftPackItems GiftPackItem[]
-  reviews       Review[]
-  slugHistory   ProductSlugHistory[]
+  priceTiers     PriceTier[]
+  images         ProductImage[]
+  variants       ProductVariant[]
+  categories     ProductCategory[]
+  occasions      ProductOccasion[]
+  hsn            ProductHsn?
+  vendors        ProductVendor[]
+  orderItems     OrderItem[]
+  auditLogs      PriceAuditLog[]
+  gocOptions     GocOption[]
+  sampleOrders   SampleOrder[]
+  giftPackItems  GiftPackItem[]
+  reviews        Review[]
+  slugHistory    ProductSlugHistory[]
   savedPackItems SavedPackItem[]
 
   // ── Curated Pack support ──────────────────────────────────────────────────
@@ -486,18 +486,18 @@ model ProductVariant {
 }
 
 model Category {
-  id        String             @id @default(cuid())
-  name        String
-  slug        String             @unique
-  description String?            @db.Text // Shopify-style collection description — rich text, renders ABOVE the product grid
-  contentBelow String?           @db.Text // Rich text rendered BELOW the product grid (SEO/editorial copy)
-  imageUrl  String? // Category cover image (from Unsplash or custom)
-  parentId  String?
-  parent    Category?          @relation("CategoryTree", fields: [parentId], references: [id])
-  children  Category[]         @relation("CategoryTree")
-  products  ProductCategory[]
-  giftPacks GiftPackCategory[]
-  sortOrder Int                @default(0)
+  id           String             @id @default(cuid())
+  name         String
+  slug         String             @unique
+  description  String?            @db.Text // Shopify-style collection description — rich text, renders ABOVE the product grid
+  contentBelow String?            @db.Text // Rich text rendered BELOW the product grid (SEO/editorial copy)
+  imageUrl     String? // Category cover image (from Unsplash or custom)
+  parentId     String?
+  parent       Category?          @relation("CategoryTree", fields: [parentId], references: [id])
+  children     Category[]         @relation("CategoryTree")
+  products     ProductCategory[]
+  giftPacks    GiftPackCategory[]
+  sortOrder    Int                @default(0)
 
   @@index([parentId])
 }
@@ -800,11 +800,11 @@ model Quote {
 // An admin-created quote sent by email to a lead (from enquiries or GoHighLevel).
 // The underlying Quote holds the payload/pricing; this records who it was sent to.
 model Proposal {
-  id String @id @default(cuid())
+  id             String  @id @default(cuid())
   // The primary pack's quote — kept so single-pack proposals (and every link
   // already sent out) keep working. Additional pack options live in `packs`.
-  quoteId        String @unique
-  quote          Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quoteId        String  @unique
+  quote          Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   // Public token for the compare-packs page at /proposal/[token]. Nullable so
   // proposals created before multi-pack existed stay valid.
   shareToken     String? @unique
@@ -953,15 +953,15 @@ model OccasionConfig {
 // (e.g. "Weight Loss Starter Kits" containing "Starter Pack", "Pro Pack").
 // It is the browse/organise unit; the sellable unit is still the GiftPack.
 model GiftCollection {
-  id           String     @id @default(cuid())
+  id           String           @id @default(cuid())
   name         String
-  slug         String     @unique
+  slug         String           @unique
   description  String?
   image        String?
   gradient     String?
-  isActive     Boolean    @default(true)
-  isFeatured   Boolean    @default(false)
-  sortOrder    Int        @default(0)
+  isActive     Boolean          @default(true)
+  isFeatured   Boolean          @default(false)
+  sortOrder    Int              @default(0)
   // Self-referencing tree, capped at TWO levels by the API: a top-level
   // collection (parentId = null) holds sub-collections, and a sub-collection
   // holds the packs. A collection with no children still holds its packs
@@ -973,9 +973,9 @@ model GiftCollection {
   parent       GiftCollection?  @relation("CollectionTree", fields: [parentId], references: [id], onDelete: SetNull)
   children     GiftCollection[] @relation("CollectionTree")
   packs        GiftPack[]
-  packProducts Product[]  @relation("PackCollectionProducts")
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  packProducts Product[]        @relation("PackCollectionProducts")
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@index([slug])
   @@index([isActive])
@@ -1654,7 +1654,7 @@ model BlogComment {
   email      String
   body       String @db.Text
 
-  status BlogCommentStatus @default(pending)
+  status     BlogCommentStatus @default(pending)
   // Set when a super_admin approves; drives the public sort order.
   approvedAt DateTime?
 
@@ -1686,9 +1686,9 @@ model Review {
   comment String  @db.Text
 
   // Only approved reviews are shown publicly; edits send a review back to pending.
-  status ReviewStatus @default(pending)
+  status          ReviewStatus @default(pending)
   // Set at submit time when the user has a paid order containing this product.
-  isVerifiedBuyer Boolean @default(false)
+  isVerifiedBuyer Boolean      @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1757,4 +1757,32 @@ model AdminActivityLog {
   @@index([createdAt])
   @@index([actorEmail, createdAt])
   @@index([entity, entityId])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   URL REDIRECTS
+// ═══════════════════════════════════════════════════════════
+// SEO-managed redirects for URLs that used to exist and are still indexed by
+// Google. Kept in the database rather than next.config.js so the SEO team can
+// add them from /admin/redirects without a code change or a deploy.
+//
+// `source` is stored normalised (lowercase, leading slash, no trailing slash,
+// no query string) — middleware normalises the incoming path the same way, so
+// a lookup is a plain map hit. A trailing "/*" makes it a prefix rule.
+model UrlRedirect {
+  id          String   @id @default(cuid())
+  source      String   @unique
+  // Empty for status 410 ("gone" — the page is deliberately dead). Otherwise a
+  // site path ("/catalog") or an absolute URL to another domain.
+  destination String
+  // 301 permanent | 302 temporary | 410 gone. Permanent is the default because
+  // that is what passes ranking signals on to the new URL.
+  statusCode  Int      @default(301)
+  isActive    Boolean  @default(true)
+  // Free-text: which GSC report the URL came from, who asked for it, etc.
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
 }

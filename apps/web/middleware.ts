@@ -1,10 +1,90 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequest, NextFetchEvent } from "next/server";
+import { matchRedirect, type RedirectRule } from "@/lib/redirects";
+
+// ── SEO redirect rules ──────────────────────────────────────────────────────
+// Admin-managed redirects for URLs Google still has indexed (/admin/redirects).
+// They live in Postgres, which middleware cannot read directly — the Edge
+// runtime has no Prisma — so the rule set is pulled from /api/redirects/map and
+// held in module memory. One refresh per server instance per minute, served
+// stale while the refresh runs, and failing open to "no redirects" so a hiccup
+// in the feed can never take the storefront down.
+interface RuleSet {
+  exact: Record<string, RedirectRule>;
+  prefix: RedirectRule[];
+}
+const RULES_TTL_MS = 60_000;
+let rules: RuleSet = { exact: {}, prefix: [] };
+let rulesFetchedAt = 0;
+let rulesInFlight: Promise<void> | null = null;
+
+function refreshRules(origin: string): Promise<void> {
+  if (rulesInFlight) return rulesInFlight;
+  rulesInFlight = (async () => {
+    try {
+      const res = await fetch(`${origin}/api/redirects/map`, { cache: "no-store" });
+      if (res.ok) {
+        const data = (await res.json()) as RuleSet;
+        rules = { exact: data.exact ?? {}, prefix: data.prefix ?? [] };
+      }
+    } catch {
+      // Keep whatever we had; the timestamp below stops a tight retry loop.
+    } finally {
+      rulesFetchedAt = Date.now();
+      rulesInFlight = null;
+    }
+  })();
+  return rulesInFlight;
+}
+
+// Paths that can never be a redirect source, checked before the map is even
+// consulted so app traffic pays nothing for this feature.
+function skipRedirects(pathname: string): boolean {
+  return (
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/vendor") ||
+    pathname === "/" ||
+    pathname === "/login"
+  );
+}
 
 // Simple middleware that just redirects to login if no session cookie exists
 // Session verification happens server-side in pages (cannot use Prisma in Edge Runtime)
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
+
+  // ── Admin-managed SEO redirects ──
+  // Runs first: a redirect must win before anything else looks at the path.
+  // GET/HEAD only — redirecting a POST would silently drop its body.
+  if ((request.method === "GET" || request.method === "HEAD") && !skipRedirects(pathname)) {
+    const age = Date.now() - rulesFetchedAt;
+    if (rulesFetchedAt === 0) {
+      // Cold instance — the very first request waits for the rules once.
+      await refreshRules(request.nextUrl.origin);
+    } else if (age > RULES_TTL_MS) {
+      // Warm but stale: answer from the old map, refresh behind the response.
+      event.waitUntil(refreshRules(request.nextUrl.origin));
+    }
+
+    const hit = matchRedirect(pathname, rules);
+    if (hit) {
+      if (hit.status === 410) {
+        // Deliberately dead: tells Google to drop the URL faster than a 404.
+        return new NextResponse(
+          "<!doctype html><title>Gone</title><p>This page has been removed.</p>",
+          { status: 410, headers: { "Content-Type": "text/html; charset=utf-8" } }
+        );
+      }
+      const target = new URL(hit.destination, request.url);
+      // Carry the visitor's query string over unless the rule set its own
+      // (utm_* tags and ?page= should survive the hop).
+      if (!target.search && request.nextUrl.search) target.search = request.nextUrl.search;
+      return NextResponse.redirect(target, hit.status);
+    }
+  }
 
   // Check if authjs session cookie exists.
   // On HTTPS (production) NextAuth v5 prefixes the cookie with "__Secure-";

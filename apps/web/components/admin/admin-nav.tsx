@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Star, IndianRupee, History } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Star, IndianRupee, History, Shuffle } from 'lucide-react';
 
 const NAV = [
   { section: "Overview", items: [
@@ -36,6 +36,7 @@ const NAV = [
     { href: "/admin/automations", icon: Zap, label: "Automations" },
     { href: "/admin/settings", icon: Settings, label: "Settings" },
     { href: "/admin/settings/users", icon: Users, label: "Users & Roles" },
+    { href: "/admin/redirects", icon: Shuffle, label: "URL Redirects" },
     { href: "/admin/logs", icon: History, label: "Activity Log" },
   ]},
 ];

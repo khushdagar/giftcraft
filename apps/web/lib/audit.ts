@@ -36,13 +36,33 @@ const IGNORED_MODELS = new Set([
   "Account",
   "VerificationToken",
   "PriceAuditLog",
+  // Read receipts and device registrations: bookkeeping, not decisions.
+  // They were 870 of the first 1,279 log rows and buried everything else.
+  "AdminNotificationRead",
+  "PushSubscription",
 ]);
 
 // Never persist secrets, and never persist megabyte-sized blobs.
 const SECRET_KEY = /password|secret|token|apikey|api_key/i;
 const MAX_STRING = 400;
 
-const LABEL_KEYS = ["name", "title", "orderNumber", "slug", "email", "code", "subject"];
+// Whichever of these the record has is shown in the log as the record's name,
+// so a row reads `Added a URL redirect "/old-page"` rather than a bare cuid.
+const LABEL_KEYS = [
+  "name",
+  "title",
+  "orderNumber",
+  "slug",
+  "sku",
+  "subject",
+  "source",
+  "companyName",
+  "contactName",
+  "recipientName",
+  "email",
+  "code",
+  "label",
+];
 
 const ADMIN_ROLES = new Set(["super_admin", "company_admin"]);
 
