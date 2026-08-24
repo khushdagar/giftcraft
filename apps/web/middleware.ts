@@ -18,17 +18,30 @@ let rules: RuleSet = { exact: {}, prefix: [] };
 let rulesFetchedAt = 0;
 let rulesInFlight: Promise<void> | null = null;
 
+// Prefer an in-container loopback over the public origin: on DO App Platform
+// (and most container hosts) a request from the app back to its own public
+// hostname has to leave the container, cross Cloudflare, and hairpin back —
+// a round trip that gets silently dropped on this kind of setup. Hitting
+// 127.0.0.1:$PORT reaches the same Next.js process directly, no network hop.
+function selfOrigin(publicOrigin: string): string {
+  const port = process.env.PORT;
+  return port ? `http://127.0.0.1:${port}` : publicOrigin;
+}
+
 function refreshRules(origin: string): Promise<void> {
   if (rulesInFlight) return rulesInFlight;
   rulesInFlight = (async () => {
     try {
-      const res = await fetch(`${origin}/api/redirects/map`, { cache: "no-store" });
+      const res = await fetch(`${selfOrigin(origin)}/api/redirects/map`, { cache: "no-store" });
       if (res.ok) {
         const data = (await res.json()) as RuleSet;
         rules = { exact: data.exact ?? {}, prefix: data.prefix ?? [] };
+      } else {
+        console.error(`Redirect rules refresh got HTTP ${res.status}`);
       }
-    } catch {
+    } catch (err) {
       // Keep whatever we had; the timestamp below stops a tight retry loop.
+      console.error("Redirect rules refresh failed:", err);
     } finally {
       rulesFetchedAt = Date.now();
       rulesInFlight = null;
