@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Search, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { auth, signOut } from "@/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { NotificationBell } from "@/components/admin/notification-bell";
+import { GlobalSearch } from "@/components/admin/global-search";
 import Image from "next/image";
 
 // Admin pages are session-gated and render live operational data. Force
@@ -56,10 +56,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             userRole={session.user.role}
             userImage={session.user.image}
           />
-          <div className="relative max-w-lg flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input placeholder="Search..." className="h-9 border-gray-200 bg-gray-50 pl-10 text-sm text-gray-700 placeholder:text-gray-500 focus:bg-white" />
-          </div>
+          <GlobalSearch />
           <NotificationBell />
         </header>
 
