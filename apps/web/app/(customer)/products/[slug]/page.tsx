@@ -101,6 +101,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
             select: {
               id: true,
               name: true,
+              status: true,
               images: { orderBy: { sortOrder: "asc" }, take: 2 },
               // Member variants power the per-product pickers on a pack page —
               // a pack has no variants of its own.
@@ -236,16 +237,19 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const serialized = serializeProduct(product);
   // For packs, present the derived tiers instead of the (empty) own tiers.
   const displaySerialized = isPack ? { ...serialized, priceTiers: derivedTiers } : serialized;
-  // One image per member product → the pack's collage gallery.
-  const memberImages = product.packItems
-    .map((it) => it.product.images[0]?.url)
-    .filter((u): u is string => Boolean(u));
+  // One image per member product → the pack's collage gallery. Kept parallel
+  // to `memberOutOfStock` below (both built from the same filtered list) so
+  // the gallery can flag which cell belongs to an unavailable member.
+  const membersWithImages = product.packItems.filter((it) => it.product.images[0]?.url);
+  const memberImages = membersWithImages.map((it) => it.product.images[0]!.url);
+  const memberOutOfStock = membersWithImages.map((it) => it.product.status !== "active");
   // Members + their variants, for the pack page's per-product option pickers.
   const packMembers = product.packItems.map((it) => ({
     id: it.productId,
     name: it.product.name,
     quantity: it.quantity,
     image: it.product.images[0]?.url ?? null,
+    outOfStock: it.product.status !== "active",
     variants: it.product.variants.map((v) => ({
       kind: v.kind,
       value: v.value,
@@ -386,6 +390,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
           {isPack ? (
             <PackImageGallery
               images={memberImages}
+              outOfStock={memberOutOfStock}
               productName={product.name}
               productId={product.id}
               slug={product.slug}

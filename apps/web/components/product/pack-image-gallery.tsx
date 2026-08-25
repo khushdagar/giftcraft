@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ZoomIn } from 'lucide-react';
+import { ZoomIn, AlertTriangle } from 'lucide-react';
 import { ThumbnailStrip } from './thumbnail-strip';
 import { ProductImageActions } from './product-image-actions';
 import { ImageLightbox } from './image-lightbox';
@@ -15,16 +15,22 @@ const ZOOM = 2.5;
 // 6+ → 3). Thumbnails let you view the collage or any single product image.
 export function PackImageGallery({
   images,
+  outOfStock = [],
   productName,
   productId,
   slug,
 }: {
   images: string[];
+  /** Parallel to `images` — true where that member product is out of stock. */
+  outOfStock?: boolean[];
   productName: string;
   productId: string;
   slug: string;
 }) {
   const imgs = images.filter(Boolean);
+  // Filtering `images` above can drop entries, so re-derive the parallel flag
+  // from the same predicate to keep the two arrays aligned.
+  const stockFlags = images.map((src, i) => (src ? outOfStock[i] : undefined)).filter((_, i) => Boolean(images[i]));
   const [active, setActive] = useState(0); // 0 = collage, 1..n = single image
 
   // Hover-zoom only makes sense with a real pointer (desktop); touch gets the
@@ -70,22 +76,41 @@ export function PackImageGallery({
       className="absolute inset-0 grid bg-white"
       style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr' }}
     >
-      {imgs.map((src, i) => (
-        <div key={i} className="relative overflow-hidden bg-elevated">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        </div>
-      ))}
+      {imgs.map((src, i) =>
+        stockFlags[i] ? (
+          <div
+            key={i}
+            className="relative flex flex-col items-center justify-center gap-1 overflow-hidden bg-amber-50 p-2 text-center"
+          >
+            <AlertTriangle className="h-5 w-5 text-amber-600" />
+            <span className="text-[10px] font-semibold leading-tight text-amber-700">
+              Out of stock
+            </span>
+          </div>
+        ) : (
+          <div key={i} className="relative overflow-hidden bg-elevated">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          </div>
+        )
+      )}
     </div>
   );
 
   // The main view is rendered twice — once at 1x in the frame, once scaled
   // inside the magnifier panel — so the collage magnifies as one picture rather
   // than needing a separate composited image.
-  const mainView = () =>
-    active === 0 ? (
-      collage()
-    ) : (
+  const mainView = () => {
+    if (active === 0) return collage();
+    if (stockFlags[active - 1]) {
+      return (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-amber-50 text-center">
+          <AlertTriangle className="h-8 w-8 text-amber-600" />
+          <span className="text-sm font-semibold text-amber-700">Out of stock</span>
+        </div>
+      );
+    }
+    return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={imgs[active - 1]}
@@ -93,6 +118,7 @@ export function PackImageGallery({
         className="absolute inset-0 h-full w-full object-cover"
       />
     );
+  };
 
   // Lens (the highlighted region on the main image) — sized 1/ZOOM of the box,
   // centred on the cursor and clamped inside the image.
@@ -127,10 +153,16 @@ export function PackImageGallery({
             className={`relative h-16 w-16 flex-shrink-0 snap-start overflow-hidden rounded-md bg-elevated transition ${
               active === i + 1 ? '' : 'opacity-60 hover:opacity-100'
             }`}
-            aria-label={`Product ${i + 1}`}
+            aria-label={stockFlags[i] ? `Product ${i + 1} — out of stock` : `Product ${i + 1}`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            {stockFlags[i] ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              </div>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            )}
             {active === i + 1 && (
               <span className="pointer-events-none absolute inset-0 rounded-md ring-2 ring-inset ring-em" />
             )}

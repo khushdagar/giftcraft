@@ -1562,6 +1562,22 @@ model Enquiry {
   @@index([createdAt])
 }
 
+// A "notify me when back in stock" submission from a pack page — captured
+// against the specific out-of-stock member product, not the pack itself, so
+// the same request still makes sense if the product later leaves the pack.
+model RestockRequest {
+  id          String   @id @default(cuid())
+  productId   String
+  productName String
+  email       String
+  phone       String?
+  notified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([productId])
+  @@index([notified])
+}
+
 // ═══════════════════════════════════════════════════════════
 //   BLOG — Posts, categories, SEO metadata
 // ═══════════════════════════════════════════════════════════
