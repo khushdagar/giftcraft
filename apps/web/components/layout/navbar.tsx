@@ -140,7 +140,7 @@ export function Navbar() {
     {
       key: "categories",
       label: "By Categories",
-      href: "/catalog",
+      href: "/categories",
       items: categories,
       // Indexable category landing page, not a filtered ?category= URL.
       hrefFor: (s: string) => `/category/${s}`,
