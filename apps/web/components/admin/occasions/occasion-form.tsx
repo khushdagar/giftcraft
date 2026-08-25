@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { X, Upload, ArrowLeft } from 'lucide-react';
 import { RichTextField } from '@/components/admin/rich-text-field';
+import { FaqRepeaterField, type FaqEntry } from '@/components/admin/faq-repeater-field';
 import { slugify } from '@/lib/slug';
 
 interface OccasionFormProps {
@@ -24,6 +25,15 @@ interface OccasionFormProps {
     gradient: string | null;
     description: string | null;
     contentBelow?: string | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    faqs?: unknown;
+    packName?: string | null;
+    packDescription?: string | null;
+    packContentBelow?: string | null;
+    packMetaTitle?: string | null;
+    packMetaDescription?: string | null;
+    packFaqs?: unknown;
     sortOrder: number;
     isActive: boolean;
     isCollection?: boolean;
@@ -48,11 +58,24 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
     gradient: occasion?.gradient || 'from-orange-400 to-yellow-400',
     description: occasion?.description || '',
     contentBelow: occasion?.contentBelow || '',
+    metaTitle: occasion?.metaTitle || '',
+    metaDescription: occasion?.metaDescription || '',
+    packName: occasion?.packName || '',
+    packDescription: occasion?.packDescription || '',
+    packContentBelow: occasion?.packContentBelow || '',
+    packMetaTitle: occasion?.packMetaTitle || '',
+    packMetaDescription: occasion?.packMetaDescription || '',
     sortOrder: occasion?.sortOrder || 0,
     isActive: occasion?.isActive ?? true,
     isCollection: occasion?.isCollection ?? false,
     tags: occasion?.tags || ([] as string[]),
   });
+  const [faqs, setFaqs] = useState<FaqEntry[]>(
+    Array.isArray(occasion?.faqs) ? (occasion!.faqs as FaqEntry[]) : []
+  );
+  const [packFaqs, setPackFaqs] = useState<FaqEntry[]>(
+    Array.isArray(occasion?.packFaqs) ? (occasion!.packFaqs as FaqEntry[]) : []
+  );
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -129,10 +152,16 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
 
       const method = mode === 'create' ? 'POST' : 'PUT';
 
+      const payload = {
+        ...formData,
+        faqs: faqs.filter((f) => f.question.trim() && f.answer.trim()),
+        packFaqs: packFaqs.filter((f) => f.question.trim() && f.answer.trim()),
+      };
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -202,7 +231,7 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Main column */}
         <div className="space-y-6 lg:col-span-2">
-          {/* Title + slug + description */}
+          {/* Title + slug */}
           <div className="rounded-xl border border-bdr bg-white p-5 shadow-sm">
             <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-ink">Title</label>
             <Input id="name" required value={formData.name} onChange={handleNameChange}
@@ -212,6 +241,17 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
             <Input id="slug" value={formData.slug}
               onChange={(e) => setFormData((p) => ({ ...p, slug: e.target.value }))}
               placeholder="diwali" />
+            <p className="mt-1 text-xs text-ink-3">
+              Shared by both pages below — /occasion/{formData.slug || '…'} and /curated-packs/occasions/{formData.slug || '…'}
+            </p>
+          </div>
+
+          {/* Product page — /occasion/[slug]. This occasion's regular, non-pack products. */}
+          <div className="rounded-xl border border-bdr bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-ink">Product page</h2>
+            <p className="mt-1 text-xs text-ink-3">
+              /occasion/{formData.slug || '…'} — shown when browsing regular products under this occasion.
+            </p>
 
             <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">
               Description <span className="font-normal text-ink-3">— shows above the product grid</span>
@@ -224,18 +264,120 @@ export function OccasionForm({ mode = 'create', occasion }: OccasionFormProps) {
               uploadFolder="occasions"
             />
 
-            {/* Long-form SEO copy lives below the grid so it never pushes the
-                products down the page. */}
             <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">
               Content below products <span className="font-normal text-ink-3">— optional, shows under the product grid</span>
             </label>
             <RichTextField
               value={formData.contentBelow}
               onChange={(html) => setFormData((p) => ({ ...p, contentBelow: html }))}
-              placeholder="Gifting guide, budget tips, delivery timelines, FAQs…"
-              minHeight={180}
+              placeholder="Gifting guide, budget tips, delivery timelines…"
+              minHeight={150}
               uploadFolder="occasions"
             />
+
+            <label htmlFor="metaTitle" className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Meta title
+            </label>
+            <Input
+              id="metaTitle"
+              value={formData.metaTitle}
+              onChange={(e) => setFormData((p) => ({ ...p, metaTitle: e.target.value }))}
+              placeholder={`${formData.name || 'Occasion'} Gifts — Bulk Corporate Gifting`}
+            />
+
+            <label htmlFor="metaDescription" className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Meta description
+            </label>
+            <textarea
+              id="metaDescription"
+              rows={3}
+              value={formData.metaDescription}
+              onChange={(e) => setFormData((p) => ({ ...p, metaDescription: e.target.value }))}
+              placeholder="Leave blank to fall back to the generated description."
+              className="w-full rounded-lg border border-bdr px-3 py-2 text-sm text-ink focus:border-em focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-ink-3">Used for the page &lt;title&gt;, meta description and social previews.</p>
+
+            <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">FAQs</label>
+            <p className="mb-2 text-xs text-ink-3">
+              Shown below the product grid and included as FAQ structured data for search engines.
+            </p>
+            <FaqRepeaterField value={faqs} onChange={setFaqs} uploadFolder="occasions" />
+          </div>
+
+          {/* Curated pack page — /curated-packs/occasions/[slug]. Independent copy from the
+              product page above: the same occasion tags both regular products and curated
+              packs, but the two pages would otherwise render identical text — thin/duplicate
+              content for search engines. */}
+          <div className="rounded-xl border border-bdr bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-ink">Curated pack page</h2>
+            <p className="mt-1 text-xs text-ink-3">
+              /curated-packs/occasions/{formData.slug || '…'} — shown when browsing curated gift
+              packs under this occasion. Kept separate from the product page above so both pages
+              have their own copy for SEO.
+            </p>
+
+            <label htmlFor="packName" className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Title override <span className="font-normal text-ink-3">— optional, shown as the H1 on this page instead of the Title above</span>
+            </label>
+            <Input
+              id="packName"
+              value={formData.packName}
+              onChange={(e) => setFormData((p) => ({ ...p, packName: e.target.value }))}
+              placeholder={formData.name || 'Occasion'}
+            />
+
+            <label htmlFor="packDescription" className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Description <span className="font-normal text-ink-3">— shows above the pack grid</span>
+            </label>
+            <textarea
+              id="packDescription"
+              rows={3}
+              value={formData.packDescription}
+              onChange={(e) => setFormData((p) => ({ ...p, packDescription: e.target.value }))}
+              placeholder={`Curated packs ready for ${formData.name || 'this occasion'} — customise any of them with your branding.`}
+              className="w-full rounded-lg border border-bdr px-3 py-2 text-sm text-ink focus:border-em focus:outline-none"
+            />
+
+            <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Content below packs <span className="font-normal text-ink-3">— optional, shows under the pack grid</span>
+            </label>
+            <RichTextField
+              value={formData.packContentBelow}
+              onChange={(html) => setFormData((p) => ({ ...p, packContentBelow: html }))}
+              placeholder="Gifting guide, budget tips, delivery timelines…"
+              minHeight={150}
+              uploadFolder="occasions"
+            />
+
+            <label htmlFor="packMetaTitle" className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Meta title
+            </label>
+            <Input
+              id="packMetaTitle"
+              value={formData.packMetaTitle}
+              onChange={(e) => setFormData((p) => ({ ...p, packMetaTitle: e.target.value }))}
+              placeholder={`${formData.name || 'Occasion'} Gift Packs`}
+            />
+
+            <label htmlFor="packMetaDescription" className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Meta description
+            </label>
+            <textarea
+              id="packMetaDescription"
+              rows={3}
+              value={formData.packMetaDescription}
+              onChange={(e) => setFormData((p) => ({ ...p, packMetaDescription: e.target.value }))}
+              placeholder="Leave blank to fall back to the generated description."
+              className="w-full rounded-lg border border-bdr px-3 py-2 text-sm text-ink focus:border-em focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-ink-3">Used for the page &lt;title&gt;, meta description and social previews.</p>
+
+            <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">FAQs</label>
+            <p className="mb-2 text-xs text-ink-3">
+              Shown below the pack grid and included as FAQ structured data for search engines.
+            </p>
+            <FaqRepeaterField value={packFaqs} onChange={setPackFaqs} uploadFolder="occasions" />
           </div>
 
           {/* Tags — drive tag-based product membership */}

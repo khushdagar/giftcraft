@@ -16,9 +16,6 @@ interface ReviewCard {
   isReal: boolean;
 }
 
-// Seed reviews shown while the platform collects real ones. As customers post
-// reviews and they get approved in /admin/reviews, real reviews take these
-// slots automatically (real ones always come first).
 const SEED_REVIEWS: ReviewCard[] = [
   {
     id: 'seed-1',

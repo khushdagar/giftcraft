@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { BudgetBandSchema, assertNoOverlap } from '@/lib/budget-band-validation';
 
@@ -16,6 +18,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const data = BudgetBandSchema.parse(await request.json());
+
+    const existing = await prisma.budgetBand.findUnique({ where: { id: params.id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Budget band not found' }, { status: 404 });
+    }
 
     const clashingSlug = await prisma.budgetBand.findUnique({ where: { slug: data.slug } });
     if (clashingSlug && clashingSlug.id !== params.id) {
@@ -35,10 +42,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         gradient: data.gradient || null,
         minPrice: data.minPrice,
         maxPrice: data.maxPrice ?? null,
+        metaTitle: data.metaTitle || null,
+        metaDescription: data.metaDescription || null,
+        contentBelow: data.contentBelow || null,
+        faqs: data.faqs && data.faqs.length > 0 ? data.faqs : Prisma.JsonNull,
         sortOrder: data.sortOrder,
         isActive: data.isActive,
       },
     });
+
+    // ISR-cached (revalidate = 3600) — admin edits, FAQs included, would
+    // otherwise take up to an hour to appear.
+    revalidatePath(`/curated-packs/budget/${band.slug}`);
+    if (existing.slug !== band.slug) revalidatePath(`/curated-packs/budget/${existing.slug}`);
 
     return NextResponse.json(band);
   } catch (error) {

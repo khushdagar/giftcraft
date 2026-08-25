@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { slugify } from '@/lib/slug';
 
@@ -12,6 +14,21 @@ const UpdateOccasionSchema = z.object({
   gradient: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   contentBelow: z.string().optional().nullable(),
+  metaTitle: z.string().optional().nullable(),
+  metaDescription: z.string().optional().nullable(),
+  faqs: z
+    .array(z.object({ question: z.string(), answer: z.string() }))
+    .optional()
+    .nullable(),
+  packName: z.string().optional().nullable(),
+  packDescription: z.string().optional().nullable(),
+  packContentBelow: z.string().optional().nullable(),
+  packMetaTitle: z.string().optional().nullable(),
+  packMetaDescription: z.string().optional().nullable(),
+  packFaqs: z
+    .array(z.object({ question: z.string(), answer: z.string() }))
+    .optional()
+    .nullable(),
   sortOrder: z.number().int().optional(),
   isActive: z.boolean().optional(),
   isCollection: z.boolean().optional(),
@@ -79,12 +96,37 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         ...(data.gradient !== undefined && { gradient: data.gradient }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.contentBelow !== undefined && { contentBelow: data.contentBelow || null }),
+        ...(data.metaTitle !== undefined && { metaTitle: data.metaTitle || null }),
+        ...(data.metaDescription !== undefined && { metaDescription: data.metaDescription || null }),
+        ...(data.faqs !== undefined && {
+          faqs: data.faqs && data.faqs.length > 0 ? data.faqs : Prisma.JsonNull,
+        }),
+        ...(data.packName !== undefined && { packName: data.packName || null }),
+        ...(data.packDescription !== undefined && { packDescription: data.packDescription || null }),
+        ...(data.packContentBelow !== undefined && { packContentBelow: data.packContentBelow || null }),
+        ...(data.packMetaTitle !== undefined && { packMetaTitle: data.packMetaTitle || null }),
+        ...(data.packMetaDescription !== undefined && {
+          packMetaDescription: data.packMetaDescription || null,
+        }),
+        ...(data.packFaqs !== undefined && {
+          packFaqs: data.packFaqs && data.packFaqs.length > 0 ? data.packFaqs : Prisma.JsonNull,
+        }),
         ...(data.sortOrder !== undefined && { sortOrder: data.sortOrder }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.isCollection !== undefined && { isCollection: data.isCollection }),
         ...(data.tags !== undefined && { tags: data.tags }),
       },
     });
+
+    // Both pages are ISR-cached (revalidate = 3600) — admin edits, FAQs
+    // included, would otherwise take up to an hour to appear. Bust both the
+    // old and new slug in case the slug itself changed.
+    revalidatePath(`/occasion/${updated.slug}`);
+    revalidatePath(`/curated-packs/occasions/${updated.slug}`);
+    if (existing.slug !== updated.slug) {
+      revalidatePath(`/occasion/${existing.slug}`);
+      revalidatePath(`/curated-packs/occasions/${existing.slug}`);
+    }
 
     return NextResponse.json(updated);
   } catch (error) {

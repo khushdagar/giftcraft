@@ -10,7 +10,9 @@ import { stripHtml } from '@/lib/strip-html';
 import { CatalogClient } from '@/components/catalog/catalog-client';
 import { ViewTracker } from '@/components/analytics/view-tracker';
 import { JsonLd } from '@/components/seo/json-ld';
-import { breadcrumbSchema, collectionPageSchema } from '@/lib/schema';
+import { ContentSection } from '@/components/seo/content-section';
+import { FaqSection } from '@/components/seo/faq-section';
+import { breadcrumbSchema, collectionPageSchema, faqPageSchema } from '@/lib/schema';
 
 // Server-rendered + ISR, for the same reasons as /category/[slug]: the product
 // grid (and every product link in it) is in the initial HTML, and no
@@ -26,16 +28,18 @@ export async function generateMetadata({
   if (!occasion) return { title: 'Occasion not found', robots: { index: false, follow: false } };
 
   const copy = occasionCopy(occasion.name, occasion.isCollection);
-  // An admin description wins, but stripped of its markup and clamped — it's
-  // authored as rich text page copy, not as a 155-character meta description.
+  // An admin meta description wins outright; failing that, the admin's page
+  // description (rich text page copy, so stripped and clamped) stands in;
+  // only a brand-new occasion with neither falls back to the generic template.
   const adminText = stripHtml(occasion.description);
-  const description = adminText ? toMetaDescription(adminText) : copy.meta;
+  const title = occasion.metaTitle || copy.title;
+  const description = occasion.metaDescription || (adminText ? toMetaDescription(adminText) : copy.meta);
   const url = `/occasion/${occasion.slug}`;
   const ogImage = occasion.products.find((p) => p.imageUrl)?.imageUrl || '/opengraph-image';
 
   return {
     // Root template appends "· GIVOO"
-    title: copy.title,
+    title,
     description,
     alternates: { canonical: url },
     // An empty occasion is a real page but has nothing to rank — keep it out of
@@ -44,7 +48,7 @@ export async function generateMetadata({
     openGraph: {
       type: 'website',
       url,
-      title: copy.title,
+      title,
       description,
       siteName: 'GIVOO',
       locale: 'en_IN',
@@ -52,7 +56,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: 'summary_large_image',
-      title: copy.title,
+      title,
       description,
       images: [ogImage],
     },
@@ -102,6 +106,13 @@ export default async function OccasionPage({ params }: { params: { slug: string 
           { name: occasion.name, path: `/occasion/${occasion.slug}` },
         ])}
       />
+      {occasion.faqs.length > 0 && (
+        <JsonLd
+          data={faqPageSchema(
+            occasion.faqs.map((f) => ({ question: f.question, answer: stripHtml(f.answer) }))
+          )}
+        />
+      )}
 
       {/* Same catalog experience — search, filters, sort, Add to Pack — scoped
           to this occasion, which also supplies the page's H1 and intro copy. */}
@@ -117,16 +128,8 @@ export default async function OccasionPage({ params }: { params: { slug: string 
         initialFilters={filters}
       />
 
-      {belowHtml && (
-        <section aria-label={`About ${occasion.name}`} style={{ background: '#F5F1EB' }}>
-          <div className="max-w-7xl mx-auto px-4 md:px-10 pb-16">
-            <div
-              className="blog-content max-w-7xl border-t border-bdr pt-10"
-              dangerouslySetInnerHTML={{ __html: belowHtml }}
-            />
-          </div>
-        </section>
-      )}
+      <ContentSection heading={`About ${occasion.name}`} bodyHtml={belowHtml} />
+      <FaqSection heading={occasion.name} faqs={occasion.faqs} />
 
       {others.length > 0 && (
         <section

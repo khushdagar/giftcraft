@@ -33,6 +33,24 @@ const CreateOccasionSchema = z.object({
   gradient: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   contentBelow: z.string().optional().nullable(),
+  metaTitle: z.string().optional().nullable(),
+  metaDescription: z.string().optional().nullable(),
+  faqs: z
+    .array(z.object({ question: z.string(), answer: z.string() }))
+    .optional()
+    .nullable(),
+  // Independent copy for /curated-packs/occasions/[slug] — see the `pack*`
+  // fields' comment in schema.prisma for why these are separate from the
+  // ones above rather than shared.
+  packName: z.string().optional().nullable(),
+  packDescription: z.string().optional().nullable(),
+  packContentBelow: z.string().optional().nullable(),
+  packMetaTitle: z.string().optional().nullable(),
+  packMetaDescription: z.string().optional().nullable(),
+  packFaqs: z
+    .array(z.object({ question: z.string(), answer: z.string() }))
+    .optional()
+    .nullable(),
   sortOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),
   isCollection: z.boolean().default(false),
@@ -67,6 +85,15 @@ export async function POST(request: NextRequest) {
         gradient: data.gradient || 'from-orange-400 to-yellow-400',
         description: data.description,
         contentBelow: data.contentBelow || null,
+        metaTitle: data.metaTitle || null,
+        metaDescription: data.metaDescription || null,
+        faqs: data.faqs && data.faqs.length > 0 ? data.faqs : undefined,
+        packName: data.packName || null,
+        packDescription: data.packDescription || null,
+        packContentBelow: data.packContentBelow || null,
+        packMetaTitle: data.packMetaTitle || null,
+        packMetaDescription: data.packMetaDescription || null,
+        packFaqs: data.packFaqs && data.packFaqs.length > 0 ? data.packFaqs : undefined,
         sortOrder: data.sortOrder,
         isActive: data.isActive,
         isCollection: data.isCollection,

@@ -42,7 +42,7 @@ export function CollectionLevelPage({
           </p>
           <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{title}</h1>
           {description && (
-            <p className="mt-2 text-base max-w-2xl" style={{ color: '#5C5852' }}>
+            <p className="mt-2 text-base" style={{ color: '#5C5852' }}>
               {description}
             </p>
           )}

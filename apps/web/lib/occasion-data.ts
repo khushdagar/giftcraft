@@ -161,12 +161,20 @@ export async function getOccasionSlugs(): Promise<
  * with zero live products still resolves, so the page can render an honest
  * empty state instead of a soft 404.
  */
+export interface OccasionFaq {
+  question: string;
+  answer: string;
+}
+
 export async function getOccasionBySlug(slug: string): Promise<{
   id: string;
   name: string;
   slug: string;
   description: string | null;
   contentBelow: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  faqs: OccasionFaq[];
   isCollection: boolean;
   tags: string[];
   productCount: number;
@@ -205,6 +213,9 @@ export async function getOccasionBySlug(slug: string): Promise<{
       slug: occasion.slug,
       description: occasion.description,
       contentBelow: occasion.contentBelow,
+      metaTitle: occasion.metaTitle,
+      metaDescription: occasion.metaDescription,
+      faqs: Array.isArray(occasion.faqs) ? (occasion.faqs as unknown as OccasionFaq[]) : [],
       isCollection: occasion.isCollection,
       tags: occasion.tags,
       productCount: products.length,

@@ -47,6 +47,12 @@ const CreateCategorySchema = z.object({
   slug: z.string().min(1, 'Slug required').transform(slugify),
   description: z.string().optional().nullable(),
   contentBelow: z.string().optional().nullable(),
+  faqs: z
+    .array(z.object({ question: z.string(), answer: z.string() }))
+    .optional()
+    .nullable(),
+  metaTitle: z.string().optional().nullable(),
+  metaDescription: z.string().optional().nullable(),
   parentId: z.string().optional().nullable(),
   sortOrder: z.number().int().default(0),
   imageUrl: z.string().url().optional().nullable(),
@@ -68,6 +74,9 @@ export async function POST(request: NextRequest) {
         slug: data.slug,
         description: data.description || null,
         contentBelow: data.contentBelow || null,
+        faqs: data.faqs && data.faqs.length > 0 ? data.faqs : undefined,
+        metaTitle: data.metaTitle || null,
+        metaDescription: data.metaDescription || null,
         parentId: data.parentId || null,
         sortOrder: data.sortOrder,
         ...(data.imageUrl && { imageUrl: data.imageUrl }),

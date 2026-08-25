@@ -10,6 +10,17 @@ import {
   CollectionTileGrid,
   type CollectionTile,
 } from '@/components/packs/collection-tile-grid';
+import { CollapsibleRichText } from '@/components/catalog/collapsible-rich-text';
+
+// scope/collection descriptions are plain text, not rich text — escaped into a
+// paragraph so CollapsibleRichText (which expects HTML) can truncate them the
+// same way it does the rich-text intros on /category and /occasion.
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 interface NamedRef {
   id: string;
@@ -400,18 +411,22 @@ export function PacksBrowser({
             <>
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{scope.title}</h1>
               {scope.description && (
-                <p className="mt-2 text-base max-w-2xl" style={{ color: '#5C5852' }}>
-                  {scope.description}
-                </p>
+                <CollapsibleRichText
+                  html={`<p>${escapeHtml(scope.description)}</p>`}
+                  className="mt-2 text-base"
+                  style={{ color: '#5C5852' }}
+                />
               )}
             </>
           ) : collection ? (
             <>
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{collection.name}</h1>
               {collection.description && (
-                <p className="mt-2 text-base max-w-2xl" style={{ color: '#5C5852' }}>
-                  {collection.description}
-                </p>
+                <CollapsibleRichText
+                  html={`<p>${escapeHtml(collection.description)}</p>`}
+                  className="mt-2 text-base"
+                  style={{ color: '#5C5852' }}
+                />
               )}
             </>
           ) : (

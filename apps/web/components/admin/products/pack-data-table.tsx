@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Trash2, Edit2, Package } from 'lucide-react';
+import { Trash2, Edit2, Package, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +42,8 @@ const statusVariants: Record<string, any> = {
   seasonal: 'gold',
 };
 
+const PAGE_SIZE = 50;
+
 /**
  * The thumbnail for a pack. Packs usually carry no image of their own — the
  * storefront collages the member products' images — so the list shows that same
@@ -78,6 +80,7 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [page, setPage] = useState(1);
 
   const returnTo = '/admin/products?view=packs';
   const editHref = (id: string) =>
@@ -91,8 +94,8 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
   }, [packs]);
 
 
-  // Filtering is client-side: a catalogue holds far fewer packs than products,
-  // so there is no pagination to fetch around.
+  // Filtering is client-side (the server already sent every pack down), then
+  // paginated client-side too so the table only ever renders PAGE_SIZE rows.
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return packs.filter((p) => {
@@ -111,10 +114,22 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
     });
   }, [packs, search, status, occasion]);
 
-  const allSelected = rows.length > 0 && rows.every((p) => selected.has(p.id));
+  // A changed search/filter can shrink the result set below the current page —
+  // land back on page 1 rather than showing an empty page.
+  useEffect(() => {
+    setPage(1);
+  }, [search, status, occasion]);
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const pagedRows = useMemo(
+    () => rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [rows, page]
+  );
+
+  const allSelected = pagedRows.length > 0 && pagedRows.every((p) => selected.has(p.id));
 
   const handleSelectAll = () => {
-    setSelected(allSelected ? new Set() : new Set(rows.map((p) => p.id)));
+    setSelected(allSelected ? new Set() : new Set(pagedRows.map((p) => p.id)));
   };
 
   const toggleSelect = (id: string) => {
@@ -234,7 +249,10 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
           ))}
         </div>
         <span className="ml-auto text-sm text-gray-500">
-          {rows.length} of {packs.length} pack{packs.length === 1 ? '' : 's'}
+          {rows.length > 0
+            ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, rows.length)} of `
+            : ''}
+          {rows.length} pack{rows.length === 1 ? '' : 's'}
         </span>
       </div>
 
@@ -285,14 +303,14 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {rows.length === 0 && (
+              {pagedRows.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-500">
                     No packs match these filters.
                   </td>
                 </tr>
               )}
-              {rows.map((pack) => (
+              {pagedRows.map((pack) => (
                 <tr
                   key={pack.id}
                   onClick={() => startTransition(() => router.push(editHref(pack.id)))}
@@ -362,6 +380,40 @@ export function PackDataTable({ packs }: { packs: PackRow[] }) {
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(1)} title="First page">
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600 px-2">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page === totalPages}
+            onClick={() => setPage(totalPages)}
+            title="Last page"
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

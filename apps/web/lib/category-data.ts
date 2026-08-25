@@ -186,12 +186,20 @@ export async function getCategorySlugs(): Promise<string[]> {
  * null. A real category with zero live products still resolves, so the page
  * can render an honest empty state instead of a soft 404.
  */
+export interface CategoryFaq {
+  question: string;
+  answer: string;
+}
+
 export async function getCategoryBySlug(slug: string): Promise<{
   id: string;
   name: string;
   slug: string;
   description: string | null;
   contentBelow: string | null;
+  faqs: CategoryFaq[];
+  metaTitle: string | null;
+  metaDescription: string | null;
   products: CategoryProduct[];
 } | null> {
   try {
@@ -228,6 +236,9 @@ export async function getCategoryBySlug(slug: string): Promise<{
       slug: category.slug,
       description: category.description,
       contentBelow: category.contentBelow,
+      faqs: Array.isArray(category.faqs) ? (category.faqs as unknown as CategoryFaq[]) : [],
+      metaTitle: category.metaTitle,
+      metaDescription: category.metaDescription,
       products: products.map((product) => ({
         id: product.id,
         name: product.name,

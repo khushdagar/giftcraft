@@ -32,6 +32,7 @@ export function OccasionProductManager({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [products, setProducts] = useState(linkedProducts);
   const [loading, setLoading] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10);
 
   const handleSearch = async (query: string) => {
     setSearch(query);
@@ -229,7 +230,7 @@ export function OccasionProductManager({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {products.map(({ product }) => {
+            {products.slice(0, visibleCount).map(({ product }) => {
               const imageUrl = product.images?.[0]?.url;
               return (
                 <div
@@ -264,6 +265,18 @@ export function OccasionProductManager({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {visibleCount < products.length && (
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setVisibleCount((n) => n + 10)}
+              className="rounded-lg border border-bdr px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:border-em hover:text-ink"
+            >
+              Show more ({products.length - visibleCount} remaining)
+            </button>
           </div>
         )}
       </div>

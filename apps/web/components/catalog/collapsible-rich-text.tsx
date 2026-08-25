@@ -110,13 +110,18 @@ export function CollapsibleRichText({
     <div>
       {open ? (
         <div className={className} style={style}>
-          {/* last-child:inline so "Read less" trails the final line of copy
-              instead of being pushed onto its own line by a block element. */}
-          <span
-            className="[&>*:last-child]:inline"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />{' '}
-          {toggle}
+          {/* A single wrapping span, not two siblings — `.blog-content > * + *`
+              (paragraph/heading spacing) would otherwise put a stray top margin
+              on the toggle, since it'd be a second direct child of `className`. */}
+          <span>
+            {/* last-child:inline so "Read less" trails the final line of copy
+                instead of being pushed onto its own line by a block element. */}
+            <span
+              className="[&>*:last-child]:inline"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />{' '}
+            {toggle}
+          </span>
         </div>
       ) : (
         <div className={className} style={style}>

@@ -10,17 +10,8 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { X, Upload, ArrowLeft } from 'lucide-react';
 import { slugify } from '@/lib/slug';
-
-// Same palette the tile grid falls back to, offered here so a band without a
-// photo still gets a deliberate face rather than a random one.
-const BAND_GRADIENTS = [
-  { label: 'Gold', value: 'linear-gradient(145deg, #D7AC55 0%, #9A6E2E 55%, #6F4D1E 100%)' },
-  { label: 'Charcoal', value: 'linear-gradient(145deg, #34332F 0%, #222222 55%, #0C0C0B 100%)' },
-  { label: 'Emerald', value: 'linear-gradient(145deg, #3FA978 0%, #1F8A5C 45%, #134E36 100%)' },
-  { label: 'Navy', value: 'linear-gradient(145deg, #4A90D9 0%, #2D5A9E 55%, #1A3C6E 100%)' },
-  { label: 'Plum', value: 'linear-gradient(145deg, #A45C9B 0%, #6E3468 55%, #431F41 100%)' },
-  { label: 'Rust', value: 'linear-gradient(145deg, #D97A4A 0%, #A2512A 55%, #6B3319 100%)' },
-];
+import { RichTextField } from '@/components/admin/rich-text-field';
+import { FaqRepeaterField, type FaqEntry } from '@/components/admin/faq-repeater-field';
 
 interface BudgetBandFormProps {
   mode?: 'create' | 'edit';
@@ -33,6 +24,10 @@ interface BudgetBandFormProps {
     gradient: string | null;
     minPrice: number;
     maxPrice: number | null;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
+    contentBelow?: string | null;
+    faqs?: unknown;
     sortOrder: number;
     isActive: boolean;
   };
@@ -49,13 +44,19 @@ export function BudgetBandForm({ mode = 'create', band }: BudgetBandFormProps) {
     slug: band?.slug || '',
     description: band?.description || '',
     imageUrl: band?.imageUrl || '',
-    gradient: band?.gradient || BAND_GRADIENTS[0]!.value,
+    gradient: band?.gradient || null,
     minPrice: band?.minPrice ?? 0,
     // Empty means "and above" — the band has no ceiling.
     maxPrice: band?.maxPrice == null ? '' : String(band.maxPrice),
+    metaTitle: band?.metaTitle || '',
+    metaDescription: band?.metaDescription || '',
+    contentBelow: band?.contentBelow || '',
     sortOrder: band?.sortOrder ?? 0,
     isActive: band?.isActive ?? true,
   });
+  const [faqs, setFaqs] = useState<FaqEntry[]>(
+    Array.isArray(band?.faqs) ? (band!.faqs as FaqEntry[]) : []
+  );
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,6 +100,10 @@ export function BudgetBandForm({ mode = 'create', band }: BudgetBandFormProps) {
         gradient: formData.gradient || null,
         minPrice: Number(formData.minPrice) || 0,
         maxPrice: formData.maxPrice === '' ? null : Number(formData.maxPrice),
+        metaTitle: formData.metaTitle || null,
+        metaDescription: formData.metaDescription || null,
+        contentBelow: formData.contentBelow || null,
+        faqs: faqs.filter((f) => f.question.trim() && f.answer.trim()),
         sortOrder: Number(formData.sortOrder) || 0,
         isActive: formData.isActive,
       };
@@ -221,6 +226,26 @@ export function BudgetBandForm({ mode = 'create', band }: BudgetBandFormProps) {
               className="w-full rounded-lg border border-bdr px-3 py-2 text-sm text-ink focus:border-em focus:outline-none"
             />
             <p className="mt-1 text-xs text-ink-3">Shown under the heading on the band&apos;s page.</p>
+
+            <label className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Content below packs <span className="font-normal text-ink-3">— optional, shows under the pack grid</span>
+            </label>
+            <RichTextField
+              value={formData.contentBelow}
+              onChange={(html) => setFormData((p) => ({ ...p, contentBelow: html }))}
+              placeholder="Gifting guide, budget tips, delivery timelines…"
+              minHeight={160}
+              uploadFolder="budget-bands"
+            />
+          </div>
+
+          {/* FAQs */}
+          <div className="rounded-xl border border-bdr bg-white p-5 shadow-sm">
+            <h2 className="mb-1 text-sm font-semibold text-ink">FAQs</h2>
+            <p className="mb-3 text-xs text-ink-3">
+              Shown below the pack grid and included as FAQ structured data for search engines.
+            </p>
+            <FaqRepeaterField value={faqs} onChange={setFaqs} uploadFolder="budget-bands" />
           </div>
 
           {/* Price range */}
@@ -298,29 +323,34 @@ export function BudgetBandForm({ mode = 'create', band }: BudgetBandFormProps) {
                 />
               </label>
             )}
-            <p className="mt-2 text-xs text-ink-3">
-              Without an image the tile uses the colour below.
-            </p>
           </div>
 
-          {/* Fallback colour */}
+          {/* SEO */}
           <div className="rounded-xl border border-bdr bg-white p-5 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-ink">Fallback colour</h2>
-            <div className="grid grid-cols-3 gap-2">
-              {BAND_GRADIENTS.map((g) => (
-                <button
-                  key={g.value}
-                  type="button"
-                  onClick={() => setFormData((p) => ({ ...p, gradient: g.value }))}
-                  className={`h-14 rounded-lg border-2 transition ${
-                    formData.gradient === g.value ? 'border-em' : 'border-transparent'
-                  }`}
-                  style={{ background: g.value }}
-                  aria-label={g.label}
-                  title={g.label}
-                />
-              ))}
-            </div>
+            <h2 className="mb-3 text-sm font-semibold text-ink">SEO metadata</h2>
+
+            <label htmlFor="metaTitle" className="mb-1.5 block text-sm font-medium text-ink">
+              Meta title
+            </label>
+            <Input
+              id="metaTitle"
+              value={formData.metaTitle}
+              onChange={(e) => setFormData((p) => ({ ...p, metaTitle: e.target.value }))}
+              placeholder={`Corporate Gift Packs ${formData.name || band?.name || ''}`}
+            />
+
+            <label htmlFor="metaDescription" className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Meta description
+            </label>
+            <textarea
+              id="metaDescription"
+              rows={3}
+              value={formData.metaDescription}
+              onChange={(e) => setFormData((p) => ({ ...p, metaDescription: e.target.value }))}
+              placeholder="Leave blank to fall back to the description above."
+              className="w-full rounded-lg border border-bdr px-3 py-2 text-sm text-ink focus:border-em focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-ink-3">Used for the page &lt;title&gt;, meta description and social previews.</p>
           </div>
 
           {/* Settings */}

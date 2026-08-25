@@ -2,6 +2,11 @@
 // `BudgetBand` table and are managed from /admin/budget-bands — this module
 // holds only the shape and the membership rule, so it stays importable from
 // client components (the loader itself is in lib/pack-data.ts, server-only).
+export interface BudgetBandFaq {
+  question: string;
+  answer: string;
+}
+
 export interface BudgetBand {
   id: string;
   slug: string;
@@ -13,6 +18,10 @@ export interface BudgetBand {
   min: number;
   /** Exclusive ceiling; null means "and above". */
   max: number | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  contentBelow: string | null;
+  faqs: BudgetBandFaq[];
 }
 
 /**

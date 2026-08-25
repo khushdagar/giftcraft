@@ -491,6 +491,13 @@ model Category {
   slug         String             @unique
   description  String?            @db.Text // Shopify-style collection description — rich text, renders ABOVE the product grid
   contentBelow String?            @db.Text // Rich text rendered BELOW the product grid (SEO/editorial copy)
+  // Ordered [{ question, answer }] pairs — the /category/[slug] FAQ section
+  // and FAQPage JSON-LD, same pattern as OccasionConfig.faqs.
+  faqs         Json?
+  // SEO overrides for /category/[slug]. Fall back to a generated
+  // title/description when unset.
+  metaTitle       String?
+  metaDescription String?         @db.Text
   imageUrl     String? // Category cover image (from Unsplash or custom)
   parentId     String?
   parent       Category?          @relation("CategoryTree", fields: [parentId], references: [id])
@@ -931,6 +938,30 @@ model OccasionConfig {
   description  String?           @db.Text
   // Rich text, rendered BELOW the product grid (SEO/editorial copy).
   contentBelow String?           @db.Text
+  // SEO overrides for /occasion/[slug]. Fall back to occasionCopy()'s
+  // generated title/description when unset.
+  metaTitle    String?
+  metaDescription String?        @db.Text
+  // Ordered [{ question, answer }] pairs — the /occasion/[slug] FAQ section
+  // and FAQPage JSON-LD.
+  faqs         Json?
+
+  // The same taxonomy also organises curated packs (isPack:true products), on
+  // a DIFFERENT page — /curated-packs/occasions/[slug]. Sharing one occasion
+  // across both surfaces (rather than a second occasion list) means tagging a
+  // pack to "Diwali" needs no separate pack-only taxonomy to keep in sync, but
+  // the two pages would otherwise render identical copy — thin/duplicate
+  // content for search engines. These `pack*` fields give the pack page its
+  // own independent title, intro, body copy and FAQs.
+  // Optional H1/tile-label override — blank means "use `name`". Everything
+  // ELSE about the occasion (slug, tags, membership) stays shared.
+  packName           String?
+  packDescription    String?     @db.Text
+  packContentBelow   String?     @db.Text
+  packMetaTitle      String?
+  packMetaDescription String?    @db.Text
+  packFaqs           Json?
+
   sortOrder    Int               @default(0)
   // Popularity signal for occasion/collection tiles — bumped once per session
   // from /occasion/[slug]. Sorts after `sortOrder`, same as Product.viewCount.
@@ -1735,6 +1766,17 @@ model BudgetBand {
   // in two bands at once. A null ceiling means "and above".
   minPrice    Int
   maxPrice    Int?
+  // SEO overrides for /curated-packs/budget/[slug]. Fall back to a generated
+  // title/description built from `name`/`description` when unset.
+  metaTitle       String?
+  metaDescription String? @db.Text
+  // Rich text, rendered BELOW the pack grid (SEO/editorial copy) — same slot
+  // as OccasionConfig.contentBelow.
+  contentBelow    String? @db.Text
+  // Ordered [{ question, answer }] pairs rendered as an FAQ section below the
+  // page and emitted as FAQPage JSON-LD. No dedicated table since a band's
+  // FAQs are never queried/reused outside their own page.
+  faqs            Json?
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
