@@ -56,6 +56,8 @@ export default async function BudgetBandPage({ params }: { params: { band: strin
   ]);
   if (!band) notFound();
 
+  const belowHtml = toRichHtml(band.contentBelow);
+
   return (
     <>
       <JsonLd
