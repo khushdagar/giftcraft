@@ -83,10 +83,42 @@ export function articleSchema(a: {
     ...(a.datePublished ? { datePublished: a.datePublished } : {}),
     dateModified: a.dateModified,
     author: { '@type': 'Person', name: a.authorName },
-    publisher: { '@id': `${SITE_URL}/#organization` },
-    isPartOf: { '@id': `${SITE_URL}/#website` },
+    // Inlined rather than an @id reference: blog pages no longer render the
+    // site-wide Organization node (its address/phone read as LocalBusiness
+    // markup on articles), and Google's Article guidance wants publisher.name
+    // and publisher.logo to be resolvable on the page itself.
+    publisher: {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${SITE_URL}/icon-512.png`,
+        width: 512,
+        height: 512,
+      },
+    },
+    isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: SITE_NAME, url: SITE_URL },
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     ...(a.keywords && a.keywords.length > 0 ? { keywords: a.keywords.join(', ') } : {}),
+  };
+}
+
+/**
+ * FAQPage for a post whose body has an FAQ section (see extractFaqs in
+ * lib/blog.ts). Questions and answers are lifted from the visible content, so
+ * the markup can never say something the page doesn't.
+ */
+export function faqSchema(faqs: Array<{ question: string; answer: string }>) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: { '@type': 'Answer', text: f.answer },
+    })),
   };
 }
 

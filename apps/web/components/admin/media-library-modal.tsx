@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react';
 import { X, Search, Check, Loader2 } from 'lucide-react';
 
-export type MediaLibraryItem = { url: string; altText: string | null; productName: string | null };
+export type MediaLibraryItem = {
+  url: string;
+  altText: string | null;
+  /** Source label — product name or blog post title. */
+  productName: string | null;
+  /** Object name in Spaces, minus the upload timestamp prefix. */
+  fileName?: string;
+};
 
 /**
  * "Select existing" media picker — browses everything already uploaded so an
@@ -93,7 +100,10 @@ export function MediaLibraryModal({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by product name, SKU, or alt text"
+              // The modal can sit inside a <form> (blog editor) — Enter must
+              // not submit it.
+              onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+              placeholder="Search by file name, product name, SKU, blog title or alt text"
               className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
@@ -117,17 +127,27 @@ export function MediaLibraryModal({
                     type="button"
                     disabled={alreadyUsed}
                     onClick={() => pick(m)}
-                    title={alreadyUsed ? 'Already attached' : m.productName || m.altText || ''}
-                    className={`relative aspect-square overflow-hidden rounded-lg border-2 transition ${
+                    title={
+                      alreadyUsed
+                        ? 'Already attached'
+                        : [m.fileName, m.productName || m.altText].filter(Boolean).join(' · ')
+                    }
+                    className={`group flex flex-col overflow-hidden rounded-lg border-2 text-left transition ${
                       isSelected ? 'border-blue-500' : 'border-transparent hover:border-gray-300'
                     } ${alreadyUsed ? 'cursor-not-allowed opacity-40' : ''}`}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={m.url} alt={m.altText || ''} className="h-full w-full object-cover" />
-                    {isSelected && (
-                      <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white">
-                        <Check className="h-3 w-3" />
-                      </span>
+                    <span className="relative block aspect-square w-full overflow-hidden bg-gray-50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={m.url} alt={m.altText || ''} className="h-full w-full object-cover" />
+                      {isSelected && (
+                        <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white">
+                          <Check className="h-3 w-3" />
+                        </span>
+                      )}
+                    </span>
+                    {/* File name so a search hit is recognisable at a glance. */}
+                    {m.fileName && (
+                      <span className="block truncate px-1 py-0.5 text-[10px] text-gray-500">{m.fileName}</span>
                     )}
                   </button>
                 );

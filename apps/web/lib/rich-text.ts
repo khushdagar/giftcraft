@@ -20,16 +20,21 @@ const ALLOWED_TAGS = [
   // The admin editor can insert tables — without these the whole table is
   // stripped on render and the content silently disappears.
   'table', 'thead', 'tbody', 'tr', 'th', 'td',
+  // Editor blocks: CTA button (<div data-cta-button>) and collapsible FAQ item
+  // (<details data-faq-item>) — see components/admin/tiptap/.
+  'div', 'details', 'summary',
 ];
 
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: ALLOWED_TAGS,
   allowedAttributes: {
-    a: ['href', 'target', 'rel'],
+    a: ['href', 'target', 'rel', 'data-cta-button'],
     img: ['src', 'alt'],
     span: ['style'],
     td: ['colspan', 'rowspan'],
     th: ['colspan', 'rowspan'],
+    div: ['data-cta-button', 'data-align', 'data-variant', 'data-faq-section'],
+    details: ['data-faq-item', 'open'],
     '*': ['class'],
   },
   // Only http(s), mailto and protocol-relative links — blocks javascript: URIs.

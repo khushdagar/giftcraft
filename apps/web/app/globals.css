@@ -468,6 +468,137 @@
   background-color: #fef08a;
   color: inherit;
 }
+
+/* Call-to-action button, inserted from the editor's Insert menu
+   (components/admin/tiptap/cta-button.ts). Saved inline inside the paragraph:
+   <p><a data-cta-button class="blog-cta__btn blog-cta__btn--primary" href>…</a> <a …>…</a></p>
+   so several can share a line and the paragraph's text-align positions them.
+   The `.blog-cta` wrapper rules below only serve the legacy block form. */
+.blog-content .blog-cta {
+  display: flex;
+  margin: 1.75em 0;
+}
+.blog-content .blog-cta[data-align='center'] {
+  justify-content: center;
+}
+.blog-content .blog-cta[data-align='right'] {
+  justify-content: flex-end;
+}
+.blog-content .blog-cta__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin: 0.25rem 0.375rem 0.25rem 0;
+  border: 2px solid #800020;
+  border-radius: 1rem;
+  padding: 0.875rem 1.75rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s, color 0.2s;
+}
+.blog-content .blog-cta__btn--primary {
+  background: #800020;
+  color: #ffffff;
+}
+.blog-content .blog-cta__btn--primary:hover {
+  background: #6b001b;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(128, 0, 32, 0.2);
+}
+.blog-content .blog-cta__btn--outline {
+  background: transparent;
+  color: #800020;
+}
+.blog-content .blog-cta__btn--outline:hover {
+  background: #800020;
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+/* In the editor: outline the button while it is the current selection. */
+.blog-content .blog-cta__btn.ProseMirror-selectednode,
+.blog-content .blog-cta.ProseMirror-selectednode {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
+
+/* FAQ section (components/admin/tiptap/faq-section.tsx). Saved markup:
+   <div data-faq-section class="blog-faqs">
+     <details data-faq-item class="blog-faq"><summary>Q</summary><div class="blog-faq__answer">…</div></details>
+   </div>
+   Native <details> does the collapsing on the public page — no JS. */
+.blog-content .blog-faqs {
+  margin: 1.75em 0;
+}
+.blog-content .blog-faq {
+  border: 2px solid #e5dfd4;
+  border-radius: 6px;
+  background: #ffffff;
+}
+.blog-content .blog-faq + .blog-faq {
+  margin-top: 0.75em;
+}
+.blog-content .blog-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 700;
+  color: #222222;
+}
+.blog-content .blog-faq summary::-webkit-details-marker {
+  display: none;
+}
+.blog-content .blog-faq summary::after {
+  content: '+';
+  flex: none;
+  font-size: 1.375rem;
+  line-height: 1;
+  color: #800020;
+  transition: transform 0.2s;
+}
+.blog-content .blog-faq[open] summary::after {
+  transform: rotate(45deg);
+}
+.blog-content .blog-faq__answer {
+  padding: 0 1.25rem 1.25rem;
+  font-size: 1rem;
+}
+.blog-content .blog-faq__answer > * + * {
+  margin-top: 0.75em;
+}
+/* Editor preview of the section (NodeView). The outer <ol> is layout, not a
+   numbered list — undo the post's list styling on it; keep it for answers. */
+.blog-content .faq-section-view > ol {
+  list-style: none;
+  padding-left: 0;
+}
+.blog-content .faq-section-view > ol > li {
+  margin-top: 0;
+}
+.blog-content .faq-section-view ul,
+.blog-content .faq-section-view li ol {
+  padding-left: 1.25rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .blog-content .blog-faq summary::after {
+    transition: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .blog-content .blog-cta__btn {
+    transition: none;
+  }
+  .blog-content .blog-cta__btn:hover {
+    transform: none;
+  }
+}
 /* Tables — the wrapper is added by TipTap inside the editor only. */
 .blog-content .tableWrapper {
   overflow-x: auto;

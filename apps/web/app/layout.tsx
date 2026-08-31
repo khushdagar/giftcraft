@@ -2,9 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Playfair_Display } from "next/font/google";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { Providers } from "@/components/providers";
-import { JsonLd } from "@/components/seo/json-ld";
 import { GoogleTagManager, GoogleTagManagerNoScript } from "@/components/analytics/gtm";
-import { organizationSchema, webSiteSchema } from "@/lib/schema";
 import { SITE_URL, SITE_NAME, SITE_TAGLINE, SITE_DESCRIPTION, SITE_NOINDEX } from "@/lib/site";
 import "./globals.css";
 
@@ -96,9 +94,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {/* GTM's no-JS fallback — must be the first thing inside <body>. */}
         <GoogleTagManagerNoScript />
-        {/* Site-wide structured data — server-rendered in the initial HTML. */}
-        <JsonLd data={organizationSchema()} />
-        <JsonLd data={webSiteSchema()} />
+        {/* Site-wide Organization / WebSite JSON-LD lives in app/(customer)/layout.tsx
+            so the blog route group can opt out of it. */}
         <Providers>
           <SessionProvider>{children}</SessionProvider>
         </Providers>
