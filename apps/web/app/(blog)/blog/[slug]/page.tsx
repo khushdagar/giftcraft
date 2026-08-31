@@ -4,9 +4,11 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, Clock } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
-import { formatPostDate, publishedPostWhere, autoExcerpt, BLOG_AUTHOR } from '@/lib/blog';
+import { formatPostDate, publishedPostWhere, autoExcerpt, extractFaqs, BLOG_AUTHOR } from '@/lib/blog';
 import { BlogComments } from '@/components/blog/comments';
-import { articleSchema } from '@/lib/schema';
+import { JsonLd } from '@/components/seo/json-ld';
+import { articleSchema, faqSchema } from '@/lib/schema';
+import { SITE_NAME } from '@/lib/site';
 
 export const revalidate = 300;
 
@@ -23,13 +25,31 @@ async function getPost(slug: string) {
   return post;
 }
 
+/**
+ * The image link previews (Google Chat, WhatsApp, LinkedIn, X) actually load.
+ *
+ * Uploads are stored as WebP, which most unfurlers refuse as an og:image — the
+ * tags were present but the card rendered without a picture. The share image
+ * is therefore served through /blog/[slug]/og.jpg (route.ts next to this
+ * file), a 1200×630 JPEG rendition of the post's share/cover image; the `?v=`
+ * cache-buster changes whenever the post is edited. Posts without any image
+ * use the site card.
+ */
+function shareImage(post: { slug: string; ogImageUrl: string | null; coverImageUrl: string | null; updatedAt: Date }) {
+  if (post.ogImageUrl || post.coverImageUrl) {
+    return { url: `${SITE}/blog/${post.slug}/og.jpg?v=${post.updatedAt.getTime()}`, type: 'image/jpeg' };
+  }
+  return { url: `${SITE}/opengraph-image`, type: 'image/png' };
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const post = await getPost(params.slug);
   if (!post) return { title: 'Post not found' };
 
   const title = post.metaTitle || post.title;
   const description = post.metaDescription || post.excerpt || autoExcerpt(post.content);
-  const image = post.ogImageUrl || post.coverImageUrl;
+  const image = shareImage(post);
+  const imageAlt = post.coverImageAlt || title;
   const url = `${SITE}/blog/${post.slug}`;
 
   return {
@@ -41,8 +61,12 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     // root layout instead of inheriting it, which silently exempted this route
     // from the site-wide SITE_NOINDEX kill switch.
     ...(post.noIndex ? { robots: { index: false, follow: true } } : {}),
+    // A nested `openGraph` REPLACES the root layout's object rather than merging
+    // with it, so siteName and locale have to be restated here.
     openGraph: {
       type: 'article',
+      siteName: SITE_NAME,
+      locale: 'en_IN',
       title,
       description,
       url,
@@ -50,13 +74,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       modifiedTime: post.updatedAt.toISOString(),
       authors: [post.authorName || BLOG_AUTHOR],
       tags: post.tags,
-      images: image ? [{ url: image, width: 1200, height: 630, alt: post.coverImageAlt || title }] : undefined,
+      images: [{ url: image.url, secureUrl: image.url, type: image.type, width: 1200, height: 630, alt: imageAlt }],
     },
     twitter: {
-      card: image ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title,
       description,
-      images: image ? [image] : undefined,
+      images: [{ url: image.url, alt: imageAlt }],
     },
   };
 }
@@ -88,7 +112,8 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
 
   const image = post.ogImageUrl || post.coverImageUrl;
   // Publisher/logo, absolute image URLs and the @id wiring all come from the
-  // shared builder so the article ties into the site's Organization node.
+  // shared builder. The publisher is inlined there: blog pages deliberately do
+  // NOT render the site-wide Organization node (see app/(blog)/layout.tsx).
   const jsonLd = articleSchema({
     title: post.title,
     slug: post.slug,
@@ -99,14 +124,15 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     authorName: post.authorName || BLOG_AUTHOR,
     keywords: post.tags,
   });
+  // FAQPage is generated from the body whenever the author has written an
+  // "FAQs" section — nothing to configure in the admin.
+  const faqs = extractFaqs(post.content);
 
   return (
     <div className="min-h-screen bg-canvas">
-      <script
-        type="application/ld+json"
-        // Structured data for Google's article rich results.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      {/* Structured data for Google's article (and FAQ) rich results. */}
+      <JsonLd data={jsonLd} />
+      {faqs.length > 0 && <JsonLd data={faqSchema(faqs)} />}
 
       <article className="container-gc-w px-4 py-10 md:py-14">
         <div className="mx-auto max-w-7xl">

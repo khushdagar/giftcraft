@@ -5,12 +5,13 @@ import { compressAndUpload } from '@/hooks/use-compressed-upload';
 import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Upload, X, Trash2, Plus } from 'lucide-react';
+import { Loader2, Upload, X, Trash2, Plus, LibraryBig } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
-import { slugify, parseTags, autoExcerpt, readingMinutes, stripHtml } from '@/lib/blog';
+import { MediaLibraryModal } from '@/components/admin/media-library-modal';
+import { slugify, parseTags, autoExcerpt, readingMinutes, stripHtml, extractFaqs } from '@/lib/blog';
 
 export interface BlogPostFormData {
   id?: string;
@@ -90,6 +91,8 @@ export function BlogForm({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState<'cover' | 'og' | null>(null);
+  // Which image slot the media-library picker is open for.
+  const [libraryFor, setLibraryFor] = useState<'cover' | 'og' | null>(null);
   const [tagInput, setTagInput] = useState('');
   // Swaps the dropdown for a free-text box so a new category can be named.
   const [creatingCategory, setCreatingCategory] = useState(false);
@@ -111,6 +114,9 @@ export function BlogForm({
 
   const wordCount = useMemo(() => stripHtml(form.content).split(/\s+/).filter(Boolean).length, [form.content]);
   const minutes = useMemo(() => (form.content ? readingMinutes(form.content) : 0), [form.content]);
+  // Same extractor the public page uses to emit FAQPage JSON-LD, so the author
+  // can see whether their FAQ section will be picked up before publishing.
+  const faqCount = useMemo(() => extractFaqs(form.content).length, [form.content]);
 
   // What Google will actually show, falling back the same way the page does.
   const seoTitle = form.metaTitle || form.title || 'Untitled post';
@@ -257,6 +263,20 @@ export function BlogForm({
             </p>
           </div>
 
+          {/* FAQ structured data is derived from the body — surface the result here. */}
+          <div
+            className={`rounded-md border p-3 text-xs ${
+              faqCount > 0
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-gray-200 bg-gray-50 text-gray-600'
+            }`}
+          >
+            <span className="font-medium">FAQ schema:</span>{' '}
+            {faqCount > 0
+              ? `${faqCount} question${faqCount === 1 ? '' : 's'} detected — FAQPage structured data is added to the page automatically.`
+              : 'none yet. Use Insert → FAQ section in the editor and add your questions; FAQPage structured data is generated from them automatically.'}
+          </div>
+
           <Field
             label="Meta title"
             counter={`${form.metaTitle.length}/70`}
@@ -300,10 +320,16 @@ export function BlogForm({
                 </button>
               </div>
             ) : (
-              <Button type="button" variant="outline" size="sm" disabled={uploading === 'og'} onClick={() => ogRef.current?.click()}>
-                {uploading === 'og' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                Upload
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" disabled={uploading === 'og'} onClick={() => ogRef.current?.click()}>
+                  {uploading === 'og' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  Upload
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setLibraryFor('og')}>
+                  <LibraryBig className="h-4 w-4" />
+                  Choose from library
+                </Button>
+              </div>
             )}
             <input ref={ogRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], 'og')} />
@@ -401,6 +427,12 @@ export function BlogForm({
               <span className="text-[11px] text-gray-400">JPG or PNG · max 5MB</span>
             </button>
           )}
+          {!form.coverImageUrl && (
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => setLibraryFor('cover')}>
+              <LibraryBig className="h-4 w-4" />
+              Choose from library
+            </Button>
+          )}
           <input ref={coverRef} type="file" accept="image/*" className="hidden"
             onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], 'cover')} />
         </Section>
@@ -479,6 +511,29 @@ export function BlogForm({
           </Field>
         </Section>
       </div>
+
+      {/* Pick an already-uploaded image for the cover / share slot. Sits inside
+          the form; every control in the modal is type="button" and its search
+          box swallows Enter, so nothing here can submit the post. */}
+      {libraryFor && (
+        <MediaLibraryModal
+          multiple={false}
+          title={libraryFor === 'cover' ? 'Choose a cover image' : 'Choose a social share image'}
+          onClose={() => setLibraryFor(null)}
+          onConfirm={([picked]) => {
+            if (!picked) return;
+            if (libraryFor === 'cover') {
+              setForm((p) => ({
+                ...p,
+                coverImageUrl: picked.url,
+                coverImageAlt: p.coverImageAlt || picked.altText || '',
+              }));
+            } else {
+              set('ogImageUrl', picked.url);
+            }
+          }}
+        />
+      )}
     </form>
   );
 }
