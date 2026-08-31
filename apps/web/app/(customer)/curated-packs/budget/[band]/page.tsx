@@ -3,7 +3,11 @@ import { getBudgetBand, getBudgetBands } from '@/lib/pack-data';
 import { queryPacks, scopedPacks, type PackScope } from '@/lib/pack-query';
 import { PacksBrowser } from '@/components/packs/packs-browser';
 import { JsonLd } from '@/components/seo/json-ld';
-import { itemListSchema, breadcrumbSchema } from '@/lib/schema';
+import { itemListSchema, breadcrumbSchema, faqPageSchema } from '@/lib/schema';
+import { toRichHtml } from '@/lib/rich-text';
+import { stripHtml } from '@/lib/strip-html';
+import { ContentSection } from '@/components/seo/content-section';
+import { FaqSection } from '@/components/seo/faq-section';
 
 // ISR: cacheable HTML for crawlers + users, refreshed hourly.
 export const revalidate = 3600;
@@ -20,21 +24,22 @@ export async function generateMetadata({ params }: { params: { band: string } })
   if (!band) return { title: 'Budget not found', robots: { index: false, follow: false } };
 
   const path = `/curated-packs/budget/${band.slug}`;
-  const title = `Corporate Gift Packs ${band.name}`;
+  const title = band.metaTitle || `Corporate Gift Packs ${band.name}`;
+  const description = band.metaDescription || band.description || undefined;
   return {
     // Root template appends "· GIVOO"
     title,
-    description: band.description ?? undefined,
+    description,
     alternates: { canonical: path },
     openGraph: {
       type: 'website',
       url: path,
       title,
-      description: band.description ?? undefined,
+      description,
       siteName: 'GIVOO',
       locale: 'en_IN',
     },
-    twitter: { card: 'summary_large_image', title, description: band.description ?? undefined },
+    twitter: { card: 'summary_large_image', title, description },
   };
 }
 
@@ -60,7 +65,10 @@ export default async function BudgetBandPage({ params }: { params: { band: strin
           packs.slice(0, 50).map((p) => ({
             name: p.name,
             path: `/products/${p.slug}`,
-            image: p.image,
+            // A pack rarely has its own photo — fall back to a member
+            // product's image so the schema never omits `image` (Google flags
+            // a Product node with no image as invalid structured data).
+            image: p.image ?? p.productImages.find(Boolean) ?? null,
             // Sum of the members' cheapest slabs — the pack's "from" price.
             price: p.fromPrice,
           }))
@@ -74,6 +82,13 @@ export default async function BudgetBandPage({ params }: { params: { band: strin
           { name: band.name, path: `/curated-packs/budget/${band.slug}` },
         ])}
       />
+      {band.faqs.length > 0 && (
+        <JsonLd
+          data={faqPageSchema(
+            band.faqs.map((f) => ({ question: f.question, answer: stripHtml(f.answer) }))
+          )}
+        />
+      )}
       <PacksBrowser
         source={scope}
         initialPage={initialPage}
@@ -88,6 +103,8 @@ export default async function BudgetBandPage({ params }: { params: { band: strin
           backLabel: 'All Budgets',
         }}
       />
+      <ContentSection heading={`About ${band.name}`} bodyHtml={belowHtml} />
+      <FaqSection heading={band.name} faqs={band.faqs} />
     </>
   );
 }

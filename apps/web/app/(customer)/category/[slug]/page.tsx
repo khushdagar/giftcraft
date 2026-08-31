@@ -8,7 +8,9 @@ import { toRichHtml } from '@/lib/rich-text';
 import { stripHtml } from '@/lib/strip-html';
 import { CatalogClient } from '@/components/catalog/catalog-client';
 import { JsonLd } from '@/components/seo/json-ld';
-import { breadcrumbSchema, collectionPageSchema } from '@/lib/schema';
+import { ContentSection } from '@/components/seo/content-section';
+import { FaqSection } from '@/components/seo/faq-section';
+import { breadcrumbSchema, collectionPageSchema, faqPageSchema } from '@/lib/schema';
 
 // Server-rendered + ISR: the product grid (and every product link in it) is in
 // the initial HTML, and the page is cached between revalidations.
@@ -29,11 +31,12 @@ export async function generateMetadata({
   if (!category) return { title: 'Category not found', robots: { index: false, follow: false } };
 
   const copy = categoryCopy(category.slug, category.name);
-  // An admin description wins, but stripped of its markup and clamped — it's
-  // authored as rich text page copy, not as a 155-character meta description,
-  // and raw tags in a SERP snippet look broken.
+  // An admin meta description wins outright; failing that, the admin's page
+  // description (rich text page copy, so stripped and clamped) stands in;
+  // only a brand-new category with neither falls back to the generic template.
   const adminText = stripHtml(category.description);
-  const description = adminText ? toMetaDescription(adminText) : copy.meta;
+  const title = category.metaTitle || `${category.name} — Bulk Corporate Gifts`;
+  const description = category.metaDescription || (adminText ? toMetaDescription(adminText) : copy.meta);
   const url = `/category/${category.slug}`;
   // Real product shot when the category has one, else the branded site card —
   // a link preview should never come back blank.
@@ -41,7 +44,7 @@ export async function generateMetadata({
 
   return {
     // Root template appends "· GIVOO"
-    title: `${category.name} — Bulk Corporate Gifts`,
+    title,
     description,
     alternates: { canonical: url },
     // An empty category is a real page but has nothing to rank — keep it out of
@@ -50,7 +53,7 @@ export async function generateMetadata({
     openGraph: {
       type: 'website',
       url,
-      title: `${category.name} — Bulk Corporate Gifts`,
+      title,
       description,
       siteName: 'GIVOO',
       locale: 'en_IN',
@@ -58,7 +61,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${category.name} — Bulk Corporate Gifts`,
+      title,
       description,
       images: [ogImage],
     },
@@ -87,12 +90,13 @@ export default async function CategoryPage({ params }: { params: { slug: string 
   const introText = stripHtml(intro);
   const belowHtml = toRichHtml(category.contentBelow);
   const otherCategories = siblings.filter((c) => c.slug !== category.slug);
+  const pageTitle = category.metaTitle || `${category.name} — Bulk Corporate Gifts`;
 
   return (
     <>
       <JsonLd
         data={collectionPageSchema({
-          name: `${category.name} — Bulk Corporate Gifts`,
+          name: pageTitle,
           description: introText,
           path: `/category/${category.slug}`,
           // `price` is the same cheapest-slab figure the cards render.
@@ -112,6 +116,13 @@ export default async function CategoryPage({ params }: { params: { slug: string 
           { name: category.name, path: `/category/${category.slug}` },
         ])}
       />
+      {category.faqs.length > 0 && (
+        <JsonLd
+          data={faqPageSchema(
+            category.faqs.map((f) => ({ question: f.question, answer: stripHtml(f.answer) }))
+          )}
+        />
+      )}
 
       {/* Same catalog experience — search, filters, sort, Add to Pack — scoped
           to this category, which also supplies the page's H1 and intro copy. */}
@@ -126,16 +137,8 @@ export default async function CategoryPage({ params }: { params: { slug: string 
         initialFilters={filters}
       />
 
-      {belowHtml && (
-        <section aria-label={`About ${category.name}`} style={{ background: '#F5F1EB' }}>
-          <div className="max-w-7xl mx-auto px-4 md:px-10 pb-16">
-            <div
-              className="blog-content max-w-7xl border-t border-bdr pt-10"
-              dangerouslySetInnerHTML={{ __html: belowHtml }}
-            />
-          </div>
-        </section>
-      )}
+      <ContentSection heading={`About ${category.name}`} bodyHtml={belowHtml} />
+      <FaqSection heading={category.name} faqs={category.faqs} />
 
       {otherCategories.length > 0 && (
         <section

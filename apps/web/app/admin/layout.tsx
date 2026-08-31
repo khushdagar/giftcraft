@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogOut } from "lucide-react";
+import { Toaster } from "sonner";
 import { auth, signOut } from "@/auth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AdminNav } from "@/components/admin/admin-nav";
@@ -62,6 +63,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
         <main className="min-h-[calc(100vh-64px)] bg-gray-50 p-4">{children}</main>
       </div>
+
+      {/* Every admin form calls sonner's toast.success()/toast.error() on
+          save — nothing rendered it before, so those calls were silent. */}
+      <Toaster richColors position="top-right" />
     </div>
   );
 }

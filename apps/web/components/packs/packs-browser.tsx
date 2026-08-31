@@ -309,18 +309,22 @@ export function PacksBrowser({
             <>
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{scope.title}</h1>
               {scope.description && (
-                <p className="mt-2 text-base max-w-2xl" style={{ color: '#5C5852' }}>
-                  {scope.description}
-                </p>
+                <CollapsibleRichText
+                  html={`<p>${escapeHtml(scope.description)}</p>`}
+                  className="mt-2 text-base"
+                  style={{ color: '#5C5852' }}
+                />
               )}
             </>
           ) : collection ? (
             <>
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">{collection.name}</h1>
               {collection.description && (
-                <p className="mt-2 text-base max-w-2xl" style={{ color: '#5C5852' }}>
-                  {collection.description}
-                </p>
+                <CollapsibleRichText
+                  html={`<p>${escapeHtml(collection.description)}</p>`}
+                  className="mt-2 text-base"
+                  style={{ color: '#5C5852' }}
+                />
               )}
             </>
           ) : (

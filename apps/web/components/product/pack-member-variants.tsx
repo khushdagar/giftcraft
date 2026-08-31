@@ -1,7 +1,8 @@
 'use client';
 
-import { ChevronDown, Package } from 'lucide-react';
+import { ChevronDown, Package, AlertTriangle } from 'lucide-react';
 import { resolveSwatchHex } from '@/lib/color-name';
+import { RestockNotifyForm } from './restock-notify-form';
 
 export interface PackMemberVariant {
   kind: string;
@@ -16,6 +17,8 @@ export interface PackMember {
   quantity: number;
   image: string | null;
   variants: PackMemberVariant[];
+  /** Draft/archived — no longer sellable. Shows a "notify me" form instead of options. */
+  outOfStock?: boolean;
 }
 
 interface PackMemberVariantsProps {
@@ -50,8 +53,9 @@ export function variantKinds(member: PackMember) {
  * has no options". Fixed members show a plain "No options" note instead.
  */
 export function PackMemberVariants({ members, selections, onChange }: PackMemberVariantsProps) {
-  // The panel only earns its place when at least one member is configurable.
-  if (!members.some((m) => m.variants.length > 0)) return null;
+  // The panel only earns its place when at least one member is configurable
+  // or out of stock (which also needs surfacing here).
+  if (!members.some((m) => m.variants.length > 0 || m.outOfStock)) return null;
 
   return (
     <div className="mt-6 overflow-hidden rounded-md border-2 border-bdr bg-white">
@@ -74,10 +78,17 @@ export function PackMemberVariants({ members, selections, onChange }: PackMember
               key={member.id}
               className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4"
             >
-              {/* Identity */}
+              {/* Identity — an out-of-stock member loses its photo for a warning
+                  icon, so the row reads as "unavailable" at a glance. */}
               <div className="flex min-w-0 flex-1 items-center gap-3">
-                <div className="h-11 w-11 flex-shrink-0 overflow-hidden rounded-md bg-gray-50">
-                  {member.image ? (
+                <div
+                  className={`flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-md ${
+                    member.outOfStock ? 'bg-amber-50' : 'bg-gray-50'
+                  }`}
+                >
+                  {member.outOfStock ? (
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  ) : member.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={member.image}
@@ -95,11 +106,23 @@ export function PackMemberVariants({ members, selections, onChange }: PackMember
                   {member.quantity > 1 && (
                     <span className="font-normal text-ink-3"> ×{member.quantity}</span>
                   )}
+                  {member.outOfStock && (
+                    <span className="block text-xs font-normal text-amber-600">
+                      Currently out of stock — fill the form to be notified when it&apos;s available.
+                    </span>
+                  )}
                 </p>
               </div>
 
-              {/* Options — fixed-width controls so every row lines up */}
+              {/* Options — fixed-width controls so every row lines up. An
+                  out-of-stock member gets a notify form instead of pickers. */}
               <div className="grid flex-shrink-0 grid-cols-2 gap-2 sm:flex">
+                {member.outOfStock ? (
+                  <div className="col-span-2 sm:w-auto">
+                    <RestockNotifyForm productId={member.id} productName={member.name} />
+                  </div>
+                ) : (
+                  <>
                 {/* Nothing to configure — say so, so the row isn't mistaken for
                     a control that failed to load. */}
                 {kinds.length === 0 && (
@@ -171,6 +194,8 @@ export function PackMemberVariants({ members, selections, onChange }: PackMember
                     </label>
                   );
                 })}
+                  </>
+                )}
               </div>
             </div>
           );

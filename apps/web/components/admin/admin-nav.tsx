@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Star, IndianRupee, History, Shuffle } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Star, IndianRupee, History, Shuffle, BellRing } from 'lucide-react';
 
 const NAV = [
   { section: "Overview", items: [
@@ -15,6 +15,7 @@ const NAV = [
     { href: "/admin/goc", icon: Sparkles, label: "GOC Campaigns" },
     { href: "/admin/samples", icon: Box, label: "Samples" },
     { href: "/admin/enquiries", icon: Mail, label: "Enquiries" },
+    { href: "/admin/restock-requests", icon: BellRing, label: "Restock Requests" },
     { href: "/admin/proposals", icon: FileText, label: "Proposals" },
     { href: "/admin/clients", icon: Users, label: "Clients" },
     { href: "/admin/vendors", icon: Truck, label: "Vendors" },

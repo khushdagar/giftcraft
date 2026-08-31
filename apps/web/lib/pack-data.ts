@@ -175,6 +175,10 @@ export async function getBudgetBands(): Promise<BudgetBand[]> {
     gradient: b.gradient,
     min: b.minPrice,
     max: b.maxPrice,
+    metaTitle: b.metaTitle,
+    metaDescription: b.metaDescription,
+    contentBelow: b.contentBelow,
+    faqs: Array.isArray(b.faqs) ? (b.faqs as unknown as { question: string; answer: string }[]) : [],
   }));
 }
 
@@ -204,6 +208,7 @@ export async function getPackOccasionTiles(packs: PackListItem[]) {
     select: {
       id: true,
       name: true,
+      packName: true,
       slug: true,
       imageUrl: true,
       gradient: true,
@@ -214,7 +219,9 @@ export async function getPackOccasionTiles(packs: PackListItem[]) {
   const tiles = occasions
     .map((o) => ({
       id: o.id,
-      name: o.name,
+      // Tiles here link only to /curated-packs/occasions/[slug] — the pack
+      // page's own name wins when the admin set one.
+      name: o.packName || o.name,
       slug: o.slug,
       image: o.imageUrl,
       gradient: o.gradient,

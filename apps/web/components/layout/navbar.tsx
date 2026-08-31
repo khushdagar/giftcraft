@@ -140,7 +140,7 @@ export function Navbar() {
     {
       key: "categories",
       label: "By Categories",
-      href: "/catalog",
+      href: "/categories",
       items: categories,
       // Indexable category landing page, not a filtered ?category= URL.
       hrefFor: (s: string) => `/category/${s}`,
@@ -374,67 +374,6 @@ export function Navbar() {
 
         <ul className="hidden items-center gap-7 nav:flex">
           {/* <li><Link href="/" className="text-sm font-medium text-ink-2 hover:text-ink">Home</Link></li> */}
-          {/* Products dropdown — two ways to browse the catalogue side by
-              side: by category, and by occasion (which used to be its own
-              top-level tab). */}
-          <li
-            className="group relative py-4"
-            onMouseLeave={() => setHoveredProductEntry(null)}
-          >
-            <Link href="/catalog" className={topLinkClass(inProducts || inOccasions)}>Products ▾</Link>
-            {activeBar(inProducts || inOccasions)}
-            {productEntries.length > 0 && (
-              <div className="invisible absolute left-0 top-full flex rounded-md-s border border-bdr bg-white p-2 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
-                {/* Column 1 — the two ways in. Nothing else opens until one of
-                    them is hovered, so the menu starts short. */}
-                <div className="flex w-[240px] flex-col gap-1 p-2">
-                  {productEntries.map((entry) => (
-                    <Link
-                      key={entry.key}
-                      href={entry.href}
-                      onMouseEnter={() => setHoveredProductEntry(entry.key)}
-                      className={cn(
-                        "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-[13px] transition-colors",
-                        hoveredProductEntry === entry.key
-                          ? "bg-em-50 font-semibold text-em"
-                          : "font-medium text-ink-2 hover:bg-em-50 hover:text-em"
-                      )}
-                    >
-                      <span className="truncate">{entry.label}</span>
-                      <span className="text-ink-3">›</span>
-                    </Link>
-                  ))}
-                </div>
-
-                {/* Column 2 — the hovered entry's rungs, split across two
-                    columns since both lists run long. */}
-                {activeProductEntry && (
-                  <div className="max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain border-l border-bdr p-2">
-                    <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
-                      {activeProductEntry.label.replace(/^By /, "")}
-                    </p>
-                    {/* Three columns — both lists run long enough that two
-                        overflow the viewport and force a scroll. */}
-                    <div className="grid w-[min(41rem,calc(100vw-20rem))] grid-cols-3 gap-x-1">
-                      {activeProductEntry.items.map((i) => (
-                        <Link
-                          key={i.slug}
-                          href={activeProductEntry.hrefFor(i.slug)}
-                          className={menuItemClass(
-                            path === activeProductEntry.hrefFor(i.slug),
-                            "px-2.5 py-1.5 leading-snug"
-                          )}
-                        >
-                          {i.name}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </li>
-
           {/* Curated Packs dropdown — a three-column cascade: collections,
               then the hovered one's sub-collections (or its own packs when it
               has none), then the hovered sub-collection's packs. */}
@@ -517,6 +456,68 @@ export function Navbar() {
             <Link href="/box" className={topLinkClass(path.startsWith("/box"))}>Build Your Pack</Link>
             {activeBar(path.startsWith("/box"))}
           </li>
+
+          {/* Products dropdown — two ways to browse the catalogue side by
+              side: by category, and by occasion (which used to be its own
+              top-level tab). */}
+          <li
+            className="group relative py-4"
+            onMouseLeave={() => setHoveredProductEntry(null)}
+          >
+            <Link href="/catalog" className={topLinkClass(inProducts || inOccasions)}>Products ▾</Link>
+            {activeBar(inProducts || inOccasions)}
+            {productEntries.length > 0 && (
+              <div className="invisible absolute left-0 top-full flex rounded-md-s border border-bdr bg-white p-2 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">
+                {/* Column 1 — the two ways in. Nothing else opens until one of
+                    them is hovered, so the menu starts short. */}
+                <div className="flex w-[240px] flex-col gap-1 p-2">
+                  {productEntries.map((entry) => (
+                    <Link
+                      key={entry.key}
+                      href={entry.href}
+                      onMouseEnter={() => setHoveredProductEntry(entry.key)}
+                      className={cn(
+                        "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-[13px] transition-colors",
+                        hoveredProductEntry === entry.key
+                          ? "bg-em-50 font-semibold text-em"
+                          : "font-medium text-ink-2 hover:bg-em-50 hover:text-em"
+                      )}
+                    >
+                      <span className="truncate">{entry.label}</span>
+                      <span className="text-ink-3">›</span>
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Column 2 — the hovered entry's rungs, split across two
+                    columns since both lists run long. */}
+                {activeProductEntry && (
+                  <div className="max-h-[calc(100vh-10rem)] overflow-y-auto overscroll-contain border-l border-bdr p-2">
+                    <p className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-ink-3">
+                      {activeProductEntry.label.replace(/^By /, "")}
+                    </p>
+                    {/* Two columns — three overflowed the viewport now that Products
+                        sits further right in the nav; the panel scrolls instead. */}
+                    <div className="grid w-[min(28rem,calc(100vw-24rem))] grid-cols-2 gap-x-1">
+                      {activeProductEntry.items.map((i) => (
+                        <Link
+                          key={i.slug}
+                          href={activeProductEntry.hrefFor(i.slug)}
+                          className={menuItemClass(
+                            path === activeProductEntry.hrefFor(i.slug),
+                            "px-2.5 py-1.5 leading-snug"
+                          )}
+                        >
+                          {i.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </li>
+
           {/* <li><Link href="/blog" className="text-sm font-medium text-ink-2 hover:text-ink">Blog</Link></li> */}
           <li className="relative py-4">
             <Link href="/contact" className={topLinkClass(path.startsWith("/contact"))}>Contact</Link>
@@ -806,20 +807,28 @@ export function Navbar() {
                 Occasions live inside Products, as they do on desktop. */}
             {[
               {
+                key: "packs",
+                label: "Curated Packs",
+                href: "/curated-packs",
+                groups: [
+                  { title: null, items: collections as NavLink[], hrefFor: (s: string) => `/curated-packs/${s}` },
+                ],
+              },
+              {
+                // Plain link, no accordion — sits between the two dropdowns to
+                // match the desktop order.
+                key: "box",
+                label: "Build Your Pack",
+                href: "/box",
+                groups: [] as { title: string | null; items: NavLink[]; hrefFor: (s: string) => string }[],
+              },
+              {
                 key: "products",
                 label: "Products",
                 href: "/catalog",
                 groups: [
                   { title: "By Categories", items: categories, hrefFor: (s: string) => `/category/${s}` },
                   { title: "By Occasions", items: orderOccasionRungs(occasions), hrefFor: (s: string) => `/occasion/${s}` },
-                ],
-              },
-              {
-                key: "packs",
-                label: "Curated Packs",
-                href: "/curated-packs",
-                groups: [
-                  { title: null, items: collections as NavLink[], hrefFor: (s: string) => `/curated-packs/${s}` },
                 ],
               },
             ].map((section) => {
@@ -892,7 +901,7 @@ export function Navbar() {
             })}
 
             {[
-              ["/box", "Build Your Pack"], ["/contact", "Contact"], ["/dashboard", "Dashboard"],
+              ["/contact", "Contact"], ["/dashboard", "Dashboard"],
             ].map(([href, label]) => (
               <Link
                 key={href}

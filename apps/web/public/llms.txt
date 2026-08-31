@@ -1,0 +1,30 @@
+# GIVOO
+
+> GIVOO (by Arts Shala, Delhi) is India's first self-serve bulk corporate gifting platform. Corporate buyers browse products, build branded gift packs, get instant transparent pricing, and place orders — all without a sales rep. Pricing includes standard branding cost; payment gateway fees are shown as a separate line item. GST is calculated per product HSN code.
+
+## Core Offerings
+
+- [Curated Packs](https://givoo.in/curated-packs): Ready-made corporate gift packs, browsable by budget or by occasion.
+- [Build Your Pack](https://givoo.in/box): Self-serve gift builder — pick products, customize branding, and get instant pricing (Corporate MOQ 25, Party MOQ 10).
+- [Products](https://givoo.in/catalog): Full product catalog for bulk corporate gifting, filterable by category and occasion.
+- [All Categories](https://givoo.in/categories): Browse every product category.
+- [Shop by Budget](https://givoo.in/curated-packs/budget): Curated packs grouped by price band.
+- [Shop by Occasion](https://givoo.in/curated-packs/occasions): Curated packs and products grouped by occasion (Diwali, onboarding, client gifting, etc).
+
+## Corporate Gifting
+
+- [Contact](https://givoo.in/contact): Get in touch for corporate gifting orders, bulk quotes, and support.
+- [FAQ](https://givoo.in/faq): Answers to common questions about ordering, pricing, and delivery.
+- [Sell With Us](https://givoo.in/sell-with-us): Vendor onboarding information.
+- [GST Info](https://givoo.in/gst): GST and tax compliance details for orders.
+
+## Policies
+
+- [Shipping Policy](https://givoo.in/shipping)
+- [Return & Refund Policy](https://givoo.in/returns)
+- [Privacy Policy](https://givoo.in/privacy)
+- [Terms & Conditions](https://givoo.in/terms)
+
+## Optional
+
+- [Blog](https://givoo.in/blog): Articles on corporate gifting ideas and trends.

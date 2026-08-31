@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { X, Upload, ArrowLeft, ImageIcon, Package } from 'lucide-react';
 import { RichTextField } from '@/components/admin/rich-text-field';
+import { FaqRepeaterField, type FaqEntry } from '@/components/admin/faq-repeater-field';
 import { MediaLibraryModal } from '@/components/admin/media-library-modal';
 import { slugify } from '@/lib/slug';
 
@@ -33,6 +34,9 @@ interface CategoryFormProps {
     slug: string;
     description: string | null;
     contentBelow: string | null;
+    faqs?: unknown;
+    metaTitle?: string | null;
+    metaDescription?: string | null;
     parentId: string | null;
     sortOrder: number;
     imageUrl: string | null;
@@ -59,11 +63,16 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
     slug: category?.slug || '',
     description: category?.description || '',
     contentBelow: category?.contentBelow || '',
+    metaTitle: category?.metaTitle || '',
+    metaDescription: category?.metaDescription || '',
     parentId: category?.parentId || '',
     sortOrder: category?.sortOrder || 0,
     imageUrl: category?.imageUrl || '',
   });
   const [imagePreview, setImagePreview] = useState<string>(category?.imageUrl || '');
+  const [faqs, setFaqs] = useState<FaqEntry[]>(
+    Array.isArray(category?.faqs) ? (category!.faqs as FaqEntry[]) : []
+  );
 
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,6 +143,9 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
         slug: formData.slug,
         description: formData.description || null,
         contentBelow: formData.contentBelow || null,
+        faqs: faqs.filter((f) => f.question.trim() && f.answer.trim()),
+        metaTitle: formData.metaTitle || null,
+        metaDescription: formData.metaDescription || null,
         parentId: formData.parentId || null,
         sortOrder: formData.sortOrder,
         imageUrl: formData.imageUrl || null,
@@ -240,6 +252,15 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
             />
           </div>
 
+          {/* FAQs */}
+          <div className="rounded-xl border border-bdr bg-white p-5 shadow-sm">
+            <h2 className="mb-1 text-sm font-semibold text-ink">FAQs</h2>
+            <p className="mb-3 text-xs text-ink-3">
+              Shown below the product grid and included as FAQ structured data for search engines.
+            </p>
+            <FaqRepeaterField value={faqs} onChange={setFaqs} uploadFolder="categories" />
+          </div>
+
           {/* Collection items (edit mode only) */}
           {mode === 'edit' && (
             <div className="rounded-xl border border-bdr bg-white shadow-sm">
@@ -296,6 +317,34 @@ export function CategoryForm({ mode = 'create', parentCategories, category, prod
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* SEO */}
+          <div className="rounded-xl border border-bdr bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-ink">SEO metadata</h2>
+
+            <label htmlFor="metaTitle" className="mb-1.5 block text-sm font-medium text-ink">
+              Meta title
+            </label>
+            <Input
+              id="metaTitle"
+              value={formData.metaTitle}
+              onChange={(e) => setFormData((p) => ({ ...p, metaTitle: e.target.value }))}
+              placeholder={`${formData.name || 'Category'} — Bulk Corporate Gifts`}
+            />
+
+            <label htmlFor="metaDescription" className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Meta description
+            </label>
+            <textarea
+              id="metaDescription"
+              rows={3}
+              value={formData.metaDescription}
+              onChange={(e) => setFormData((p) => ({ ...p, metaDescription: e.target.value }))}
+              placeholder="Leave blank to fall back to the description above."
+              className="w-full rounded-lg border border-bdr px-3 py-2 text-sm text-ink focus:border-em focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-ink-3">Used for the page &lt;title&gt;, meta description and social previews.</p>
+          </div>
+
           {/* Category image */}
           <div className="rounded-xl border border-bdr bg-white p-5 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold text-ink">Category image</h2>

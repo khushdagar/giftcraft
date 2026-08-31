@@ -45,6 +45,11 @@ export function ProductInfoSection({
   const [currentQty, setCurrentQty] = useState(moq);
   const isUnderMinimum = currentQty < moq;
 
+  // A pack with any drafted/archived member can't be fulfilled — block adding
+  // it until every member is back in stock.
+  const hasOutOfStockMember = isPack && packMembers.some((m) => m.outOfStock);
+  const ctaDisabled = isUnderMinimum || hasOutOfStockMember;
+
   // Real variants only. When a product has none the corresponding picker
   // renders nothing, so a selection can never be anything but real data.
   const colorVariants = (!isPack && variants?.filter((v: any) => v.kind === 'color')) || [];
@@ -205,20 +210,31 @@ export function ProductInfoSection({
         onQtyChange={setCurrentQty}
       />
 
+      {/* Blocked because a member is out of stock — the buttons below explain
+          why rather than just going quiet. */}
+      {hasOutOfStockMember && (
+        <p className="mt-6 rounded-md border-2 border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-medium text-amber-700">
+          This pack has an item that&apos;s currently out of stock. You can&apos;t add it until every item is
+          back — use the notify form below to hear when it&apos;s restocked.
+        </p>
+      )}
+
       {/* CTAs — inline, shown on all sizes. On mobile these ALSO appear in the
           sticky bottom bar below (so they're visible in both places). */}
       <div className="mt-6 flex gap-3">
         <Button
           asChild
-          disabled={isUnderMinimum}
+          disabled={ctaDisabled}
           className={`flex-1 whitespace-nowrap rounded-full px-3 py-3 text-white text-sm sm:text-base font-semibold ${
-            isUnderMinimum
+            ctaDisabled
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-em hover:bg-em/90'
           }`}
           size="lg"
         >
-          <Link href={builderHref}>Add to Pack</Link>
+          <Link href={builderHref} onClick={(e) => ctaDisabled && e.preventDefault()} aria-disabled={ctaDisabled}>
+            Add to Pack
+          </Link>
         </Button>
         <Button
           asChild
@@ -246,13 +262,15 @@ export function ProductInfoSection({
       >
         <Button
           asChild
-          disabled={isUnderMinimum}
+          disabled={ctaDisabled}
           className={`flex-1 whitespace-nowrap rounded-full px-3 py-3 text-sm font-semibold text-white ${
-            isUnderMinimum ? "bg-gray-400 cursor-not-allowed" : "bg-em hover:bg-em/90"
+            ctaDisabled ? "bg-gray-400 cursor-not-allowed" : "bg-em hover:bg-em/90"
           }`}
           size="lg"
         >
-          <Link href={builderHref}>Add to Gift Builder</Link>
+          <Link href={builderHref} onClick={(e) => ctaDisabled && e.preventDefault()} aria-disabled={ctaDisabled}>
+            Add to Gift Builder
+          </Link>
         </Button>
         <Button
           asChild
