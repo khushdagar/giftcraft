@@ -71,12 +71,87 @@ export async function getCatalogProducts(
           s.occasionIds = Array.from(new Set([...(s.occasionIds ?? []), ...matched]));
         }
       }
-      return s;
+      return toCatalogCard(s);
     });
   } catch (error) {
     console.error('getCatalogProducts failed:', error);
     return [];
   }
+}
+
+/**
+ * The only product fields the catalog grid and its filters actually read —
+ * see the `Product` interface in components/catalog/catalog-client.tsx, which
+ * has always declared exactly this much.
+ *
+ * The server was sending the whole row instead: descriptionLong, keyFeatures,
+ * specifications, metaDescription, the full occasion records and the HSN
+ * relation, none of which the grid touches. On 176 products that was 1.3 MB
+ * baked into /catalog's HTML, over half of it fields nothing could render.
+ * Product detail pages load the full record separately and are unaffected.
+ */
+export interface CatalogCard {
+  id: string;
+  name: string;
+  slug: string;
+  sku?: string | null;
+  brand?: string | null;
+  icon?: string | null;
+  moq?: number | null;
+  material?: string | null;
+  leadTimeDays?: number | null;
+  printingTechnique?: string | null;
+  isEcoCertified?: boolean | null;
+  descriptionShort?: string | null;
+  tags?: string[];
+  recipientTags?: string[];
+  occasionIds?: string[];
+  priceTiers: { minQty: number; sellPrice: number }[];
+  categories: { categoryId: string; category?: { name: string } }[];
+  images: { id: string; url: string; isPrimary?: boolean }[];
+  variants: { id?: string; kind?: string; value: string; hexColor?: string | null; imageUrl?: string | null }[];
+}
+
+export function toCatalogCard(s: any): CatalogCard {
+  return {
+    id: s.id,
+    name: s.name,
+    slug: s.slug,
+    sku: s.sku ?? null,
+    brand: s.brand ?? null,
+    icon: s.icon ?? null,
+    moq: s.moq ?? null,
+    material: s.material ?? null,
+    leadTimeDays: s.leadTimeDays ?? null,
+    printingTechnique: s.printingTechnique ?? null,
+    isEcoCertified: s.isEcoCertified ?? null,
+    descriptionShort: s.descriptionShort ?? null,
+    tags: s.tags ?? [],
+    recipientTags: s.recipientTags ?? [],
+    occasionIds: s.occasionIds ?? [],
+    // The card quotes a "from" price; minQty rides along so the slab stays
+    // identifiable without shipping cost prices or tier metadata.
+    priceTiers: (s.priceTiers ?? []).map((t: any) => ({
+      minQty: t.minQty,
+      sellPrice: t.sellPrice,
+    })),
+    categories: (s.categories ?? []).map((c: any) => ({
+      categoryId: c.categoryId,
+      category: c.category ? { name: c.category.name } : undefined,
+    })),
+    images: (s.images ?? []).map((i: any) => ({
+      id: i.id,
+      url: i.url,
+      isPrimary: i.isPrimary ?? undefined,
+    })),
+    variants: (s.variants ?? []).map((v: any) => ({
+      id: v.id,
+      kind: v.kind,
+      value: v.value,
+      hexColor: v.hexColor ?? null,
+      imageUrl: v.imageUrl ?? null,
+    })),
+  };
 }
 
 export async function getCatalogFilters() {

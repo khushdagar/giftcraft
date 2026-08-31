@@ -1,4 +1,3 @@
-import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 import { bandContains, type BudgetBand } from '@/lib/budget-bands';
 import { orderPackOccasions } from '@/lib/pack-occasion-order';
@@ -23,9 +22,8 @@ export interface PackListItem {
   id: string;
   name: string;
   slug: string;
-  description: string | null;
-  descriptionShort: string | null;
   image: string | null;
+
   gradient: null;
   productCount: number;
   fromPrice: number;
@@ -40,9 +38,41 @@ export interface PackListItem {
 }
 
 // Every active pack with its members and their relations — the single most
-// expensive query on the storefront, and the homepage alone asks for it twice
-// (TrendingPacks + getHomePackOccasions). cache() collapses those to one.
-export const getPacks = cache(loadPacks);
+// expensive thing the storefront does. One call takes 1.2-2.4s and allocates
+// ~88 MB; three at once peaked at 321 MB, which OOM-kills a 1 GB container.
+//
+// The cache therefore lives HERE, not at one call site: nine places ask for
+// this list (both pack hub pages, the nav and occasion API routes, the sitemap,
+// the homepage rails, admin budget bands), and any one of them running
+// uncached is enough to blow the memory budget on its own. React's cache()
+// only dedupes within a single render, so it does NOT help across requests —
+// this is a module-level cache with a TTL, shared by every request the process
+// serves.
+const CACHE_TTL_MS = 5 * 60_000;
+let cached: { at: number; packs: PackListItem[] } | null = null;
+let inFlight: Promise<PackListItem[]> | null = null;
+
+export async function getPacks(): Promise<PackListItem[]> {
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.packs;
+  // A cold cache under concurrent requests must not start N identical loads —
+  // that is exactly the pile-up that ran the container out of memory.
+  if (!inFlight) {
+    inFlight = loadPacks()
+      .then((packs) => {
+        cached = { at: Date.now(), packs };
+        return packs;
+      })
+      .finally(() => {
+        inFlight = null;
+      });
+  }
+  return inFlight;
+}
+
+/** Drop the cached list — call after an admin edit changes packs. */
+export function invalidatePacks() {
+  cached = null;
+}
 
 async function loadPacks(): Promise<PackListItem[]> {
   const packs = await prisma.product.findMany({
@@ -50,19 +80,29 @@ async function loadPacks(): Promise<PackListItem[]> {
     // Popularity-ranked under the admin's manual `sortOrder` — same rule as the
     // product catalog, so packs and products rank consistently.
     orderBy: [{ sortOrder: 'asc' }, { viewCount: 'desc' }, { createdAt: 'desc' }],
-    include: {
-      images: { where: { isPrimary: true }, take: 1 },
+    // Explicit `select`, NOT `include`. `include` returns every scalar column of
+    // the pack, which dragged descriptionLong + descriptionShort out of Postgres
+    // for all 2088 active packs (~3.3 MB) and serialised them into the HTML of
+    // every curated-pack page — where neither is ever rendered. That alone made
+    // single pages 3.7 MB, and caching those pages exhausted the app instance.
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      images: { where: { isPrimary: true }, take: 1, select: { url: true } },
       occasions: {
         select: { occasion: { select: { id: true, name: true, slug: true, isCollection: true } } },
       },
       packItems: {
         orderBy: { sortOrder: 'asc' },
-        include: {
+        select: {
+          productId: true,
+          quantity: true,
           product: {
             select: {
               brand: true,
               recipientTags: true,
-              images: { orderBy: { sortOrder: 'asc' }, take: 1 },
+              images: { orderBy: { sortOrder: 'asc' }, take: 1, select: { url: true } },
               // Highest-quantity tier — the cheapest per-unit rate, which is
               // what the "From ₹x /pack" figure on the listing quotes.
               priceTiers: { orderBy: { minQty: 'desc' }, take: 1, select: { sellPrice: true } },
@@ -98,8 +138,6 @@ async function loadPacks(): Promise<PackListItem[]> {
       id: pack.id,
       name: pack.name,
       slug: pack.slug,
-      description: pack.descriptionLong,
-      descriptionShort: pack.descriptionShort,
       image: pack.images[0]?.url ?? null,
       gradient: null as null,
       productCount: members.length,

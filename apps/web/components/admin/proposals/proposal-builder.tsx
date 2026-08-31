@@ -75,6 +75,14 @@ interface Pack {
   items: CatalogProduct[];
   boxId: string;
   addonIds: string[];
+  // Where each product came from. Curated packs share popular SKUs, so "is
+  // this curated pack in the option?" can't be answered by checking whether its
+  // products happen to be present — that made clicking pack B strip the
+  // products pack A had added. Provenance is tracked instead: appliedPackIds
+  // is the set of curated packs actually applied here, manualIds the products
+  // picked one by one from the grid.
+  appliedPackIds: string[];
+  manualIds: string[];
 }
 
 /** The tier price that applies at this pack quantity (tier 1 as fallback). */
@@ -112,7 +120,44 @@ const emptyPack = (n: number): Pack => ({
   items: [],
   boxId: '',
   addonIds: [],
+  appliedPackIds: [],
+  manualIds: [],
 });
+
+/** Draft autosave — a stuck preview or a stray reload must not cost the work. */
+const DRAFT_KEY = 'givoo:proposal-draft:v1';
+
+interface Draft {
+  packs: Pack[];
+  seq: number;
+  activeKey: string;
+  recipientEmail: string;
+  recipientName: string;
+  companyName: string;
+  message: string;
+}
+
+function loadDraft(): Draft | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as Draft;
+    if (!Array.isArray(d?.packs) || d.packs.length === 0) return null;
+    // Older drafts predate provenance tracking — treat everything already in
+    // them as hand-picked so nothing gets silently removed later.
+    d.packs = d.packs.map((p) => ({
+      ...p,
+      items: p.items ?? [],
+      addonIds: p.addonIds ?? [],
+      appliedPackIds: p.appliedPackIds ?? [],
+      manualIds: p.manualIds ?? (p.items ?? []).map((it) => it.id),
+    }));
+    return d;
+  } catch {
+    return null; // a corrupt draft is not worth blocking the page over
+  }
+}
 
 export function ProposalBuilder({
   prefill,
@@ -154,6 +199,69 @@ export function ProposalBuilder({
   const packSeq = useRef(1);
   const [packs, setPacks] = useState<Pack[]>([emptyPack(1)]);
   const [activeKey, setActiveKey] = useState('pack-1');
+  // Autosave only starts once any saved draft has been restored, so the empty
+  // first render can't overwrite the draft it is about to load.
+  const draftReady = useRef(false);
+
+  // Restore on mount rather than in a lazy initialiser — localStorage doesn't
+  // exist during SSR, and seeding state from it there would hydrate mismatched.
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft) {
+      setPacks(draft.packs);
+      packSeq.current = Math.max(draft.seq || 1, draft.packs.length);
+      setActiveKey(
+        draft.packs.some((p) => p.key === draft.activeKey)
+          ? draft.activeKey
+          : draft.packs[0]!.key
+      );
+      // A composer opened from a lead carries that lead's details in the URL —
+      // those win over whatever the last draft had typed in.
+      if (!prefill.email && draft.recipientEmail) setRecipientEmail(draft.recipientEmail);
+      if (!prefill.name && draft.recipientName) setRecipientName(draft.recipientName);
+      if (!prefill.company && draft.companyName) setCompanyName(draft.companyName);
+      if (draft.message) setMessage(draft.message);
+      toast('Unsent draft restored', { description: 'Your pack options were still here.' });
+    }
+    draftReady.current = true;
+    // Mount-only: prefill comes from the URL and never changes for a given page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const clearDraft = () => {
+    draftReady.current = false;
+    try {
+      window.localStorage.removeItem(DRAFT_KEY);
+    } catch {/* private mode — nothing to clear */}
+  };
+
+  // Autosave every edit. The composer holds a lot of work and nothing else
+  // persists it — a reload used to throw all of it away.
+  useEffect(() => {
+    if (!draftReady.current) return;
+    // An untouched composer is never worth saving — and skipping it stops the
+    // blank first commit from overwriting the draft the restore is loading.
+    const pristine =
+      packs.length === 1 &&
+      packs[0]!.items.length === 0 &&
+      !recipientEmail.trim() &&
+      !message.trim();
+    if (pristine) return;
+    try {
+      window.localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          packs,
+          seq: packSeq.current,
+          activeKey,
+          recipientEmail,
+          recipientName,
+          companyName,
+          message,
+        } satisfies Draft)
+      );
+    } catch {/* quota or private mode — autosave is best-effort */}
+  }, [packs, activeKey, recipientEmail, recipientName, companyName, message]);
 
   // Catalog browsing state — shared across packs so switching packs doesn't
   // refetch the grid.
@@ -286,6 +394,8 @@ export function ProposalBuilder({
       label: `${source.label} (copy)`,
       items: [...source.items],
       addonIds: [...source.addonIds],
+      appliedPackIds: [...source.appliedPackIds],
+      manualIds: [...source.manualIds],
     };
     setPacks((prev) => [...prev, copy]);
     setActiveKey(copy.key);
@@ -307,26 +417,54 @@ export function ProposalBuilder({
         return {
           ...p,
           items: has ? p.items.filter((it) => it.id !== product.id) : [...p.items, product],
+          // Hand-picked products are pinned: removing a curated pack later must
+          // not take them away.
+          manualIds: has
+            ? p.manualIds.filter((id) => id !== product.id)
+            : [...p.manualIds, product.id],
         };
       })
     );
   };
 
   /**
-   * One click pulls every product of a curated pack into the option. If all of
-   * them are already in, the same click takes them back out (toggle).
+   * One click pulls every product of a curated pack into the option; clicking
+   * the same pack again takes it back out.
+   *
+   * Removal is provenance-aware. Curated packs overlap heavily, so dropping
+   * every product that merely appears in this pack would also delete products
+   * another applied pack contributed, or ones picked by hand from the grid —
+   * which silently emptied options mid-build. Only products this pack is the
+   * last remaining source of are removed.
    */
   const applyCuratedPack = (key: string, cp: CuratedPackOption) => {
     setPacks((prev) =>
       prev.map((p) => {
         if (p.key !== key) return p;
-        const allIn = cp.items.every((it) => p.items.some((x) => x.id === it.id));
-        if (allIn) {
-          const ids = new Set(cp.items.map((it) => it.id));
-          return { ...p, items: p.items.filter((it) => !ids.has(it.id)) };
+
+        if (!p.appliedPackIds.includes(cp.id)) {
+          const missing = cp.items.filter((it) => !p.items.some((x) => x.id === it.id));
+          return {
+            ...p,
+            items: [...p.items, ...missing],
+            appliedPackIds: [...p.appliedPackIds, cp.id],
+          };
         }
-        const missing = cp.items.filter((it) => !p.items.some((x) => x.id === it.id));
-        return { ...p, items: [...p.items, ...missing] };
+
+        const keptBy = new Set([
+          ...p.manualIds,
+          ...curatedPacks
+            .filter((other) => other.id !== cp.id && p.appliedPackIds.includes(other.id))
+            .flatMap((other) => other.items.map((it) => it.id)),
+        ]);
+        const drop = new Set(
+          cp.items.map((it) => it.id).filter((id) => !keptBy.has(id))
+        );
+        return {
+          ...p,
+          items: p.items.filter((it) => !drop.has(it.id)),
+          appliedPackIds: p.appliedPackIds.filter((id) => id !== cp.id),
+        };
       })
     );
   };
@@ -411,16 +549,37 @@ export function ProposalBuilder({
     }));
 
   // Preview needs products, but not a recipient — an admin can check the layout
-  // and the numbers before deciding who it goes to.
-  const canPreview = readyPacks.length === packs.length;
+  // and the numbers before deciding who it goes to. The first option still
+  // missing products is what blocks it; naming it beats a dead grey button.
+  const blockingPack = priced.find((p) => p.pack.items.length === 0)?.pack ?? null;
+  const blockingIndex = blockingPack ? packs.findIndex((p) => p.key === blockingPack.key) : -1;
+  const previewBlockReason = blockingPack
+    ? `${blockingPack.label || `Pack ${blockingIndex + 1}`} has no products yet — add at least one, or remove that option`
+    : null;
+
+  // In flight preview render, so closing the dialog can cancel it. Without this
+  // a request that never returns left the button spinning and disabled until a
+  // full page reload.
+  const previewAbort = useRef<AbortController | null>(null);
+  // The deck render downloads and transcodes every image; give it a generous
+  // ceiling but never an unbounded one.
+  const PREVIEW_TIMEOUT_MS = 90_000;
 
   const handlePreview = async () => {
-    const empty = priced.find((p) => p.pack.items.length === 0);
-    if (empty) {
-      toast.error(`"${empty.pack.label}" has no products — add at least one or remove the pack`);
-      setActiveKey(empty.pack.key);
+    if (blockingPack) {
+      toast.error(previewBlockReason!);
+      setActiveKey(blockingPack.key);
       return;
     }
+    previewAbort.current?.abort();
+    const controller = new AbortController();
+    previewAbort.current = controller;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, PREVIEW_TIMEOUT_MS);
+
     setPreviewOpen(true);
     setPreviewLoading(true);
     // Drop the previous render — the packs have probably changed since.
@@ -436,19 +595,38 @@ export function ProposalBuilder({
           companyName: companyName.trim() || undefined,
           packs: packsPayload(),
         }),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error((await res.text()) || 'Failed to build preview');
-      setPreviewUrl(URL.createObjectURL(await res.blob()));
+      const blob = await res.blob();
+      // A newer preview (or a close) superseded this one while it rendered.
+      if (previewAbort.current !== controller) return;
+      setPreviewUrl(URL.createObjectURL(blob));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to build preview');
-      setPreviewOpen(false);
+      if (timedOut) {
+        toast.error('Preview took too long to render — try again, or send fewer options at once');
+        setPreviewOpen(false);
+      } else if (!controller.signal.aborted) {
+        toast.error(err instanceof Error ? err.message : 'Failed to build preview');
+        setPreviewOpen(false);
+      }
+      // A plain abort is the admin closing the dialog — no error to report.
     } finally {
-      setPreviewLoading(false);
+      clearTimeout(timer);
+      // Only the newest request owns the spinner.
+      if (previewAbort.current === controller) {
+        previewAbort.current = null;
+        setPreviewLoading(false);
+      }
     }
   };
 
   // The blob outlives the dialog otherwise — free it on close and on unmount.
+  // Closing also cancels an in-flight render and releases the button.
   const closePreview = () => {
+    previewAbort.current?.abort();
+    previewAbort.current = null;
+    setPreviewLoading(false);
     setPreviewOpen(false);
     setPreviewUrl((old) => {
       if (old) URL.revokeObjectURL(old);
@@ -456,6 +634,8 @@ export function ProposalBuilder({
     });
   };
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
+  // Leaving the page mid-render must not leave the request hanging.
+  useEffect(() => () => previewAbort.current?.abort(), []);
 
   const handleSend = async () => {
     const emailProblem = validateEmail(recipientEmail);
@@ -514,6 +694,9 @@ export function ProposalBuilder({
         proposalToken: data.proposalToken,
         packs: data.packs ?? [],
       });
+      // It is out the door — the autosaved draft would otherwise come back on
+      // the next visit and look like an unsent proposal.
+      clearDraft();
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to send proposal');
@@ -668,7 +851,8 @@ export function ProposalBuilder({
           <button
             type="button"
             onClick={handlePreview}
-            disabled={previewLoading || !canPreview}
+            disabled={previewLoading}
+            title={previewLoading ? "Building the deck…" : previewBlockReason ?? "Render the deck exactly as the client will get it"}
             className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
           >
             {previewLoading ? (
@@ -997,9 +1181,7 @@ export function ProposalBuilder({
                             more room than a single-product tile. */}
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                           {filteredPacks.map((cp) => {
-                            const allIn = cp.items.every((it) =>
-                              active.pack.items.some((x) => x.id === it.id)
-                            );
+                            const allIn = active.pack.appliedPackIds.includes(cp.id);
                             const perPack = cp.items.reduce(
                               (sum, it) => sum + tierPrice(it.priceTiers, active.pack.packQuantity),
                               0
@@ -1352,7 +1534,12 @@ export function ProposalBuilder({
             <button
               type="button"
               onClick={handlePreview}
-              disabled={previewLoading || !canPreview}
+              disabled={previewLoading}
+              title={
+                previewLoading
+                  ? 'Building the deck…'
+                  : previewBlockReason ?? 'Render the deck exactly as the client will get it'
+              }
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
             >
               {previewLoading ? (
@@ -1362,6 +1549,13 @@ export function ProposalBuilder({
               )}
               Preview proposal
             </button>
+            {/* Say which option is holding it up — a silent dead button was
+                read as the preview being broken. */}
+            {previewBlockReason && (
+              <p className="mt-1.5 text-[11px] leading-snug text-amber-700">
+                {previewBlockReason}
+              </p>
+            )}
 
             <button
               type="button"

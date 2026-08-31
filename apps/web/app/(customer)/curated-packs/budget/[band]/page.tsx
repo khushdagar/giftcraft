@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
-import { getPacks, getBudgetBand, getBudgetBands } from '@/lib/pack-data';
-import { bandContains } from '@/lib/budget-bands';
+import { getBudgetBand, getBudgetBands } from '@/lib/pack-data';
+import { queryPacks, scopedPacks, type PackScope } from '@/lib/pack-query';
 import { PacksBrowser } from '@/components/packs/packs-browser';
 import { JsonLd } from '@/components/seo/json-ld';
 import { itemListSchema, breadcrumbSchema, faqPageSchema } from '@/lib/schema';
@@ -46,17 +46,23 @@ export async function generateMetadata({ params }: { params: { band: string } })
 // Level 3 of the budget branch: every pack whose "from" price lands in the
 // band, in the same browser (filters, sort, cards) the collection pages used.
 export default async function BudgetBandPage({ params }: { params: { band: string } }) {
-  const [band, all] = await Promise.all([getBudgetBand(params.band), getPacks()]);
+  const scope: PackScope = { kind: 'budget', slug: params.band };
+  // `packs` stays on the server for the schema block; only `initialPage` — the
+  // first 48 cards — is serialised into the HTML the browser downloads.
+  const [band, packs, initialPage] = await Promise.all([
+    getBudgetBand(params.band),
+    scopedPacks(scope),
+    queryPacks(scope),
+  ]);
   if (!band) notFound();
-
-  const packs = all.filter((p) => bandContains(band, p.fromPrice));
-  const belowHtml = toRichHtml(band.contentBelow);
 
   return (
     <>
       <JsonLd
         data={itemListSchema(
-          packs.map((p) => ({
+          // Capped like /catalog: an ItemList of hundreds of entries adds
+          // hundreds of KB to the HTML and tells Google nothing extra.
+          packs.slice(0, 50).map((p) => ({
             name: p.name,
             path: `/products/${p.slug}`,
             // A pack rarely has its own photo — fall back to a member
@@ -84,7 +90,8 @@ export default async function BudgetBandPage({ params }: { params: { band: strin
         />
       )}
       <PacksBrowser
-        packs={packs}
+        source={scope}
+        initialPage={initialPage}
         scope={{
           title: band.name,
           description: band.description,
