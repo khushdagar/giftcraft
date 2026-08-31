@@ -98,6 +98,8 @@ export default async function OccasionPacksPage({ params }: { params: { slug: st
     notFound();
   }
 
+  const belowHtml = toRichHtml(occasion.packContentBelow);
+
   return (
     <>
       <JsonLd

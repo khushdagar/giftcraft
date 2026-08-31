@@ -13,6 +13,17 @@ import {
 } from '@/components/packs/collection-tile-grid';
 import { PriceRangeInputs } from '@/components/catalog/price-range-inputs';
 import { usePersistedPriceRange } from '@/hooks/use-persisted-price-range';
+import { CollapsibleRichText } from '@/components/catalog/collapsible-rich-text';
+
+// scope/collection descriptions are plain text, not rich text — escaped into a
+// paragraph so CollapsibleRichText (which expects HTML) can truncate them the
+// same way it does the rich-text intros on /category and /occasion.
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
 
 interface NamedRef {
   id: string;
