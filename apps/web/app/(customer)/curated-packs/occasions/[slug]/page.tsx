@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
-import { getPacks } from '@/lib/pack-data';
+import { queryPacks, scopedPacks, type PackScope } from '@/lib/pack-query';
 import { PacksBrowser } from '@/components/packs/packs-browser';
 import { JsonLd } from '@/components/seo/json-ld';
 import { itemListSchema, breadcrumbSchema, faqPageSchema } from '@/lib/schema';
@@ -85,20 +85,28 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 // Level 3 of the occasion branch: the packs filed under one occasion, in the
 // same browser (filters, sort, cards) the collection pages used.
 export default async function OccasionPacksPage({ params }: { params: { slug: string } }) {
-  const [occasion, all] = await Promise.all([loadOccasion(params.slug), getPacks()]);
+  const scope: PackScope = { kind: 'occasion', slug: params.slug };
+  // `packs` stays on the server for the schema block; only `initialPage` — the
+  // first 48 cards — is serialised into the HTML the browser downloads.
+  const [occasion, packs, initialPage] = await Promise.all([
+    loadOccasion(params.slug),
+    scopedPacks(scope),
+    queryPacks(scope),
+  ]);
 
   if (!occasion) {
     notFound();
   }
 
-  const packs = all.filter((p) => p.occasionSlugs.includes(occasion.slug));
   const belowHtml = toRichHtml(occasion.packContentBelow);
 
   return (
     <>
       <JsonLd
         data={itemListSchema(
-          packs.map((p) => ({
+          // Capped like /catalog: an ItemList of hundreds of entries adds
+          // hundreds of KB to the HTML and tells Google nothing extra.
+          packs.slice(0, 50).map((p) => ({
             name: p.name,
             path: `/products/${p.slug}`,
             // A pack rarely has its own photo — fall back to a member
@@ -126,7 +134,8 @@ export default async function OccasionPacksPage({ params }: { params: { slug: st
         />
       )}
       <PacksBrowser
-        packs={packs}
+        source={scope}
+        initialPage={initialPage}
         scope={{
           title: occasion.displayName,
           description:
