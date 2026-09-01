@@ -36,6 +36,25 @@ enum ProductStatus {
   seasonal
 }
 
+enum CataloguePriceMode {
+  starting // lowest tier sell price, shown as "From ₹X"
+  base // tier-1 (MOQ) sell price
+  hidden
+}
+
+enum CatalogueSectionMode {
+  category // auto-filled from a Category when the PDF renders
+  manual // hand-picked products
+}
+
+enum CatalogueTheme {
+  warm
+  cool
+  fresh
+  festive
+  mono
+}
+
 enum PrintingTechnique {
   screen_print
   uv_print
@@ -391,6 +410,7 @@ model Product {
   reviews        Review[]
   slugHistory    ProductSlugHistory[]
   savedPackItems SavedPackItem[]
+  catalogueItems CatalogueItem[]
 
   // ── Curated Pack support ──────────────────────────────────────────────────
   // A pack is a Product (isPack=true) that bundles other products. It gets every
@@ -504,6 +524,7 @@ model Category {
   children     Category[]         @relation("CategoryTree")
   products     ProductCategory[]
   giftPacks    GiftPackCategory[]
+  catalogueSections CatalogueSection[]
   sortOrder    Int                @default(0)
 
   @@index([parentId])
@@ -525,6 +546,63 @@ model ProductOccasion {
   occasion   OccasionConfig @relation(fields: [occasionId], references: [id], onDelete: Cascade)
 
   @@id([productId, occasionId])
+}
+
+// ═══════════════════════════════════════════════════════════
+//   CATALOGUES — admin-built PDF product catalogues
+// ═══════════════════════════════════════════════════════════
+// A Catalogue is a printable A4 PDF ("August New Launches", "Diwali 2026
+// Range") made of ordered sections. A section is either a live Category
+// (products pulled at render time, so the PDF is never stale) or a hand-picked
+// list. Rendered by /api/catalogues/[shareToken]/pdf.
+model Catalogue {
+  id              String             @id @default(cuid())
+  title           String
+  slug            String             @unique
+  coverImageUrl   String?
+  closingNote     String?            @db.Text
+  // Full-bleed photo behind the closing "Thank you" page. Null = the first
+  // active homepage hero banner.
+  closingImageUrl String?
+  theme           CatalogueTheme     @default(warm)
+  priceMode       CataloguePriceMode @default(starting)
+  showSku         Boolean            @default(false)
+  showMoq         Boolean            @default(true)
+  sections        CatalogueSection[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model CatalogueSection {
+  id              String               @id @default(cuid())
+  catalogueId     String
+  catalogue       Catalogue            @relation(fields: [catalogueId], references: [id], onDelete: Cascade)
+  title           String
+  mode            CatalogueSectionMode @default(manual)
+  categoryId      String?
+  category        Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  includeChildren Boolean              @default(true)
+  // Cap for category sections (null = every active product in it).
+  maxProducts     Int?
+  sortOrder       Int                  @default(0)
+  items           CatalogueItem[]
+
+  @@index([catalogueId])
+  @@index([categoryId])
+}
+
+model CatalogueItem {
+  id        String           @id @default(cuid())
+  sectionId String
+  section   CatalogueSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // Optional pill drawn on the card, e.g. "New", "Bestseller".
+  badge     String?
+  sortOrder Int              @default(0)
+
+  @@unique([sectionId, productId])
+  @@index([productId])
 }
 
 model HsnCode {

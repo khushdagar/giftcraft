@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Star, IndianRupee, History, Shuffle, BellRing } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Star, IndianRupee, History, Shuffle, BellRing, BookOpen } from 'lucide-react';
 
 const NAV = [
   { section: "Overview", items: [
@@ -24,6 +24,7 @@ const NAV = [
     { href: "/admin/categories", icon: Tag, label: "Categories" },
     { href: "/admin/occasions", icon: Gift, label: "Occasions" },
     { href: "/admin/budget-bands", icon: IndianRupee, label: "Budget Bands" },
+    { href: "/admin/catalogues", icon: BookOpen, label: "Catalogues" },
     { href: "/admin/reviews", icon: Star, label: "Reviews" },
     { href: "/admin/blog", icon: FileText, label: "Blog" },
   ]},
