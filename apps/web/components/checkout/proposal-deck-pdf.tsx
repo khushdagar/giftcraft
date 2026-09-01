@@ -35,7 +35,7 @@ import {
 // are swallowed so a missing file degrades to Helvetica rather than 500-ing the
 // download.
 const FONT_DIR = path.join(process.cwd(), "public", "fonts");
-const FONT = "Inter";
+export const FONT = "Inter";
 
 // GIVOO logo (514×235 png in /public). react-pdf can't resolve a bare
 // filesystem path as an Image src, so files are read once into buffers.
@@ -55,7 +55,7 @@ function loadPng(name: string): PngSrc {
   }
   return pngCache.get(name)!;
 }
-const givooLogo = () => loadPng("givoo_logo.png");
+export const givooLogo = () => loadPng("givoo_logo.png");
 // Pre-faded copy — the logo at ~8% alpha, background still transparent so it
 // never shows as a pale box. Drawn at FULL opacity as the page watermark:
 // PDF-level alpha on images renders inconsistently across viewers, so the fade
@@ -64,7 +64,7 @@ const givooLogo = () => loadPng("givoo_logo.png");
 const givooWatermark = () => loadPng("givoo_logo_watermark.png");
 
 let fontsReady = false;
-function registerFonts() {
+export function registerFonts() {
   if (fontsReady) return;
   fontsReady = true;
   try {
