@@ -14,7 +14,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html>
+    <html lang="en-IN">
       <body>
         <div className="min-h-screen bg-gray-50 py-12 px-4 flex items-center justify-center">
           <div className="max-w-md text-center">
