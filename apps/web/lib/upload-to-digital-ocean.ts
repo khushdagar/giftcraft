@@ -3,7 +3,7 @@ import { processImage, sniffImageFormat, ImageValidationError } from './image-pr
 
 let s3Client: S3Client | null = null;
 
-function getS3Client(): S3Client {
+export function getS3Client(): S3Client {
   if (!s3Client) {
     const region = process.env.DO_SPACES_REGION || 'sfo3';
     const accessKey = process.env.DO_SPACES_KEY;
@@ -32,7 +32,7 @@ function getS3Client(): S3Client {
   return s3Client;
 }
 
-function getBucketAndCdn() {
+export function getBucketAndCdn() {
   const region = process.env.DO_SPACES_REGION || 'sfo3';
   const bucket = process.env.DO_SPACES_BUCKET || 'giftcraft-dev';
   const cdnEndpoint =

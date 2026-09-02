@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X, Search, Check, Loader2 } from 'lucide-react';
 
 export type MediaLibraryItem = {
@@ -34,29 +34,60 @@ export function MediaLibraryModal({
   onClose: () => void;
   onConfirm: (picked: { url: string; altText: string | null }[]) => void;
 }) {
+  const PAGE_SIZE = 50;
   const [media, setMedia] = useState<MediaLibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Bumped whenever the search changes so an in-flight "load more" from the
+  // previous query can't append its stale results.
+  const requestSeq = useRef(0);
   const existingUrls = new Set(existing.map((i) => i.url));
+
+  const pageUrl = (offset: number) =>
+    `/api/admin/products/media-library?search=${encodeURIComponent(search)}&limit=${PAGE_SIZE}&offset=${offset}`;
 
   useEffect(() => {
     let active = true;
+    const seq = ++requestSeq.current;
     setLoading(true);
     const t = setTimeout(() => {
-      fetch(`/api/admin/products/media-library?search=${encodeURIComponent(search)}`)
+      fetch(pageUrl(0))
         .then((r) => r.json())
         .then((d) => {
-          if (active) setMedia(d.media || []);
+          if (!active || seq !== requestSeq.current) return;
+          setMedia(d.media || []);
+          setHasMore(!!d.hasMore);
         })
         .catch(() => active && setMedia([]))
-        .finally(() => active && setLoading(false));
+        .finally(() => active && seq === requestSeq.current && setLoading(false));
     }, 250);
     return () => {
       active = false;
       clearTimeout(t);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
+
+  const loadMore = () => {
+    if (loading || loadingMore || !hasMore) return;
+    const seq = requestSeq.current;
+    setLoadingMore(true);
+    fetch(pageUrl(media.length))
+      .then((r) => r.json())
+      .then((d) => {
+        if (seq !== requestSeq.current) return;
+        setMedia((prev) => {
+          const seen = new Set(prev.map((m) => m.url));
+          return [...prev, ...((d.media || []) as MediaLibraryItem[]).filter((m) => !seen.has(m.url))];
+        });
+        setHasMore(!!d.hasMore);
+      })
+      .catch(() => undefined)
+      .finally(() => seq === requestSeq.current && setLoadingMore(false));
+  };
 
   const pick = (m: MediaLibraryItem) => {
     // Single-select is a one-click action — no reason to make the admin
@@ -109,7 +140,13 @@ export function MediaLibraryModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div
+          className="flex-1 overflow-y-auto p-4"
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            if (el.scrollHeight - el.scrollTop - el.clientHeight < 300) loadMore();
+          }}
+        >
           {loading ? (
             <div className="flex h-40 items-center justify-center text-gray-400">
               <Loader2 className="h-6 w-6 animate-spin" />
@@ -152,6 +189,11 @@ export function MediaLibraryModal({
                   </button>
                 );
               })}
+            </div>
+          )}
+          {!loading && loadingMore && (
+            <div className="flex items-center justify-center py-4 text-gray-400">
+              <Loader2 className="h-5 w-5 animate-spin" />
             </div>
           )}
         </div>
