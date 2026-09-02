@@ -46,7 +46,7 @@ export async function GET() {
       },
       ...categories.map((c, i) => ({
         url: `${SITE_URL}/category/${c.slug}`,
-        lastmod: maxes[i]._max.updatedAt,
+        lastmod: maxes[i]?._max.updatedAt ?? null,
         changefreq: 'weekly' as const,
         // Departments outrank their sub-categories, same as the site's own
         // navigation hierarchy.

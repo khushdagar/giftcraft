@@ -35,7 +35,7 @@ export async function GET() {
       },
       ...occasions.map((o, i) => ({
         url: `${SITE_URL}/occasion/${o.slug}`,
-        lastmod: maxes[i]._max.updatedAt,
+        lastmod: maxes[i]?._max.updatedAt ?? null,
         changefreq: 'weekly' as const,
         priority: 0.8,
       }))
