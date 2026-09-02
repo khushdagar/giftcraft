@@ -37,3 +37,23 @@ export function absoluteUrl(pathOrUrl: string): string {
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
   return `${SITE_URL}${pathOrUrl.startsWith('/') ? '' : '/'}${pathOrUrl}`;
 }
+
+/**
+ * Page-level openGraph with og:url matching the page's canonical path.
+ *
+ * A page that defines `openGraph` replaces the root layout's object WHOLESALE
+ * (Next merges metadata shallowly, nested objects are not deep-merged) — a page
+ * that omits it inherits the root's og:url, which points at the homepage. So
+ * any page with its own canonical must build its openGraph through this helper
+ * to get the right og:url without losing siteName/type/locale.
+ */
+export function pageOpenGraph(canonicalPath: string, title: string, description: string) {
+  return {
+    type: 'website' as const,
+    siteName: SITE_NAME,
+    locale: 'en_IN',
+    url: absoluteUrl(canonicalPath),
+    title,
+    description,
+  };
+}

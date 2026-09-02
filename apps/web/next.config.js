@@ -10,41 +10,27 @@ const nextConfig = {
     unoptimized: true,
     remotePatterns: [
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
-      { protocol: "https", hostname: "**.digitaloceanspaces.com" }, // DO Spaces (cdn + origin, any region)
-      { protocol: "https", hostname: "cdn.givoo.in" }, // Branded CDN alias for the Spaces bucket
-      { protocol: "https", hostname: "cdn.swagupadmin.com" }, // SwagUp product images (demo data)
-      { protocol: "https", hostname: "images.unsplash.com" }, // Unsplash images for homepage
+      { protocol: "https", hostname: "**.digitaloceanspaces.com" },
+      { protocol: "https", hostname: "cdn.givoo.in" },
+      { protocol: "https", hostname: "cdn.swagupadmin.com" },
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
-    // NOTE: while `unoptimized: true` is set (see above) the Next optimizer is
-    // bypassed, so these two settings are inert — next-gen formats and responsive
-    // variants are pre-generated at UPLOAD time by lib/image-processing.ts and
-    // served directly from the CDN. They are declared here so that if the
-    // optimizer is ever re-enabled (flip unoptimized to false) it produces AVIF
-    // first, then WebP, at these breakpoints without further changes.
+   
     formats: ["image/avif", "image/webp"],
     deviceSizes: [320, 640, 1024, 1600, 2000],
   },
-  // Hard ceiling on the in-memory ISR page cache (default is 50 MB). Rendered
-  // pages are held here between revalidations; on a 512 MB instance a cache
-  // that size, holding pages that were megabytes each, left no headroom and the
-  // app thrashed at ~98% CPU. Pages are a few hundred KB now, so 32 MB still
-  // holds the hot set — and the ceiling means page size can never again take
-  // the instance down. Raise it if the instance is scaled up.
+  
   cacheMaxMemorySize: 32 * 1024 * 1024,
 
   experimental: {
     typedRoutes: false,
-    // Static generation runs one worker per core by default, and every worker
-    // opens its own Prisma pool against the managed Postgres — which runs the
-    // server out of connections mid-build. One worker keeps the build within the
-    // connection budget; it costs wall-clock time, not correctness.
+   
     cpus: 1,
     workerThreads: false,
   },
 
   async headers() {
-    // Private/token routes: noindex via header (NOT robots.txt-blocked, so
-    // Google can crawl them and actually see the noindex directive).
+   
     const noindex = { key: "X-Robots-Tag", value: "noindex, nofollow" };
     const noindexRoutes = [
       "/quote/:path*",
@@ -84,18 +70,14 @@ const nextConfig = {
   },
 
   async redirects() {
-    // The curated-pack listing moved from /packs to /curated-packs.
     const routeRedirects = [
       { source: "/packs", destination: "/curated-packs", permanent: true },
     ];
 
-    // www → apex (or vice versa) so exactly ONE canonical host serves content.
-    // Derived from NEXT_PUBLIC_APP_URL at build time; skipped on localhost.
     let host = "";
     try {
       host = new URL(process.env.NEXT_PUBLIC_APP_URL || "").hostname;
     } catch {
-      /* unset/invalid env — no host redirect */
     }
     if (!host || host === "localhost") return routeRedirects;
     const isWww = host.startsWith("www.");
