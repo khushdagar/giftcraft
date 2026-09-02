@@ -67,9 +67,9 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     description,
     alternates: { canonical: url },
     openGraph: {
-      // OG's "product" vertical isn't in Next's type union, but the renderer
-      // emits whatever string is set — the cast only appeases the compiler.
-      type: "product" as "website",
+      // Next validates og:type at runtime and rejects OG's "product" vertical —
+      // "website" is the closest allowed value; product data ships via JSON-LD.
+      type: "website",
       url,
       title: metaTitle || product.name,
       description,
