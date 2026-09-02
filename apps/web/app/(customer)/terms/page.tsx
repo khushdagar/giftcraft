@@ -1,7 +1,13 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { InfoPage, InfoSection } from '@/components/layout/info-page';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/terms', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   title: 'Terms of Service',
   description: 'The terms governing your use of GIVOO and any order you place through it.',
 };

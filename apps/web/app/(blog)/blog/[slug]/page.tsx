@@ -9,6 +9,7 @@ import { BlogComments } from '@/components/blog/comments';
 import { JsonLd } from '@/components/seo/json-ld';
 import { articleSchema, faqSchema } from '@/lib/schema';
 import { SITE_NAME } from '@/lib/site';
+import { withPageSeo } from '@/lib/page-seo';
 
 export const revalidate = 300;
 
@@ -52,7 +53,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const imageAlt = post.coverImageAlt || title;
   const url = `${SITE}/blog/${post.slug}`;
 
-  return {
+  return withPageSeo(`/blog/${post.slug}`, {
     title,
     description,
     // A canonical pointing elsewhere means this post was first published there.
@@ -82,7 +83,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       description,
       images: [{ url: image.url, alt: imageAlt }],
     },
-  };
+  });
 }
 
 /** Pre-render the posts that exist at build time; the rest render on demand. */

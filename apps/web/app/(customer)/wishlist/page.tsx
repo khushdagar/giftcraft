@@ -1,7 +1,12 @@
 import type { Metadata } from 'next';
 import { WishlistContent } from '@/components/wishlist/wishlist-content';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata: Metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/wishlist', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   // Root template appends "· GIVOO"
   title: 'Wishlist',
   description: 'Products you shortlisted while browsing — add them all to the gift builder in one click.',

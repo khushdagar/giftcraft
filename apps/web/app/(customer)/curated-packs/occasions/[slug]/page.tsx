@@ -8,6 +8,7 @@ import { toRichHtml } from '@/lib/rich-text';
 import { stripHtml } from '@/lib/strip-html';
 import { ContentSection } from '@/components/seo/content-section';
 import { FaqSection } from '@/components/seo/faq-section';
+import { withPageSeo } from '@/lib/page-seo';
 
 interface OccasionFaq {
   question: string;
@@ -64,7 +65,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     occasion.packMetaDescription ||
     `Curated corporate gift packs for ${occasion.displayName} — bulk pricing with branding included in every per-unit rate.`;
   const ogImage = occasion.imageUrl || '/opengraph-image';
-  return {
+  return withPageSeo(path, {
     // Root template appends "· GIVOO"
     title,
     description,
@@ -79,7 +80,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       images: [{ url: ogImage, alt: title }],
     },
     twitter: { card: 'summary_large_image', title, description, images: [ogImage] },
-  };
+  });
 }
 
 // Level 3 of the occasion branch: the packs filed under one occasion, in the

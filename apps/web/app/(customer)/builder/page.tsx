@@ -4,8 +4,13 @@ import { headers } from 'next/headers';
 import { BuilderLayout } from '@/components/builder/builder-layout';
 import { BuilderContent } from '@/components/builder/builder-content';
 import { BuilderReset } from '@/components/builder/builder-reset';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata: Metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/builder', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   // Root template appends "· GIVOO"
   title: 'Gift Pack Builder — Instant Transparent Pricing',
   description:

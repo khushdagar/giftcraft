@@ -1,8 +1,13 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import BoxClient from './box-client';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata: Metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/box', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   // Root template appends "· GIVOO"
   title: 'Build Your Pack — Pick Products, Packaging & Branding',
   description:

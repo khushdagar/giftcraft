@@ -1,13 +1,19 @@
+import type { Metadata } from 'next';
 import { getPacks, getBudgetTiles, getPackOccasionTiles } from '@/lib/pack-data';
 import { getCuratedPackEntries } from '@/lib/curated-pack-entries';
 import { CollectionLevelPage } from '@/components/packs/collection-level-page';
 import { JsonLd } from '@/components/seo/json-ld';
 import { breadcrumbSchema, itemListSchema } from '@/lib/schema';
+import { withPageSeo } from '@/lib/page-seo';
 
 // ISR: cacheable HTML for crawlers + users, refreshed hourly.
 export const revalidate = 3600;
 
-export const metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/curated-packs', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   title: 'Curated Gift Packs', // root template appends "· GIVOO"
   description:
     'Browse curated corporate gift packs by budget or by occasion. Branding included in every per-unit price.',

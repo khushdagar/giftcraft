@@ -4,6 +4,7 @@ import { getCategorySummaries, type CategorySummary } from '@/lib/category-data'
 import { JsonLd } from '@/components/seo/json-ld';
 import { CollapsibleRichText } from '@/components/catalog/collapsible-rich-text';
 import { breadcrumbSchema, collectionPageSchema } from '@/lib/schema';
+import { withPageSeo } from '@/lib/page-seo';
 
 // Fully server-rendered: this page is the crawlable hub linking the site root
 // to every category, and from there to every product.
@@ -15,7 +16,11 @@ const PLACEHOLDER_IMAGE = '/placeholder-tile.svg';
 // Page intro, as HTML so CollapsibleRichText can word-count and clamp it.
 const INTRO_HTML = `<p>Every category below is priced per unit with standard branding already included — no separate printing charge, and the rate steps down as your quantity grows. Pick a category to see live pricing, or <a href="/builder" class="font-semibold text-em underline">build a gift pack</a> from across the range.</p>`;
 
-export const metadata: Metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/categories', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   // Root template appends "· GIVOO"
   title: 'Shop Corporate Gifts by Category',
   description:

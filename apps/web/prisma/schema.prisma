@@ -1905,6 +1905,36 @@ model AdminActivityLog {
 // `source` is stored normalised (lowercase, leading slash, no trailing slash,
 // no query string) — middleware normalises the incoming path the same way, so
 // a lookup is a plain map hit. A trailing "/*" makes it a prefix rule.
+// ═══════════════════════════════════════════════════════════
+//   PAGE SEO OVERRIDES
+// ═══════════════════════════════════════════════════════════
+// Per-page SEO meta managed from /admin/seo, so the SEO team can tune tags
+// without a deploy. `path` is stored normalised exactly like UrlRedirect.source
+// (lowercase, leading slash, no trailing slash, no query string).
+//
+// Every field is an OVERRIDE: when null, the page keeps whatever metadata its
+// code already generates — so a page with no PageSeo row behaves exactly as
+// before this table existed.
+model PageSeo {
+  id              String  @id @default(cuid())
+  path            String  @unique
+  metaTitle       String?
+  metaDescription String? @db.Text
+  // Absolute URL for <link rel="canonical">.
+  canonicalUrl    String?
+  ogTitle         String?
+  ogDescription   String? @db.Text
+  ogImageUrl      String?
+  // Tri-state on purpose: null inherits the page's own robots logic (e.g. an
+  // occasion page noindexes itself when it has zero products) — only an
+  // explicit true/false from the admin overrides it.
+  noIndex         Boolean?
+  noFollow        Boolean?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model UrlRedirect {
   id          String   @id @default(cuid())
   source      String   @unique

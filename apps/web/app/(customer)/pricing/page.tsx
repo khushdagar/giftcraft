@@ -1,10 +1,16 @@
+import type { Metadata } from 'next';
 import { Gift, Package, Zap, Truck, Calculator, CreditCard, ShieldCheck, TrendingDown, Paintbrush } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { ASSEMBLY_QC_DAYS, DEFAULT_LEAD_TIME_DAYS, deliveryWindowDays } from '@/lib/shipping';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/pricing', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   title: 'Transparent Pricing | GIVOO',
   description: 'See exactly how GIVOO pricing works. No hidden fees.',
 };

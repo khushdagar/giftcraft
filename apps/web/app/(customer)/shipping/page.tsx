@@ -1,7 +1,13 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { InfoPage, InfoSection } from '@/components/layout/info-page';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/shipping', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   title: 'Shipping',
   description: 'How GIVOO calculates delivery timelines and courier charges across India.',
 };

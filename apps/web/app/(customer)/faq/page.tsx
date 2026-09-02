@@ -1,10 +1,16 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { InfoPage, InfoSection, InfoQA } from '@/components/layout/info-page';
 import { JsonLd } from '@/components/seo/json-ld';
 import { faqPageSchema } from '@/lib/schema';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/faq', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   title: 'FAQ',
   description: 'Answers to common questions about ordering branded corporate gifts on GIVOO.',
   alternates: { canonical: '/faq' },

@@ -1,8 +1,14 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { InfoPage, InfoSection } from '@/components/layout/info-page';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/returns', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   title: 'Return, Refund & Cancellation Policy',
   description:
     'GIVOO return, refund and cancellation policy for customised corporate gift orders — inspection windows, claims, cancellation stages and refund timelines.',
