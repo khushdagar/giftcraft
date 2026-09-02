@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { publishedPostWhere, POSTS_PER_PAGE } from '@/lib/blog';
+import { getAuthors, authorPagePath } from '@/lib/authors';
 import { SITE_URL } from '@/lib/site';
 import { urlsetXml, sitemapResponse, latest, type SitemapEntry } from '@/lib/sitemap-xml';
 
@@ -12,6 +13,7 @@ export async function GET() {
   const entries: SitemapEntry[] = [];
 
   try {
+    const authors = await getAuthors();
     const posts = await prisma.blogPost.findMany({
       where: { ...publishedPostWhere(), noIndex: false },
       select: { slug: true, updatedAt: true, category: { select: { slug: true } } },
@@ -35,6 +37,13 @@ export async function GET() {
         changefreq: 'weekly',
         priority: 0.6,
       },
+      // Author profile pages — the entities the bylines link to.
+      ...authors.map((author) => ({
+        url: `${SITE_URL}${authorPagePath(author.slug)}`,
+        lastmod: latest(posts.map((p) => p.updatedAt)),
+        changefreq: 'monthly' as const,
+        priority: 0.4,
+      })),
       ...posts.map((post) => ({
         url: `${SITE_URL}/blog/${post.slug}`,
         lastmod: post.updatedAt,

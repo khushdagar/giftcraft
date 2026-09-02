@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { readingMinutes, autoExcerpt, slugify, BLOG_AUTHOR } from '@/lib/blog';
+import { readingMinutes, autoExcerpt, slugify } from '@/lib/blog';
+import { getAuthors } from '@/lib/authors';
 import { resolveCategoryId, pruneEmptyCategories } from '@/lib/blog-categories';
 
 const UpdateSchema = z.object({
@@ -17,6 +18,9 @@ const UpdateSchema = z.object({
   isFeatured: z.boolean(),
   tags: z.array(z.string()),
   categoryName: z.string().max(60).optional().nullable(),
+  // Byline — must be one of the AUTHORS profiles so every post resolves to a
+  // real author page; anything else falls back to the default author.
+  authorName: z.string().max(80).optional().nullable(),
   metaTitle: z.string().max(70).optional().nullable(),
   metaDescription: z.string().max(200).optional().nullable(),
   canonicalUrl: z.string().url().optional().nullable().or(z.literal('')),
@@ -25,6 +29,12 @@ const UpdateSchema = z.object({
 });
 
 const nullify = (v: string | null | undefined) => (v ? v : null);
+
+/** The picked byline when an author row exists for it, else the default. */
+async function resolveAuthorName(name: string | null | undefined): Promise<string> {
+  const authors = await getAuthors();
+  return authors.find((a) => a.name === name)?.name ?? authors[0]!.name;
+}
 
 async function requireAdmin() {
   const session = await auth();
@@ -85,7 +95,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         isFeatured: body.isFeatured,
         tags: body.tags,
         categoryId,
-        authorName: BLOG_AUTHOR,
+        authorName: await resolveAuthorName(body.authorName),
         metaTitle: nullify(body.metaTitle),
         metaDescription: nullify(body.metaDescription),
         canonicalUrl: nullify(body.canonicalUrl),

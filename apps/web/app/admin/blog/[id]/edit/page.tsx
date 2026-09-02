@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { BlogForm, type BlogPostFormData } from '@/components/admin/blog/blog-form';
 import { blogCategoryOptions } from '@/lib/blog-categories';
+import { getAuthors } from '@/lib/authors';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,13 +13,15 @@ export default async function EditBlogPostPage({ params }: { params: { id: strin
   const session = await auth();
   if (!session || session.user.role !== 'super_admin') redirect('/');
 
-  const [post, categories] = await Promise.all([
+  const [post, categories, authorRows] = await Promise.all([
     prisma.blogPost.findUnique({
       where: { id: params.id },
       include: { category: { select: { name: true } } },
     }),
     blogCategoryOptions(),
+    getAuthors(),
   ]);
+  const authors = authorRows.map((a) => ({ name: a.name, role: a.role }));
 
   if (!post) notFound();
 
@@ -37,6 +40,7 @@ export default async function EditBlogPostPage({ params }: { params: { id: strin
     isFeatured: post.isFeatured,
     tags: post.tags,
     categoryName: post.category?.name ?? '',
+    authorName: post.authorName ?? '',
     metaTitle: post.metaTitle ?? '',
     metaDescription: post.metaDescription ?? '',
     canonicalUrl: post.canonicalUrl ?? '',
@@ -54,7 +58,7 @@ export default async function EditBlogPostPage({ params }: { params: { id: strin
         <h1 className="mt-2 truncate text-3xl font-normal tracking-tight text-ink">{post.title}</h1>
       </div>
 
-      <BlogForm mode="edit" post={initial} categories={categories} />
+      <BlogForm mode="edit" post={initial} categories={categories} authors={authors} />
     </>
   );
 }

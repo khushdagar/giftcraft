@@ -26,6 +26,7 @@ export interface BlogPostFormData {
   isFeatured: boolean;
   tags: string[];
   categoryName: string;
+  authorName: string;
   metaTitle: string;
   metaDescription: string;
   canonicalUrl: string;
@@ -35,7 +36,7 @@ export interface BlogPostFormData {
 
 const EMPTY: BlogPostFormData = {
   title: '', slug: '', excerpt: '', content: '', coverImageUrl: '', coverImageAlt: '',
-  status: 'draft', publishedAt: '', isFeatured: false, tags: [], categoryName: '',
+  status: 'draft', publishedAt: '', isFeatured: false, tags: [], categoryName: '', authorName: '',
   metaTitle: '', metaDescription: '', canonicalUrl: '', ogImageUrl: '', noIndex: false,
 };
 
@@ -80,11 +81,14 @@ export function BlogForm({
   mode,
   post,
   categories,
+  authors,
 }: {
   mode: 'create' | 'edit';
   post?: BlogPostFormData;
   /** Names already in use — suggestions only; any new name creates a category. */
   categories: string[];
+  /** Author entities from /admin/blog/authors. The first is the default byline. */
+  authors: Array<{ name: string; role: string }>;
 }) {
   const router = useRouter();
   const [form, setForm] = useState<BlogPostFormData>(post ?? EMPTY);
@@ -359,6 +363,20 @@ export function BlogForm({
               <option value="draft">Draft — only visible here</option>
               <option value="published">Published — live on the site</option>
               <option value="archived">Archived — taken down</option>
+            </select>
+          </Field>
+
+          <Field label="Author" hint="The byline shown on the post, linked to the author's profile page. Manage authors from the blog list.">
+            <select
+              value={form.authorName || authors[0]?.name || ''}
+              onChange={(e) => set('authorName', e.target.value)}
+              className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm"
+            >
+              {authors.map((a) => (
+                <option key={a.name} value={a.name}>
+                  {a.name} — {a.role}
+                </option>
+              ))}
             </select>
           </Field>
 

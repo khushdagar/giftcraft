@@ -69,6 +69,8 @@ export function articleSchema(a: {
   datePublished?: string | null;
   dateModified: string;
   authorName: string;
+  /** Path of the author's profile page — links the Person to a real entity. */
+  authorPath?: string | null;
   keywords?: string[];
 }) {
   const url = `${SITE_URL}/blog/${a.slug}`;
@@ -82,7 +84,15 @@ export function articleSchema(a: {
     ...(a.image ? { image: [absoluteUrl(a.image)] } : {}),
     ...(a.datePublished ? { datePublished: a.datePublished } : {}),
     dateModified: a.dateModified,
-    author: { '@type': 'Person', name: a.authorName },
+    author: {
+      '@type': 'Person',
+      name: a.authorName,
+      // Same @id as the Person on the profile page, so crawlers resolve the
+      // byline to one entity across the whole blog.
+      ...(a.authorPath
+        ? { '@id': `${absoluteUrl(a.authorPath)}#person`, url: absoluteUrl(a.authorPath) }
+        : {}),
+    },
     // Inlined rather than an @id reference: blog pages no longer render the
     // site-wide Organization node (its address/phone read as LocalBusiness
     // markup on articles), and Google's Article guidance wants publisher.name
@@ -102,6 +112,43 @@ export function articleSchema(a: {
     isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: SITE_NAME, url: SITE_URL },
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     ...(a.keywords && a.keywords.length > 0 ? { keywords: a.keywords.join(', ') } : {}),
+  };
+}
+
+/**
+ * ProfilePage + Person for an author page. The Person's @id is what every
+ * BlogPosting.author node points at (see articleSchema), giving the byline a
+ * single verifiable entity. Organization is inlined (name + url) for the same
+ * reason as the article publisher: blog pages don't render the site-wide
+ * Organization node, so the reference must be resolvable on the page itself.
+ */
+export function profilePageSchema(a: {
+  name: string;
+  path: string;
+  role: string;
+  description: string;
+  knowsAbout?: string[];
+  sameAs?: string[];
+}) {
+  const url = absoluteUrl(a.path);
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ProfilePage',
+    '@id': url,
+    url,
+    name: `${a.name} — ${a.role}`,
+    isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, name: SITE_NAME, url: SITE_URL },
+    mainEntity: {
+      '@type': 'Person',
+      '@id': `${url}#person`,
+      name: a.name,
+      url,
+      jobTitle: a.role,
+      description: a.description,
+      worksFor: { '@type': 'Organization', '@id': `${SITE_URL}/#organization`, name: SITE_NAME, url: SITE_URL },
+      ...(a.knowsAbout && a.knowsAbout.length > 0 ? { knowsAbout: a.knowsAbout } : {}),
+      ...(a.sameAs && a.sameAs.length > 0 ? { sameAs: a.sameAs } : {}),
+    },
   };
 }
 

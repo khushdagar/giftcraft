@@ -1761,6 +1761,31 @@ model BlogPost {
   @@index([isFeatured])
 }
 
+/// A blog author entity — rendered on /blog/author/[slug] with Person schema.
+/// Posts reference it by name (denormalised, same as BlogPost.authorName), so
+/// renaming an author also rewrites the posts that carry the old byline.
+/// The oldest row is the default byline for posts without one.
+model BlogAuthor {
+  id      String @id @default(cuid())
+  name    String @unique
+  slug    String @unique
+  role    String
+  /// One-liner used for meta description and Person.description.
+  summary String @default("") @db.Text
+  /// Bio paragraphs, rendered in order.
+  bio         String[] @default([])
+  credentials String[] @default([])
+  /// Topics for Person.knowsAbout.
+  knowsAbout String[] @default([])
+  /// Real public profile URLs (LinkedIn etc.) — never placeholders.
+  sameAs String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([slug])
+}
+
 enum BlogCommentStatus {
   pending
   approved
