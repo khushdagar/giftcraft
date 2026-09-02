@@ -9,6 +9,7 @@ import { HowItWorks } from '@/components/home/how-it-works';
 import { CustomerReviews } from '@/components/home/customer-reviews';
 import { CuratedCollections } from '@/components/home/curated-collections';
 import { CTASection } from '@/components/home/cta-section';
+import { withPageSeo } from '@/lib/page-seo';
 import {
   getFeaturedProducts,
   getHomePackOccasions,
@@ -20,6 +21,12 @@ import {
 // server-side so it is present in the initial HTML for search engines; the
 // client components hydrate React Query from this data with zero refetch flash.
 export const revalidate = 3600;
+
+// Title/description come from the root layout unless the SEO team has saved
+// an override for "/" in /admin/seo — an empty override inherits the layout.
+export function generateMetadata() {
+  return withPageSeo('/');
+}
 
 export default async function HomePage() {
   const [featuredProducts, occasions, categories, reviews] = await Promise.all([

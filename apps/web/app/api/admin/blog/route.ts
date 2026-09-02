@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
-import { readingMinutes, autoExcerpt, slugify, BLOG_AUTHOR } from '@/lib/blog';
+import { readingMinutes, autoExcerpt, slugify } from '@/lib/blog';
+import { getAuthors } from '@/lib/authors';
 import { resolveCategoryId, pruneEmptyCategories } from '@/lib/blog-categories';
 
 const PostSchema = z.object({
@@ -18,6 +19,9 @@ const PostSchema = z.object({
   tags: z.array(z.string()).default([]),
   // A free-typed name — matched to an existing category or created on save.
   categoryName: z.string().max(60).optional().nullable(),
+  // Byline — must be one of the AUTHORS profiles so every post resolves to a
+  // real author page; anything else falls back to the default author.
+  authorName: z.string().max(80).optional().nullable(),
   metaTitle: z.string().max(70).optional().nullable(),
   metaDescription: z.string().max(200).optional().nullable(),
   canonicalUrl: z.string().url().optional().nullable().or(z.literal('')),
@@ -27,6 +31,12 @@ const PostSchema = z.object({
 
 /** '' → null, so empty optional inputs don't land in the DB as blank strings. */
 const nullify = (v: string | null | undefined) => (v ? v : null);
+
+/** The picked byline when an author row exists for it, else the default. */
+async function resolveAuthorName(name: string | null | undefined): Promise<string> {
+  const authors = await getAuthors();
+  return authors.find((a) => a.name === name)?.name ?? authors[0]!.name;
+}
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -93,8 +103,8 @@ export async function POST(req: NextRequest) {
         tags: body.tags,
         categoryId,
         authorId: session.user.id,
-        // One public byline for the whole blog, regardless of who typed it in.
-        authorName: BLOG_AUTHOR,
+        // The picked byline, as long as a profile page exists for it.
+        authorName: await resolveAuthorName(body.authorName),
         metaTitle: nullify(body.metaTitle),
         metaDescription: nullify(body.metaDescription),
         canonicalUrl: nullify(body.canonicalUrl),

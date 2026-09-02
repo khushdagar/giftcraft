@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { isHiddenCategory, getHiddenCategoryIds } from "@/lib/catalog-visibility";
+import { isHiddenCategory } from "@/lib/catalog-visibility";
 import Image from "next/image";
 
 type FooterLink = [href: string, label: string];
@@ -23,11 +23,36 @@ const LEGAL_LINKS: FooterLink[] = [
   ["/terms", "Terms & Conditions"],
 ];
 
-// Live catalog data for the Products / Curated Packs / Collections columns.
+const FEATURED_OCCASION_SLUGS = [
+  "onboarding",
+  "diwali",
+  "events",
+  "client-gifting",
+  "festive",
+  "recognition-rewards",
+  "sustainable-gifting",
+  "executive-gifting",
+];
+
+// Same idea for the Categories column: the SEO team's shortlist, in this
+// order. Still intersected with the live product-bearing categories below so
+// an emptied or hidden category never leaves a dead link behind.
+const FEATURED_CATEGORY_SLUGS = [
+  "apparel",
+  "bags-travel",
+  "drinkware",
+  "gourmet-hampers",
+  "leather-accessories",
+  "stationery-desk",
+  "tech-gadgets",
+  "wellness",
+];
+
+// Live catalog data for the Occasions / Budget / Categories columns.
 // Wrapped so a DB hiccup degrades to fewer links instead of breaking every page.
 async function getFooterData() {
   try {
-    const [rawCategories, occasionRows, hiddenCategoryIds] = await Promise.all([
+    const [rawCategories, occasionRows, budgetBands] = await Promise.all([
       // Top-level categories only. Sub-categories belong on the category
       // landing page, not in the footer — listing every one of them turns this
       // column into an unreadable wall.
@@ -39,6 +64,7 @@ async function getFooterData() {
       prisma.category.findMany({
         where: {
           parentId: null,
+          slug: { in: FEATURED_CATEGORY_SLUGS },
           OR: [
             { products: { some: { product: { status: "active", isPack: false } } } },
             { children: { some: { products: { some: { product: { status: "active", isPack: false } } } } } },
@@ -47,41 +73,37 @@ async function getFooterData() {
         orderBy: { sortOrder: "asc" },
       }),
       prisma.occasionConfig.findMany({
-        where: { isActive: true, isCollection: false },
+        where: { isActive: true, slug: { in: FEATURED_OCCASION_SLUGS } },
+        select: { slug: true, name: true },
+      }),
+      // Bands are admin-managed (/admin/budget-bands), so renames and re-ordering
+      // show up here without a code change.
+      prisma.budgetBand.findMany({
+        where: { isActive: true },
+        select: { slug: true, name: true },
         orderBy: { sortOrder: "asc" },
       }),
-      getHiddenCategoryIds(),
     ]);
 
-    const categories = rawCategories.filter((c) => !isHiddenCategory(c));
+    const categories = rawCategories
+      .filter((c) => !isHiddenCategory(c))
+      .sort(
+        (a, b) =>
+          FEATURED_CATEGORY_SLUGS.indexOf(a.slug) - FEATURED_CATEGORY_SLUGS.indexOf(b.slug)
+      );
 
-    // Only occasions with at least one active, catalog-visible product — mirrors
-    // /api/occasions so the footer never links to a dead-end "0 products" page.
-    const occWithProducts = await prisma.productOccasion.findMany({
-      where: {
-        product: {
-          status: "active",
-          ...(hiddenCategoryIds.length > 0
-            ? { categories: { none: { categoryId: { in: hiddenCategoryIds } } } }
-            : {}),
-        },
-      },
-      select: { occasionId: true },
-      distinct: ["occasionId"],
+    const bySlug = new Map(occasionRows.map((o) => [o.slug, o]));
+    const occasions = FEATURED_OCCASION_SLUGS.flatMap((slug) => {
+      const row = bySlug.get(slug);
+      return row ? [row] : [];
     });
-    const withProducts = new Set(occWithProducts.map((o) => o.occasionId));
-    const occasions = occasionRows.filter((o) => withProducts.has(o.id));
 
-    return { categories, occasions };
+    return { categories, occasions, budgetBands };
   } catch (error) {
     console.error("Footer data fetch failed:", error);
-    return { categories: [], occasions: [] };
+    return { categories: [], occasions: [], budgetBands: [] };
   }
 }
-
-// Cap for the catalog-driven columns. Occasions/categories grow unbounded as
-// the catalog does — past ~10 the footer turns into a scrolling wall.
-const MAX_COLUMN_LINKS = 10;
 
 function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) {
   if (links.length === 0) return null;
@@ -104,29 +126,30 @@ function FooterColumn({ title, links }: { title: string; links: FooterLink[] }) 
 }
 
 export async function Footer() {
-  const { categories, occasions } = await getFooterData();
+  const { categories, occasions, budgetBands } = await getFooterData();
 
-  const productLinks: FooterLink[] = ([
-    ["/catalog", "All Products"],
-    ["/categories", "All Categories"],
-    // Indexable category landing pages, not filtered ?category= URLs.
-    ...categories.map((c): FooterLink => [`/category/${c.slug}`, c.name]),
-  ] as FooterLink[]).slice(0, MAX_COLUMN_LINKS);
-  // Two ways in, both always populated — no risk of linking a band or an
-  // occasion that happens to hold nothing this week.
+  // Curated Packs lead the footer — they are the platform's core offer, and
+  // the Occasions/Budget columns below drill straight into them.
   const packLinks: FooterLink[] = [
     ["/curated-packs", "All Packs"],
-    ["/curated-packs/budget", "Shop by Budget"],
-    ["/curated-packs/occasions", "Shop by Occasion"],
+    ["/curated-packs/occasions", "By Occasion"],
+    ["/curated-packs/budget", "By Budget"],
   ];
-  const occasionLinks: FooterLink[] = occasions
-    .map((o): FooterLink => [`/occasion/${o.slug}`, o.name])
-    .slice(0, MAX_COLUMN_LINKS);
+  const occasionLinks: FooterLink[] = occasions.map(
+    (o): FooterLink => [`/curated-packs/occasions/${o.slug}`, o.name]
+  );
+  const budgetLinks: FooterLink[] = budgetBands.map(
+    (b): FooterLink => [`/curated-packs/budget/${b.slug}`, b.name]
+  );
+  // Indexable category landing pages, not filtered ?category= URLs.
+  const categoryLinks: FooterLink[] = categories.map(
+    (c): FooterLink => [`/category/${c.slug}`, c.name]
+  );
 
   return (
     <footer className="bg-dark px-4 pt-12 pb-7 text-inv sm:px-8 lg:px-12 lg:pt-[72px]">
       <div className="container-gc-w">
-        <div className="mb-10 grid grid-cols-2 gap-8 lg:grid-cols-[1.8fr_repeat(4,1fr)]">
+        <div className="mb-10 grid grid-cols-2 gap-8 lg:grid-cols-[1.8fr_repeat(5,1fr)]">
           <div className="col-span-2 lg:col-span-1">
             <Image src="/footer_logo.png" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />
             <p className="max-w-[260px] text-[13px] leading-relaxed text-white">
@@ -159,9 +182,10 @@ export async function Footer() {
             </div>
           </div>
 
-          <FooterColumn title="Products" links={productLinks} />
           <FooterColumn title="Curated Packs" links={packLinks} />
           <FooterColumn title="Occasions" links={occasionLinks} />
+          <FooterColumn title="Budget" links={budgetLinks} />
+          <FooterColumn title="Categories" links={categoryLinks} />
           <FooterColumn title="Company" links={COL_COMPANY} />
         </div>
 

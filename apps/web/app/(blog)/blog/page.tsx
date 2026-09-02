@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { formatPostDate, publishedPostWhere, POSTS_PER_PAGE, BLOG_AUTHOR } from '@/lib/blog';
 import { Clock } from 'lucide-react';
+import { withPageSeo } from '@/lib/page-seo';
+import { pageOpenGraph } from '@/lib/site';
 
 // Short revalidate so a scheduled post appears without a redeploy.
 export const revalidate = 300;
@@ -57,18 +59,21 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     ? `${categoryName} articles on corporate gifting from the GIVOO team.`
     : 'Trends, tips, and stories on the art of thoughtful corporate gifting — from the GIVOO team.';
 
-  return {
+  const canonical = listingPath({ category, tag, page });
+
+  return withPageSeo('/blog', {
     title,
     description,
     // Each page is its own canonical — paginated pages are distinct content, not
     // duplicates of page 1. Tag views are thin slices of the same posts, so they
     // stay out of the index while still passing link equity through.
-    alternates: { canonical: listingPath({ category, tag, page }) },
+    alternates: { canonical },
+    openGraph: pageOpenGraph(canonical, title, description),
     // Spread, never `robots: undefined` — an explicit undefined key OVERRIDES the
     // root layout instead of inheriting it, which silently exempted this route
     // from the site-wide SITE_NOINDEX kill switch.
     ...(tag ? { robots: { index: false, follow: true } } : {}),
-  };
+  });
 }
 
 export default async function BlogPage({ searchParams }: PageProps) {

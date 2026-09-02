@@ -13,6 +13,7 @@ import { JsonLd } from '@/components/seo/json-ld';
 import { ContentSection } from '@/components/seo/content-section';
 import { FaqSection } from '@/components/seo/faq-section';
 import { breadcrumbSchema, collectionPageSchema, faqPageSchema } from '@/lib/schema';
+import { withPageSeo } from '@/lib/page-seo';
 
 // Server-rendered + ISR, for the same reasons as /category/[slug]: the product
 // grid (and every product link in it) is in the initial HTML, and no
@@ -37,7 +38,7 @@ export async function generateMetadata({
   const url = `/occasion/${occasion.slug}`;
   const ogImage = occasion.products.find((p) => p.imageUrl)?.imageUrl || '/opengraph-image';
 
-  return {
+  return withPageSeo(`/occasion/${occasion.slug}`, {
     // Root template appends "· GIVOO"
     title,
     description,
@@ -60,7 +61,7 @@ export async function generateMetadata({
       description,
       images: [ogImage],
     },
-  };
+  });
 }
 
 export default async function OccasionPage({ params }: { params: { slug: string } }) {

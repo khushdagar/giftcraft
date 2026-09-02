@@ -5,13 +5,18 @@ import { RecentlyViewed } from '@/components/product/recently-viewed';
 import { getCatalogProducts, getCatalogFilters } from '@/lib/catalog-data';
 import { JsonLd } from '@/components/seo/json-ld';
 import { itemListSchema, breadcrumbSchema } from '@/lib/schema';
+import { withPageSeo } from '@/lib/page-seo';
 
 // Products are fetched server-side so the full grid — and every product link —
 // is in the initial HTML for search engines. The client component takes over
 // for filtering/sorting without refetching.
 export const revalidate = 3600;
 
-export const metadata: Metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/catalog', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   // Root template appends "· GIVOO"
   title: 'Corporate Gifts Catalog — Bulk Branded Gifting Products',
   description:

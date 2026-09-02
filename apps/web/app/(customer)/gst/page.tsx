@@ -1,7 +1,13 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { InfoPage, InfoSection } from '@/components/layout/info-page';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/gst', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   title: 'GST Information',
   description: 'How GST is calculated and invoiced on GIVOO orders — HSN codes, CGST/SGST, IGST.',
 };

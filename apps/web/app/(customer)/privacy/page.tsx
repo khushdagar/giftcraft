@@ -1,7 +1,13 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { InfoPage, InfoSection } from '@/components/layout/info-page';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/privacy', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   title: 'Privacy Policy',
   description: 'What data GIVOO collects, why we collect it, and the control you have over it.',
 };

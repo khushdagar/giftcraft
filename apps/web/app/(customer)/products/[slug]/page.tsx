@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { JsonLd } from "@/components/seo/json-ld";
 import { productSchema, breadcrumbSchema } from "@/lib/schema";
+import { withPageSeo } from '@/lib/page-seo';
 
 // ISR: rendered on demand, then served from cache for an hour.
 //
@@ -59,14 +60,16 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   // site card so link previews never render blank.
   const ogImage = product.images?.[0]?.url || "/opengraph-image";
 
-  return {
+  return withPageSeo(`/products/${params.slug}`, {
     // Root template appends "· GIVOO" — don't add the brand here. An
     // admin-authored page title is used verbatim (matches the admin SEO preview).
     title: metaTitle ? { absolute: metaTitle } : product.name,
     description,
     alternates: { canonical: url },
     openGraph: {
-      type: "website",
+      // OG's "product" vertical isn't in Next's type union, but the renderer
+      // emits whatever string is set — the cast only appeases the compiler.
+      type: "product" as "website",
       url,
       title: metaTitle || product.name,
       description,
@@ -80,7 +83,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       description,
       images: [ogImage],
     },
-  };
+  });
 }
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {

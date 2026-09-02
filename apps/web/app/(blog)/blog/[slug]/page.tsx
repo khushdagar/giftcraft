@@ -5,10 +5,12 @@ import { notFound } from 'next/navigation';
 import { ChevronLeft, Clock } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { formatPostDate, publishedPostWhere, autoExcerpt, extractFaqs, BLOG_AUTHOR } from '@/lib/blog';
+import { getAuthorByName, authorPagePath } from '@/lib/authors';
 import { BlogComments } from '@/components/blog/comments';
 import { JsonLd } from '@/components/seo/json-ld';
 import { articleSchema, faqSchema } from '@/lib/schema';
 import { SITE_NAME } from '@/lib/site';
+import { withPageSeo } from '@/lib/page-seo';
 
 export const revalidate = 300;
 
@@ -51,10 +53,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const image = shareImage(post);
   const imageAlt = post.coverImageAlt || title;
   const url = `${SITE}/blog/${post.slug}`;
+  const author = await getAuthorByName(post.authorName);
+  const authorName = author?.name || post.authorName || BLOG_AUTHOR;
+  const authorPath = author ? authorPagePath(author.slug) : null;
 
-  return {
+  return withPageSeo(`/blog/${post.slug}`, {
     title,
     description,
+    // <meta name="author"> + <link rel="author"> pointing at the profile page.
+    authors: [authorPath ? { name: authorName, url: `${SITE}${authorPath}` } : { name: authorName }],
     // A canonical pointing elsewhere means this post was first published there.
     alternates: { canonical: post.canonicalUrl || url },
     // Spread, never `robots: undefined` — an explicit undefined key OVERRIDES the
@@ -72,7 +79,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       url,
       publishedTime: post.publishedAt?.toISOString(),
       modifiedTime: post.updatedAt.toISOString(),
-      authors: [post.authorName || BLOG_AUTHOR],
+      authors: [authorName],
       tags: post.tags,
       images: [{ url: image.url, secureUrl: image.url, type: image.type, width: 1200, height: 630, alt: imageAlt }],
     },
@@ -82,7 +89,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       description,
       images: [{ url: image.url, alt: imageAlt }],
     },
-  };
+  });
 }
 
 /** Pre-render the posts that exist at build time; the rest render on demand. */
@@ -110,6 +117,10 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     take: 3,
   });
 
+  const author = await getAuthorByName(post.authorName);
+  const authorName = author?.name || post.authorName || BLOG_AUTHOR;
+  const authorPath = author ? authorPagePath(author.slug) : null;
+
   const image = post.ogImageUrl || post.coverImageUrl;
   // Publisher/logo, absolute image URLs and the @id wiring all come from the
   // shared builder. The publisher is inlined there: blog pages deliberately do
@@ -121,7 +132,8 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
     image,
     datePublished: post.publishedAt?.toISOString() ?? null,
     dateModified: post.updatedAt.toISOString(),
-    authorName: post.authorName || BLOG_AUTHOR,
+    authorName,
+    authorPath,
     keywords: post.tags,
   });
   // FAQPage is generated from the body whenever the author has written an
@@ -163,7 +175,20 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
                 {post.readingMinutes} min read
               </span>
               <span aria-hidden>·</span>
-              <span>By {post.authorName || BLOG_AUTHOR}</span>
+              <span>
+                By{' '}
+                {authorPath ? (
+                  <Link
+                    href={authorPath}
+                    rel="author"
+                    className="font-semibold text-ink-2 underline-offset-2 hover:text-em hover:underline"
+                  >
+                    {authorName}
+                  </Link>
+                ) : (
+                  authorName
+                )}
+              </span>
             </div>
           </header>
 

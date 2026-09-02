@@ -6,6 +6,7 @@ import { stripHtml } from '@/lib/strip-html';
 import { formatRupees } from '@/lib/utils';
 import { JsonLd } from '@/components/seo/json-ld';
 import { breadcrumbSchema, collectionPageSchema } from '@/lib/schema';
+import { withPageSeo } from '@/lib/page-seo';
 
 // Fully server-rendered: this page is the crawlable hub linking the site root to
 // every occasion, and from there to every product. Mirrors /categories.
@@ -14,7 +15,11 @@ export const revalidate = 3600;
 // Shown when an occasion has no cover image uploaded in the admin.
 const PLACEHOLDER_IMAGE = '/placeholder-tile.svg';
 
-export const metadata: Metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/occasions', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   // Root template appends "· GIVOO"
   title: 'Shop Corporate Gifts by Occasion',
   description:

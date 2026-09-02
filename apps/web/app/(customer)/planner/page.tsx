@@ -1,7 +1,12 @@
 import type { Metadata } from 'next';
 import PlannerClient from './planner-client';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata: Metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/planner', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   // Root template appends "· GIVOO"
   title: 'Gift Budget Planner — Find Gifts by Occasion & Budget',
   description:

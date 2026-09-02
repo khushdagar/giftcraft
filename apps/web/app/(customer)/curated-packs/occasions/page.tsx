@@ -1,7 +1,9 @@
+import type { Metadata } from 'next';
 import { getPacks, getPackOccasionTiles } from '@/lib/pack-data';
 import { CollectionLevelPage } from '@/components/packs/collection-level-page';
 import { JsonLd } from '@/components/seo/json-ld';
 import { breadcrumbSchema, itemListSchema } from '@/lib/schema';
+import { withPageSeo } from '@/lib/page-seo';
 
 // ISR: cacheable HTML for crawlers + users, refreshed hourly.
 export const revalidate = 3600;
@@ -11,7 +13,11 @@ const TITLE = 'Gift Packs by Occasion';
 const DESCRIPTION =
   'Curated corporate gift packs for every occasion — Diwali, onboarding, client gifting, milestones and more.';
 
-export const metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/curated-packs/occasions', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   title: TITLE, // root template appends "· GIVOO"
   description: DESCRIPTION,
   alternates: { canonical: PATH },

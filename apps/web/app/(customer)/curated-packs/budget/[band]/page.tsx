@@ -8,6 +8,7 @@ import { toRichHtml } from '@/lib/rich-text';
 import { stripHtml } from '@/lib/strip-html';
 import { ContentSection } from '@/components/seo/content-section';
 import { FaqSection } from '@/components/seo/faq-section';
+import { withPageSeo } from '@/lib/page-seo';
 
 // ISR: cacheable HTML for crawlers + users, refreshed hourly.
 export const revalidate = 3600;
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: { params: { band: string } })
   const path = `/curated-packs/budget/${band.slug}`;
   const title = band.metaTitle || `Corporate Gift Packs ${band.name}`;
   const description = band.metaDescription || band.description || undefined;
-  return {
+  return withPageSeo(path, {
     // Root template appends "· GIVOO"
     title,
     description,
@@ -40,7 +41,7 @@ export async function generateMetadata({ params }: { params: { band: string } })
       locale: 'en_IN',
     },
     twitter: { card: 'summary_large_image', title, description },
-  };
+  });
 }
 
 // Level 3 of the budget branch: every pack whose "from" price lands in the

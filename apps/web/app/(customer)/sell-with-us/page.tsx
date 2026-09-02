@@ -1,7 +1,12 @@
 import type { Metadata } from 'next';
 import SellWithUsClient from './sell-with-us-client';
+import { withPageSeo } from '@/lib/page-seo';
 
-export const metadata: Metadata = {
+export function generateMetadata(): Promise<Metadata> {
+  return withPageSeo('/sell-with-us', baseMetadata);
+}
+
+const baseMetadata: Metadata = {
   // Root template appends "· GIVOO"
   title: 'Sell With Us — Become a GIVOO Vendor',
   description:

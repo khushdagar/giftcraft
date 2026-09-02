@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit2, Plus, Star, ExternalLink, EyeOff, MessageCircle } from 'lucide-react';
+import { Edit2, Plus, Star, ExternalLink, EyeOff, MessageCircle, Users } from 'lucide-react';
 import { formatPostDate } from '@/lib/blog';
 import { DeletePostButton } from '@/components/admin/blog/delete-post-button';
 
@@ -43,6 +43,13 @@ export default async function AdminBlogPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/admin/blog/authors"
+              className="inline-flex items-center gap-2 rounded-2xl border border-bdr px-4 py-2 text-sm text-ink-2 transition hover:border-ink hover:text-ink"
+            >
+              <Users className="h-4 w-4" />
+              Authors
+            </Link>
             <Link
               href="/admin/blog/comments"
               className="inline-flex items-center gap-2 rounded-2xl border border-bdr px-4 py-2 text-sm text-ink-2 transition hover:border-ink hover:text-ink"

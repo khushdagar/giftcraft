@@ -3,7 +3,12 @@
  * and the public pages can use them.
  */
 
-/** The byline for every post on the site. */
+/**
+ * Fallback byline for posts saved before authors became manageable rows.
+ * Author entities now live in the BlogAuthor table (see lib/authors.ts,
+ * managed in /admin/blog/authors); this constant only names the seeded
+ * default and renders when a byline can't be resolved.
+ */
 export const BLOG_AUTHOR = 'Mayank Jain';
 
 /** Posts per page on the public listing. */

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { BlogForm } from '@/components/admin/blog/blog-form';
 import { blogCategoryOptions } from '@/lib/blog-categories';
+import { getAuthors } from '@/lib/authors';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,7 @@ export default async function NewBlogPostPage() {
   if (!session || session.user.role !== 'super_admin') redirect('/');
 
   const categories = await blogCategoryOptions();
+  const authors = (await getAuthors()).map((a) => ({ name: a.name, role: a.role }));
 
   return (
     <>
@@ -23,7 +25,7 @@ export default async function NewBlogPostPage() {
         <h1 className="mt-2 text-3xl font-normal tracking-tight text-ink">New Post</h1>
       </div>
 
-      <BlogForm mode="create" categories={categories} />
+      <BlogForm mode="create" categories={categories} authors={authors} />
     </>
   );
 }

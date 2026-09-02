@@ -11,6 +11,7 @@ import { JsonLd } from '@/components/seo/json-ld';
 import { ContentSection } from '@/components/seo/content-section';
 import { FaqSection } from '@/components/seo/faq-section';
 import { breadcrumbSchema, collectionPageSchema, faqPageSchema } from '@/lib/schema';
+import { withPageSeo } from '@/lib/page-seo';
 
 // Server-rendered + ISR: the product grid (and every product link in it) is in
 // the initial HTML, and the page is cached between revalidations.
@@ -42,7 +43,7 @@ export async function generateMetadata({
   // a link preview should never come back blank.
   const ogImage = category.products.find((p) => p.imageUrl)?.imageUrl || '/opengraph-image';
 
-  return {
+  return withPageSeo(`/category/${category.slug}`, {
     // Root template appends "· GIVOO"
     title,
     description,
@@ -65,7 +66,7 @@ export async function generateMetadata({
       description,
       images: [ogImage],
     },
-  };
+  });
 }
 
 export default async function CategoryPage({ params }: { params: { slug: string } }) {

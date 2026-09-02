@@ -25,6 +25,8 @@ export interface PackListItem {
   image: string | null;
 
   gradient: null;
+  /** Real content-modification stamp of the pack product — feeds sitemap lastmod. */
+  updatedAt: Date;
   productCount: number;
   fromPrice: number;
   productImages: (string | null)[];
@@ -89,6 +91,7 @@ async function loadPacks(): Promise<PackListItem[]> {
       id: true,
       name: true,
       slug: true,
+      updatedAt: true,
       images: { where: { isPrimary: true }, take: 1, select: { url: true } },
       occasions: {
         select: { occasion: { select: { id: true, name: true, slug: true, isCollection: true } } },
@@ -140,6 +143,7 @@ async function loadPacks(): Promise<PackListItem[]> {
       slug: pack.slug,
       image: pack.images[0]?.url ?? null,
       gradient: null as null,
+      updatedAt: pack.updatedAt,
       productCount: members.length,
       fromPrice: members.reduce((sum, it) => {
         const bestTier = it.product.priceTiers[0];

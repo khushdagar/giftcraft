@@ -87,7 +87,7 @@ export const viewport: Viewport = {
 // already handle the "loading" state.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${playfair.variable}`}>
+    <html lang="en-IN" className={`${dmSans.variable} ${playfair.variable}`}>
       <head>
         <GoogleTagManager />
       </head>
