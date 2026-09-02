@@ -11,6 +11,7 @@ const nextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "**.digitaloceanspaces.com" }, // DO Spaces (cdn + origin, any region)
+      { protocol: "https", hostname: "cdn.givoo.in" }, // Branded CDN alias for the Spaces bucket
       { protocol: "https", hostname: "cdn.swagupadmin.com" }, // SwagUp product images (demo data)
       { protocol: "https", hostname: "images.unsplash.com" }, // Unsplash images for homepage
     ],
