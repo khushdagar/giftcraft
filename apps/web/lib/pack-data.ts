@@ -212,7 +212,6 @@ export async function getPackOccasionTiles(packs: PackListItem[]) {
     select: {
       id: true,
       name: true,
-      packName: true,
       slug: true,
       imageUrl: true,
       gradient: true,
@@ -223,9 +222,9 @@ export async function getPackOccasionTiles(packs: PackListItem[]) {
   const tiles = occasions
     .map((o) => ({
       id: o.id,
-      // Tiles here link only to /curated-packs/occasions/[slug] — the pack
-      // page's own name wins when the admin set one.
-      name: o.packName || o.name,
+      // Always the occasion's own name — the packName H1 override applies only
+      // on /curated-packs/occasions/[slug] itself, never on tiles or listings.
+      name: o.name,
       slug: o.slug,
       image: o.imageUrl,
       gradient: o.gradient,
