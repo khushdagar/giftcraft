@@ -14,7 +14,7 @@ export function generateMetadata(): Promise<Metadata> {
 }
 
 const baseMetadata: Metadata = {
-  title: 'Curated Gift Packs', // root template appends "· GIVOO"
+  title: 'Curated Gift Packs', // Title is used as-is (no brand suffix is appended)
   description:
     'Browse curated corporate gift packs by budget or by occasion. Branding included in every per-unit price.',
   alternates: { canonical: '/curated-packs' },

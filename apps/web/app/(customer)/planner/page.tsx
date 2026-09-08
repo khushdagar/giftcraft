@@ -7,7 +7,7 @@ export function generateMetadata(): Promise<Metadata> {
 }
 
 const baseMetadata: Metadata = {
-  // Root template appends "· GIVOO"
+  // Title is used as-is (no brand suffix is appended)
   title: 'Gift Budget Planner — Find Gifts by Occasion & Budget',
   description:
     'Answer three quick questions — occasion, recipients, and budget — and get corporate gift recommendations that fit.',

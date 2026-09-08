@@ -8,7 +8,7 @@ export function generateMetadata(): Promise<Metadata> {
   return withPageSeo('/box', baseMetadata);
 }
 
-// Root template appends "· GIVOO"
+// Title is used as-is (no brand suffix is appended)
 const TITLE = 'Build Your Pack — Pick Products, Packaging & Branding';
 const DESCRIPTION =
   'Assemble a custom corporate gift box: choose products, packaging and add-ons with live per-unit pricing as you build.';

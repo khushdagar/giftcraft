@@ -7,7 +7,7 @@ export function generateMetadata(): Promise<Metadata> {
 }
 
 const baseMetadata: Metadata = {
-  // Root template appends "· GIVOO"
+  // Title is used as-is (no brand suffix is appended)
   title: 'Sell With Us — Become a GIVOO Vendor',
   description:
     'Manufacture or distribute gifting products? Partner with GIVOO to reach corporate buyers across India. Apply as a vendor.',

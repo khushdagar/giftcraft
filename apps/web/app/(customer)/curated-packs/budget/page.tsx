@@ -18,7 +18,7 @@ export function generateMetadata(): Promise<Metadata> {
 }
 
 const baseMetadata: Metadata = {
-  title: TITLE, // root template appends "· GIVOO"
+  title: TITLE, // Title is used as-is (no brand suffix is appended)
   description: DESCRIPTION,
   alternates: { canonical: PATH },
   openGraph: {
