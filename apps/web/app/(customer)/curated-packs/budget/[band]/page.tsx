@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: { params: { band: string } })
   const title = band.metaTitle || `Corporate Gift Packs ${band.name}`;
   const description = band.metaDescription || band.description || undefined;
   return withPageSeo(path, {
-    // Root template appends "· GIVOO"
+    // Title is used as-is (no brand suffix is appended)
     title,
     description,
     alternates: { canonical: path },

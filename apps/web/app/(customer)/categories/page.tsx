@@ -21,7 +21,7 @@ export function generateMetadata(): Promise<Metadata> {
 }
 
 const baseMetadata: Metadata = {
-  // Root template appends "· GIVOO"
+  // Title is used as-is (no brand suffix is appended)
   title: 'Shop Corporate Gifts by Category',
   description:
     'Browse bulk corporate gifting by category — drinkware, tech, bags, stationery, gourmet hampers, apparel and more. Branding included in every per-unit price.',

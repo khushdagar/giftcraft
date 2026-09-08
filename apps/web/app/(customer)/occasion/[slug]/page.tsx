@@ -39,7 +39,7 @@ export async function generateMetadata({
   const ogImage = occasion.products.find((p) => p.imageUrl)?.imageUrl || '/opengraph-image';
 
   return withPageSeo(`/occasion/${occasion.slug}`, {
-    // Root template appends "· GIVOO"
+    // Title is used as-is (no brand suffix is appended)
     title,
     description,
     alternates: { canonical: url },

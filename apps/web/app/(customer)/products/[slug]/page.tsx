@@ -61,7 +61,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const ogImage = product.images?.[0]?.url || "/opengraph-image";
 
   return withPageSeo(`/products/${params.slug}`, {
-    // Root template appends "· GIVOO" — don't add the brand here. An
+    // Title is used as-is (no brand suffix is appended)
     // admin-authored page title is used verbatim (matches the admin SEO preview).
     title: metaTitle ? { absolute: metaTitle } : product.name,
     description,

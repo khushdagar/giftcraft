@@ -11,7 +11,7 @@ export function generateMetadata(): Promise<Metadata> {
 }
 
 const baseMetadata: Metadata = {
-  // Root template appends "· GIVOO"
+  // Title is used as-is (no brand suffix is appended)
   title: 'Gift Pack Builder — Instant Transparent Pricing',
   description:
     'Build a branded corporate gift pack in minutes: pick products, add your logo, and see live per-unit pricing with GST — no sales calls.',

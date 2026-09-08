@@ -7,7 +7,7 @@ export function generateMetadata(): Promise<Metadata> {
 }
 
 const baseMetadata: Metadata = {
-  // Root template appends "· GIVOO"
+  // Title is used as-is (no brand suffix is appended)
   title: 'Wishlist',
   description: 'Products you shortlisted while browsing — add them all to the gift builder in one click.',
   robots: { index: false, follow: true },

@@ -44,7 +44,7 @@ export async function generateMetadata({
   const ogImage = category.products.find((p) => p.imageUrl)?.imageUrl || '/opengraph-image';
 
   return withPageSeo(`/category/${category.slug}`, {
-    // Root template appends "· GIVOO"
+    // Title is used as-is (no brand suffix is appended)
     title,
     description,
     alternates: { canonical: url },

@@ -66,7 +66,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     `Curated corporate gift packs for ${occasion.displayName} — bulk pricing with branding included in every per-unit rate.`;
   const ogImage = occasion.imageUrl || '/opengraph-image';
   return withPageSeo(path, {
-    // Root template appends "· GIVOO"
+    // Title is used as-is (no brand suffix is appended)
     title,
     description,
     alternates: { canonical: path },
