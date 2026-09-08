@@ -20,9 +20,8 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: {
-    default: `${SITE_NAME} — ${SITE_TAGLINE}`,
-  },
+  // No title template: page titles are used exactly as each page sets them.
+  title: `${SITE_NAME} — ${SITE_TAGLINE}`,
   description: SITE_DESCRIPTION,
   alternates: { canonical: "./" },
   // Site-wide kill switch (SITE_NOINDEX=true). Inherited by every page that
