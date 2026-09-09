@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidateBudgetBandPages } from '@/lib/budget-band-cache';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
@@ -54,8 +54,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // ISR-cached (revalidate = 3600) — admin edits, FAQs included, would
     // otherwise take up to an hour to appear.
-    revalidatePath(`/curated-packs/budget/${band.slug}`);
-    if (existing.slug !== band.slug) revalidatePath(`/curated-packs/budget/${existing.slug}`);
+    revalidateBudgetBandPages(band.slug, existing.slug);
 
     return NextResponse.json(band);
   } catch (error) {
@@ -77,7 +76,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: { id: 
     // Nothing references a band — packs land in one by price alone — so a
     // delete never orphans anything. The packs simply stop being reachable by
     // budget until another band covers their price.
-    await prisma.budgetBand.delete({ where: { id: params.id } });
+    const removed = await prisma.budgetBand.delete({ where: { id: params.id } });
+    revalidateBudgetBandPages(removed.slug);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting budget band:', error);

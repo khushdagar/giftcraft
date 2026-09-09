@@ -26,9 +26,29 @@ const getPageSeo = cache(async (path: string) => {
   }
 });
 
+/** Site-wide link-preview card, rendered by app/opengraph-image.tsx. */
+export const DEFAULT_OG_IMAGE = '/opengraph-image';
+
+/**
+ * Next merges metadata shallowly: a page that sets its own `openGraph` object
+ * replaces the root one entirely, and the file-based opengraph-image is NOT
+ * re-attached. Every such page therefore shared to WhatsApp/LinkedIn with no
+ * picture. Fill in the default card wherever a page hasn't chosen an image.
+ */
+function withDefaultOgImage(meta: Metadata): Metadata {
+  const out: Metadata = { ...meta };
+  if (out.openGraph && !out.openGraph.images) {
+    out.openGraph = { ...out.openGraph, images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630 }] };
+  }
+  if (out.twitter && !out.twitter.images) {
+    out.twitter = { ...out.twitter, images: [DEFAULT_OG_IMAGE] };
+  }
+  return out;
+}
+
 export async function withPageSeo(path: string, base: Metadata = {}): Promise<Metadata> {
   const seo = await getPageSeo(normalizeSeoPath(path));
-  if (!seo) return base;
+  if (!seo) return withDefaultOgImage(base);
 
   const out: Metadata = { ...base };
 
@@ -71,5 +91,5 @@ export async function withPageSeo(path: string, base: Metadata = {}): Promise<Me
     };
   }
 
-  return out;
+  return withDefaultOgImage(out);
 }
