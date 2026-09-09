@@ -45,18 +45,19 @@ export const metadata: Metadata = {
           "max-video-preview": -1,
         },
       },
+  // No title/description/url here on purpose. Pages that set only `title` and
+  // `description` inherit this whole block, and Next fills og:title /
+  // og:description from the PAGE's own title when they're absent — whereas a
+  // value set here would make every such page share as the homepage.
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
     locale: "en_IN",
-    url: SITE_URL,
-    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
-    description: SITE_DESCRIPTION,
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, type: "image/png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
-    description: SITE_DESCRIPTION,
+    images: ["/opengraph-image"],
   },
   // Set NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION (and optionally the Bing one) in
   // the production environment; omitted from the HTML when unset.
