@@ -40,15 +40,9 @@ export async function GET() {
         ),
         changefreq: 'weekly' as const,
         priority: 0.7,
-      })),
-      // Pack detail pages live under /products/* like any product, but they are
-      // curated packs — they belong to this child, not sitemap-products.
-      ...packs.map((p) => ({
-        url: `${SITE_URL}/products/${p.slug}`,
-        lastmod: p.updatedAt,
-        changefreq: 'weekly' as const,
-        priority: 0.8,
       }))
+      // Pack detail pages (/products/<slug>) are deliberately NOT listed here —
+      // this child covers only the hub and the budget/occasion listing pages.
     );
   } catch (error) {
     console.error('sitemap-packs: generation failed', error);

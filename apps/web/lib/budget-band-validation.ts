@@ -15,6 +15,7 @@ export const BudgetBandSchema = z
     minPrice: z.number().int().min(0, 'Minimum cannot be negative'),
     // Null means "and above" — the top of the ladder.
     maxPrice: z.number().int().positive().optional().nullable(),
+    pageTitle: z.string().optional().nullable(),
     metaTitle: z.string().optional().nullable(),
     metaDescription: z.string().optional().nullable(),
     contentBelow: z.string().optional().nullable(),

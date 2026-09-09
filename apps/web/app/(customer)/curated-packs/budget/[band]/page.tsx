@@ -96,7 +96,7 @@ export default async function BudgetBandPage({ params }: { params: { band: strin
         source={scope}
         initialPage={initialPage}
         scope={{
-          title: band.name,
+          title: band.pageTitle || band.name,
           description: band.description,
           breadcrumb: [
             { name: 'Curated Packs', href: '/curated-packs' },

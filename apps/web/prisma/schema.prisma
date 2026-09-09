@@ -1869,6 +1869,9 @@ model BudgetBand {
   // in two bands at once. A null ceiling means "and above".
   minPrice    Int
   maxPrice    Int?
+  // Optional H1 override for /curated-packs/budget/[slug]. Blank means "use
+  // `name`". The nav, breadcrumb and tiles always show `name`.
+  pageTitle   String?
   // SEO overrides for /curated-packs/budget/[slug]. Fall back to a generated
   // title/description built from `name`/`description` when unset.
   metaTitle       String?

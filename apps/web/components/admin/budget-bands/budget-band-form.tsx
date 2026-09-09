@@ -24,6 +24,7 @@ interface BudgetBandFormProps {
     gradient: string | null;
     minPrice: number;
     maxPrice: number | null;
+    pageTitle?: string | null;
     metaTitle?: string | null;
     metaDescription?: string | null;
     contentBelow?: string | null;
@@ -48,6 +49,7 @@ export function BudgetBandForm({ mode = 'create', band }: BudgetBandFormProps) {
     minPrice: band?.minPrice ?? 0,
     // Empty means "and above" — the band has no ceiling.
     maxPrice: band?.maxPrice == null ? '' : String(band.maxPrice),
+    pageTitle: band?.pageTitle || '',
     metaTitle: band?.metaTitle || '',
     metaDescription: band?.metaDescription || '',
     contentBelow: band?.contentBelow || '',
@@ -100,6 +102,7 @@ export function BudgetBandForm({ mode = 'create', band }: BudgetBandFormProps) {
         gradient: formData.gradient || null,
         minPrice: Number(formData.minPrice) || 0,
         maxPrice: formData.maxPrice === '' ? null : Number(formData.maxPrice),
+        pageTitle: formData.pageTitle || null,
         metaTitle: formData.metaTitle || null,
         metaDescription: formData.metaDescription || null,
         contentBelow: formData.contentBelow || null,
@@ -200,6 +203,17 @@ export function BudgetBandForm({ mode = 'create', band }: BudgetBandFormProps) {
                 }));
               }}
               placeholder="₹500 – ₹1,000"
+            />
+            <p className="mt-1 text-xs text-ink-3">Shown in the menu, breadcrumb and budget tiles.</p>
+
+            <label htmlFor="pageTitle" className="mb-1.5 mt-4 block text-sm font-medium text-ink">
+              Title override <span className="font-normal text-ink-3">— optional, shown as the H1 on this page instead of the Name above</span>
+            </label>
+            <Input
+              id="pageTitle"
+              value={formData.pageTitle}
+              onChange={(e) => setFormData((p) => ({ ...p, pageTitle: e.target.value }))}
+              placeholder={formData.name || 'Budget band'}
             />
 
             <label htmlFor="slug" className="mb-1.5 mt-4 block text-sm font-medium text-ink">

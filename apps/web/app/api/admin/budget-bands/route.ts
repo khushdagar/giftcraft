@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
         gradient: data.gradient || null,
         minPrice: data.minPrice,
         maxPrice: data.maxPrice ?? null,
+        pageTitle: data.pageTitle || null,
         metaTitle: data.metaTitle || null,
         metaDescription: data.metaDescription || null,
         contentBelow: data.contentBelow || null,
