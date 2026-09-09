@@ -179,6 +179,7 @@ export async function getBudgetBands(): Promise<BudgetBand[]> {
     gradient: b.gradient,
     min: b.minPrice,
     max: b.maxPrice,
+    pageTitle: b.pageTitle,
     metaTitle: b.metaTitle,
     metaDescription: b.metaDescription,
     contentBelow: b.contentBelow,

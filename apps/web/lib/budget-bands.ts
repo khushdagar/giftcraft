@@ -18,6 +18,8 @@ export interface BudgetBand {
   min: number;
   /** Exclusive ceiling; null means "and above". */
   max: number | null;
+  /** H1 override for the band's page; null means "use `name`". */
+  pageTitle: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
   contentBelow: string | null;
