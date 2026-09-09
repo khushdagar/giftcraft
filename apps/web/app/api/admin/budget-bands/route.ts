@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { BudgetBandSchema, assertNoOverlap } from '@/lib/budget-band-validation';
+import { revalidateBudgetBandPages } from '@/lib/budget-band-cache';
 
 export async function GET() {
   try {
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    revalidateBudgetBandPages(band.slug);
     return NextResponse.json(band, { status: 201 });
   } catch (error) {
     console.error('Error creating budget band:', error);

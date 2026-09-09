@@ -27,6 +27,9 @@ export async function generateMetadata({ params }: { params: { band: string } })
   const path = `/curated-packs/budget/${band.slug}`;
   const title = band.metaTitle || `Corporate Gift Packs ${band.name}`;
   const description = band.metaDescription || band.description || undefined;
+  // Tile image doubles as the link-preview card; withPageSeo falls back to the
+  // site-wide card when a band has none.
+  const ogImage = band.image || undefined;
   return withPageSeo(path, {
     // Title is used as-is (no brand suffix is appended)
     title,
@@ -39,8 +42,14 @@ export async function generateMetadata({ params }: { params: { band: string } })
       description,
       siteName: 'GIVOO',
       locale: 'en_IN',
+      ...(ogImage ? { images: [{ url: ogImage, alt: title }] } : {}),
     },
-    twitter: { card: 'summary_large_image', title, description },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
   });
 }
 
