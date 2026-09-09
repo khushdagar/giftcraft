@@ -9,9 +9,9 @@ import { withPageSeo } from '@/lib/page-seo';
 export const revalidate = 3600;
 
 const PATH = '/curated-packs/budget';
-const TITLE = 'Gift Packs by Budget';
+const TITLE = 'Corporate Gifting by Budget | Bulk Gift Packs · GIVOO';
 const DESCRIPTION =
-  'Corporate gift packs grouped by per-unit budget — from under ₹500 to premium hampers above ₹5,000.';
+  'Shop corporate gifts by budget — branded bulk packs from under ₹500 to premium hampers above ₹5,000. Transparent per-pack pricing, pay after mockup approval.';
 
 export function generateMetadata(): Promise<Metadata> {
   return withPageSeo('/curated-packs/budget', baseMetadata);
@@ -60,8 +60,8 @@ export default async function BudgetHubPage() {
         ])}
       />
       <CollectionLevelPage
-        title="By Budget"
-        description="Every price shown is the per-pack rate at the corporate minimum, with branding already included."
+        title="Corporate Gifting by Budget | Bulk Gift Packs · GIVOO"
+        description="Shop corporate gifts by budget — branded bulk packs from under ₹500 to premium hampers above ₹5,000. Transparent per-pack pricing, pay after mockup approval."
         breadcrumb={[{ name: 'Curated Packs', href: '/curated-packs' }]}
         backHref="/curated-packs"
         backLabel="Curated Packs"

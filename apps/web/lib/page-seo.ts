@@ -1,7 +1,13 @@
 import { cache } from 'react';
 import type { Metadata } from 'next';
+
+// Next doesn't export its OGImage type; unwrap it from Metadata. Distributive
+// over the `OGImage | OGImage[]` union, so this yields the single-item type.
+type Unwrap<T> = T extends Array<infer U> ? U : T;
+type OGImage = Unwrap<NonNullable<NonNullable<Metadata['openGraph']>['images']>>;
 import { prisma } from '@/lib/prisma';
 import { normalizeSource } from '@/lib/redirects';
+import { SITE_URL } from '@/lib/site';
 
 /**
  * Per-page SEO overrides, managed from /admin/seo (PageSeo table).
@@ -30,18 +36,55 @@ const getPageSeo = cache(async (path: string) => {
 export const DEFAULT_OG_IMAGE = '/opengraph-image';
 
 /**
+ * Uploads are WebP, which WhatsApp / LinkedIn / Google Chat refuse as an
+ * og:image. Route every CDN image through /og/share.jpg, which serves a
+ * 1200×630 JPEG rendition. Relative paths (the site card) and foreign hosts
+ * are left untouched.
+ */
+export function shareImageUrl(src: string): string {
+  try {
+    const url = new URL(src, SITE_URL);
+    const own = url.hostname === 'cdn.givoo.in' || url.hostname.endsWith('.digitaloceanspaces.com');
+    if (!own) return src;
+    return `${SITE_URL}/og/share.jpg?src=${encodeURIComponent(url.toString())}`;
+  } catch {
+    return src;
+  }
+}
+
+function rewriteOgImage(item: OGImage): OGImage {
+  if (typeof item === 'string') return shareImageUrl(item);
+  if (item instanceof URL) return shareImageUrl(item.toString());
+  const url = shareImageUrl(item.url.toString());
+  return url === item.url ? item : { ...item, url, type: 'image/jpeg', width: 1200, height: 630 };
+}
+
+function rewriteOgImages(images: OGImage | OGImage[]): OGImage[] {
+  return (Array.isArray(images) ? images : [images]).map(rewriteOgImage);
+}
+
+/**
  * Next merges metadata shallowly: a page that sets its own `openGraph` object
  * replaces the root one entirely, and the file-based opengraph-image is NOT
  * re-attached. Every such page therefore shared to WhatsApp/LinkedIn with no
- * picture. Fill in the default card wherever a page hasn't chosen an image.
+ * picture. Fill in the default card wherever a page hasn't chosen an image,
+ * and rewrite chosen CDN images to the JPEG share rendition.
  */
 function withDefaultOgImage(meta: Metadata): Metadata {
   const out: Metadata = { ...meta };
-  if (out.openGraph && !out.openGraph.images) {
-    out.openGraph = { ...out.openGraph, images: [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630 }] };
+  if (out.openGraph) {
+    out.openGraph = {
+      ...out.openGraph,
+      images: out.openGraph.images
+        ? rewriteOgImages(out.openGraph.images)
+        : [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630, type: 'image/png' }],
+    };
   }
-  if (out.twitter && !out.twitter.images) {
-    out.twitter = { ...out.twitter, images: [DEFAULT_OG_IMAGE] };
+  if (out.twitter) {
+    out.twitter = {
+      ...out.twitter,
+      images: out.twitter.images ? rewriteOgImages(out.twitter.images) : [DEFAULT_OG_IMAGE],
+    };
   }
   return out;
 }

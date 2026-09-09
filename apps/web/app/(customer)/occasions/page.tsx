@@ -21,16 +21,16 @@ export function generateMetadata(): Promise<Metadata> {
 
 const baseMetadata: Metadata = {
   // Title is used as-is (no brand suffix is appended)
-  title: 'Shop Corporate Gifts by Occasion',
+  title: 'Corporate Gifts by Occasion | Bulk Gift Packs - GIVOO',
   description:
-    'Browse bulk corporate gifting by occasion — Diwali, onboarding, work anniversaries, client appreciation and more. Branding included in every per-unit price.',
+    'Shop corporate gifts by occasion — branded bulk packs for Diwali, onboarding, client & recognition gifting. Pay ₹0 until you approve your mockup.',
   alternates: { canonical: '/occasions' },
   openGraph: {
     type: 'website',
     url: '/occasions',
-    title: 'Shop Corporate Gifts by Occasion',
+    title: 'Corporate Gifts by Occasion | Bulk Gift Packs - GIVOO',
     description:
-      'Browse bulk corporate gifting by occasion — Diwali, onboarding, work anniversaries, client appreciation and more.',
+      'Shop corporate gifts by occasion — branded bulk packs for Diwali, onboarding, client & recognition gifting. Pay ₹0 until you approve your mockup.',
     siteName: 'GIVOO',
     locale: 'en_IN',
   },
