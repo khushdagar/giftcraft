@@ -9,9 +9,9 @@ import { withPageSeo } from '@/lib/page-seo';
 export const revalidate = 3600;
 
 const PATH = '/curated-packs/occasions';
-const TITLE = 'Gift Packs by Occasion';
+const TITLE = 'Corporate Gifts by Occasion | Bulk Gift Packs - GIVOO';
 const DESCRIPTION =
-  'Curated corporate gift packs for every occasion — Diwali, onboarding, client gifting, milestones and more.';
+  'Shop corporate gifts by occasion — branded bulk packs for Diwali, onboarding, client & recognition gifting. Pay ₹0 until you approve your mockup.';
 
 export function generateMetadata(): Promise<Metadata> {
   return withPageSeo('/curated-packs/occasions', baseMetadata);
@@ -58,8 +58,8 @@ export default async function OccasionsHubPage() {
         ])}
       />
       <CollectionLevelPage
-        title="By Occasion"
-        description="Pick the moment you're gifting for — every pack below is ready to carry your branding."
+        title="Corporate Gifts by Occasion | Bulk Gift Packs - GIVOO"
+        description="Shop corporate gifts by occasion — branded bulk packs for Diwali, onboarding, client & recognition gifting. Pay ₹0 until you approve your mockup."
         breadcrumb={[{ name: 'Curated Packs', href: '/curated-packs' }]}
         backHref="/curated-packs"
         backLabel="Curated Packs"
