@@ -98,6 +98,17 @@ const PEACH = "#FBE3C7"; // cover block
 const MINT = "#D6F3E4"; // accent chip + callout
 const MINT_INK = "#0F7A4F";
 
+// Brand theme — used by the 2-page pack showcase in multi-option proposals.
+const NAVY = "#1A3C6E";
+const NAVY_LINE = "#3A5C8E";
+const NAVY_MUTED = "#C9D6EA";
+const AMBER = "#F59E0B";
+const AMBER_INK = "#B45309";
+const AMBER_50 = "#FFFBEB";
+const AMBER_100 = "#FEF3C7";
+const SKY_50 = "#F0F9FF";
+const SKY_100 = "#E0F2FE";
+
 const styles = StyleSheet.create({
   page: {
     fontFamily: FONT,
@@ -568,6 +579,8 @@ export interface ProposalDeckPDFProps {
   packLabel?: string | null;
   /** One-line pitch shown under the option name on the cover. */
   packTagline?: string | null;
+  /** AI pack shot as a data: URI — hero of the pack showcase page. */
+  packImage?: string | null;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -1062,150 +1075,444 @@ function DeckPages({
               </View>
             ) : null}
           </View>
-          {invoice ? (
-            /* Itemised GST table — identical rows and totals to the proforma
-               invoice, built from the same quote snapshot. */
-            <View style={styles.table}>
-              <View style={styles.tHead}>
-                <Text style={[styles.tHeadCell, styles.cItem]}>Item</Text>
-                <Text style={[styles.tHeadCell, styles.cQty]}>Qty</Text>
-                <Text style={[styles.tHeadCell, styles.cRate]}>Unit Price</Text>
-                <Text style={[styles.tHeadCell, styles.cTaxable]}>
-                  Taxable Value
-                </Text>
-                <Text style={[styles.tHeadCell, styles.cGstPct]}>GST %</Text>
-                {invoice.isIntraState ? (
-                  <>
-                    <Text style={[styles.tHeadCell, styles.cTax]}>CGST</Text>
-                    <Text style={[styles.tHeadCell, styles.cTax]}>SGST</Text>
-                  </>
-                ) : (
-                  <Text style={[styles.tHeadCell, styles.cTaxWide]}>IGST</Text>
-                )}
-                <Text style={[styles.tHeadCell, styles.cTotal]}>Total</Text>
-              </View>
-
-              {invoice.rows.map((r, i) => (
-                <View key={i} style={styles.tRow}>
-                  <View style={styles.cItem}>
-                    <Text style={styles.tCellStrong}>{r.name}</Text>
-                    <Text style={styles.cHsn}>HSN {r.hsn}</Text>
-                  </View>
-                  <Text style={[styles.tCell, styles.cQty]}>
-                    {r.quantity ?? "—"}
-                  </Text>
-                  <Text style={[styles.tCell, styles.cRate]}>
-                    {r.unitPrice != null ? rupees2(r.unitPrice) : "—"}
-                  </Text>
-                  <Text style={[styles.tCell, styles.cTaxable]}>
-                    {rupees2(r.taxable)}
-                  </Text>
-                  <Text style={[styles.tCell, styles.cGstPct]}>
-                    {r.gstRate}%
-                  </Text>
-                  {invoice.isIntraState ? (
-                    <>
-                      <Text style={[styles.tCell, styles.cTax]}>
-                        {rupees2(r.cgst)}
-                      </Text>
-                      <Text style={[styles.tCell, styles.cTax]}>
-                        {rupees2(r.sgst)}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={[styles.tCell, styles.cTaxWide]}>
-                      {rupees2(r.igst)}
-                    </Text>
-                  )}
-                  <Text style={[styles.tCellStrong, styles.cTotal]}>
-                    {rupees2(r.total)}
-                  </Text>
-                </View>
-              ))}
-
-              {/* Grand total — every column summed except GST % */}
-              <View style={styles.tGrandRow}>
-                <Text style={[styles.tCellStrong, styles.cItem]}>
-                  Grand Total
-                </Text>
-                <Text style={[styles.tCellStrong, styles.cQty]}>—</Text>
-                <Text style={[styles.tCellStrong, styles.cRate]}>
-                  {rupees2(invoice.totals.unitPrice)}
-                </Text>
-                <Text style={[styles.tCellStrong, styles.cTaxable]}>
-                  {rupees2(invoice.totals.taxable)}
-                </Text>
-                <Text style={[styles.tCell, styles.cGstPct]}>—</Text>
-                {invoice.isIntraState ? (
-                  <>
-                    <Text style={[styles.tCellStrong, styles.cTax]}>
-                      {rupees2(invoice.totals.cgst)}
-                    </Text>
-                    <Text style={[styles.tCellStrong, styles.cTax]}>
-                      {rupees2(invoice.totals.sgst)}
-                    </Text>
-                  </>
-                ) : (
-                  <Text style={[styles.tCellStrong, styles.cTaxWide]}>
-                    {rupees2(invoice.totals.igst)}
-                  </Text>
-                )}
-                <Text style={[styles.tCellStrong, styles.cTotal]}>
-                  {rupees2(invoice.totals.total)}
-                </Text>
-              </View>
-            </View>
-          ) : (
-            /* No pricing snapshot on the quote — fall back to unit prices only. */
-            <View style={styles.table}>
-              <View style={styles.tHead}>
-                <Text style={[styles.tHeadCell, { width: "70%" }]}>
-                  Product
-                </Text>
-                <Text
-                  style={[
-                    styles.tHeadCell,
-                    { width: "30%", textAlign: "right" },
-                  ]}
-                >
-                  Unit Price (Incl GST and Branding)
-                </Text>
-              </View>
-              {products.map((p) => (
-                <View key={p.id} style={styles.tRow}>
-                  <Text style={[styles.tCell, { width: "70%" }]}>{p.name}</Text>
-                  <Text
-                    style={[
-                      styles.tCellStrong,
-                      { width: "30%", textAlign: "right" },
-                    ]}
-                  >
-                    {rupees(p.unitPrice)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Disclaimer under the pricing table. The wording tracks what the
-              table actually shows: product rows are quoted EX-GST (GST has its
-              own columns), so it would be wrong to claim prices "include GST" —
-              only the Grand Total does. Shipping and the gateway fee are only
-              mentioned when they're genuinely on this quote. */}
-          <Text style={styles.tableNote}>
-            {invoice?.rows.some((r) => r.name === 'Shipping')
-              ? 'Shipping is included in the table above for the delivery address on this quote. '
-              : 'Shipping is calculated at checkout once you enter the delivery address. '}
-            Unit prices include standard branding and are exclusive of GST; GST is shown separately above
-            {invoice?.rows.some((r) => r.name === 'Payment Gateway Fee')
-              ? ', and the payment-processing fee (2% + GST) appears as its own line'
-              : ''}
-            . The Grand Total is the final amount payable.
-          </Text>
+          <InvoiceTable invoice={invoice} products={products} />
         </View>
         <Footer quoteRef={quoteRef} />
       </Page>
 
+    </>
+  );
+}
+
+/**
+ * Itemised GST table + disclaimer. Shared by the classic Pricing Summary slide
+ * and the pack showcase; `themed` switches to the navy/amber brand styling and
+ * tightens rows for long packs so the table stays on one page.
+ */
+function InvoiceTable({
+  invoice,
+  products,
+  themed = false,
+}: {
+  invoice?: DeckInvoice | null;
+  products: DeckProduct[];
+  themed?: boolean;
+}) {
+  const compact = themed && (invoice?.rows.length ?? products.length) > 9;
+  const table = themed ? [styles.table, sc.table] : [styles.table];
+  const head = themed ? [styles.tHead, sc.tHead] : [styles.tHead];
+  const headCell = themed ? [styles.tHeadCell, sc.tHeadCell] : [styles.tHeadCell];
+  const row = compact ? [styles.tRow, sc.tRowCompact] : [styles.tRow];
+  const grand = themed ? [styles.tGrandRow, sc.tGrandRow] : [styles.tGrandRow];
+
+  return (
+    <>
+      {invoice ? (
+        /* Itemised GST table — identical rows and totals to the proforma
+           invoice, built from the same quote snapshot. */
+        <View style={table}>
+          <View style={head}>
+            <Text style={[...headCell, styles.cItem]}>Item</Text>
+            <Text style={[...headCell, styles.cQty]}>Qty</Text>
+            <Text style={[...headCell, styles.cRate]}>Unit Price</Text>
+            <Text style={[...headCell, styles.cTaxable]}>Taxable Value</Text>
+            <Text style={[...headCell, styles.cGstPct]}>GST %</Text>
+            {invoice.isIntraState ? (
+              <>
+                <Text style={[...headCell, styles.cTax]}>CGST</Text>
+                <Text style={[...headCell, styles.cTax]}>SGST</Text>
+              </>
+            ) : (
+              <Text style={[...headCell, styles.cTaxWide]}>IGST</Text>
+            )}
+            <Text style={[...headCell, styles.cTotal]}>Total</Text>
+          </View>
+
+          {invoice.rows.map((r, i) => (
+            <View key={i} style={row}>
+              <View style={styles.cItem}>
+                <Text style={styles.tCellStrong}>{r.name}</Text>
+                <Text style={styles.cHsn}>HSN {r.hsn}</Text>
+              </View>
+              <Text style={[styles.tCell, styles.cQty]}>{r.quantity ?? "—"}</Text>
+              <Text style={[styles.tCell, styles.cRate]}>
+                {r.unitPrice != null ? rupees2(r.unitPrice) : "—"}
+              </Text>
+              <Text style={[styles.tCell, styles.cTaxable]}>{rupees2(r.taxable)}</Text>
+              <Text style={[styles.tCell, styles.cGstPct]}>{r.gstRate}%</Text>
+              {invoice.isIntraState ? (
+                <>
+                  <Text style={[styles.tCell, styles.cTax]}>{rupees2(r.cgst)}</Text>
+                  <Text style={[styles.tCell, styles.cTax]}>{rupees2(r.sgst)}</Text>
+                </>
+              ) : (
+                <Text style={[styles.tCell, styles.cTaxWide]}>{rupees2(r.igst)}</Text>
+              )}
+              <Text style={[styles.tCellStrong, styles.cTotal]}>{rupees2(r.total)}</Text>
+            </View>
+          ))}
+
+          {/* Grand total — every column summed except GST % */}
+          <View style={grand}>
+            <Text style={[styles.tCellStrong, styles.cItem]}>Grand Total</Text>
+            <Text style={[styles.tCellStrong, styles.cQty]}>—</Text>
+            <Text style={[styles.tCellStrong, styles.cRate]}>
+              {rupees2(invoice.totals.unitPrice)}
+            </Text>
+            <Text style={[styles.tCellStrong, styles.cTaxable]}>
+              {rupees2(invoice.totals.taxable)}
+            </Text>
+            <Text style={[styles.tCell, styles.cGstPct]}>—</Text>
+            {invoice.isIntraState ? (
+              <>
+                <Text style={[styles.tCellStrong, styles.cTax]}>
+                  {rupees2(invoice.totals.cgst)}
+                </Text>
+                <Text style={[styles.tCellStrong, styles.cTax]}>
+                  {rupees2(invoice.totals.sgst)}
+                </Text>
+              </>
+            ) : (
+              <Text style={[styles.tCellStrong, styles.cTaxWide]}>
+                {rupees2(invoice.totals.igst)}
+              </Text>
+            )}
+            <Text style={[styles.tCellStrong, styles.cTotal]}>
+              {rupees2(invoice.totals.total)}
+            </Text>
+          </View>
+        </View>
+      ) : (
+        /* No pricing snapshot on the quote — fall back to unit prices only. */
+        <View style={table}>
+          <View style={head}>
+            <Text style={[...headCell, { width: "70%" }]}>Product</Text>
+            <Text style={[...headCell, { width: "30%", textAlign: "right" }]}>
+              Unit Price (Incl GST and Branding)
+            </Text>
+          </View>
+          {products.map((p) => (
+            <View key={p.id} style={row}>
+              <Text style={[styles.tCell, { width: "70%" }]}>{p.name}</Text>
+              <Text style={[styles.tCellStrong, { width: "30%", textAlign: "right" }]}>
+                {rupees(p.unitPrice)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Disclaimer under the pricing table. The wording tracks what the
+          table actually shows: product rows are quoted EX-GST (GST has its
+          own columns), so it would be wrong to claim prices "include GST" —
+          only the Grand Total does. Shipping and the gateway fee are only
+          mentioned when they're genuinely on this quote. */}
+      <Text style={styles.tableNote}>
+        {invoice?.rows.some((r) => r.name === 'Shipping')
+          ? 'Shipping is included in the table above for the delivery address on this quote. '
+          : 'Shipping is calculated at checkout once you enter the delivery address. '}
+        Unit prices include standard branding and are exclusive of GST; GST is shown separately above
+        {invoice?.rows.some((r) => r.name === 'Payment Gateway Fee')
+          ? ', and the payment-processing fee (2% + GST) appears as its own line'
+          : ''}
+        . The Grand Total is the final amount payable.
+      </Text>
+    </>
+  );
+}
+
+// ── Pack showcase (multi-option proposals) ─────────────────────────────────
+
+/** AI shot frame on the A4-landscape pack page (pt). lib/proposal-deck crops to exactly this. */
+export const HERO_IMG = { width: 457, height: 384 };
+
+const sc = StyleSheet.create({
+  wrap: { paddingTop: 34, paddingHorizontal: 40, paddingBottom: 46, height: "100%" },
+  header: { flexDirection: "row", alignItems: "flex-start", marginBottom: 18 },
+  eyebrow: {
+    fontFamily: FONT,
+    fontWeight: 700,
+    fontSize: 8.5,
+    letterSpacing: 2,
+    color: AMBER_INK,
+    marginBottom: 6,
+  },
+  title: {
+    fontFamily: FONT,
+    fontWeight: 700,
+    fontSize: 28,
+    lineHeight: 1.15,
+    letterSpacing: -0.8,
+    color: NAVY,
+  },
+  tagline: { fontSize: 10.5, color: INK_3, marginTop: 5 },
+  accent: { width: 38, height: 4, borderRadius: 2, backgroundColor: AMBER, marginTop: 10 },
+  logo: { width: 70, height: 32, objectFit: "contain", marginLeft: 20 },
+
+  // Page 1 — AI shot on the left (with its disclaimer), contents panel on the right
+  // Fixed height so the image block and the navy panel always match exactly.
+  body: { flexDirection: "row", height: HERO_IMG.height, gap: 16 },
+  hero: {
+    width: HERO_IMG.width,
+    height: HERO_IMG.height,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: AMBER_50,
+    position: "relative",
+  },
+  heroImg: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: HERO_IMG.width,
+    height: HERO_IMG.height,
+  },
+  heroFallback: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 22,
+    justifyContent: "center",
+  },
+  aiNote: { flexDirection: "row", marginTop: 10 },
+  aiNoteLabel: { fontFamily: FONT, fontWeight: 700, fontSize: 7.5, lineHeight: 1.4, color: AMBER_INK },
+  aiNoteText: { flex: 1, fontSize: 7.5, lineHeight: 1.4, color: INK_3 },
+  panel: {
+    flex: 1,
+    backgroundColor: NAVY,
+    borderRadius: 10,
+    paddingVertical: 24,
+    paddingHorizontal: 22,
+  },
+  panelLabel: { fontFamily: FONT, fontWeight: 700, fontSize: 8.5, letterSpacing: 2, color: AMBER },
+  panelCount: {
+    fontFamily: FONT,
+    fontWeight: 700,
+    fontSize: 18,
+    letterSpacing: -0.3,
+    color: "#FFFFFF",
+    marginTop: 6,
+  },
+  divider: { height: 1, backgroundColor: NAVY_LINE, marginTop: 14, marginBottom: 14 },
+  items: { flexDirection: "row", flexWrap: "wrap" },
+  item: { flexDirection: "row", alignItems: "flex-start" },
+  num: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: AMBER,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 6,
+  },
+  numText: { fontFamily: FONT, fontWeight: 700, fontSize: 7.5, color: NAVY },
+  itemName: { fontFamily: FONT, fontWeight: 600, color: "#FFFFFF", lineHeight: 1.3 },
+  itemBrand: { fontSize: 8, color: NAVY_MUTED, marginTop: 1 },
+  spacer: { flex: 1 },
+  boxCard: {
+    backgroundColor: "#24497F",
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginTop: 12,
+  },
+  boxLabel: { fontFamily: FONT, fontWeight: 700, fontSize: 7, letterSpacing: 1.6, color: AMBER },
+  boxName: { fontFamily: FONT, fontWeight: 600, fontSize: 10, color: "#FFFFFF", marginTop: 3 },
+  boxAddons: { fontSize: 8.5, color: NAVY_MUTED, marginTop: 3 },
+
+  // Page 2 — price tiles + table
+  stats: { flexDirection: "row", gap: 12 },
+  stat: { flex: 1, borderRadius: 8, borderWidth: 1.5, paddingVertical: 14, paddingHorizontal: 16 },
+  statLabel: { fontFamily: FONT, fontWeight: 700, fontSize: 7.5, letterSpacing: 1.6, color: INK_3 },
+  statValue: {
+    fontFamily: FONT,
+    fontWeight: 700,
+    fontSize: 22,
+    letterSpacing: -0.5,
+    color: NAVY,
+    marginTop: 5,
+  },
+  statNote: { fontSize: 8, color: INK_3, marginTop: 3 },
+  table: { marginTop: 18, borderTop: 0 },
+  tHead: { backgroundColor: NAVY, borderBottom: 0, borderTopLeftRadius: 6, borderTopRightRadius: 6 },
+  tHeadCell: { color: "#FFFFFF" },
+  tRowCompact: { paddingVertical: 5 },
+  tGrandRow: { backgroundColor: AMBER_50, borderBottomColor: NAVY },
+});
+
+/** List density for the contents panel — long packs shrink, then go two-column. */
+function itemDensity(count: number) {
+  if (count <= 5) return { size: 12, gap: 12, brand: true, twoCol: false };
+  if (count <= 8) return { size: 10.5, gap: 9, brand: true, twoCol: false };
+  if (count <= 12) return { size: 9.5, gap: 6, brand: false, twoCol: false };
+  return { size: 8.5, gap: 5, brand: false, twoCol: true };
+}
+
+/**
+ * Two pages for ONE pack option:
+ *   1. Pack name, the AI pack shot (or a product collage when none was
+ *      generated) and a navy "What's inside" panel listing every product.
+ *   2. Price summary — per-pack / packs / grand-total tiles, then the itemised
+ *      GST table built from the same snapshot as the invoice.
+ */
+function PackShowcasePages({
+  quoteRef,
+  validUntil,
+  placed,
+  packQuantity,
+  products,
+  packaging,
+  addons = [],
+  invoice,
+  packLabel,
+  packTagline,
+  packImage,
+  optionNumber,
+}: ProposalDeckPDFProps & { optionNumber?: number | null }) {
+  registerFonts();
+  const logo = givooLogo();
+  const title = packLabel?.trim() || "Your Gift Pack";
+  const eyebrow = optionNumber
+    ? `OPTION ${String(optionNumber).padStart(2, "0")} · GIFT PACK`
+    : "GIFT PACK";
+  const density = itemDensity(products.length);
+  const coverImages = products
+    .map((p) => p.imageData)
+    .filter((src): src is string => !!src);
+
+  const grandTotal = invoice
+    ? invoice.totals.total
+    : products.reduce((s, p) => s + p.unitPrice, 0) * packQuantity;
+  const perPack = packQuantity > 0 ? grandTotal / packQuantity : grandTotal;
+
+  const header = (label: string, showTagline = true) => (
+    <View style={sc.header}>
+      <View style={{ flex: 1 }}>
+        <Text style={sc.eyebrow}>{label}</Text>
+        <Text style={sc.title}>{title}</Text>
+        {showTagline && packTagline ? <Text style={sc.tagline}>{packTagline}</Text> : null}
+        <View style={sc.accent} />
+      </View>
+      {logo ? <Image src={logo} style={sc.logo} /> : null}
+    </View>
+  );
+
+  return (
+    <>
+      {/* ── Page 1 — the pack ─────────────────────────────────────────── */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
+        <View style={sc.wrap}>
+          {header(eyebrow)}
+          <View style={sc.body}>
+            {/* Left — the AI pack shot */}
+            <View style={sc.hero}>
+              {packImage ? (
+                <Image src={packImage} style={sc.heroImg} />
+              ) : (
+                <View style={sc.heroFallback}>
+                  <Collage images={coverImages} />
+                </View>
+              )}
+            </View>
+
+            {/* Right — what's inside */}
+            <View style={sc.panel}>
+              <Text style={sc.panelLabel}>WHAT&apos;S INSIDE</Text>
+              <Text style={sc.panelCount}>
+                {products.length} curated {products.length === 1 ? "item" : "items"}
+              </Text>
+              <View style={sc.divider} />
+
+              <View style={sc.items}>
+                {products.map((p, i) => (
+                  <View
+                    key={p.id}
+                    style={[
+                      sc.item,
+                      {
+                        width: density.twoCol ? "50%" : "100%",
+                        marginBottom: density.gap,
+                        paddingRight: density.twoCol ? 8 : 0,
+                      },
+                    ]}
+                  >
+                    <View style={[sc.num, { marginRight: 9 }]}>
+                      <Text style={sc.numText}>{i + 1}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[sc.itemName, { fontSize: density.size }]}>{p.name}</Text>
+                      {density.brand && p.brand ? (
+                        <Text style={sc.itemBrand}>{p.brand}</Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              <View style={sc.spacer} />
+              {packaging || addons.length > 0 ? (
+                <View style={sc.boxCard}>
+                  <Text style={sc.boxLabel}>
+                    {packaging ? "PRESENTED IN" : "FINISHED WITH"}
+                  </Text>
+                  {packaging ? <Text style={sc.boxName}>{packaging.name}</Text> : null}
+                  {addons.length > 0 ? (
+                    <Text style={packaging ? sc.boxAddons : sc.boxName}>
+                      {packaging ? "+ " : ""}
+                      {addons.map((a) => a.name).join(" · ")}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+          </View>
+
+          {/* Full-width note under both blocks — the image is a visual, not a photo */}
+          {packImage ? (
+            <View style={sc.aiNote}>
+              <Text style={sc.aiNoteText}>
+                <Text style={sc.aiNoteLabel}>AI-generated visual · </Text>
+                Created with AI to show how your pack could look — not a photo of the actual
+                pack. Finish, colours and arrangement may vary slightly; the items listed are
+                exactly what you receive.
+              </Text>
+            </View>
+          ) : null}
+        </View>
+        <Footer quoteRef={quoteRef} />
+      </Page>
+
+      {/* ── Page 2 — price summary ────────────────────────────────────── */}
+      <Page size="A4" orientation="landscape" style={styles.page}>
+        <View style={sc.wrap}>
+          {header("PRICING SUMMARY")}
+          <View style={sc.stats}>
+            <View style={[sc.stat, { backgroundColor: AMBER_50, borderColor: AMBER_100 }]}>
+              <Text style={sc.statLabel}>PER PACK</Text>
+              <Text style={sc.statValue}>{rupees2(perPack)}</Text>
+              <Text style={sc.statNote}>all-inclusive of GST</Text>
+            </View>
+            <View style={[sc.stat, { backgroundColor: SKY_50, borderColor: SKY_100 }]}>
+              <Text style={sc.statLabel}>PACKS</Text>
+              <Text style={sc.statValue}>{packQuantity.toLocaleString("en-IN")}</Text>
+              <Text style={sc.statNote}>
+                {products.length} {products.length === 1 ? "item" : "items"} in every pack
+              </Text>
+            </View>
+            <View style={[sc.stat, { backgroundColor: NAVY, borderColor: NAVY }]}>
+              <Text style={[sc.statLabel, { color: AMBER }]}>GRAND TOTAL</Text>
+              <Text style={[sc.statValue, { color: "#FFFFFF" }]}>{rupees2(grandTotal)}</Text>
+              <Text style={[sc.statNote, { color: NAVY_MUTED }]}>
+                {placed ? `Order placed ${dateIN(validUntil)}` : `Valid until ${dateIN(validUntil)}`}
+              </Text>
+            </View>
+          </View>
+          <InvoiceTable invoice={invoice} products={products} themed />
+        </View>
+        <Footer quoteRef={quoteRef} />
+      </Page>
     </>
   );
 }
@@ -1268,107 +1575,15 @@ export function MultiProposalDeckPDF({
       author="GIVOO by Arts Shala"
       subject="Curated Merchandise & Gifting Proposal"
     >
-      {/* ── Options overview — the comparison the client opens on ─────── */}
-      <Page size="A4" orientation="landscape" style={styles.page}>
-        <Watermark />
-        <SlideLogo />
-        <View style={styles.slide}>
-          <Text style={styles.h1}>Your Gifting Options</Text>
-          <Text style={styles.lead}>
-            We&apos;ve put together {options.length}{" "}
-            {options.length === 1 ? "option" : "options"} for {forWhom}, each
-            priced separately so you can pick the one that fits your budget.
-            Full details for every option follow in this deck.
-          </Text>
-
-          {Array.from({ length: Math.ceil(options.length / 3) }).map(
-            (_, rowIdx) => (
-              <View key={rowIdx} style={styles.cardRow}>
-                {options.slice(rowIdx * 3, rowIdx * 3 + 3).map((opt, i) => {
-                  // Six thumbnails keep three cards on one landscape slide;
-                  // the rest are counted, and every product gets its own slide
-                  // later in the deck anyway.
-                  const shown = (opt.products ?? []).slice(0, 6);
-                  const extra = (opt.products?.length ?? 0) - shown.length;
-                  return (
-                    <View key={opt.label + i} style={styles.optCard}>
-                      <Text style={styles.cardTitle}>
-                        {rowIdx * 3 + i + 1}. {opt.label}
-                      </Text>
-                      {opt.tagline ? (
-                        <Text style={styles.cardBody}>{opt.tagline}</Text>
-                      ) : null}
-                      <Text style={styles.cardBody}>
-                        {opt.productCount}{" "}
-                        {opt.productCount === 1 ? "product" : "products"} ·{" "}
-                        {opt.packQuantity} packs
-                      </Text>
-
-                      {/* What's inside — the same contents list the client sees
-                          on the compare page, images and all. */}
-                      {shown.length > 0 ? (
-                        <>
-                          <Text style={styles.optInsideLabel}>
-                            WHAT&apos;S INSIDE
-                          </Text>
-                          {shown.map((p, pi) => (
-                            <View key={p.name + pi} style={styles.optItem}>
-                              <View style={styles.optThumb}>
-                                {p.imageData ? (
-                                  <Image
-                                    src={p.imageData}
-                                    style={styles.optThumbImg}
-                                  />
-                                ) : null}
-                              </View>
-                              <View style={styles.optItemName}>
-                                <Text style={styles.optItemText}>{p.name}</Text>
-                                {p.brand ? (
-                                  <Text style={styles.optItemBrand}>
-                                    {p.brand}
-                                  </Text>
-                                ) : null}
-                              </View>
-                            </View>
-                          ))}
-                          {extra > 0 ? (
-                            <Text style={styles.cardBody}>
-                              + {extra} more{" "}
-                              {extra === 1 ? "product" : "products"}
-                            </Text>
-                          ) : null}
-                        </>
-                      ) : null}
-
-                      {opt.packagingName ? (
-                        <Text style={styles.cardBody}>
-                          Presented in {opt.packagingName}
-                        </Text>
-                      ) : null}
-                      {(opt.addonNames ?? []).map((a) => (
-                        <Text key={a} style={styles.cardBody}>
-                          + {a}
-                        </Text>
-                      ))}
-
-                      <Text style={styles.optPrice}>
-                        {rupees(opt.perPack)} per pack
-                      </Text>
-                      <Text style={styles.cardBody}>
-                        {rupees(opt.grandTotal)} total incl. GST
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            ),
-          )}
-        </View>
-        <Footer quoteRef={quoteRef} />
-      </Page>
-
+      {/* Two pages per pack: the AI pack shot, then its price summary. No
+          overview slide — each option's own pages open the deck directly. */}
       {decks.map((deck, i) => (
-        <DeckPages key={`deck-${i}`} {...deck} validUntil={validUntil} />
+        <PackShowcasePages
+          key={`deck-${i}`}
+          {...deck}
+          validUntil={validUntil}
+          optionNumber={options.length > 1 ? i + 1 : null}
+        />
       ))}
     </Document>
   );
