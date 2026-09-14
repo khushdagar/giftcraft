@@ -925,6 +925,23 @@ model ProposalPack {
   @@index([proposalId])
 }
 
+// Every AI pack shot generated from the proposal builder (Gemini). Kept so the
+// admin can browse and re-download them at /admin/generated-images.
+model GeneratedPackImage {
+  id           String   @id @default(cuid())
+  url          String
+  packLabel    String?
+  companyName  String?
+  boxName      String?
+  productNames String[] @default([])
+  logoUrl      String?
+  model        String
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 // Every proposal-deck download from checkout. Logged-in users are captured
 // automatically from their account; anonymous visitors fill a lead-capture
 // dialog (name/email/phone/company) before the download starts.

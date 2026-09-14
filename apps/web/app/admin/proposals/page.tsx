@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { formatRupees } from '@/lib/utils';
 import { Plus, ExternalLink } from 'lucide-react';
+import { ProposalDownloadButton } from '@/components/admin/proposals/proposal-download-button';
 
 export const revalidate = 0;
 
@@ -39,6 +40,7 @@ export default async function AdminProposalsPage() {
               token: pk.quote.shareToken,
               total: Number(pl?.pricing?.grandTotal) || 0,
               qty: Number(pl?.packQuantity) || 0,
+              imageUrl: (pl?.packImageUrl as string | null | undefined) ?? null,
             };
           })
         : [
@@ -48,6 +50,7 @@ export default async function AdminProposalsPage() {
               token: p.quote.shareToken,
               total: Number(primary?.pricing?.grandTotal) || 0,
               qty: Number(primary?.packQuantity) || 0,
+              imageUrl: (primary?.packImageUrl as string | null | undefined) ?? null,
             },
           ];
     return {
@@ -147,6 +150,14 @@ export default async function AdminProposalsPage() {
                     month: 'short',
                   })}
                 </span>
+                {row.proposalToken && (
+                  <ProposalDownloadButton
+                    proposalToken={row.proposalToken}
+                    images={row.packs
+                      .filter((pk) => pk.imageUrl)
+                      .map((pk) => ({ url: pk.imageUrl!, label: pk.label }))}
+                  />
+                )}
                 {row.proposalToken && (
                   <a
                     href={`/proposal/${row.proposalToken}`}

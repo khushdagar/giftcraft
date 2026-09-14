@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { z } from 'zod';
 import { packSchema, buildPackPayload, type PackInput } from '@/lib/proposal-pack';
 import { renderMultiProposalDeck } from '@/lib/proposal-deck';
+import { recordPackImages, type PackImageRecordInput } from '@/lib/generated-pack-images';
 
 // Images are downloaded per request while rendering — never cache this.
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
     const body = previewSchema.parse(await req.json());
 
     const packs: { label: string; tagline: string | null; payload: any }[] = [];
+    const imageRecords: PackImageRecordInput[] = [];
     for (const [i, pack] of (body.packs as PackInput[]).entries()) {
       const result = await buildPackPayload(pack);
       if (!result) {
@@ -40,7 +42,18 @@ export async function POST(req: NextRequest) {
         tagline: pack.tagline?.trim() || null,
         payload: result.payload,
       });
+      imageRecords.push({
+        url: result.payload.packImageUrl,
+        packLabel: pack.label?.trim() || `Pack ${i + 1}`,
+        boxName: pack.packaging?.name ?? null,
+        productNames: result.products.map((p) => p.name),
+        logoUrl: pack.packImageLogoUrl,
+      });
     }
+
+    // List every image this deck uses in the Generated Images tab — including
+    // ones reused from an earlier session that were never recorded.
+    await recordPackImages(session.user.id, body.companyName, imageRecords);
 
     // The live send stamps 30 days' validity — show the same date, so the
     // preview's "valid until" is not a surprise once it goes out.

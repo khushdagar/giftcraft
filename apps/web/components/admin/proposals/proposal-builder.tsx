@@ -19,11 +19,15 @@ import {
   MailCheck,
   AlertTriangle,
   Eye,
+  Sparkles,
+  RefreshCw,
+  ImagePlus,
 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
 import { FieldError } from '@/components/ui/field-error';
 import { validateEmail } from '@/lib/validation';
+import { downloadImagesStaggered, triggerDownload } from '@/lib/generated-image-download';
 import {
   Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
@@ -83,6 +87,9 @@ interface Pack {
   // picked one by one from the grid.
   appliedPackIds: string[];
   manualIds: string[];
+  // AI pack shot for the deck. `signature` records the box + products it was
+  // generated from, so an edited pack is detected as stale and regenerated.
+  aiImage?: { url: string; signature: string } | null;
 }
 
 /** The tier price that applies at this pack quantity (tier 1 as fallback). */
@@ -124,6 +131,15 @@ const emptyPack = (n: number): Pack => ({
   manualIds: [],
 });
 
+/** What an AI pack shot depends on — the box, the client logo and the set of products. */
+const packImageSignature = (p: Pack, logoUrl: string) =>
+  // The leading version bumps whenever the prompt/framing changes, so images
+  // made with an older prompt are treated as stale and regenerated.
+  ['v6', p.boxId, logoUrl, ...p.items.map((it) => it.id).sort()].join('|');
+
+const freshPackImage = (p: Pack, logoUrl: string) =>
+  p.aiImage && p.aiImage.signature === packImageSignature(p, logoUrl) ? p.aiImage.url : null;
+
 /** Draft autosave — a stuck preview or a stray reload must not cost the work. */
 const DRAFT_KEY = 'givoo:proposal-draft:v1';
 
@@ -135,6 +151,7 @@ interface Draft {
   recipientName: string;
   companyName: string;
   message: string;
+  logoUrl?: string;
 }
 
 function loadDraft(): Draft | null {
@@ -174,6 +191,10 @@ export function ProposalBuilder({
   const [recipientName, setRecipientName] = useState(prefill.name);
   const [companyName, setCompanyName] = useState(prefill.company);
   const [message, setMessage] = useState('');
+  // Client logo for the AI pack images — printed on the box lid of every pack.
+  // Empty = the box keeps the artwork its catalogue photo already shows.
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoUploading, setLogoUploading] = useState(false);
   const [sending, setSending] = useState(false);
   // "Preview proposal" — the deck PDF for the current draft, built by the same
   // pricer and renderer the send uses, but nothing is saved or emailed.
@@ -199,6 +220,8 @@ export function ProposalBuilder({
   const packSeq = useRef(1);
   const [packs, setPacks] = useState<Pack[]>([emptyPack(1)]);
   const [activeKey, setActiveKey] = useState('pack-1');
+  // Packs whose AI pack shot is being generated right now.
+  const [generatingKeys, setGeneratingKeys] = useState<string[]>([]);
   // Autosave only starts once any saved draft has been restored, so the empty
   // first render can't overwrite the draft it is about to load.
   const draftReady = useRef(false);
@@ -221,6 +244,7 @@ export function ProposalBuilder({
       if (!prefill.name && draft.recipientName) setRecipientName(draft.recipientName);
       if (!prefill.company && draft.companyName) setCompanyName(draft.companyName);
       if (draft.message) setMessage(draft.message);
+      if (draft.logoUrl) setLogoUrl(draft.logoUrl);
       toast('Unsent draft restored', { description: 'Your pack options were still here.' });
     }
     draftReady.current = true;
@@ -258,10 +282,11 @@ export function ProposalBuilder({
           recipientName,
           companyName,
           message,
+          logoUrl,
         } satisfies Draft)
       );
     } catch {/* quota or private mode — autosave is best-effort */}
-  }, [packs, activeKey, recipientEmail, recipientName, companyName, message]);
+  }, [packs, activeKey, recipientEmail, recipientName, companyName, message, logoUrl]);
 
   // Catalog browsing state — shared across packs so switching packs doesn't
   // refetch the grid.
@@ -533,9 +558,94 @@ export function ProposalBuilder({
   const readyPacks = priced.filter((p) => p.pack.items.length > 0);
   const canSend = !!recipientEmail.trim() && !recipientEmailError && readyPacks.length === packs.length;
 
+  const handleLogoUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('The logo must be an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('The logo must be smaller than 5 MB');
+      return;
+    }
+    setLogoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('folder', 'proposal-logos');
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) throw new Error(data?.error || 'Logo upload failed');
+      setLogoUrl(String(data.url));
+      toast.success('Client logo added', {
+        description: 'Pack images will be regenerated with it on the box.',
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Logo upload failed');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  /** Generate (or regenerate) one pack's AI shot. Resolves to its URL, or null on failure. */
+  const generatePackShot = async (pack: Pack): Promise<string | null> => {
+    if (pack.items.length === 0) return null;
+    const signature = packImageSignature(pack, logoUrl);
+    setGeneratingKeys((keys) => [...keys, pack.key]);
+    try {
+      const res = await fetch('/api/admin/proposals/pack-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productIds: pack.items.map((it) => it.id),
+          boxId: pack.boxId || null,
+          logoUrl: logoUrl || null,
+          packLabel: pack.label.trim() || null,
+          companyName: companyName.trim() || null,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) throw new Error(data?.error || 'Image generation failed');
+      const url = String(data.data.url);
+      setPacks((prev) =>
+        prev.map((p) => (p.key === pack.key ? { ...p, aiImage: { url, signature } } : p))
+      );
+      return url;
+    } catch (err) {
+      toast.error(
+        `${pack.label || 'Pack'}: ${err instanceof Error ? err.message : 'image generation failed'}`,
+        { description: 'The deck will use a product collage instead.' }
+      );
+      return null;
+    } finally {
+      setGeneratingKeys((keys) => keys.filter((k) => k !== pack.key));
+    }
+  };
+
+  /**
+   * Make sure every pack has an up-to-date AI shot before a preview or send.
+   * Only packs with no image, or whose box/products changed since, are
+   * generated. Returns pack key → URL for every pack that has a fresh image.
+   */
+  const ensurePackImages = async (): Promise<Record<string, string>> => {
+    const images: Record<string, string> = {};
+    const missing: Pack[] = [];
+    for (const pack of packs) {
+      const fresh = freshPackImage(pack, logoUrl);
+      if (fresh) images[pack.key] = fresh;
+      else if (pack.items.length > 0 && !generatingKeys.includes(pack.key)) missing.push(pack);
+    }
+    if (missing.length > 0) {
+      const urls = await Promise.all(missing.map((pack) => generatePackShot(pack)));
+      missing.forEach((pack, i) => {
+        if (urls[i]) images[pack.key] = urls[i]!;
+      });
+    }
+    return images;
+  };
+
   // Same pack payload the send posts — one shape, so a preview can never
   // describe something different from what goes out.
-  const packsPayload = () =>
+  const packsPayload = (images: Record<string, string> = {}) =>
     priced.map(({ pack, box, boxPrice, autoSize, addons }) => ({
       label: pack.label.trim() || undefined,
       tagline: pack.tagline.trim() || undefined,
@@ -546,6 +656,8 @@ export function ProposalBuilder({
         ? { id: box.id, name: box.name, price: boxPrice, size: autoSize.toLowerCase() }
         : null,
       addons: addons.map((a) => ({ id: a.id, name: a.name, price: a.price })),
+      packImageUrl: images[pack.key] ?? freshPackImage(pack, logoUrl) ?? undefined,
+      packImageLogoUrl: logoUrl || undefined,
     }));
 
   // Preview needs products, but not a recipient — an admin can check the layout
@@ -575,10 +687,7 @@ export function ProposalBuilder({
     const controller = new AbortController();
     previewAbort.current = controller;
     let timedOut = false;
-    const timer = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, PREVIEW_TIMEOUT_MS);
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     setPreviewOpen(true);
     setPreviewLoading(true);
@@ -588,12 +697,20 @@ export function ProposalBuilder({
       return null;
     });
     try {
+      // AI pack shots first (they carry their own server timeout), so the deck
+      // render still gets its full budget afterwards.
+      const images = await ensurePackImages();
+      if (previewAbort.current !== controller) return;
+      timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, PREVIEW_TIMEOUT_MS);
       const res = await fetch('/api/admin/proposals/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           companyName: companyName.trim() || undefined,
-          packs: packsPayload(),
+          packs: packsPayload(images),
         }),
         signal: controller.signal,
       });
@@ -619,6 +736,17 @@ export function ProposalBuilder({
         setPreviewLoading(false);
       }
     }
+  };
+
+  // Every pack's current AI image — saved alongside the previewed PDF.
+  const previewImages = packs
+    .map((pack, i) => ({ url: freshPackImage(pack, logoUrl), label: pack.label || `Pack ${i + 1}` }))
+    .filter((img): img is { url: string; label: string } => !!img.url);
+
+  const downloadPreviewWithImages = () => {
+    if (!previewUrl) return;
+    triggerDownload(previewUrl, 'givoo-proposal-preview.pdf');
+    downloadImagesStaggered(previewImages);
   };
 
   // The blob outlives the dialog otherwise — free it on close and on unmount.
@@ -651,6 +779,7 @@ export function ProposalBuilder({
     }
     setSending(true);
     try {
+      const images = await ensurePackImages();
       const res = await fetch('/api/admin/proposals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -659,7 +788,7 @@ export function ProposalBuilder({
           recipientName: recipientName.trim() || undefined,
           companyName: companyName.trim() || undefined,
           message: message.trim() || undefined,
-          packs: packsPayload(),
+          packs: packsPayload(images),
         }),
       });
       const data = await res.json();
@@ -1434,6 +1563,119 @@ export function ProposalBuilder({
                   </div>
                 </div>
 
+                {/* AI pack shot — the hero image on this pack's page in the deck. */}
+                {(() => {
+                  const img = active.pack.aiImage;
+                  const fresh = !!freshPackImage(active.pack, logoUrl);
+                  const busy = generatingKeys.includes(active.pack.key);
+                  return (
+                    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-3">
+                      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50 ring-1 ring-gray-200">
+                        {busy ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+                        ) : img ? (
+                          <Image
+                            src={img.url}
+                            alt={`${active.pack.label} pack image`}
+                            fill
+                            sizes="80px"
+                            unoptimized
+                            className={`object-cover ${fresh ? '' : 'opacity-40'}`}
+                          />
+                        ) : (
+                          <Sparkles className="h-5 w-5 text-gray-300" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900">AI pack image</p>
+                        <p className="text-xs text-gray-500">
+                          {busy
+                            ? 'Packing the products into the box… this takes 20–40 seconds.'
+                            : fresh
+                              ? "Used as the hero image on this pack's page in the PDF."
+                              : img
+                                ? 'Box or products changed — it will be regenerated on preview/send.'
+                                : 'Generated automatically on preview/send — or create it now.'}
+                        </p>
+
+                        {/* Client logo — shared by every pack in this proposal */}
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {logoUrl ? (
+                            <>
+                              <span className="relative inline-block h-8 w-14 overflow-hidden rounded border border-gray-200 bg-gray-50">
+                                <Image
+                                  src={logoUrl}
+                                  alt="Client logo"
+                                  fill
+                                  sizes="56px"
+                                  unoptimized
+                                  className="object-contain p-0.5"
+                                />
+                              </span>
+                              <span className="text-xs text-gray-600">Client logo on the box lid</span>
+                              <button
+                                type="button"
+                                onClick={() => setLogoUrl('')}
+                                disabled={busy}
+                                className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                              >
+                                Remove
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-400">
+                              No client logo — the box keeps its own artwork.
+                            </span>
+                          )}
+                          <label
+                            className={`inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-indigo-600 hover:underline ${
+                              logoUploading || busy ? 'pointer-events-none opacity-50' : ''
+                            }`}
+                          >
+                            {logoUploading ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <ImagePlus className="h-3.5 w-3.5" />
+                            )}
+                            {logoUrl ? 'Change logo' : 'Upload client logo'}
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                              className="sr-only"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleLogoUpload(file);
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {img && !busy && (
+                          <a
+                            href={img.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-medium text-indigo-600 hover:underline"
+                          >
+                            Open
+                          </a>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => generatePackShot(active.pack)}
+                          disabled={busy || active.pack.items.length === 0}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {img ? <RefreshCw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+                          {img ? 'Regenerate' : 'Generate'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* This pack's own breakdown, right below its editor — one
                     horizontal strip instead of a stacked list. */}
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm">
@@ -1590,13 +1832,15 @@ export function ProposalBuilder({
             </div>
             <div className="mr-8 flex items-center gap-2">
               {previewUrl && (
-                <a
-                  href={previewUrl}
-                  download="givoo-proposal-preview.pdf"
+                <button
+                  type="button"
+                  onClick={downloadPreviewWithImages}
                   className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
                 >
-                  Download
-                </a>
+                  {previewImages.length > 0
+                    ? `Download PDF + ${previewImages.length} image${previewImages.length === 1 ? '' : 's'}`
+                    : 'Download'}
+                </button>
               )}
               <button
                 type="button"
@@ -1615,7 +1859,10 @@ export function ProposalBuilder({
 
           {previewLoading || !previewUrl ? (
             <div className="flex items-center justify-center gap-2 py-24 text-sm text-gray-500">
-              <Loader2 className="h-4 w-4 animate-spin" /> Building the deck…
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {generatingKeys.length > 0
+                ? `Generating AI pack image${generatingKeys.length === 1 ? '' : 's'}… (20–40s each)`
+                : 'Building the deck…'}
             </div>
           ) : (
             <iframe

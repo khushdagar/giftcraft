@@ -58,6 +58,11 @@ async function putObject(key: string, body: Buffer, contentType: string): Promis
   return `${cdnEndpoint}/${key}`;
 }
 
+/** Store already-processed bytes (e.g. a generated image) at `key`. Returns its CDN URL. */
+export function uploadBuffer(key: string, body: Buffer, contentType: string): Promise<string> {
+  return putObject(key, body, contentType);
+}
+
 /** Build a web-safe object key, minus extension, from a folder + original name. */
 function buildKeyBase(fileName: string, folder: string): string {
   const dot = fileName.lastIndexOf('.');

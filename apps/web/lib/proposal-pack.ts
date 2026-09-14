@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { priceQuotePayload } from '@/lib/quote-pricing';
+import { getBucketAndCdn } from '@/lib/upload-to-digital-ocean';
 
 // Shared by POST /api/admin/proposals (which persists and emails) and
 // POST /api/admin/proposals/preview (which does neither). Both go through the
@@ -32,9 +33,27 @@ export const packSchema = z.object({
     .optional(),
   // Flat shipping for the whole order, quoted manually by the admin.
   shippingFee: z.number().min(0).max(1000000).optional(),
+  // AI pack shot from /api/admin/proposals/pack-image — the hero on the pack's
+  // page in the deck.
+  packImageUrl: z.string().url().max(1000).nullable().optional(),
+  // Client logo the image was generated with — metadata for the Generated Images tab only.
+  packImageLogoUrl: z.string().url().max(1000).nullable().optional(),
 });
 
 export type PackInput = z.infer<typeof packSchema>;
+
+/** Spaces folder the generated pack shots are stored in. */
+export const PACK_IMAGE_FOLDER = 'proposal-pack-images';
+
+/**
+ * The deck renderer downloads this URL server-side, so only accept images we
+ * generated ourselves — never an arbitrary host from the request body.
+ */
+function trustedPackImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const { cdnEndpoint } = getBucketAndCdn();
+  return url.startsWith(`${cdnEndpoint}/${PACK_IMAGE_FOLDER}/`) ? url : null;
+}
 
 /** Pick the price tier that applies at this pack quantity (tier 1 as fallback). */
 export function tierPrice(
@@ -90,6 +109,7 @@ export async function buildPackPayload(pack: PackInput) {
     // are looking at.
     packLabel: pack.label || null,
     packTagline: pack.tagline || null,
+    packImageUrl: trustedPackImageUrl(pack.packImageUrl),
   };
 
   const { pricing, hsnByProductId } = await priceQuotePayload(payload);

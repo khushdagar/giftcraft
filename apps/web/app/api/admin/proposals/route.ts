@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { packSchema, buildPackPayload, type PackInput } from '@/lib/proposal-pack';
 import { sendProposalEmail, type EmailAttachment } from '@/lib/email';
+import { recordPackImages } from '@/lib/generated-pack-images';
 
 export const dynamic = 'force-dynamic';
 
@@ -156,6 +157,20 @@ export async function POST(req: NextRequest) {
         shareToken: nanoid(12),
       });
     }
+
+    // List every image this proposal uses in the Generated Images tab —
+    // including ones reused from an earlier session that were never recorded.
+    await recordPackImages(
+      session.user.id,
+      body.companyName,
+      built.map((b, i) => ({
+        url: b.payload.packImageUrl,
+        packLabel: b.label,
+        boxName: packInputs[i]?.packaging?.name ?? null,
+        productNames: b.products.map((p) => p.name),
+        logoUrl: packInputs[i]?.packImageLogoUrl,
+      }))
+    );
 
     const proposalToken = nanoid(12);
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);

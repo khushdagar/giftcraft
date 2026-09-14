@@ -5,6 +5,7 @@ import { resolveProductHsn, type ResolvedHsn } from '@/lib/quote-pricing';
 import {
   ProposalDeckPDF,
   MultiProposalDeckPDF,
+  HERO_IMG,
   type ProposalDeckPDFProps,
   type DeckOptionSummary,
   type DeckProduct,
@@ -331,6 +332,47 @@ async function toDataUri(url: string | undefined | null): Promise<string | null>
   }
 }
 
+/** Pixels per PDF point for the hero crop (~180 dpi on the page). */
+const HERO_SCALE = 2.5;
+/** Slight zoom so the products, not the backdrop, fill the frame. */
+const HERO_ZOOM = 1.08;
+
+/**
+ * The AI pack shot, pre-cropped to the hero frame's exact aspect (and gently
+ * zoomed). react-pdf's objectFit is unreliable, so the PDF never has to crop.
+ */
+async function toHeroDataUri(url: string | undefined | null): Promise<string | null> {
+  if (!url) return null;
+  const HERO_PX = {
+    width: Math.round(HERO_IMG.width * HERO_SCALE),
+    height: Math.round(HERO_IMG.height * HERO_SCALE),
+  };
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const input = Buffer.from(await res.arrayBuffer());
+    const sharp = (await import('sharp')).default;
+    const w = Math.round(HERO_PX.width * HERO_ZOOM);
+    const h = Math.round(HERO_PX.height * HERO_ZOOM);
+    const jpeg = await sharp(input)
+      .resize(w, h, { fit: 'cover' })
+      .extract({
+        left: Math.round((w - HERO_PX.width) / 2),
+        top: Math.round((h - HERO_PX.height) / 2),
+        width: HERO_PX.width,
+        height: HERO_PX.height,
+      })
+      .jpeg({ quality: 88 })
+      .toBuffer();
+    return `data:image/jpeg;base64,${jpeg.toString('base64')}`;
+  } catch {
+    return null;
+  }
+}
+
 export interface DeckMeta {
   /** Shown on the cover, e.g. "#A1B2C3D4" or the order number. */
   reference: string;
@@ -427,13 +469,15 @@ async function buildDeckProps(
 
   // Resolve images in parallel — a slow CDN on one product shouldn't stack up
   // behind the others. The client's uploaded logo (builder Step 2) rides along.
-  const [clientLogo, packagingImage, imageData, addonImages] = await Promise.all([
+  const [clientLogo, packagingImage, imageData, addonImages, packImage] = await Promise.all([
     toDataUri(payload?.logoUrl),
     toDataUri(packagingProduct?.images[0]?.url),
     Promise.all(payloadProducts.map((p) => toDataUri(byId.get(p.id)?.images[0]?.url))),
     Promise.all(
       payloadAddons.map((a) => toDataUri(extraById.get(a.id)?.images[0]?.url))
     ),
+    // AI pack shot (proposal packs only) — hero of the pack showcase page.
+    toHeroDataUri(payload?.packImageUrl),
   ]);
 
   const products: DeckProduct[] = payloadProducts.map((p, idx) => {
@@ -531,6 +575,7 @@ async function buildDeckProps(
     invoice: buildDeckInvoice(payload, taxById),
     packLabel: payload?.packLabel || null,
     packTagline: payload?.packTagline || null,
+    packImage,
   };
 }
 
