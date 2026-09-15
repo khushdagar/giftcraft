@@ -17,7 +17,7 @@ import {
   Quote, Code, Link2, Link2Off, ImagePlus, Undo2, Redo2, Minus, Loader2,
   AlignLeft, AlignCenter, AlignRight, AlignJustify, Palette, Highlighter,
   Table as TableIcon, Trash2, Eraser, MousePointerClick, Images, Plus,
-  ChevronDown, ChevronUp, MoreHorizontal, HelpCircle, Pencil, X,
+  ChevronDown, ChevronUp, MoreHorizontal, HelpCircle, Pencil, X, ExternalLink,
 } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
@@ -105,11 +105,157 @@ function ColorMenuItem({
 
 const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
 
+/** Class that removes a link's underline (see `.blog-content a.link-plain`). */
+const PLAIN_LINK = 'link-plain';
+
+/** A link's class list with the no-underline class added or removed. */
+function linkClass(current: string | null | undefined, plain: boolean): string | null {
+  const rest = (current ?? '').split(/\s+/).filter((c) => c && c !== PLAIN_LINK);
+  if (plain) rest.push(PLAIN_LINK);
+  return rest.length > 0 ? rest.join(' ') : null;
+}
+
+const IMAGE_SIZES = [
+  { label: 'S', value: '25%', title: 'Small (25% width)' },
+  { label: 'M', value: '50%', title: 'Medium (50% width)' },
+  { label: 'L', value: '75%', title: 'Large (75% width)' },
+  { label: 'Full', value: '100%', title: 'Full width' },
+  { label: 'Auto', value: null, title: 'Original size' },
+] as const;
+
+/** Stored width → CSS width. Legacy `width="600"` attributes are pixels. */
+const cssWidth = (width: unknown) => {
+  if (!width) return '';
+  const w = String(width);
+  return /^\d+$/.test(w) ? `${w}px` : w;
+};
+
+/** Narrowest an image can be dragged to, in px. */
+const MIN_IMAGE_WIDTH = 60;
+
+/**
+ * Image with an editable width (stored as inline style so % and px both work)
+ * and a line alignment. The public post renders the saved HTML as-is.
+ */
+const BlogImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      width: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.style.width || el.getAttribute('width') || null,
+        renderHTML: (attrs: Record<string, unknown>) => (attrs.width ? { style: `width: ${cssWidth(attrs.width)}` } : {}),
+      },
+      align: {
+        default: null,
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-align'),
+        renderHTML: (attrs: Record<string, unknown>) => (attrs.align ? { 'data-align': attrs.align } : {}),
+      },
+    };
+  },
+
+  // Editor-only view: the image plus corner handles to drag its width. TipTap's
+  // own `resize` option pins a px height and ignores later attribute changes,
+  // which would break the S/M/L and alignment controls.
+  addNodeView() {
+    return ({ node: initialNode, getPos, editor }) => {
+      let node = initialNode;
+      const dom = document.createElement('div');
+      dom.className = 'blog-image-view';
+      const frame = document.createElement('span');
+      frame.className = 'blog-image-view__frame';
+      const img = document.createElement('img');
+      img.className = 'rounded-md';
+      img.draggable = false;
+      frame.appendChild(img);
+
+      const render = () => {
+        img.src = node.attrs.src as string;
+        img.alt = (node.attrs.alt as string | null) ?? '';
+        if (node.attrs.title) img.title = node.attrs.title as string;
+        const width = cssWidth(node.attrs.width);
+        frame.style.width = width;
+        img.style.width = width ? '100%' : '';
+        dom.dataset.align = (node.attrs.align as string | null) ?? 'left';
+      };
+
+      const startDrag = (event: PointerEvent, side: 'left' | 'right') => {
+        event.preventDefault();
+        event.stopPropagation();
+        const startX = event.clientX;
+        const startWidth = frame.getBoundingClientRect().width;
+        const maxWidth = dom.clientWidth;
+        // A centred image grows on both sides, so the pointer covers half the change.
+        const factor = (side === 'right' ? 1 : -1) * (dom.dataset.align === 'center' ? 2 : 1);
+        let width = startWidth;
+
+        const onMove = (e: PointerEvent) => {
+          width = Math.min(maxWidth, Math.max(MIN_IMAGE_WIDTH, startWidth + (e.clientX - startX) * factor));
+          frame.style.width = `${width}px`;
+          img.style.width = '100%';
+        };
+        const onUp = () => {
+          window.removeEventListener('pointermove', onMove);
+          window.removeEventListener('pointerup', onUp);
+          dom.classList.remove('is-resizing');
+          const pos = typeof getPos === 'function' ? getPos() : undefined;
+          if (typeof pos !== 'number') return;
+          const value = width >= maxWidth - 2 ? '100%' : `${Math.round(width)}px`;
+          editor.chain().setNodeSelection(pos).updateAttributes('image', { width: value }).run();
+        };
+        dom.classList.add('is-resizing');
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+      };
+
+      (['left', 'right'] as const).forEach((side) => {
+        const handle = document.createElement('span');
+        handle.className = `blog-image-view__handle blog-image-view__handle--${side}`;
+        handle.title = 'Drag to resize';
+        handle.addEventListener('pointerdown', (e) => startDrag(e, side));
+        frame.appendChild(handle);
+      });
+
+      dom.appendChild(frame);
+      render();
+
+      return {
+        dom,
+        update: (updated) => {
+          if (updated.type !== node.type) return false;
+          node = updated;
+          render();
+          return true;
+        },
+        selectNode: () => dom.classList.add('ProseMirror-selectednode'),
+        deselectNode: () => dom.classList.remove('ProseMirror-selectednode'),
+        // Keep ProseMirror from treating a handle drag as a text selection or node drag.
+        stopEvent: (event) => (event.target as HTMLElement | null)?.classList?.contains('blog-image-view__handle') ?? false,
+        ignoreMutation: () => true,
+      };
+    };
+  },
+});
+
+/** "team-gift_box.jpg" → "team gift box" — a starting point, not a final alt. */
+const altFromFileName = (name: string) => name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim();
+
+/** Select the image just inserted so its alt/size controls show straight away. */
+function selectInsertedImage(editor: Editor, src: string) {
+  const { from } = editor.state.selection;
+  let target = -1;
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'image' && node.attrs.src === src && pos <= from) target = pos;
+  });
+  if (target >= 0) editor.commands.setNodeSelection(target);
+}
+
 interface ToolbarProps {
   editor: Editor;
   /** Bold / italic / lists / link only — used for the FAQ answer editor. */
   minimal: boolean;
   uploading: boolean;
+  onLink: () => void;
   onImage: () => void;
   onLibrary: () => void;
   onInsertButton: () => void;
@@ -119,25 +265,37 @@ interface ToolbarProps {
 }
 
 function Toolbar({
-  editor, minimal, uploading, onImage, onLibrary, onInsertButton, onEditButton, onInsertFaq, onEditFaq,
+  editor, minimal, uploading, onLink, onImage, onLibrary, onInsertButton, onEditButton, onInsertFaq, onEditFaq,
 }: ToolbarProps) {
   const compact = useContext(CompactContext);
-
-  const setLink = useCallback(() => {
-    const previous = editor.getAttributes('link').href as string | undefined;
-    const url = window.prompt('Link URL', previous ?? 'https://');
-    if (url === null) return;
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
-    }
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-  }, [editor]);
 
   const blockValue = HEADING_LEVELS.find((l) => editor.isActive('heading', { level: l }));
   const inTable = editor.isActive('table');
   const buttonSelected = editor.isActive('ctaButton');
   const faqSelected = editor.isActive('faqSection');
+  const imageSelected = !minimal && editor.isActive('image');
+  const image = imageSelected ? editor.getAttributes('image') : {};
+  const imageWidth = (image.width as string | null | undefined) ?? null;
+  const imageAlign = (image.align as string | null | undefined) ?? 'left';
+  const linkSelected = editor.isActive('link');
+  const link = linkSelected ? editor.getAttributes('link') : {};
+  const linkPlain = ((link.class as string | null | undefined) ?? '').split(/\s+/).includes(PLAIN_LINK);
+
+  // Every link action first widens the selection to the whole link, so a caret
+  // anywhere inside an existing keyword link edits or removes all of it.
+  // Pasted links usually carry their own <u> mark, so drop it with the link.
+  const removeLink = () => editor.chain().focus().extendMarkRange('link').unsetUnderline().unsetLink().run();
+  const toggleLinkUnderline = () =>
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange('link')
+      .updateAttributes('link', { class: linkClass(link.class as string | null, !linkPlain) })
+      // Pasted content often underlines links with <u>; that would survive the class.
+      .unsetUnderline()
+      .run();
+  const setImageAttrs = (attrs: Record<string, string | null>) =>
+    editor.chain().updateAttributes('image', attrs).run();
   const menuButton = `flex items-center gap-1 rounded-md text-xs font-medium text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 ${
     compact ? 'h-7 px-1.5 [&_svg]:h-3.5 [&_svg]:w-3.5' : 'h-8 px-2 [&_svg]:h-4 [&_svg]:w-4'
   }`;
@@ -186,8 +344,8 @@ function Toolbar({
         <Divider />
 
         {/* Links */}
-        <TB onClick={setLink} active={editor.isActive('link')} title="Add link"><Link2 className="h-4 w-4" /></TB>
-        <TB onClick={() => editor.chain().focus().unsetLink().run()} disabled={!editor.isActive('link')} title="Remove link"><Link2Off className="h-4 w-4" /></TB>
+        <TB onClick={onLink} active={linkSelected} title={linkSelected ? 'Edit link' : 'Add link'}><Link2 className="h-4 w-4" /></TB>
+        <TB onClick={removeLink} disabled={!linkSelected} title="Remove link"><Link2Off className="h-4 w-4" /></TB>
 
         {!minimal && (
           <>
@@ -290,6 +448,67 @@ function Toolbar({
       </div>
 
       {/* Controls for the selected block. Double-clicking a block does the same. */}
+      {linkSelected && (
+        <ContextRow label="Link">
+          <a
+            href={link.href as string}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={link.href as string}
+            className="mr-1 inline-flex max-w-[18rem] items-center gap-1 truncate text-xs text-blue-600 hover:underline"
+          >
+            <span className="truncate">{link.href as string}</span>
+            <ExternalLink className="h-3 w-3 shrink-0" />
+          </a>
+          <TB onClick={onLink} title="Edit link"><Pencil className="h-4 w-4" /> Edit</TB>
+          <TB onClick={toggleLinkUnderline} active={!linkPlain} title={linkPlain ? 'Underline this link' : 'Remove underline from this link'}>
+            <Underline className="h-4 w-4" /> Underline
+          </TB>
+          <TB onClick={removeLink} title="Remove link (keeps the text)"><Link2Off className="h-4 w-4" /> Remove</TB>
+        </ContextRow>
+      )}
+      {imageSelected && (
+        <ContextRow label="Image">
+          <label className="mr-2 flex items-center gap-1.5 text-xs text-gray-600">
+            Alt text
+            <input
+              value={(image.alt as string | null) ?? ''}
+              onChange={(e) => setImageAttrs({ alt: e.target.value })}
+              // Inside the blog <form>, Enter would submit the whole post.
+              onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+              placeholder="Describe the image"
+              className={`h-7 w-56 rounded-md border px-2 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-400 ${
+                image.alt ? 'border-gray-200 bg-white' : 'border-amber-400 bg-amber-50'
+              }`}
+            />
+          </label>
+          <Divider />
+          <span className="mr-1 text-xs text-gray-500" title="Or drag the blue corner handles on the image">Size</span>
+          {IMAGE_SIZES.map((s) => (
+            <TB key={s.label} onClick={() => setImageAttrs({ width: s.value })} active={imageWidth === s.value} title={s.title}>
+              {s.label}
+            </TB>
+          ))}
+          <label className="ml-1 flex items-center gap-1 text-xs text-gray-500" title="Custom width in pixels">
+            <input
+              type="number"
+              min={40}
+              value={imageWidth && /^\d+(px)?$/.test(imageWidth) ? parseInt(imageWidth, 10) : ''}
+              onChange={(e) => setImageAttrs({ width: e.target.value ? `${e.target.value}px` : null })}
+              onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
+              placeholder="px"
+              className="h-7 w-16 rounded-md border border-gray-200 bg-white px-1.5 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-400"
+            />
+            px
+          </label>
+          <Divider />
+          <TB onClick={() => setImageAttrs({ align: null })} active={imageAlign === 'left'} title="Align left"><AlignLeft className="h-4 w-4" /></TB>
+          <TB onClick={() => setImageAttrs({ align: 'center' })} active={imageAlign === 'center'} title="Align centre"><AlignCenter className="h-4 w-4" /></TB>
+          <TB onClick={() => setImageAttrs({ align: 'right' })} active={imageAlign === 'right'} title="Align right"><AlignRight className="h-4 w-4" /></TB>
+          <Divider />
+          <TB onClick={() => editor.chain().focus().deleteSelection().run()} title="Remove image"><Trash2 className="h-4 w-4" /></TB>
+        </ContextRow>
+      )}
       {buttonSelected && (
         <ContextRow label="Button">
           <TB onClick={onEditButton} title="Edit button"><Pencil className="h-4 w-4" /> Edit</TB>
@@ -338,6 +557,7 @@ export function RichTextEditor({
   normalizeEmpty = false,
   containerClassName = 'rounded-md border-gray-200',
   minimal = false,
+  maxHeight,
 }: {
   value: string;
   onChange: (html: string) => void;
@@ -353,6 +573,8 @@ export function RichTextEditor({
   containerClassName?: string;
   /** Bold / italic / lists / link only; no images, blocks or dialogs. */
   minimal?: boolean;
+  /** Caps the editing area (e.g. "70vh") so it scrolls under a toolbar that stays put. */
+  maxHeight?: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -362,6 +584,60 @@ export function RichTextEditor({
   // `align` is the line's alignment (paragraph textAlign), not a button attribute.
   const [ctaDialog, setCtaDialog] = useState<{ editing: boolean; attrs: CtaButtonAttrs; align: CtaAlign } | null>(null);
   const [faqDialog, setFaqDialog] = useState<{ editing: boolean; items: FaqDraft[] } | null>(null);
+  // `text` is the linked text; `originalText` tells whether it was changed.
+  const [linkDialog, setLinkDialog] = useState<{
+    editing: boolean; href: string; text: string; originalText: string;
+    newTab: boolean; plain: boolean; className: string | null;
+  } | null>(null);
+
+  const openLink = useCallback(() => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const editing = ed.isActive('link');
+    // Select the whole existing link so the dialog edits all of it.
+    if (editing) ed.chain().focus().extendMarkRange('link').run();
+    const attrs = ed.getAttributes('link');
+    const { from, to } = ed.state.selection;
+    const text = ed.state.doc.textBetween(from, to, ' ');
+    const className = (attrs.class as string | null | undefined) ?? null;
+    setLinkDialog({
+      editing,
+      href: (attrs.href as string | undefined) ?? '',
+      text,
+      originalText: text,
+      newTab: attrs.target === '_blank',
+      plain: (className ?? '').split(/\s+/).includes(PLAIN_LINK),
+      className,
+    });
+  }, []);
+
+  const saveLink = () => {
+    const ed = editorRef.current;
+    if (!ed || !linkDialog) return;
+    const href = linkDialog.href.trim();
+    const chain = ed.chain().focus().extendMarkRange('link');
+    if (!href) {
+      chain.unsetUnderline().unsetLink().run();
+      setLinkDialog(null);
+      return;
+    }
+    const attrs = {
+      href,
+      target: linkDialog.newTab ? '_blank' : null,
+      class: linkClass(linkDialog.className, linkDialog.plain),
+    };
+    const text = linkDialog.text.trim();
+    if (!text && ed.state.selection.empty) {
+      chain.insertContent({ type: 'text', text: href, marks: [{ type: 'link', attrs }] }).run();
+    } else if (text && text !== linkDialog.originalText.trim()) {
+      chain.insertContent({ type: 'text', text, marks: [{ type: 'link', attrs }] }).run();
+    } else {
+      chain.setLink(attrs);
+      if (linkDialog.plain) chain.unsetUnderline();
+      chain.run();
+    }
+    setLinkDialog(null);
+  };
 
   const openCta = useCallback((editing: boolean) => {
     const ed = editorRef.current;
@@ -441,7 +717,8 @@ export function RichTextEditor({
       setUploading(true);
       try {
         const data = await compressAndUpload(file, { folder: uploadFolder });
-        editor.chain().focus().setImage({ src: data.url, alt: file.name }).run();
+        editor.chain().focus().setImage({ src: data.url, alt: altFromFileName(file.name) }).run();
+        selectInsertedImage(editor, data.url);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Failed to upload image');
       } finally {
@@ -459,7 +736,7 @@ export function RichTextEditor({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
         link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer' } },
       }),
-      Image.configure({ HTMLAttributes: { class: 'rounded-md' } }),
+      BlogImage.configure({ HTMLAttributes: { class: 'rounded-md' } }),
       Placeholder.configure({ placeholder }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       TextStyle,
@@ -473,6 +750,9 @@ export function RichTextEditor({
     // Next.js renders this on the server first; without this TipTap warns about
     // a hydration mismatch.
     immediatelyRender: false,
+    // TipTap v3 no longer re-renders on selection changes by default, which left
+    // the toolbar's bold/underline/link states (and Remove link) stale.
+    shouldRerenderOnTransaction: true,
     editorProps: {
       attributes: {
         class: `blog-content ${compact ? 'px-3 py-2' : 'px-4 py-4'} focus:outline-none`,
@@ -549,6 +829,7 @@ export function RichTextEditor({
           editor={editor}
           minimal={minimal}
           uploading={uploading}
+          onLink={openLink}
           onImage={() => fileRef.current?.click()}
           onLibrary={() => setLibraryOpen(true)}
           onInsertButton={() => openCta(false)}
@@ -556,7 +837,13 @@ export function RichTextEditor({
           onInsertFaq={() => openFaq(false)}
           onEditFaq={() => openFaq(true)}
         />
-        <EditorContent editor={editor} />
+        {maxHeight ? (
+          <div className="overflow-y-auto" style={{ maxHeight }}>
+            <EditorContent editor={editor} />
+          </div>
+        ) : (
+          <EditorContent editor={editor} />
+        )}
         <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} className="hidden" />
       </div>
 
@@ -567,10 +854,86 @@ export function RichTextEditor({
           title="Insert image from media library"
           onClose={() => setLibraryOpen(false)}
           onConfirm={([picked]) => {
-            if (picked) editor.chain().focus().setImage({ src: picked.url, alt: picked.altText ?? '' }).run();
+            if (!picked) return;
+            editor.chain().focus().setImage({ src: picked.url, alt: picked.altText ?? '' }).run();
+            selectInsertedImage(editor, picked.url);
           }}
         />
       )}
+
+      {/* Link dialog — adds a link, or edits/removes the one under the caret. */}
+      <Dialog open={!!linkDialog} onOpenChange={(open) => !open && setLinkDialog(null)}>
+        {linkDialog && (
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>{linkDialog.editing ? 'Edit link' : 'Add link'}</DialogTitle>
+              <DialogDescription>Leave the URL empty to remove the link and keep the text.</DialogDescription>
+            </DialogHeader>
+            <div
+              className="space-y-3"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+                  e.preventDefault();
+                  saveLink();
+                }
+              }}
+            >
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">URL</label>
+                <Input
+                  autoFocus
+                  value={linkDialog.href}
+                  onChange={(e) => setLinkDialog({ ...linkDialog, href: e.target.value })}
+                  placeholder="https://givoo.in/curated-packs"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-700">Text</label>
+                <Input
+                  value={linkDialog.text}
+                  onChange={(e) => setLinkDialog({ ...linkDialog, text: e.target.value })}
+                  placeholder="Defaults to the URL"
+                />
+              </div>
+              <label className="flex items-center gap-2 text-xs text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={linkDialog.newTab}
+                  onChange={(e) => setLinkDialog({ ...linkDialog, newTab: e.target.checked })}
+                />
+                Open in a new tab
+              </label>
+              <label className="flex items-center gap-2 text-xs text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={!linkDialog.plain}
+                  onChange={(e) => setLinkDialog({ ...linkDialog, plain: !e.target.checked })}
+                />
+                Underline the link
+              </label>
+            </div>
+            <DialogFooter className="gap-2 sm:justify-between">
+              {linkDialog.editing ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => {
+                    editorRef.current?.chain().focus().extendMarkRange('link').unsetUnderline().unsetLink().run();
+                    setLinkDialog(null);
+                  }}
+                >
+                  <Link2Off className="h-4 w-4" /> Remove link
+                </Button>
+              ) : <span />}
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setLinkDialog(null)}>Cancel</Button>
+                <Button type="button" onClick={saveLink}>{linkDialog.editing ? 'Update link' : 'Add link'}</Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
 
       {/* Button dialog */}
       <Dialog open={!!ctaDialog} onOpenChange={(open) => !open && setCtaDialog(null)}>
