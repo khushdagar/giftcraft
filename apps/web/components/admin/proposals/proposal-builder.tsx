@@ -135,7 +135,7 @@ const emptyPack = (n: number): Pack => ({
 const packImageSignature = (p: Pack, logoUrl: string) =>
   // The leading version bumps whenever the prompt/framing changes, so images
   // made with an older prompt are treated as stale and regenerated.
-  ['v6', p.boxId, logoUrl, ...p.items.map((it) => it.id).sort()].join('|');
+  ['v10', p.boxId, logoUrl, ...p.items.map((it) => it.id).sort()].join('|');
 
 const freshPackImage = (p: Pack, logoUrl: string) =>
   p.aiImage && p.aiImage.signature === packImageSignature(p, logoUrl) ? p.aiImage.url : null;

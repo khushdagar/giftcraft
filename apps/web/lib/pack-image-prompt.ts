@@ -750,50 +750,200 @@ NOT to the supplied products, packaging or branding."`;
 
 const RULE = '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
 
+/** How the selected box is built, opened and branded — drives every box instruction. */
+export interface BoxConstruction {
+  /** Construction, told to the model (the box's name itself is never sent). */
+  type: string;
+  /** How to show it opened with the products inside. */
+  open: string;
+  /** Box-structure lines for the final check. */
+  checks: string[];
+  /** The face that carries the client logo or the "YOUR LOGO HERE" placeholder. */
+  logoFace: string;
+}
+
+/**
+ * Work out the box construction from its catalogue name + description. The
+ * prompt used to assume a lid-and-base box everywhere ("rest the lid beside
+ * the base", even "do NOT turn it into a drawer or sleeve box"), so a selected
+ * Slider Box came back as a Top Bottom Box.
+ */
+export function boxConstruction(name?: string | null, description?: string | null): BoxConstruction {
+  const text = `${name || ''} ${description || ''}`.toLowerCase();
+
+  if (/slid|drawer|sleeve/.test(text)) {
+    return {
+      type: 'a slider (drawer) box — a rigid outer sleeve with an inner tray that slides out of it',
+      open: 'Show the inner tray pulled most of the way out of the outer sleeve (the sleeve still around the back part of the tray), with the products packed inside the tray. This box has NO lid.',
+      checks: [
+        'The box is a slider box exactly like Image 1: ONE outer sleeve and ONE inner tray sliding out of it. It has NO lid — never add a lid, hinged top or flap, and never turn it into a lid-and-base box.',
+      ],
+      logoFace: 'the top face of the outer sleeve',
+    };
+  }
+
+  if (/magnet|hinge|flip|pizza/.test(text)) {
+    return {
+      type: 'a hinged-lid box — the lid is permanently attached to the base along one edge',
+      open: 'Show the lid swung open and still attached along its hinge edge (standing upright or tilted back), with the products packed inside the base. The lid is NOT a separate piece.',
+      checks: [
+        'The box has ONE lid that stays attached to the base along its hinge edge, exactly like Image 1. Never detach the lid or show a separate loose lid.',
+      ],
+      logoFace: 'the outside face of the hinged lid',
+    };
+  }
+
+  if (/top.?bottom|lid.and.base|two.piece|telescop/.test(text)) {
+    return {
+      type: 'a two-piece lid-and-base box — a base plus a separate lid that lifts fully off',
+      open: 'Show the base holding the products, with the removed lid resting on the surface beside the base or leaning behind it.',
+      checks: [
+        'The box is ONE base and ONE separate lid. The base has no hinged flap, fold-over top or second lid attached to it — there is only one lid in the whole image.',
+        'The lid rests beside the base or leans behind it. It never floats over, covers or cuts through the products.',
+      ],
+      logoFace: 'the top face of the separate lid',
+    };
+  }
+
+  return {
+    type: 'exactly the construction shown in Image 1',
+    open: 'Open the box the way it is built in Image 1 (its own flaps, lid or tray, as the photo shows) and pack the products inside. Do not invent a different closure.',
+    checks: [
+      'The box keeps exactly the construction of Image 1 — the same flaps, lid or tray. Never add a lid, flap, sleeve or tray it does not have.',
+    ],
+    logoFace: 'the main top or front face of the box',
+  };
+}
+
+/**
+ * Product-fidelity rules, sent before the product photos. Client feedback: the
+ * model swapped selected products for look-alikes (a flat-top bottle became a
+ * round-shouldered one), duplicated items, and turned a photo showing five
+ * colour variants or a detachable lid into extra products.
+ */
+const PRODUCT_FIDELITY_RULES = `PRODUCT ACCURACY IS THE TOP PRIORITY — above creativity, composition and style.
+Each product image that follows is a photo of the REAL product the client selected. Put THAT exact product into the box, as if its photo were cut out and placed into the scene:
+• Copy its exact shape, silhouette, proportions, colour, material, finish, lid or cap, handle, hardware, labels and existing branding.
+• Do NOT redesign, restyle, simplify or "improve" it. Do NOT replace it with a similar-looking, generic or AI-imagined version (for example, a flat-top cylindrical bottle must never become a round-shouldered bottle).
+• EXACTLY ONE UNIT of each product. If a photo shows several units or colour variants of the same product, show only ONE of them — copied exactly — never all of them.
+• Parts that belong to a product (a detachable lid, a cap, a strap) stay with that product; they are not separate items. Drinks or props shown with a non-food product (coffee in a mug, pencils in a stand) are NOT included.
+• A product photographed with its own packaging (its gift box, sleeve or tin) is ONE item — keep those pieces together as that single product; never split it into several separate items.
+• A product that is itself a basket, hamper or gift set is ONE item — show it whole, as in its photo; never unpack it, leave it out or replace it with loose contents.
+• Every product must be clearly visible and recognisable — none hidden behind another, buried in filler or left out. Place small or flat items at the front, on top of the filler.
+• Products of a similar type (for example a ceramic mug and a steel travel mug) are DIFFERENT items — show each once, each looking like its own photo.
+• Never add a product that is not in the list. Never show any product twice.`;
+
 /** Sent right after the box photo (Image 1): turns the job into an edit of that box. */
-export function boxEditLead(boxName: string, productCount: number, hasLogo = false): string {
-  return `Image 1 above is the photo of the gift box selected for this pack: "${boxName}".
+export function boxEditLead(productCount: number, hasLogo: boolean, construction: BoxConstruction): string {
+  // The box's catalogue name is deliberately NOT sent — the model kept printing
+  // it ("TOP BOTTOM BOX") on the lid. Only its construction is described.
+  return `Image 1 above is the photo of the gift box selected for this pack.
 
 YOUR TASK IS TO EDIT IMAGE 1 — NOT TO DESIGN A NEW BOX.
-Keep this exact box: the same shape, proportions, construction, lid, colour, finish and material as in Image 1.
-Pack the ${productCount} product${productCount === 1 ? '' : 's'} shown in the following images inside the base of THIS box, nested in white shredded paper filler.
-You may adjust the camera angle slightly and rest the lid beside or behind the base, but the box itself must remain recognisably identical to Image 1.
+Keep this exact box: the same shape, proportions, construction, colour, finish and material as in Image 1.
+This box is ${construction.type}. Never turn it into a different box style.
+Pack EXACTLY ${productCount} product${productCount === 1 ? '' : 's'} — the ones shown in the following images, nothing else — inside THIS box, nested in white shredded paper filler.
+${construction.open}
+You may adjust the camera angle slightly, but the box itself must remain recognisably identical to Image 1.
+If Image 1 shows more than one box (for example an open one and a closed one), it is the same box shown twice — use only ONE box, opened as described above.
+Apart from the "YOUR LOGO HERE" placeholder or the client logo, any words printed on the box in Image 1 are mock-up text, not real artwork — do not reproduce them. Keep non-text graphics such as handling icons.
 ${
     hasLogo
-      ? 'The client logo is supplied as the LAST image — print it on the lid in place of any "YOUR LOGO HERE" placeholder from Image 1, and on the products marked for branding in the BRANDING MAP (only those).'
-      : 'Keep any artwork printed on the box exactly as shown in Image 1 (including a "YOUR LOGO HERE" placeholder). Do not add any other logo.'
+      ? `The client logo is supplied as the LAST image — print it on ${construction.logoFace} in place of any "YOUR LOGO HERE" placeholder from Image 1, and on the products marked for branding in the BRANDING MAP (only those).`
+      : `No client logo is supplied. Keep the box's non-text graphics (such as handling icons) as shown in Image 1, but the ONLY words on the box are ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace}. Also put a small, neat "YOUR LOGO HERE" placeholder on the products marked for branding in the BRANDING MAP (only those). Every placeholder reads exactly "YOUR LOGO HERE" — never add a second line, tagline or made-up words under it. Do not add any other logo or text.`
   }
+
+${PRODUCT_FIDELITY_RULES}
 
 The products to pack follow:`;
 }
 
 /** Last instruction in the request — models weigh the final text heavily. */
-export function boxFinalCheck(hasLogo = false, brandedProducts: string[] = []): string {
-  return `FINAL CHECK BEFORE GENERATING:
+export function boxFinalCheck({
+  hasLogo = false,
+  brandedProducts = [],
+  productLabels,
+  construction,
+}: {
+  hasLogo?: boolean;
+  brandedProducts?: string[];
+  /** How the selected box is built — its structure rules and logo face. */
+  construction: BoxConstruction;
+  /** Every selected product, in order — the exact contents the image must show. */
+  productLabels: string[];
+}): string {
+  const n = productLabels.length;
+  return `FINAL CHECK BEFORE GENERATING — COUNT EVERYTHING:
+• The box contains EXACTLY ${n} item${n === 1 ? '' : 's'} — no more, no fewer:
+${productLabels.map((label, i) => `   ${i + 1}. ${label} — 1 unit`).join('\n')}
+• Each of those items appears ONCE. No product is duplicated — never two mugs, two bottles, two pens or two of anything.
+• ALL ${n} items are clearly visible — none hidden, buried in filler or left out. Small or flat items sit at the front, on top of the filler.
+• A product shown with its own gift box, sleeve or tin still counts as ONE item — its pieces stay together, never split into extra items.
+• Each item looks like ITS OWN reference photo — same shape, colour, material and details. No generic, restyled or look-alike substitutes.
+• Nothing else inside or around the box: no extra products, cups, loose lids, stationery or props that are not part of a listed product.
 • The ONLY box in the image is the box from Image 1 — same shape, proportions, construction and colour.
 • No other box, tray, hamper, basket, bag or packaging of any kind.
-• Every listed product sits inside that box, each exactly once. Nothing else is added — no extra notebooks, pens, stationery or props that only appeared in a product's reference photo.
-• The lid rests on the surface beside the base or leans behind it. It never floats over, covers or cuts through the products.
-• The box walls stay plain and solid exactly as in Image 1 — never merge a product into the box (no drawers, windows or compartments built into the box itself).
+${construction.checks.map((c) => `• ${c}`).join('\n')}
+• Only ONE box appears in the whole image — even if Image 1 shows the box twice (open and closed).
+• The box walls stay plain and solid exactly as in Image 1 — never merge a product into the box structure (no windows or compartments added to the box itself).
 ${
   hasLogo
-    ? `• The client logo is printed on the top face of the lid, exactly as supplied, with the lid angled so it is clearly visible.${
+    ? `• The client logo is printed on ${construction.logoFace}, exactly as supplied, angled so it is clearly visible to the camera.${
         brandedProducts.length > 0
           ? ` It is ALSO applied to: ${brandedProducts.join(', ')} — each with its own branding method. No logo on any other product.`
           : ' No logo on any product.'
       }`
-    : '• No new logo anywhere. The box keeps exactly the artwork shown in Image 1 — a "YOUR LOGO HERE" placeholder appears ONCE, only where it is in Image 1 (the lid top), with no extra lines of text added.'
+    : `• No client logo. The box keeps the non-text graphics of Image 1, and its ONLY words are ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace} — no other words from Image 1 and no extra lines of text.${
+        brandedProducts.length > 0
+          ? ` A small "YOUR LOGO HERE" placeholder is ALSO shown on: ${brandedProducts.join(', ')} — each with its own branding method, once per product. No placeholder or logo on any other product.`
+          : ' No logo or placeholder on any product.'
+      }`
 }
-• Never print the box name, the pack name or any other new text on the box. The box's product name is for your reference only.
-• Keep each product's real colour and material (e.g. a wooden pen stand stays natural wood).`;
+• Every "YOUR LOGO HERE" placeholder reads exactly those three words — no second line, tagline, small print or made-up text under or around it.
+• Count the ${hasLogo ? 'client logos' : '"YOUR LOGO HERE" placeholders'}: exactly ${1 + brandedProducts.length} in the whole image — ONE on ${construction.logoFace}${
+    brandedProducts.length > 0 ? ' and one on each branded product listed above' : ''
+  }. None on inner walls, the inside of a lid, the front of a tray or any other surface of the box.
+• Never print any other new text or words on the box or products — only the artwork Image 1 already shows${
+    hasLogo ? ', or the client logo' : ', or the "YOUR LOGO HERE" placeholders listed above'
+  }.
+• Keep each product's real colour and material (e.g. a wooden pen stand stays natural wood, a black steel mug stays black steel).`;
 }
 
 export interface PromptProduct {
   /** "Name (Brand)" */
   label: string;
   hasImage: boolean;
+  /** Catalogue material (e.g. "Stainless Steel") — helps keep shape and finish true. */
+  material?: string | null;
   /** Set only when the catalogue gives the product a branding method — it then gets the client logo. */
   branding?: { technique: string; position?: string | null } | null;
+}
+
+/** Product-type words used to spot two similar items that must not be merged or duplicated. */
+const PRODUCT_TYPE_WORDS = [
+  'mug', 'cup', 'bottle', 'flask', 'tumbler', 'sipper', 'pen', 'pencil', 'notebook', 'diary',
+  'journal', 'planner', 'bag', 'backpack', 'pouch', 'wallet', 'keychain', 'coaster', 'candle',
+  'speaker', 'earbuds', 'charger', 'cable', 'chocolate', 'card', 'organiser', 'organizer',
+  'stand', 'holder', 'lamp', 'clock', 'umbrella', 'towel', 'hoodie', 't-shirt',
+];
+
+/**
+ * For every product type that appears more than once (a ceramic mug AND a
+ * travel mug), an explicit "these are different items" line — the model
+ * otherwise tends to draw two of one and drop the other.
+ */
+export function similarProductWarnings(products: { label: string }[]): string[] {
+  const warnings: string[] = [];
+  for (const word of PRODUCT_TYPE_WORDS) {
+    const re = new RegExp(`\\b${word}s?\\b`, 'i');
+    const matches = products.map((p, i) => ({ label: p.label, n: i + 1 })).filter((m) => re.test(m.label));
+    if (matches.length > 1) {
+      warnings.push(
+        `• ${matches.map((m) => `#${m.n} "${m.label}"`).join(' and ')} are DIFFERENT products (both a kind of ${word}). Show each exactly once, each matching its own photo — never two of the same one.`
+      );
+    }
+  }
+  return warnings;
 }
 
 /** Human-readable PrintingTechnique values, as named in the branding map. */
@@ -818,7 +968,8 @@ export function buildPackImagePrompt({
   hasLogo = false,
   products,
 }: {
-  boxName: string | null;
+  /** Used only to work out the box construction — never put in the prompt (the model printed it on the lid). */
+  boxName?: string | null;
   boxDescription?: string | null;
   hasBoxImage: boolean;
   /** A client logo image is sent last — it goes on the box lid only. */
@@ -827,12 +978,16 @@ export function buildPackImagePrompt({
 }): string {
   let imageNo = 0;
   const refs: string[] = [];
-  if (hasBoxImage) refs.push(`• Image ${++imageNo} — Gift box reference${boxName ? `: "${boxName}"` : ''}`);
+  if (hasBoxImage) refs.push(`• Image ${++imageNo} — Gift box reference`);
   const productLines = products.map((p, i) => {
-    const ref = p.hasImage ? `reference image ${++imageNo}` : 'no reference image — render a faithful real-world version from the name';
-    if (p.hasImage) refs.push(`• Image ${imageNo} — Product: ${p.label}`);
-    return `${i + 1}. ${p.label} (${ref})`;
+    const ref = p.hasImage
+      ? `copy exactly from reference image ${++imageNo}`
+      : 'no photo — render a faithful, realistic version from the name';
+    if (p.hasImage) refs.push(`• Image ${imageNo} — Product ${i + 1}: ${p.label}`);
+    return `${i + 1}. ${p.label}${p.material ? ` — ${p.material}` : ''} (${ref}) — exactly 1 unit`;
   });
+  const similarWarnings = similarProductWarnings(products);
+  const construction = boxConstruction(boxName, boxDescription);
 
   // The client logo is the last reference image, after every product.
   const logoImageNo = hasLogo ? ++imageNo : null;
@@ -845,7 +1000,7 @@ export function buildPackImagePrompt({
   const applyTo = [
     ...(hasBoxImage
       ? [
-          '• The gift box lid — centred on the top face of the lid, as a clean premium print or foil stamp that follows the lid surface. It replaces any "YOUR LOGO HERE" placeholder shown on the box in Image 1.',
+          `• The gift box — centred on ${construction.logoFace}, as a clean premium print or foil stamp that follows that surface. It replaces any "YOUR LOGO HERE" placeholder shown on the box in Image 1.`,
         ]
       : []),
     ...products
@@ -863,6 +1018,18 @@ export function buildPackImagePrompt({
     .map((p) => `• ${p.label} — no logo; keep it exactly as in its reference`);
   if (skipLogo.length === 0) skipLogo.push('• Nothing else — no logo on the filler, background or any other surface.');
 
+  // No client logo: the same branded products carry a "YOUR LOGO HERE"
+  // placeholder instead, so the client still sees where branding goes.
+  const placeholderOn = products
+    .filter((p) => p.branding)
+    .map(
+      (p) =>
+        `• ${p.label} — "YOUR LOGO HERE" as ${p.branding!.technique.toLowerCase()}${
+          p.branding!.position ? `, position: ${p.branding!.position}` : ', in its most natural visible branding area'
+        } (small, clean, following the product surface)`
+    );
+  if (placeholderOn.length === 0) placeholderOn.push('• Nothing — no product in this pack is marked for branding.');
+
   const branding = logoImageNo
     ? `BRAND LOGO:
 Use the uploaded client logo (Image ${logoImageNo}) exactly — do not redraw, recolour, distort or approximate it.
@@ -875,33 +1042,38 @@ ${applyTo.join('\n')}
 DO NOT apply the logo to:
 ${skipLogo.join('\n')}
 
-Position the lid (for example leaning upright behind the base) so its top face and the logo are clearly visible to the camera.`
+Angle the box so ${construction.logoFace} and the logo on it are clearly visible to the camera.`
     : `BRAND LOGO:
-No client logo supplied.
+No client logo supplied — a "YOUR LOGO HERE" placeholder is used instead, showing where the client's logo will go.
 
 BRANDING MAP:
-No custom branding. Do NOT add any new logo to the box or to any product.
-Keep the artwork already printed on the box exactly as shown in the box reference (including any existing logo or "YOUR LOGO HERE" placeholder).
-Preserve only the existing manufacturer branding visible in each product reference.`;
+The box shows ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace} and keeps the non-text graphics of the box reference. No other words from the box photo appear.
+
+Show a small, neat "YOUR LOGO HERE" placeholder on:
+${placeholderOn.join('\n')}
+
+DO NOT put any logo or placeholder on:
+${skipLogo.join('\n')}
+
+Preserve the existing manufacturer branding visible in each product reference.`;
 
   // Catalogue box photos are studio shots (coloured backdrop, "YOUR LOGO HERE"
   // mock-ups) — without these rules the model recoloured the box to the
   // backdrop and swapped a top-bottom box for a hinged one.
   const box = hasBoxImage
     ? [
-        `Use the uploaded gift-box reference (Image 1)${boxName ? ` — "${boxName}"` : ''}. This is the ONLY box allowed in the image.`,
+        'Use the uploaded gift-box reference (Image 1). This is the ONLY box allowed in the image.',
         boxDescription ? `Box details: ${boxDescription}` : null,
-        'Reproduce exactly the box construction shown in Image 1 (for example, a two-piece top-bottom box = a separate base plus a separate lid that lifts fully off). Do NOT turn it into a hinged, magnetic-flap, drawer, sleeve or any other box style.',
-        'Show the base holding the products, with the removed lid resting beside or leaning behind it, as that construction allows.',
+        `Box construction: ${construction.type}. Reproduce exactly the construction shown in Image 1 — never turn it into a different box style.`,
+        construction.open,
+        'This overrides the "open lid" wording in sections 15 and 16: show the box opened the way THIS box is actually built.',
         hasLogo
           ? 'Image 1 is a studio photo: its background colour is NOT the box colour. Any "YOUR LOGO HERE" placeholder on the box is replaced by the client logo (see BRANDING MAP).'
           : 'Image 1 is a studio photo: its background colour is NOT the box colour. Keep any artwork printed on the box exactly as shown.',
       ]
         .filter(Boolean)
         .join('\n')
-    : boxName
-      ? `No box photo supplied — use a premium rigid gift box ("${boxName}") with a separate lid.`
-      : 'No box reference supplied — use a premium rigid gift box with a separate lid.';
+    : 'No box reference supplied — use a premium rigid gift box with a separate lid.';
 
   const boxColour = hasBoxImage
     ? 'Exactly the colour and finish of the box itself in Image 1 — ignore the photo background. Never recolour the box to match the background.'
@@ -924,17 +1096,25 @@ ${boxColour}
 
 ${branding}
 
-PRODUCTS:
-Use ALL uploaded product references exactly.
-This gift box contains exactly ${products.length} product${products.length === 1 ? '' : 's'} — each appears exactly once:
+PRODUCTS (HIGHEST PRIORITY):
+This gift box contains EXACTLY ${products.length} product${products.length === 1 ? '' : 's'}, each exactly ONCE:
 ${productLines.join('\n')}
+${similarWarnings.length > 0 ? `\n${similarWarnings.join('\n')}\n` : ''}
+These product rules OVERRIDE anything above that conflicts with them:
+• Exactly ONE unit per product — even if its reference photo shows several units or colour variants (then show only one of them). This overrides the "multiple units" exception in section 2.
+• Each product must be the exact product in its reference photo — never a similar-looking, generic, restyled or AI-imagined substitute. Do not change its shape, design, colour, branding or appearance.
+• No duplicates and no extra items: the total number of items in the box is exactly ${products.length}.
+• Detachable parts (lids, caps) and a product's own packaging (its gift box, sleeve or tin) stay with that product as ONE item. Drinks or props shown with non-food products are not included.
+• A basket, hamper or gift-set product is ONE item, shown whole — never unpacked or left out.
+• Every listed item must be clearly visible in the final image; small or flat items go at the front.
+• Product identity and visual accuracy come before creativity and composition.
 
 BACKGROUND:
 Dark premium wine-red / burgundy studio background.
 
 FRAMING (takes priority over the default composition where they differ):
 Landscape 5:4 (near-square). Frame tightly so the PRODUCTS are the hero — the open box and its contents fill roughly 85–90% of the frame width, camera close and slightly elevated, minimal empty background.
-Keep every product fully visible and uncropped; the lid may be partly cropped at the frame edge.
+Keep every product fully visible and uncropped; the box's lid, sleeve or flap may be partly cropped at the frame edge.
 
 PRODUCT ARRANGEMENT:
 Create the most premium and visually balanced arrangement possible

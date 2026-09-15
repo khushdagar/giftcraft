@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { stripHtml } from '@/lib/strip-html';
-import { generatePackImage, PackImageError, PACK_IMAGE_MODEL } from '@/lib/gemini-pack-image';
+import { generatePackImage, PackImageError, PACK_IMAGE_MODEL, formatSizeCm } from '@/lib/gemini-pack-image';
 import { PRINTING_TECHNIQUE_LABELS } from '@/lib/pack-image-prompt';
 import { uploadBuffer, getBucketAndCdn } from '@/lib/upload-to-digital-ocean';
 import { PACK_IMAGE_FOLDER } from '@/lib/proposal-pack';
@@ -54,6 +54,11 @@ export async function POST(req: NextRequest) {
           id: true,
           name: true,
           brand: true,
+          material: true,
+          descriptionShort: true,
+          dimensionL: true,
+          dimensionW: true,
+          dimensionH: true,
           printingTechnique: true,
           printingPosition: true,
           images: imageSelect,
@@ -90,6 +95,10 @@ export async function POST(req: NextRequest) {
       products: ordered.map((p) => ({
         name: p.name,
         brand: p.brand,
+        material: p.material,
+        // Catalogue copy often states shape/finish the photo leaves ambiguous.
+        description: stripHtml(p.descriptionShort || '').replace(/\s+/g, ' ').trim().slice(0, 240) || null,
+        size: formatSizeCm(p.dimensionL, p.dimensionW, p.dimensionH),
         imageUrl: p.images[0]?.url,
         // Only products with a branding method get the client logo.
         branding:

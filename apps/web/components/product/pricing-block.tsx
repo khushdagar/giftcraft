@@ -113,10 +113,6 @@ export function PricingBlock({
 
   const isUnderMinimum = qty < minAllowedQty;
 
-  // Mobile-only collapse for the tier table — six rows push the Add to Pack
-  // button off screen. Collapsed shows just the tier the current quantity is in;
-  // `firstOrderableIdx` is the fallback row when the quantity is still below MOQ
-  // and no tier is active.
   const [tiersOpen, setTiersOpen] = useState(false);
   const firstOrderableIdx = sortedTiers.findIndex(
     (t) => t.maxQty === null || t.maxQty >= minAllowedQty,
@@ -214,17 +210,13 @@ export function PricingBlock({
             </span>
           </div>
 
-          {/* Table rows */}
           <div className="divide-y divide-bdr">
             {sortedTiers.map((tier, idx) => {
               const isActive = activeTier?.tier === tier.tier;
-              // A tier that ends below the MOQ can never be ordered — disable it.
               const isBelowMoq =
                 tier.maxQty !== null && tier.maxQty < minAllowedQty;
               const totalAtMin = tier.sellPrice * tier.minQty;
-              // Collapsed on mobile: only the tier the current quantity falls in
-              // stays visible (or the first orderable one if the quantity is
-              // still below MOQ). Desktop always shows the full table.
+           
               const keepWhenCollapsed = activeTier
                 ? isActive
                 : idx === firstOrderableIdx;
@@ -260,9 +252,7 @@ export function PricingBlock({
                   <span className="tabnum text-sm">
                     {formatRupees(tier.sellPrice)}
                   </span>
-                  {/* An order total, not a product price. data-nosnippet keeps
-                      Google from lifting it as THE price of the product — the
-                      per-unit column beside it is the one that should surface. */}
+               
                   <span className="tabnum text-right text-sm" data-nosnippet>
                     {formatRupees(totalAtMin)}
                   </span>
@@ -289,19 +279,9 @@ export function PricingBlock({
           )}
         </div>
         <p className="mt-2 text-xs text-ink-3">
-          All prices include standard branding. Prices exclusive of GST, packaging, shipping and payment processing fees.
+          All prices include standard branding. Prices exclusive of GST ({gstRate}%), packaging, shipping and payment processing fees.
         </p>
-        {/* <p className="mt-1 text-xs text-ink-3">
-          GST: {gstRate}%{hsnCode ? ` (HSN ${hsnCode})` : ""} — CGST+SGST or IGST
-          applied at checkout based on delivery location.
-        </p> */}
       </div>
-
-      {/* Final pricing — the order total for the chosen quantity. This is the
-          biggest number on the page, so Google was picking it up as the product
-          price (a 10-unit total, e.g. ₹1,76,000 instead of ₹17,600 each).
-          data-nosnippet excludes the whole block from snippet extraction; the
-          per-unit price stays visible and is what the JSON-LD declares. */}
       <div className="border-t border-bdr pt-4" data-nosnippet>
         <div className="flex items-baseline justify-between">
           <span className="text-sm font-medium text-ink-2">

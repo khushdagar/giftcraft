@@ -1277,7 +1277,6 @@ const sc = StyleSheet.create({
     justifyContent: "center",
   },
   aiNote: { flexDirection: "row", marginTop: 10 },
-  aiNoteLabel: { fontFamily: FONT, fontWeight: 700, fontSize: 7.5, lineHeight: 1.4, color: AMBER_INK },
   aiNoteText: { flex: 1, fontSize: 7.5, lineHeight: 1.4, color: INK_3 },
   panel: {
     flex: 1,
@@ -1342,12 +1341,43 @@ const sc = StyleSheet.create({
   tGrandRow: { backgroundColor: AMBER_50, borderBottomColor: NAVY },
 });
 
-/** List density for the contents panel — long packs shrink, then go two-column. */
-function itemDensity(count: number) {
-  if (count <= 5) return { size: 12, gap: 12, brand: true, twoCol: false };
-  if (count <= 8) return { size: 10.5, gap: 9, brand: true, twoCol: false };
-  if (count <= 12) return { size: 9.5, gap: 6, brand: false, twoCol: false };
-  return { size: 8.5, gap: 5, brand: false, twoCol: true };
+/**
+ * Pick the largest list size at which every product name — wrapped — fits the
+ * contents panel above its "Presented in" card. A fixed size by count let five
+ * long, two-line names run into that card.
+ */
+function itemDensity(products: { name: string; brand?: string | null }[], hasBoxCard: boolean) {
+  // Panel height − vertical padding − label/count/divider − "Presented in" card.
+  const available = HERO_IMG.height - 48 - 72 - (hasBoxCard ? 68 : 0);
+  // Panel width (762 − 457 − 16 gap) − side padding − number badge.
+  const textWidth = 289 - 44 - 27;
+  const options = [
+    { size: 12, gap: 12, brand: true, twoCol: false },
+    { size: 11, gap: 9, brand: true, twoCol: false },
+    { size: 10, gap: 7, brand: true, twoCol: false },
+    { size: 10, gap: 6, brand: false, twoCol: false },
+    { size: 9, gap: 5, brand: false, twoCol: false },
+    { size: 8.5, gap: 4, brand: false, twoCol: true },
+  ];
+  for (const o of options) {
+    const width = o.twoCol ? textWidth / 2 - 8 : textWidth;
+    // ~0.6em per character is conservative for Inter SemiBold, allowing for word wrap.
+    const charsPerLine = Math.max(8, Math.floor(width / (o.size * 0.6)));
+    const heights = products.map(
+      (p) =>
+        Math.ceil(p.name.length / charsPerLine) * o.size * 1.3 +
+        (o.brand && p.brand ? 11 : 0) +
+        o.gap
+    );
+    let total = 0;
+    if (o.twoCol) {
+      for (let i = 0; i < heights.length; i += 2) total += Math.max(heights[i]!, heights[i + 1] ?? 0);
+    } else {
+      total = heights.reduce((s, h) => s + h, 0);
+    }
+    if (total <= available) return o;
+  }
+  return options[options.length - 1]!;
 }
 
 /**
@@ -1377,7 +1407,7 @@ function PackShowcasePages({
   const eyebrow = optionNumber
     ? `OPTION ${String(optionNumber).padStart(2, "0")} · GIFT PACK`
     : "GIFT PACK";
-  const density = itemDensity(products.length);
+  const density = itemDensity(products, !!packaging || addons.length > 0);
   const coverImages = products
     .map((p) => p.imageData)
     .filter((src): src is string => !!src);
@@ -1473,10 +1503,8 @@ function PackShowcasePages({
           {packImage ? (
             <View style={sc.aiNote}>
               <Text style={sc.aiNoteText}>
-                <Text style={sc.aiNoteLabel}>AI-generated visual · </Text>
-                Created with AI to show how your pack could look — not a photo of the actual
-                pack. Finish, colours and arrangement may vary slightly; the items listed are
-                exactly what you receive.
+                Note: This AI-generated preview shows how your pack will look. Finish, colours and
+                arrangement may vary slightly; the items listed are exactly what you receive.
               </Text>
             </View>
           ) : null}
