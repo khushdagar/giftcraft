@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { buildPackImagePrompt, boxEditLead, boxFinalCheck } from '@/lib/pack-image-prompt';
+import { buildPackImagePrompt, boxEditLead, boxFinalCheck, boxConstruction } from '@/lib/pack-image-prompt';
 
 /**
  * AI pack shot for proposal decks.
@@ -25,11 +25,26 @@ export interface PackImageItem {
   description?: string | null;
   brand?: string | null;
   imageUrl?: string | null;
+  /** Catalogue material — sent with the product so its shape and finish stay true. */
+  material?: string | null;
+  /** Real size, e.g. "7 × 7 × 24 cm (L × W × H)" — pins shape and relative scale. */
+  size?: string | null;
   /** Catalogue branding method — only products with one receive the client logo. */
   branding?: { technique: string; position?: string | null } | null;
 }
 
 export class PackImageError extends Error {}
+
+/** Catalogue dimensions (cm) as a prompt phrase, or null when any are missing. */
+export function formatSizeCm(
+  l: number | null | undefined,
+  w: number | null | undefined,
+  h: number | null | undefined
+): string | null {
+  if (!(l && w && h)) return null;
+  const n = (v: number) => String(Math.round(v * 10) / 10);
+  return `${n(l)} × ${n(w)} × ${n(h)} cm (L × W × H)`;
+}
 
 type InlinePart = { inlineData: { mimeType: string; data: string } };
 
@@ -94,9 +109,13 @@ export async function generatePackImage({
     products: products.map((p, i) => ({
       label: p.brand ? `${p.name} (${p.brand})` : p.name,
       hasImage: !!productParts[i],
+      material: p.material ?? null,
       branding: p.branding ?? null,
     })),
   });
+  const productLabels = products.map((p) => (p.brand ? `${p.name} (${p.brand})` : p.name));
+  // Slider / hinged / lid-and-base — every box instruction follows the real construction.
+  const construction = boxConstruction(box?.name, box?.description);
 
   // The box photo goes FIRST and the task is framed as editing it. Image models
   // preserve an image they are editing far better than one they merely
@@ -106,16 +125,23 @@ export async function generatePackImage({
   const parts: ({ text: string } | InlinePart)[] = [];
   let imageNo = 0;
   if (boxPart) {
-    parts.push(boxPart, { text: boxEditLead(box?.name ?? 'gift box', products.length, hasLogo) });
+    parts.push(boxPart, { text: boxEditLead(products.length, hasLogo, construction) });
     imageNo = 1;
   }
   productParts.forEach((part, i) => {
     if (part) {
       parts.push(
         {
-          // Catalogue photos are often styled with props (a pen stand full of
-          // notebooks and pencils) — only the named product may be used.
-          text: `Image ${++imageNo} — PRODUCT ${i + 1}: ${products[i]!.name}. Use ONLY this product itself; ignore any props, contents or accessories styled with it in the photo.`,
+          // Catalogue photos are styled: several colour variants in one shot,
+          // coffee in a mug, a detachable lid lying beside it, pencils in a
+          // stand. Each label pins the photo to ONE unit of ONE exact product.
+          text: `Image ${++imageNo} — PRODUCT ${i + 1} of ${products.length}: ${productLabels[i]}${
+            products[i]!.material ? ` (material: ${products[i]!.material})` : ''
+          }.${products[i]!.size ? `\nReal size: ${products[i]!.size} — keep this shape and scale relative to the other products.` : ''}${
+            products[i]!.description ? `\nCatalogue description: ${products[i]!.description}` : ''
+          }
+This photo shows the EXACT product to use. Place exactly ONE unit of it in the box, identical to this photo in shape, proportions, colour, material and details — not a similar or generic version.
+If the photo shows several units or colour variants, use only one of them. A lid, cap, gift box, sleeve or tin shown with it is part of this same ONE product — keep those pieces together as one item. Ignore the photo's background and any props that are not part of the product.`,
         },
         part
       );
@@ -132,7 +158,9 @@ export async function generatePackImage({
     );
   }
   parts.push({ text: prompt });
-  if (boxPart) parts.push({ text: boxFinalCheck(hasLogo, brandedNames) });
+  if (boxPart) {
+    parts.push({ text: boxFinalCheck({ hasLogo, brandedProducts: brandedNames, productLabels, construction }) });
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
@@ -145,6 +173,9 @@ export async function generatePackImage({
         contents: [{ role: 'user', parts }],
         generationConfig: {
           responseModalities: ['IMAGE'],
+          // Lower than the default (1.0): less "creative" reinterpretation of
+          // the reference products.
+          temperature: 0.4,
           // Near-square to match the left-hand image frame on the deck page.
           imageConfig: { aspectRatio: '5:4' },
         },
