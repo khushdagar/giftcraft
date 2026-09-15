@@ -2,10 +2,10 @@
 
 import { compressAndUpload } from '@/hooks/use-compressed-upload';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Upload, X, Trash2, Plus, LibraryBig } from 'lucide-react';
+import { Loader2, Upload, X, Trash2, Plus, LibraryBig, Check, AlertCircle, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,6 +44,20 @@ const SITE = process.env.NEXT_PUBLIC_APP_URL || 'https://givoo.in';
 
 /** Sentinel value for the dropdown's "add one" row — never sent to the API. */
 const NEW_CATEGORY = '__new__';
+
+/** Quiet period after the last keystroke before the draft is autosaved. */
+const AUTOSAVE_DELAY_MS = 4000;
+
+type Autosave =
+  | { state: 'idle' }
+  | { state: 'saving' }
+  | { state: 'saved'; at: Date }
+  /** Only backed up in this browser — the post is live, or not saveable yet. */
+  | { state: 'local'; at: Date }
+  | { state: 'error'; error: string };
+
+const backupKey = (id: string | undefined) => `givoo:blog-backup:${id ?? 'new'}`;
+const timeLabel = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 /** `<input type="datetime-local">` needs `YYYY-MM-DDTHH:mm` in LOCAL time. */
 function toLocalInput(iso: string): string {
@@ -105,6 +119,24 @@ export function BlogForm({
   const coverRef = useRef<HTMLInputElement>(null);
   const ogRef = useRef<HTMLInputElement>(null);
 
+  // A new post gets an id from its first autosave; later saves update it.
+  const [postId, setPostId] = useState(post?.id);
+  const postIdRef = useRef(post?.id);
+  // Status as stored on the server. Autosave only writes to drafts, so
+  // half-finished edits never go live on a published post.
+  const [storedStatus, setStoredStatus] = useState<BlogPostFormData['status']>(post?.status ?? 'draft');
+  const [autosave, setAutosave] = useState<Autosave>({ state: 'idle' });
+  const [backup, setBackup] = useState<{ form: BlogPostFormData; savedAt: string } | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
+  const savedJson = useRef(JSON.stringify(post ?? EMPTY));
+  const inflight = useRef<Promise<void> | null>(null);
+  const savingRef = useRef(false);
+  const formRef = useRef(form);
+  formRef.current = form;
+
+  const formJson = useMemo(() => JSON.stringify(form), [form]);
+  const dirty = formJson !== savedJson.current;
+
   const set = <K extends keyof BlogPostFormData>(key: K, value: BlogPostFormData[K]) =>
     setForm((p) => ({ ...p, [key]: value }));
 
@@ -152,6 +184,101 @@ export function BlogForm({
     }
   };
 
+  const clearBackup = () => {
+    try {
+      localStorage.removeItem(backupKey(undefined));
+      if (postIdRef.current) localStorage.removeItem(backupKey(postIdRef.current));
+    } catch { /* storage unavailable */ }
+  };
+
+  /** Writes the post to the server, creating it on the first save. */
+  const persist = async (snapshot: BlogPostFormData, status: BlogPostFormData['status']) => {
+    const id = postIdRef.current;
+    const res = await fetch(id ? `/api/admin/blog/${id}` : '/api/admin/blog', {
+      method: id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...snapshot,
+        status,
+        slug: slugify(snapshot.slug || snapshot.title),
+        // datetime-local gives local time; send a real ISO instant.
+        publishedAt: snapshot.publishedAt ? new Date(snapshot.publishedAt).toISOString() : '',
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+    if (!id) {
+      postIdRef.current = data.data.id;
+      setPostId(data.data.id);
+      setSlugTouched(true);
+      // Reloading the tab should reopen this post, not a blank "new" form.
+      window.history.replaceState(null, '', `/admin/blog/${data.data.id}/edit`);
+    }
+    savedJson.current = JSON.stringify(snapshot);
+    setStoredStatus(status);
+    clearBackup();
+  };
+
+  // Offer to restore edits that never reached the server (closed tab, crash).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(backupKey(post?.id));
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { form: BlogPostFormData; savedAt: string };
+      if (JSON.stringify(saved.form) !== savedJson.current) setBackup(saved);
+      else localStorage.removeItem(backupKey(post?.id));
+    } catch { /* storage unavailable or corrupt */ }
+    // Mount only — later changes are this session's own edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Autosave: back up every change locally, and save drafts to the server.
+  useEffect(() => {
+    if (formJson === savedJson.current) return;
+    const timer = setTimeout(() => {
+      const snapshot = formRef.current;
+      try {
+        localStorage.setItem(
+          backupKey(postIdRef.current),
+          JSON.stringify({ form: snapshot, savedAt: new Date().toISOString() })
+        );
+      } catch { /* storage unavailable */ }
+
+      const canSaveDraft =
+        snapshot.status === 'draft' && storedStatus === 'draft' &&
+        !!snapshot.title.trim() && !!stripHtml(snapshot.content);
+      if (!canSaveDraft) {
+        setAutosave({ state: 'local', at: new Date() });
+        return;
+      }
+      if (savingRef.current || inflight.current) return;
+
+      setAutosave({ state: 'saving' });
+      inflight.current = persist(snapshot, 'draft')
+        .then(() => {
+          setAutosave({ state: 'saved', at: new Date() });
+          // Edits made while the request was out need their own save.
+          if (formRef.current !== snapshot) setRetryTick((t) => t + 1);
+        })
+        .catch((err) => setAutosave({ state: 'error', error: err instanceof Error ? err.message : 'Autosave failed' }))
+        .finally(() => { inflight.current = null; });
+    }, AUTOSAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+    // persist/storedStatus are read at fire time; re-arming on them would double-save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formJson, retryTick]);
+
+  // Warn before closing the tab with changes that aren't on the server.
+  useEffect(() => {
+    if (!dirty) return;
+    const onUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onUnload);
+    return () => window.removeEventListener('beforeunload', onUnload);
+  }, [dirty]);
+
   // Accepts both the form's submit event and the "Save & publish" click.
   const handleSubmit = async (
     e: { preventDefault: () => void },
@@ -163,39 +290,30 @@ export function BlogForm({
 
     const status = overrideStatus ?? form.status;
     setSaving(true);
+    savingRef.current = true;
     try {
-      const payload = {
-        ...form,
-        status,
-        slug: slugify(form.slug || form.title),
-        // datetime-local gives local time; send a real ISO instant.
-        publishedAt: form.publishedAt ? new Date(form.publishedAt).toISOString() : '',
-      };
-      const url = mode === 'create' ? '/api/admin/blog' : `/api/admin/blog/${post?.id}`;
-      const res = await fetch(url, {
-        method: mode === 'create' ? 'POST' : 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Save failed');
+      // Let a running autosave finish, or a new post would be created twice.
+      await inflight.current;
+      const isNew = !postIdRef.current;
+      await persist(form, status);
 
-      toast.success(mode === 'create' ? 'Post created' : 'Post saved');
+      toast.success(isNew ? 'Post created' : 'Post saved');
       router.push('/admin/blog');
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Save failed');
     } finally {
       setSaving(false);
+      savingRef.current = false;
     }
   };
 
   const handleDelete = async () => {
-    if (!post?.id) return;
+    if (!postId) return;
     if (!confirm(`Delete "${form.title}"? This cannot be undone.`)) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/blog/${post.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/blog/${postId}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json()).error || 'Delete failed');
       toast.success('Post deleted');
       router.push('/admin/blog');
@@ -210,6 +328,29 @@ export function BlogForm({
     <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
       {/* ── Main column ─────────────────────────────────────── */}
       <div className="min-w-0 space-y-5">
+        {backup && (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <History className="h-4 w-4 shrink-0" />
+            <span className="flex-1">
+              Unsaved changes from {new Date(backup.savedAt).toLocaleString()} were found in this browser.
+            </span>
+            <Button type="button" size="sm" onClick={() => { setForm(backup.form); setBackup(null); }}>
+              Restore
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setBackup(null);
+                try { localStorage.removeItem(backupKey(post?.id)); } catch { /* storage unavailable */ }
+              }}
+            >
+              Discard
+            </Button>
+          </div>
+        )}
+
         <Section title="Content">
           <Field label="Title">
             <Input
@@ -249,6 +390,7 @@ export function BlogForm({
             onChange={(html) => set('content', html)}
             placeholder="Write your post…"
             uploadFolder="blog"
+            maxHeight="70vh"
           />
         </Section>
 
@@ -352,7 +494,8 @@ export function BlogForm({
       </div>
 
       {/* ── Sidebar ─────────────────────────────────────────── */}
-      <div className="space-y-5 lg:sticky lg:top-6">
+      {/* Scrolls on its own so every option is reachable without scrolling the post. */}
+      <div className="space-y-5 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
         <Section title="Publish">
           <Field label="Status">
             <select
@@ -401,16 +544,30 @@ export function BlogForm({
           </label>
 
           <div className="flex flex-col gap-2 border-t border-gray-100 pt-4">
+            <p className={`flex items-start gap-1.5 text-[11px] ${autosave.state === 'error' ? 'text-red-600' : 'text-gray-500'}`}>
+              {autosave.state === 'saving' && <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving draft…</>}
+              {autosave.state === 'saved' && <><Check className="h-3.5 w-3.5 text-emerald-600" /> Draft saved at {timeLabel(autosave.at)}</>}
+              {autosave.state === 'error' && <><AlertCircle className="h-3.5 w-3.5 shrink-0" /> Autosave failed: {autosave.error}</>}
+              {autosave.state === 'local' && (
+                <span>
+                  Changes backed up in this browser at {timeLabel(autosave.at)}.{' '}
+                  {form.status === 'draft' && storedStatus === 'draft'
+                    ? 'Add a title and content to autosave the draft.'
+                    : 'Click Save to apply them — autosave never changes a live post.'}
+                </span>
+              )}
+              {autosave.state === 'idle' && (storedStatus === 'draft' ? 'Drafts save automatically while you edit.' : '')}
+            </p>
             <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {mode === 'create' ? 'Create post' : 'Save changes'}
+              {postId ? 'Save changes' : 'Create post'}
             </Button>
             {form.status !== 'published' && (
               <Button type="button" variant="outline" disabled={saving} onClick={(e) => handleSubmit(e, 'published')}>
                 Save &amp; publish
               </Button>
             )}
-            {mode === 'edit' && (
+            {postId && (
               <Button type="button" variant="outline" disabled={deleting} onClick={handleDelete}
                 className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
                 {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}

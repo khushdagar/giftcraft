@@ -380,6 +380,10 @@
 .blog-content a:hover {
   color: #6B001B;
 }
+/* Editor "Underline" toggle on a link — keyword links without the underline. */
+.blog-content a.link-plain {
+  text-decoration: none;
+}
 .blog-content ul,
 .blog-content ol {
   padding-left: 1.5rem;
@@ -421,6 +425,69 @@
   background: transparent;
   padding: 0;
   color: inherit;
+}
+.blog-content img[data-align='center'] {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+.blog-content img[data-align='right'] {
+  display: block;
+  margin-left: auto;
+}
+.blog-content img.ProseMirror-selectednode {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
+/* Editor image view with drag-to-resize handles (rich-text-editor BlogImage). */
+.blog-content .blog-image-view {
+  display: flex;
+}
+.blog-content .blog-image-view[data-align='center'] {
+  justify-content: center;
+}
+.blog-content .blog-image-view[data-align='right'] {
+  justify-content: flex-end;
+}
+.blog-content .blog-image-view__frame {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+.blog-content .blog-image-view__frame img {
+  display: block;
+}
+.blog-content .blog-image-view.ProseMirror-selectednode img {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
+.blog-content .blog-image-view__handle {
+  position: absolute;
+  bottom: -6px;
+  display: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+  background: #2563eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  touch-action: none;
+}
+.blog-content .blog-image-view__handle--left {
+  left: -6px;
+  cursor: nesw-resize;
+}
+.blog-content .blog-image-view__handle--right {
+  right: -6px;
+  cursor: nwse-resize;
+}
+.blog-content .blog-image-view.ProseMirror-selectednode .blog-image-view__handle,
+.blog-content .blog-image-view.is-resizing .blog-image-view__handle {
+  display: block;
+}
+.blog-content .blog-image-view.is-resizing {
+  user-select: none;
 }
 .blog-content img {
   border-radius: 8px;
