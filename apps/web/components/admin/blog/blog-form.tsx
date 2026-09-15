@@ -108,16 +108,14 @@ export function BlogForm({
   const [form, setForm] = useState<BlogPostFormData>(post ?? EMPTY);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [uploading, setUploading] = useState<'cover' | 'og' | null>(null);
-  // Which image slot the media-library picker is open for.
-  const [libraryFor, setLibraryFor] = useState<'cover' | 'og' | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [tagInput, setTagInput] = useState('');
   // Swaps the dropdown for a free-text box so a new category can be named.
   const [creatingCategory, setCreatingCategory] = useState(false);
   // Once the user edits the slug by hand, stop deriving it from the title.
   const [slugTouched, setSlugTouched] = useState(mode === 'edit');
   const coverRef = useRef<HTMLInputElement>(null);
-  const ogRef = useRef<HTMLInputElement>(null);
 
   // A new post gets an id from its first autosave; later saves update it.
   const [postId, setPostId] = useState(post?.id);
@@ -169,18 +167,17 @@ export function BlogForm({
     setTagInput('');
   };
 
-  const upload = async (file: File, target: 'cover' | 'og') => {
-    setUploading(target);
+  const uploadCover = async (file: File) => {
+    setUploading(true);
     try {
       const data = await compressAndUpload(file, { folder: 'blog' });
-      set(target === 'cover' ? 'coverImageUrl' : 'ogImageUrl', data.url);
+      set('coverImageUrl', data.url);
       toast.success('Image uploaded');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Upload failed');
     } finally {
-      setUploading(null);
-      if (target === 'cover' && coverRef.current) coverRef.current.value = '';
-      if (target === 'og' && ogRef.current) ogRef.current.value = '';
+      setUploading(false);
+      if (coverRef.current) coverRef.current.value = '';
     }
   };
 
@@ -456,31 +453,6 @@ export function BlogForm({
             />
           </Field>
 
-          <Field label="Social share image" hint="Falls back to the cover image. 1200×630 recommended.">
-            {form.ogImageUrl ? (
-              <div className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.ogImageUrl} alt="" className="h-16 w-28 rounded-md border border-gray-200 object-cover" />
-                <button type="button" onClick={() => set('ogImageUrl', '')} className="text-xs font-medium text-red-600 hover:underline">
-                  Remove
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" disabled={uploading === 'og'} onClick={() => ogRef.current?.click()}>
-                  {uploading === 'og' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                  Upload
-                </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => setLibraryFor('og')}>
-                  <LibraryBig className="h-4 w-4" />
-                  Choose from library
-                </Button>
-              </div>
-            )}
-            <input ref={ogRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], 'og')} />
-          </Field>
-
           <label className="flex items-start gap-2 text-xs text-gray-700">
             <input type="checkbox" checked={form.noIndex} onChange={(e) => set('noIndex', e.target.checked)} className="mt-0.5" />
             <span>
@@ -577,7 +549,8 @@ export function BlogForm({
           </div>
         </Section>
 
-        <Section title="Cover image">
+        <Section title="Cover image" hint="Also the preview image when the post is shared on WhatsApp, LinkedIn, etc. Landscape, 1200×630 works best.">
+
           {form.coverImageUrl ? (
             <div className="space-y-3">
               <div className="relative">
@@ -595,21 +568,21 @@ export function BlogForm({
               </Field>
             </div>
           ) : (
-            <button type="button" onClick={() => coverRef.current?.click()} disabled={uploading === 'cover'}
+            <button type="button" onClick={() => coverRef.current?.click()} disabled={uploading}
               className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-gray-200 text-gray-500 transition hover:border-gray-400 hover:text-gray-700 disabled:cursor-wait">
-              {uploading === 'cover' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
-              <span className="text-xs font-medium">{uploading === 'cover' ? 'Uploading…' : 'Upload cover image'}</span>
+              {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
+              <span className="text-xs font-medium">{uploading ? 'Uploading…' : 'Upload cover image'}</span>
               <span className="text-[11px] text-gray-400">JPG or PNG · max 5MB</span>
             </button>
           )}
           {!form.coverImageUrl && (
-            <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => setLibraryFor('cover')}>
+            <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => setLibraryOpen(true)}>
               <LibraryBig className="h-4 w-4" />
               Choose from library
             </Button>
           )}
           <input ref={coverRef} type="file" accept="image/*" className="hidden"
-            onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], 'cover')} />
+            onChange={(e) => e.target.files?.[0] && uploadCover(e.target.files[0])} />
         </Section>
 
         <Section title="Organisation">
@@ -687,25 +660,21 @@ export function BlogForm({
         </Section>
       </div>
 
-      {/* Pick an already-uploaded image for the cover / share slot. Sits inside
-          the form; every control in the modal is type="button" and its search
-          box swallows Enter, so nothing here can submit the post. */}
-      {libraryFor && (
+      {/* Pick an already-uploaded image for the cover. Sits inside the form;
+          every control in the modal is type="button" and its search box
+          swallows Enter, so nothing here can submit the post. */}
+      {libraryOpen && (
         <MediaLibraryModal
           multiple={false}
-          title={libraryFor === 'cover' ? 'Choose a cover image' : 'Choose a social share image'}
-          onClose={() => setLibraryFor(null)}
+          title="Choose a cover image"
+          onClose={() => setLibraryOpen(false)}
           onConfirm={([picked]) => {
             if (!picked) return;
-            if (libraryFor === 'cover') {
-              setForm((p) => ({
-                ...p,
-                coverImageUrl: picked.url,
-                coverImageAlt: p.coverImageAlt || picked.altText || '',
-              }));
-            } else {
-              set('ogImageUrl', picked.url);
-            }
+            setForm((p) => ({
+              ...p,
+              coverImageUrl: picked.url,
+              coverImageAlt: p.coverImageAlt || picked.altText || '',
+            }));
           }}
         />
       )}

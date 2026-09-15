@@ -367,6 +367,12 @@
 .blog-content p {
   margin: 0;
 }
+/* A blank line made with Enter saves as `<p></p>`, which has no height, so the
+   space the author added (e.g. above a button) vanished on the live post. The
+   editor is unaffected: ProseMirror puts a <br> in empty paragraphs. */
+.blog-content p:empty::before {
+  content: '\00a0';
+}
 .blog-content strong {
   font-weight: 700;
   color: #222222;

@@ -32,13 +32,14 @@ export async function GET(_req: NextRequest, { params }: { params: { slug: strin
 
   const post = await prisma.blogPost.findUnique({
     where: { slug },
-    select: { status: true, publishedAt: true, ogImageUrl: true, coverImageUrl: true },
+    select: { status: true, publishedAt: true, coverImageUrl: true },
   });
   if (!post || post.status !== 'published' || !post.publishedAt || post.publishedAt > new Date()) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const source = post.ogImageUrl || post.coverImageUrl;
+  // The cover image is the share image — there is no separate one.
+  const source = post.coverImageUrl;
   if (!source) return fallback();
 
   try {

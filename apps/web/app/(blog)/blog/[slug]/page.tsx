@@ -33,12 +33,12 @@ async function getPost(slug: string) {
  * Uploads are stored as WebP, which most unfurlers refuse as an og:image — the
  * tags were present but the card rendered without a picture. The share image
  * is therefore served through /blog/[slug]/og.jpg (route.ts next to this
- * file), a 1200×630 JPEG rendition of the post's share/cover image; the `?v=`
- * cache-buster changes whenever the post is edited. Posts without any image
- * use the site card.
+ * file), a 1200×630 JPEG rendition of the post's cover image — the cover is
+ * the share image, there is no separate one. The `?v=` cache-buster changes
+ * whenever the post is edited. Posts without a cover use the site card.
  */
-function shareImage(post: { slug: string; ogImageUrl: string | null; coverImageUrl: string | null; updatedAt: Date }) {
-  if (post.ogImageUrl || post.coverImageUrl) {
+function shareImage(post: { slug: string; coverImageUrl: string | null; updatedAt: Date }) {
+  if (post.coverImageUrl) {
     return { url: `${SITE}/blog/${post.slug}/og.jpg?v=${post.updatedAt.getTime()}`, type: 'image/jpeg' };
   }
   return { url: `${SITE}/opengraph-image`, type: 'image/png' };
@@ -121,7 +121,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
   const authorName = author?.name || post.authorName || BLOG_AUTHOR;
   const authorPath = author ? authorPagePath(author.slug) : null;
 
-  const image = post.ogImageUrl || post.coverImageUrl;
+  const image = post.coverImageUrl;
   // Publisher/logo, absolute image URLs and the @id wiring all come from the
   // shared builder. The publisher is inlined there: blog pages deliberately do
   // NOT render the site-wide Organization node (see app/(blog)/layout.tsx).
