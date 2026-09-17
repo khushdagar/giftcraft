@@ -47,8 +47,8 @@ const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
  *
  * Values are still stored one-row-per-value in the flat `variants` array (kept
  * as-is for the API), but presented grouped by option name — each option is an
- * editable card with its values as rows. Colour options keep a swatch, size
- * options keep a per-value price, and any value can carry an image.
+ * editable card with its values as rows. Colour options keep a swatch, and any
+ * value can carry an optional price and an image.
  */
 export function ProductVariants({
   variants,
@@ -159,7 +159,6 @@ export function ProductVariants({
     <div className="space-y-3">
       {options.map((opt) => {
         const isColor = opt.name.toLowerCase() === 'color';
-        const isSize = opt.name.toLowerCase() === 'size';
         const entries = entriesFor(opt.name);
 
         // ── Collapsed summary ────────────────────────────────────────────
@@ -285,7 +284,8 @@ export function ProductVariants({
                         />
                       )}
 
-                      {isSize && (
+                      {/* Optional per-value price — available on every option kind. */}
+                      {(
                         <div className="flex shrink-0 items-center gap-1">
                           <span className="text-xs text-gray-400">₹</span>
                           <Input
@@ -300,7 +300,7 @@ export function ProductVariants({
                               })
                             }
                             className="w-20 text-xs"
-                            title="Price for this size"
+                            title={`Price for this ${opt.name || 'value'} (optional)`}
                           />
                         </div>
                       )}

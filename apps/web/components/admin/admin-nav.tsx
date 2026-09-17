@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Star, IndianRupee, History, Shuffle, BellRing, BookOpen, Globe, Images } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Users, Truck, BarChart3, Settings, Tag, Zap, Box, Gift, Sparkles, Mail, Megaphone, FileText, Star, IndianRupee, History, Shuffle, BellRing, BookOpen, Globe, Images, Wand2 } from 'lucide-react';
 
 const NAV = [
   { section: "Overview", items: [
@@ -17,6 +17,7 @@ const NAV = [
     { href: "/admin/enquiries", icon: Mail, label: "Enquiries" },
     { href: "/admin/restock-requests", icon: BellRing, label: "Restock Requests" },
     { href: "/admin/proposals", icon: FileText, label: "Proposals" },
+    { href: "/admin/mockups", icon: Wand2, label: "Mockup Studio" },
     { href: "/admin/generated-images", icon: Images, label: "Generated Images" },
     { href: "/admin/clients", icon: Users, label: "Clients" },
     { href: "/admin/vendors", icon: Truck, label: "Vendors" },

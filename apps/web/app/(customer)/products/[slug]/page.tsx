@@ -22,7 +22,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { JsonLd } from "@/components/seo/json-ld";
 import { productSchema, breadcrumbSchema } from "@/lib/schema";
-import { withPageSeo } from '@/lib/page-seo';
+import { withPageSeo, packShareImageUrl } from '@/lib/page-seo';
+
+/**
+ * og:type for curated packs. Next's metadata API throws on any og:type outside
+ * its fixed list, so packs omit `openGraph.type` and the page renders this tag
+ * itself — React hoists a <meta> rendered in a Server Component into <head>.
+ */
+const PACK_OG_TYPE = 'curated products';
 
 // ISR: rendered on demand, then served from cache for an hour.
 //
@@ -41,8 +48,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       status: true,
       metaTitle: true,
       metaDescription: true,
+      isPack: true,
       // Primary image first, else the first by sort order.
       images: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1, select: { url: true } },
+      // A pack's preview is a collage of its members' first shots — the same
+      // images, in the same order, as the collage on the page itself.
+      packItems: {
+        orderBy: { sortOrder: "asc" },
+        select: { product: { select: { images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } } } } },
+      },
     },
   });
 
@@ -58,7 +72,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const url = `/products/${params.slug}`;
   // Every product must have SOME preview image — fall back to the branded
   // site card so link previews never render blank.
-  const ogImage = product.images?.[0]?.url || "/opengraph-image";
+  const packCollage = product.isPack
+    ? packShareImageUrl(
+        product.packItems.map((it) => it.product.images[0]?.url).filter((u): u is string => !!u)
+      )
+    : null;
+  const ogImage = packCollage || product.images?.[0]?.url || "/opengraph-image";
+  const ogImageEntry = packCollage
+    ? { url: packCollage, alt: product.name, width: 1200, height: 630, type: "image/jpeg" }
+    : { url: ogImage, alt: product.name };
 
   return withPageSeo(`/products/${params.slug}`, {
     // Title is used as-is (no brand suffix is appended)
@@ -69,13 +91,14 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     openGraph: {
       // Next validates og:type at runtime and rejects OG's "product" vertical —
       // "website" is the closest allowed value; product data ships via JSON-LD.
-      type: "website",
+      // Packs omit it here and render PACK_OG_TYPE from the page instead.
+      ...(product.isPack ? {} : { type: "website" as const }),
       url,
       title: metaTitle || product.name,
       description,
       siteName: "GIVOO",
       locale: "en_IN",
-      images: [{ url: ogImage, alt: product.name }],
+      images: [ogImageEntry],
     },
     twitter: {
       card: "summary_large_image",
@@ -362,6 +385,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   return (
     <div className="pdp-gutters bg-canvas pb-24 lg:pb-0">
+      {/* Hoisted into <head> by React — see PACK_OG_TYPE. */}
+      {isPack && <meta property="og:type" content={PACK_OG_TYPE} />}
       <JsonLd data={productJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
       {/* Breadcrumb */}

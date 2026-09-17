@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
+import { NOT_PROPOSAL_ONLY } from '@/lib/proposal-only-product';
 
 /**
  * GET /api/admin/search?q=foo
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
     }),
     prisma.product.findMany({
       where: {
+        ...NOT_PROPOSAL_ONLY,
         OR: [
           { name: { contains: q, mode: 'insensitive' } },
           { sku: { contains: q, mode: 'insensitive' } },

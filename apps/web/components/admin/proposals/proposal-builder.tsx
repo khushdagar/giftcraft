@@ -22,15 +22,18 @@ import {
   Sparkles,
   RefreshCw,
   ImagePlus,
+  Pencil,
 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
+import { useSlowNotice, PACK_IMAGE_SLOW_MESSAGE } from '@/lib/proposal-progress';
 import { FieldError } from '@/components/ui/field-error';
 import { validateEmail } from '@/lib/validation';
 import { downloadImagesStaggered, triggerDownload } from '@/lib/generated-image-download';
 import {
   Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
+import { ManualProductDialog } from './manual-product-dialog';
 
 interface PriceTier {
   minQty: number;
@@ -44,6 +47,8 @@ interface CatalogProduct {
   brand: string | null;
   imageUrl: string | null;
   priceTiers: PriceTier[];
+  /** Typed in by hand for proposals (not in the catalogue) — can be edited from its chip. */
+  proposalOnly?: boolean;
 }
 
 interface BoxOption {
@@ -106,6 +111,7 @@ function toCatalogProduct(p: any): CatalogProduct {
     name: p.name,
     brand: p.brand ?? null,
     imageUrl: p.images?.[0]?.url ?? null,
+    ...(p.proposalOnly ? { proposalOnly: true } : {}),
     priceTiers: (p.priceTiers ?? []).map((t: any) => ({
       minQty: t.minQty,
       maxQty: t.maxQty ?? null,
@@ -136,7 +142,8 @@ const emptyPack = (n: number): Pack => ({
 const packImageSignature = (p: Pack, logoUrl: string) =>
   // The leading version bumps whenever the prompt/framing changes, so images
   // made with an older prompt are treated as stale and regenerated.
-  ['v10', p.boxId, logoUrl, ...p.items.map((it) => it.id).sort()].join('|');
+  // v11 — Nano Banana 2 (gemini-3.1-flash-image) + hand-styled / real-photo rules.
+  ['v11', p.boxId, logoUrl, ...p.items.map((it) => it.id).sort()].join('|');
 
 const freshPackImage = (p: Pack, logoUrl: string) =>
   p.aiImage && p.aiImage.signature === packImageSignature(p, logoUrl) ? p.aiImage.url : null;
@@ -223,6 +230,8 @@ export function ProposalBuilder({
   const [activeKey, setActiveKey] = useState('pack-1');
   // Packs whose AI pack shot is being generated right now.
   const [generatingKeys, setGeneratingKeys] = useState<string[]>([]);
+  // Generation normally takes 20–40s — say so plainly when it runs longer.
+  const generationSlow = useSlowNotice(generatingKeys.length > 0, 45_000);
   // Autosave only starts once any saved draft has been restored, so the empty
   // first render can't overwrite the draft it is about to load.
   const draftReady = useRef(false);
@@ -247,6 +256,31 @@ export function ProposalBuilder({
       if (draft.message) setMessage(draft.message);
       if (draft.logoUrl) setLogoUrl(draft.logoUrl);
       toast('Unsent draft restored', { description: 'Your pack options were still here.' });
+
+      // Drafts saved before manual products were editable don't carry the
+      // `proposalOnly` marker — ask the server which of these ids are manual.
+      const unmarked = [
+        ...new Set(
+          draft.packs.flatMap((p) => p.items.filter((it) => !it.proposalOnly).map((it) => it.id))
+        ),
+      ];
+      if (unmarked.length > 0) {
+        fetch(`/api/admin/proposals/manual-product?ids=${unmarked.join(',')}`, { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => {
+            const manual = new Set<string>(Array.isArray(d?.ids) ? d.ids : []);
+            if (manual.size === 0) return;
+            setPacks((prev) =>
+              prev.map((p) => ({
+                ...p,
+                items: p.items.map((it) =>
+                  manual.has(it.id) ? { ...it, proposalOnly: true } : it
+                ),
+              }))
+            );
+          })
+          .catch(() => {/* the chips just stay non-editable */});
+      }
     }
     draftReady.current = true;
     // Mount-only: prefill comes from the URL and never changes for a given page.
@@ -302,6 +336,9 @@ export function ProposalBuilder({
   const [curatedPacks, setCuratedPacks] = useState<CuratedPackOption[]>([]);
   // Grid mode: false = catalog products, true = curated packs.
   const [showPacks, setShowPacks] = useState(false);
+  // One-off product typed in by hand — for an item that is not in the catalogue.
+  const [manualProductOpen, setManualProductOpen] = useState(false);
+  const [manualEditId, setManualEditId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/categories')
@@ -1218,7 +1255,22 @@ export function ProposalBuilder({
                               />
                             )}
                           </span>
-                          <span className="truncate">{it.name}</span>
+                          {it.proposalOnly ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setManualEditId(it.id);
+                                setManualProductOpen(true);
+                              }}
+                              className="inline-flex min-w-0 items-center gap-1 underline decoration-dotted underline-offset-2 hover:text-indigo-600"
+                              title="Manual product — click to edit"
+                            >
+                              <span className="truncate">{it.name}</span>
+                              <Pencil className="h-3 w-3 shrink-0" />
+                            </button>
+                          ) : (
+                            <span className="truncate">{it.name}</span>
+                          )}
                           <span className="shrink-0 tabular-nums text-indigo-500">
                             {formatRupees(tierPrice(it.priceTiers, active.pack.packQuantity))}
                           </span>
@@ -1245,6 +1297,17 @@ export function ProposalBuilder({
                         className={`${inputCls} pl-8`}
                       />
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualEditId(null);
+                        setManualProductOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-indigo-300 px-2.5 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+                      title="Add a product that is not in the catalogue — used for proposals only"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Manual product
+                    </button>
                   </div>
 
                   {(categories.length > 0 || curatedPacks.length > 0) && (
@@ -1595,12 +1658,14 @@ export function ProposalBuilder({
                         <p className="text-sm font-medium text-gray-900">AI pack image</p>
                         <p className="text-xs text-gray-500">
                           {busy
-                            ? 'Packing the products into the box… this takes 20–40 seconds.'
+                            ? generationSlow
+                              ? PACK_IMAGE_SLOW_MESSAGE
+                              : 'Packing the products into the box… this takes 20–40 seconds.'
                             : fresh
                               ? "Used as the hero image on this pack's page in the PDF."
                               : img
                                 ? 'Box or products changed — it will be regenerated on preview/send.'
-                                : 'Generated automatically on preview/send — or create it now.'}
+                                : 'No image yet. Click "Generate image" to create one now, or it is generated automatically on preview/send.'}
                         </p>
 
                         {/* Client logo — shared by every pack in this proposal */}
@@ -1667,14 +1732,32 @@ export function ProposalBuilder({
                             Open
                           </a>
                         )}
+                        {/* Clear empties the slot so it is obvious the next
+                            click makes a brand-new image. The stored file stays
+                            in Generated Images; only this pack lets go of it. */}
+                        {img && !busy && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPacks((prev) =>
+                                prev.map((p) => (p.key === active.pack.key ? { ...p, aiImage: null } : p))
+                              )
+                            }
+                            title="Remove this image from the pack"
+                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Clear
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => generatePackShot(active.pack)}
                           disabled={busy || active.pack.items.length === 0}
+                          title={img ? 'Replace the current image with a newly generated one' : 'Generate the AI pack image'}
                           className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {img ? <RefreshCw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                          {img ? 'Regenerate' : 'Generate'}
+                          {busy ? 'Generating…' : img ? 'Generate new image' : 'Generate image'}
                         </button>
                       </div>
                     </div>
@@ -1821,6 +1904,29 @@ export function ProposalBuilder({
         </div>
       </div>
 
+      <ManualProductDialog
+        open={manualProductOpen}
+        onOpenChange={setManualProductOpen}
+        editId={manualEditId}
+        onUpdated={(updated) => {
+          // The same product can sit in several options — refresh every copy.
+          const product = toCatalogProduct(updated);
+          setPacks((prev) =>
+            prev.map((p) => ({
+              ...p,
+              items: p.items.map((it) => (it.id === product.id ? product : it)),
+            }))
+          );
+        }}
+        onCreated={(created) => {
+          const product = toCatalogProduct(created);
+          const pack = packs.find((p) => p.key === activeKey);
+          if (pack && !pack.items.some((it) => it.id === product.id)) {
+            toggleProduct(pack.key, product);
+          }
+        }}
+      />
+
       {/* Preview — the deck PDF itself, rendered by the same builder and the
           same renderer the send attaches to the email. Nothing is saved. */}
       <Dialog open={previewOpen} onOpenChange={(open) => (open ? setPreviewOpen(true) : closePreview())}>
@@ -1866,7 +1972,9 @@ export function ProposalBuilder({
             <div className="flex items-center justify-center gap-2 py-24 text-sm text-gray-500">
               <Loader2 className="h-4 w-4 animate-spin" />
               {generatingKeys.length > 0
-                ? `Generating AI pack image${generatingKeys.length === 1 ? '' : 's'}… (20–40s each)`
+                ? generationSlow
+                  ? PACK_IMAGE_SLOW_MESSAGE
+                  : `Generating AI pack image${generatingKeys.length === 1 ? '' : 's'}… (20–40s each)`
                 : 'Building the deck…'}
             </div>
           ) : (

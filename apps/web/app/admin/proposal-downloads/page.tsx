@@ -2,21 +2,27 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 export const dynamic = 'force-dynamic';
 
 // Who downloaded a proposal deck from checkout — account holders are logged
 // automatically; guests appear via the lead-capture dialog.
-export default async function ProposalDownloadsPage() {
+export default async function ProposalDownloadsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== 'super_admin') {
     redirect('/unauthorized');
   }
 
-  const downloads = await prisma.proposalDownload.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 200,
-  });
+  const { page, skip, take } = adminPaging(searchParams);
+  const [downloads, total] = await Promise.all([
+    prisma.proposalDownload.findMany({ orderBy: { createdAt: 'desc' }, skip, take }),
+    prisma.proposalDownload.count(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -91,6 +97,7 @@ export default async function ProposalDownloadsPage() {
           </div>
         )}
       </div>
+      <AdminPagination basePath="/admin/proposal-downloads" page={page} total={total} searchParams={searchParams} noun="downloads" />
     </div>
   );
 }

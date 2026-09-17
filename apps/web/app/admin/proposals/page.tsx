@@ -5,26 +5,38 @@ import { prisma } from '@/lib/prisma';
 import { formatRupees } from '@/lib/utils';
 import { Plus, ExternalLink } from 'lucide-react';
 import { ProposalDownloadButton } from '@/components/admin/proposals/proposal-download-button';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 export const revalidate = 0;
 
-export default async function AdminProposalsPage() {
+export default async function AdminProposalsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const session = await auth();
   if (!session || session.user.role !== 'super_admin') {
     redirect('/');
   }
 
-  const proposals = await prisma.proposal.findMany({
-    orderBy: { createdAt: 'desc' },
-    take: 100,
-    include: {
-      quote: { select: { shareToken: true, status: true, payload: true } },
-      packs: {
-        orderBy: { sortOrder: 'asc' },
-        select: { id: true, label: true, quote: { select: { shareToken: true, payload: true } } },
+  // One page at a time — each row drags in every pack's full quote payload, so
+  // loading the whole history made this the heaviest list in the admin.
+  const { page, skip, take } = adminPaging(searchParams);
+  const [proposals, total] = await Promise.all([
+    prisma.proposal.findMany({
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+      include: {
+        quote: { select: { shareToken: true, status: true, payload: true } },
+        packs: {
+          orderBy: { sortOrder: 'asc' },
+          select: { id: true, label: true, quote: { select: { shareToken: true, payload: true } } },
+        },
       },
-    },
-  });
+    }),
+    prisma.proposal.count(),
+  ]);
 
   const rows = proposals.map((p) => {
     const primary = p.quote.payload as any;
@@ -173,6 +185,14 @@ export default async function AdminProposalsPage() {
           ))}
         </div>
       )}
+
+      <AdminPagination
+        basePath="/admin/proposals"
+        page={page}
+        total={total}
+        searchParams={searchParams}
+        noun="proposals"
+      />
     </div>
   );
 }

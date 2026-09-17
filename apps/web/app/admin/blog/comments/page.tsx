@@ -4,20 +4,30 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { CommentModeration } from '@/components/admin/blog/comment-moderation';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminBlogCommentsPage() {
+export default async function AdminBlogCommentsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const session = await auth();
   if (!session || session.user.role !== 'super_admin') redirect('/');
 
-  const comments = await prisma.blogComment.findMany({
-    include: { post: { select: { title: true, slug: true } } },
-    orderBy: { createdAt: 'desc' },
-    take: 300,
-  });
-
-  const pending = comments.filter((c) => c.status === 'pending').length;
+  // Header counts come from the database, not from the visible page.
+  const { page, skip, take } = adminPaging(searchParams);
+  const [comments, total, pending] = await Promise.all([
+    prisma.blogComment.findMany({
+      include: { post: { select: { title: true, slug: true } } },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+    }),
+    prisma.blogComment.count(),
+    prisma.blogComment.count({ where: { status: 'pending' } }),
+  ]);
 
   return (
     <>
@@ -31,7 +41,7 @@ export default async function AdminBlogCommentsPage() {
         </Link>
         <h1 className="mt-3 text-3xl font-normal tracking-tight text-ink">Comments</h1>
         <p className="mt-1 text-sm text-ink-2">
-          {pending} awaiting review · {comments.length} total. Nothing is public until you approve
+          {pending} awaiting review · {total} total. Nothing is public until you approve
           it.
         </p>
       </div>
@@ -48,6 +58,9 @@ export default async function AdminBlogCommentsPage() {
           postSlug: c.post.slug,
         }))}
       />
+      <div className="mt-4">
+        <AdminPagination basePath="/admin/blog/comments" page={page} total={total} searchParams={searchParams} noun="comments" />
+      </div>
     </>
   );
 }

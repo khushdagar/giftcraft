@@ -13,12 +13,26 @@ import { buildPackImagePrompt, boxEditLead, boxFinalCheck, boxConstruction } fro
  */
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-// 2.5 Flash Image — the low-cost model. On its own it tends to swap in a
-// generic box, so the request is framed as an EDIT of the box photo (see parts
-// below), which keeps the selected box intact.
-export const PACK_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
+// Nano Banana 2 (Gemini 3.1 Flash Image): ~$0.067 ≈ ₹6 per 1K image. It plans
+// the composition before rendering ("thinking") and holds reference products
+// far more faithfully than the original Nano Banana (gemini-2.5-flash-image,
+// ~₹3.5), which remains usable via GEMINI_IMAGE_MODEL. The request is still
+// framed as an EDIT of the box photo (see parts below) — that is what keeps the
+// selected box intact on every model.
+export const PACK_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image';
 const MODEL = PACK_IMAGE_MODEL;
-const GENERATE_TIMEOUT_MS = 100_000;
+/** Gemini 3.x image models: image size tiers, thinking, default temperature. */
+const IS_GEN3 = !MODEL.startsWith('gemini-2.');
+// Price follows the size tier — 1K is the ~₹6 one (2K ≈ ₹9, 4K ≈ ₹13.5). The
+// deck hero is resized to 1600px anyway, so 1K is the right default.
+const IMAGE_SIZE = process.env.GEMINI_IMAGE_SIZE || '1K';
+// 'high' lets the model draft and check the arrangement first — neater, more
+// natural packing. 'minimal' is faster. Thinking is billed as a few text tokens.
+const THINKING_LEVEL = process.env.GEMINI_IMAGE_THINKING || 'high';
+// The model accepts at most 14 reference images per request.
+const MAX_REFERENCE_IMAGES = 14;
+// Thinking adds time on top of rendering.
+const GENERATE_TIMEOUT_MS = 110_000;
 
 export interface PackImageItem {
   name: string;
@@ -30,7 +44,7 @@ export interface PackImageItem {
   /** Real size, e.g. "7 × 7 × 24 cm (L × W × H)" — pins shape and relative scale. */
   size?: string | null;
   /** Catalogue branding method — only products with one receive the client logo. */
-  branding?: { technique: string; position?: string | null } | null;
+  branding?: { technique: string; position?: string | null; logoColour?: string | null } | null;
 }
 
 export class PackImageError extends Error {}
@@ -82,21 +96,29 @@ export async function generatePackImage({
   box,
   products,
   logoUrl,
+  boxColour = null,
 }: {
   box: PackImageItem | null;
   products: PackImageItem[];
   /** Client logo — printed on the box lid. Omit to keep the box artwork as photographed. */
   logoUrl?: string | null;
+  /** Brand colour for the box (mockup tool). Omit to keep the colour of the box photo. */
+  boxColour?: string | null;
 }): Promise<Buffer> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new PackImageError('GEMINI_API_KEY is not configured');
   if (products.length === 0) throw new PackImageError('No products to pack');
 
-  const [boxPart, productParts, logoPart] = await Promise.all([
+  const [boxPart, allProductParts, logoPart] = await Promise.all([
     toInlinePart(box?.imageUrl),
     Promise.all(products.map((p) => toInlinePart(p.imageUrl))),
     toInlinePart(logoUrl),
   ]);
+  // Stay inside the model's reference-image limit: the box and logo always go,
+  // products fill what is left in pick order. Any beyond that are described in
+  // text only (the prompt already handles products without a photo).
+  let budget = MAX_REFERENCE_IMAGES - (boxPart ? 1 : 0) - (logoPart ? 1 : 0);
+  const productParts = allProductParts.map((part) => (part && budget-- > 0 ? part : null));
   // The logo goes on the box lid (when there is a box) and on branded products.
   const hasLogo = !!logoPart;
   const brandedNames = products.filter((p) => p.branding).map((p) => p.name);
@@ -106,6 +128,7 @@ export async function generatePackImage({
     boxDescription: box?.description ?? null,
     hasLogo,
     hasBoxImage: !!boxPart,
+    boxColour,
     products: products.map((p, i) => ({
       label: p.brand ? `${p.name} (${p.brand})` : p.name,
       hasImage: !!productParts[i],
@@ -125,7 +148,7 @@ export async function generatePackImage({
   const parts: ({ text: string } | InlinePart)[] = [];
   let imageNo = 0;
   if (boxPart) {
-    parts.push(boxPart, { text: boxEditLead(products.length, hasLogo, construction) });
+    parts.push(boxPart, { text: boxEditLead(products.length, hasLogo, construction, boxColour) });
     imageNo = 1;
   }
   productParts.forEach((part, i) => {
@@ -159,7 +182,7 @@ If the photo shows several units or colour variants, use only one of them. A lid
   }
   parts.push({ text: prompt });
   if (boxPart) {
-    parts.push({ text: boxFinalCheck({ hasLogo, brandedProducts: brandedNames, productLabels, construction }) });
+    parts.push({ text: boxFinalCheck({ hasLogo, brandedProducts: brandedNames, productLabels, construction, boxColour }) });
   }
 
   const controller = new AbortController();
@@ -173,11 +196,21 @@ If the photo shows several units or colour variants, use only one of them. A lid
         contents: [{ role: 'user', parts }],
         generationConfig: {
           responseModalities: ['IMAGE'],
-          // Lower than the default (1.0): less "creative" reinterpretation of
-          // the reference products.
-          temperature: 0.4,
-          // Near-square to match the left-hand image frame on the deck page.
-          imageConfig: { aspectRatio: '5:4' },
+          ...(IS_GEN3
+            ? {
+                // Gemini 3.x is tuned for its default temperature — lowering it
+                // degrades output, so it is left alone. Fidelity comes from
+                // thinking + the edit framing instead.
+                thinkingConfig: { thinkingLevel: THINKING_LEVEL },
+                // Near-square to match the left-hand image frame on the deck page.
+                imageConfig: { aspectRatio: '5:4', imageSize: IMAGE_SIZE },
+              }
+            : {
+                // 2.5: lower than the default (1.0) — less "creative"
+                // reinterpretation of the reference products.
+                temperature: 0.4,
+                imageConfig: { aspectRatio: '5:4' },
+              }),
         },
       }),
       signal: controller.signal,
@@ -196,9 +229,11 @@ If the photo shows several units or colour variants, use only one of them. A lid
   }
 
   const candidate = json?.candidates?.[0];
-  const imagePart = (candidate?.content?.parts ?? []).find(
-    (p: any) => p?.inlineData?.data || p?.inline_data?.data
-  );
+  // A thinking model may include interim draft images flagged `thought` — the
+  // finished picture is the LAST image part that is not a thought.
+  const imagePart = [...(candidate?.content?.parts ?? [])]
+    .reverse()
+    .find((p: any) => !p?.thought && (p?.inlineData?.data || p?.inline_data?.data));
   const data: string | undefined = imagePart?.inlineData?.data ?? imagePart?.inline_data?.data;
   if (!data) {
     const reason = candidate?.finishReason || json?.promptFeedback?.blockReason || 'no image returned';

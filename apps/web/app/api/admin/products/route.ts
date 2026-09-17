@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { serializeProduct } from "@/lib/serialize";
 import { uploadToDigitalOcean } from "@/lib/upload-to-digital-ocean";
+import { NOT_PROPOSAL_ONLY } from "@/lib/proposal-only-product";
 
 /**
  * GET /api/admin/products
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
       prisma.product.findMany({
         where: {
           isPack: false,
+          ...NOT_PROPOSAL_ONLY,
           ...(search && {
             name: {
               contains: search,
@@ -60,6 +62,7 @@ export async function GET(request: NextRequest) {
       prisma.product.count({
         where: {
           isPack: false,
+          ...NOT_PROPOSAL_ONLY,
           ...(search && {
             name: {
               contains: search,

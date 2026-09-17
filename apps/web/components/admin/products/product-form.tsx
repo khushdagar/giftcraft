@@ -693,9 +693,10 @@ export function ProductForm({
           }
           // Carry the optional per-variant image through to the API.
           variant.imageUrl = v.imageUrl ? String(v.imageUrl).trim() : null;
-          // Per-size price (used by packaging designs) — only for size variants.
+          // Optional per-variant price — any kind (size, colour, material, ...).
+          // Packaging designs read the size prices for the gift builder.
           variant.price =
-            v.kind.toLowerCase() === 'size' && v.price != null && !Number.isNaN(Number(v.price))
+            v.price != null && !Number.isNaN(Number(v.price)) && Number(v.price) >= 0
               ? Number(v.price)
               : null;
           return variant;
@@ -1364,7 +1365,7 @@ export function ProductForm({
             <h2 className="text-base font-semibold text-gray-900 border-b border-gray-100 pb-3">Variants</h2>
             <p className="text-sm text-gray-500">
               Add options like size or colour. Each option can have multiple values —
-              colours get a swatch, sizes can carry a per-box price, and any value can have its own image.
+              colours get a swatch, and any value can have its own optional price and image.
             </p>
 
             <ProductVariants

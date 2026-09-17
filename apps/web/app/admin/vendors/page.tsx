@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Users, Plus, Upload } from 'lucide-react';
 import { VendorActiveToggle } from './vendor-active-toggle';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pending',
@@ -17,13 +18,21 @@ export const metadata = {
   description: 'Manage vendor accounts',
 };
 
-export default async function AdminVendorsPage() {
+export default async function AdminVendorsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const session = await auth();
   if (!session || session.user?.role !== 'super_admin') {
     redirect('/unauthorized');
   }
 
+  const { page, skip, take } = adminPaging(searchParams);
+  const total = await prisma.vendor.count();
   const vendors = await prisma.vendor.findMany({
+    skip,
+    take,
     select: {
       id: true,
       name: true,
@@ -45,7 +54,7 @@ export default async function AdminVendorsPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-normal text-ink">Vendors</h1>
-          <p className="text-sm text-ink-2 mt-1">Total: {vendors.length} vendor{vendors.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-ink-2 mt-1">Total: {total} vendor{total !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -126,6 +135,7 @@ export default async function AdminVendorsPage() {
           </table>
         </div>
       )}
+      <AdminPagination basePath="/admin/vendors" page={page} total={total} searchParams={searchParams} noun="vendors" />
     </div>
   );
 }

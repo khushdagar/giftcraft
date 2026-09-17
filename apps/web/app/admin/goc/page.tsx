@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Sparkles, Plus, Edit2 } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
 import { Badge } from '@/components/ui/badge';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,16 +15,26 @@ const STATUS_VARIANT = {
   expired: 'red',
 } as const;
 
-export default async function AdminGocPage() {
+export default async function AdminGocPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const session = await auth();
   if (!session || session.user.role !== 'super_admin') {
     redirect('/');
   }
 
-  const campaigns = await prisma.gocCampaign.findMany({
-    include: { _count: { select: { options: true, claims: true } } },
-    orderBy: { createdAt: 'desc' },
-  });
+  const { page, skip, take } = adminPaging(searchParams);
+  const [campaigns, total] = await Promise.all([
+    prisma.gocCampaign.findMany({
+      include: { _count: { select: { options: true, claims: true } } },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+    }),
+    prisma.gocCampaign.count(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -121,6 +132,7 @@ export default async function AdminGocPage() {
           </table>
         </div>
       )}
+      <AdminPagination basePath="/admin/goc" page={page} total={total} searchParams={searchParams} noun="campaigns" />
     </div>
   );
 }

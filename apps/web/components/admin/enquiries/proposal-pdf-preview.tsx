@@ -3,6 +3,12 @@
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Download, FileText } from 'lucide-react';
+import {
+  preparePackImage,
+  useSlowNotice,
+  PACK_IMAGE_WORKING_MESSAGE,
+  PACK_IMAGE_SLOW_MESSAGE,
+} from '@/lib/proposal-progress';
 
 /**
  * Previews the proposal deck inside the admin panel.
@@ -31,6 +37,9 @@ export function ProposalPdfPreview({
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // True while the quote's AI pack image is being generated (first view only).
+  const [preparing, setPreparing] = useState(false);
+  const slow = useSlowNotice(preparing);
 
   const deckUrl = proposalToken
     ? `/api/proposals/${proposalToken}/deck`
@@ -48,6 +57,14 @@ export function ProposalPdfPreview({
 
     (async () => {
       try {
+        // Builder-made proposals already carry their AI pack images. A plain
+        // quote gets its image prepared first, so this deck matches them.
+        if (!proposalToken) {
+          setPreparing(true);
+          await preparePackImage({ quoteToken: token });
+          if (cancelled) return;
+          setPreparing(false);
+        }
         const res = await fetch(deckUrl, { cache: 'no-store' });
         if (!res.ok) throw new Error('Could not load the proposal PDF');
         const blob = await res.blob();
@@ -56,11 +73,14 @@ export function ProposalPdfPreview({
         setUrl(objectUrl);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load the PDF');
+      } finally {
+        if (!cancelled) setPreparing(false);
       }
     })();
 
     return () => {
       cancelled = true;
+      setPreparing(false);
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [open, deckUrl]);
@@ -91,9 +111,16 @@ export function ProposalPdfPreview({
           ) : url ? (
             <iframe src={url} title={title} className="h-full w-full" />
           ) : (
-            <div className="flex h-full items-center justify-center gap-2 text-sm text-gray-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Building the proposal PDF…
+            <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-sm text-gray-500">
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {preparing ? 'Creating the pack visual…' : 'Building the proposal PDF…'}
+              </span>
+              {preparing && (
+                <p role="status" aria-live="polite" className="max-w-sm text-xs text-gray-400">
+                  {slow ? PACK_IMAGE_SLOW_MESSAGE : PACK_IMAGE_WORKING_MESSAGE}
+                </p>
+              )}
             </div>
           )}
         </div>

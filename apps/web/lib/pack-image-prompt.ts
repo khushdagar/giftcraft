@@ -360,7 +360,7 @@ Do not place the logo over:
 
 Keep the logo appropriately sized.
 
-Avoid oversized or distracting branding.
+Avoid oversized or distracting branding — but never so small that it cannot be read clearly. Legibility comes first.
 
 The result should look like a real corporate merchandise production sample.
 
@@ -833,14 +833,44 @@ Each product image that follows is a photo of the REAL product the client select
 • Products of a similar type (for example a ceramic mug and a steel travel mug) are DIFFERENT items — show each once, each looking like its own photo.
 • Never add a product that is not in the list. Never show any product twice.`;
 
+/**
+ * Legibility rules for branding on products. With 4–5 products each item is
+ * small in the frame, and "small, neat" placeholders came out as garbled
+ * micro-text — so size, lettering, contrast and visibility are spelled out.
+ */
+function brandingLegibilityRules(hasLogo: boolean): string {
+  const mark = hasLogo ? 'client logo' : '"YOUR LOGO HERE" placeholder';
+  return `BRANDING LEGIBILITY — applies to every ${mark}, on the box and on each branded product, however many products are in the box:
+${
+  hasLogo
+    ? '• Reproduce the supplied logo exactly — same shapes, lettering, spelling and proportions. Never redraw, simplify, stretch or blur it, even when it is small.'
+    : '• Spelled exactly YOUR LOGO HERE — three words, eleven letters, all capitals, in a clean bold sans-serif. Every letter fully formed and evenly spaced: no missing, extra, merged, mirrored or garbled letters.'
+}
+• One solid colour that clearly contrasts with the surface — dark on light surfaces, white or metallic on dark ones.
+• Large enough to read at a glance: on a product it spans roughly one third to one half of the width of the visible face. Never tiny micro-text.${
+    hasLogo
+      ? ''
+      : ' On narrow items (pens, bottles, flasks) stack the three words on two or three short centred lines, or run them along the barrel, instead of shrinking them.'
+  }
+• Placed on a flat or gently curved area that faces the camera. Turn each branded product so that face is fully visible — never wrapped round an edge, cut off, or covered by filler, another product or the box wall.
+• Placed beside the product's own manufacturer branding, never on top of it.
+• Arrange the box so every branded product keeps its branded face unobstructed; give branded items front or clear positions before shrinking their branding.`;
+}
+
 /** Sent right after the box photo (Image 1): turns the job into an edit of that box. */
-export function boxEditLead(productCount: number, hasLogo: boolean, construction: BoxConstruction): string {
+export function boxEditLead(
+  productCount: number,
+  hasLogo: boolean,
+  construction: BoxConstruction,
+  /** Brand colour to recolour the box to (mockup tool). Null keeps the photo colour. */
+  boxColour: string | null = null
+): string {
   // The box's catalogue name is deliberately NOT sent — the model kept printing
   // it ("TOP BOTTOM BOX") on the lid. Only its construction is described.
   return `Image 1 above is the photo of the gift box selected for this pack.
 
 YOUR TASK IS TO EDIT IMAGE 1 — NOT TO DESIGN A NEW BOX.
-Keep this exact box: the same shape, proportions, construction, colour, finish and material as in Image 1.
+Keep this exact box: the same shape, proportions, construction, ${boxColour ? "" : "colour, "}finish and material as in Image 1.${boxColour ? ` RECOLOUR the box to ${boxColour} — the client brand colour — on every outside and inside surface, keeping the same material and finish. This is the only change allowed to the box.` : ""}
 This box is ${construction.type}. Never turn it into a different box style.
 Pack EXACTLY ${productCount} product${productCount === 1 ? '' : 's'} — the ones shown in the following images, nothing else — inside THIS box, nested in white shredded paper filler.
 ${construction.open}
@@ -850,8 +880,10 @@ Apart from the "YOUR LOGO HERE" placeholder or the client logo, any words printe
 ${
     hasLogo
       ? `The client logo is supplied as the LAST image — print it on ${construction.logoFace} in place of any "YOUR LOGO HERE" placeholder from Image 1, and on the products marked for branding in the BRANDING MAP (only those).`
-      : `No client logo is supplied. Keep the box's non-text graphics (such as handling icons) as shown in Image 1, but the ONLY words on the box are ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace}. Also put a small, neat "YOUR LOGO HERE" placeholder on the products marked for branding in the BRANDING MAP (only those). Every placeholder reads exactly "YOUR LOGO HERE" — never add a second line, tagline or made-up words under it. Do not add any other logo or text.`
+      : `No client logo is supplied. Keep the box's non-text graphics (such as handling icons) as shown in Image 1, but the ONLY words on the box are ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace}. Also put a neat, clearly legible "YOUR LOGO HERE" placeholder on the products marked for branding in the BRANDING MAP (only those). Every placeholder reads exactly "YOUR LOGO HERE" — never add a tagline, extra words or made-up text under it. Do not add any other logo or text.`
   }
+
+${brandingLegibilityRules(hasLogo)}
 
 ${PRODUCT_FIDELITY_RULES}
 
@@ -864,8 +896,11 @@ export function boxFinalCheck({
   brandedProducts = [],
   productLabels,
   construction,
+  boxColour = null,
 }: {
   hasLogo?: boolean;
+  /** Brand colour the box is recoloured to. Null keeps the photo colour. */
+  boxColour?: string | null;
   brandedProducts?: string[];
   /** How the selected box is built — its structure rules and logo face. */
   construction: BoxConstruction;
@@ -881,7 +916,7 @@ ${productLabels.map((label, i) => `   ${i + 1}. ${label} — 1 unit`).join('\n')
 • A product shown with its own gift box, sleeve or tin still counts as ONE item — its pieces stay together, never split into extra items.
 • Each item looks like ITS OWN reference photo — same shape, colour, material and details. No generic, restyled or look-alike substitutes.
 • Nothing else inside or around the box: no extra products, cups, loose lids, stationery or props that are not part of a listed product.
-• The ONLY box in the image is the box from Image 1 — same shape, proportions, construction and colour.
+• The ONLY box in the image is the box from Image 1 — same shape, proportions and construction${boxColour ? `, recoloured to ${boxColour}` : " and colour"}.
 • No other box, tray, hamper, basket, bag or packaging of any kind.
 ${construction.checks.map((c) => `• ${c}`).join('\n')}
 • Only ONE box appears in the whole image — even if Image 1 shows the box twice (open and closed).
@@ -895,11 +930,18 @@ ${
       }`
     : `• No client logo. The box keeps the non-text graphics of Image 1, and its ONLY words are ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace} — no other words from Image 1 and no extra lines of text.${
         brandedProducts.length > 0
-          ? ` A small "YOUR LOGO HERE" placeholder is ALSO shown on: ${brandedProducts.join(', ')} — each with its own branding method, once per product. No placeholder or logo on any other product.`
+          ? ` A clearly legible "YOUR LOGO HERE" placeholder is ALSO shown on: ${brandedProducts.join(', ')} — each with its own branding method, once per product. No placeholder or logo on any other product.`
           : ' No logo or placeholder on any product.'
       }`
 }
-• Every "YOUR LOGO HERE" placeholder reads exactly those three words — no second line, tagline, small print or made-up text under or around it.
+• Every "YOUR LOGO HERE" placeholder reads exactly those three words — no tagline, small print, extra words or made-up text under or around it.
+• READ EVERY ${hasLogo ? 'LOGO' : 'PLACEHOLDER'} BACK, one product at a time${
+    brandedProducts.length > 0 ? ` (${brandedProducts.join(', ')})` : ''
+  }: ${
+    hasLogo
+      ? 'it matches the supplied logo exactly'
+      : 'it spells Y-O-U-R L-O-G-O H-E-R-E with every letter crisp and correct'
+  }, it is big enough to read at a glance, it contrasts with the surface, it faces the camera and nothing covers it. If any one is tiny, blurred, misspelled, warped or partly hidden, enlarge it or turn/reposition that product and fix it before finishing.
 • Count the ${hasLogo ? 'client logos' : '"YOUR LOGO HERE" placeholders'}: exactly ${1 + brandedProducts.length} in the whole image — ONE on ${construction.logoFace}${
     brandedProducts.length > 0 ? ' and one on each branded product listed above' : ''
   }. None on inner walls, the inside of a lid, the front of a tray or any other surface of the box.
@@ -916,7 +958,7 @@ export interface PromptProduct {
   /** Catalogue material (e.g. "Stainless Steel") — helps keep shape and finish true. */
   material?: string | null;
   /** Set only when the catalogue gives the product a branding method — it then gets the client logo. */
-  branding?: { technique: string; position?: string | null } | null;
+  branding?: { technique: string; position?: string | null; logoColour?: string | null } | null;
 }
 
 /** Product-type words used to spot two similar items that must not be merged or duplicated. */
@@ -966,12 +1008,15 @@ export function buildPackImagePrompt({
   boxDescription,
   hasBoxImage,
   hasLogo = false,
+  boxColour = null,
   products,
 }: {
   /** Used only to work out the box construction — never put in the prompt (the model printed it on the lid). */
   boxName?: string | null;
   boxDescription?: string | null;
   hasBoxImage: boolean;
+  /** Brand colour for the box (mockup tool). Null keeps the colour of the box photo. */
+  boxColour?: string | null;
   /** A client logo image is sent last — it goes on the box lid only. */
   hasLogo?: boolean;
   products: PromptProduct[];
@@ -1008,8 +1053,10 @@ export function buildPackImagePrompt({
       .map(
         (p) =>
           `• ${p.label} — ${p.branding!.technique}${
+            p.branding!.logoColour ? `, logo colour: ${p.branding!.logoColour} (use exactly this colour)` : ''
+          }${
             p.branding!.position ? `, position: ${p.branding!.position}` : ', in its most natural visible branding area'
-          } (realistic ${p.branding!.technique.toLowerCase()} that follows the product surface, appropriately sized)`
+          } (realistic ${p.branding!.technique.toLowerCase()} that follows the product surface, sized to read clearly at a glance)`
       ),
   ];
   if (applyTo.length === 0) applyTo.push('• Nothing — no surface in this pack is marked for branding.');
@@ -1025,14 +1072,16 @@ export function buildPackImagePrompt({
     .map(
       (p) =>
         `• ${p.label} — "YOUR LOGO HERE" as ${p.branding!.technique.toLowerCase()}${
+          p.branding!.logoColour ? `, in ${p.branding!.logoColour}` : ''
+        }${
           p.branding!.position ? `, position: ${p.branding!.position}` : ', in its most natural visible branding area'
-        } (small, clean, following the product surface)`
+        } (clean, crisp and clearly legible, following the product surface)`
     );
   if (placeholderOn.length === 0) placeholderOn.push('• Nothing — no product in this pack is marked for branding.');
 
   const branding = logoImageNo
     ? `BRAND LOGO:
-Use the uploaded client logo (Image ${logoImageNo}) exactly — do not redraw, recolour, distort or approximate it.
+Use the uploaded client logo (Image ${logoImageNo}) exactly — do not redraw, distort or approximate it. ${products.some((p) => p.branding?.logoColour) ? 'Keep its original colours, EXCEPT on products where the BRANDING MAP names a logo colour — there render the very same logo shape in that single colour (as engraving, foil or one-colour print would).' : 'Do not recolour it.'}
 
 BRANDING MAP:
 
@@ -1042,20 +1091,24 @@ ${applyTo.join('\n')}
 DO NOT apply the logo to:
 ${skipLogo.join('\n')}
 
-Angle the box so ${construction.logoFace} and the logo on it are clearly visible to the camera.`
+Angle the box so ${construction.logoFace} and the logo on it are clearly visible to the camera.
+
+${brandingLegibilityRules(true)}`
     : `BRAND LOGO:
 No client logo supplied — a "YOUR LOGO HERE" placeholder is used instead, showing where the client's logo will go.
 
 BRANDING MAP:
 The box shows ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace} and keeps the non-text graphics of the box reference. No other words from the box photo appear.
 
-Show a small, neat "YOUR LOGO HERE" placeholder on:
+Show a neat, clearly legible "YOUR LOGO HERE" placeholder on:
 ${placeholderOn.join('\n')}
 
 DO NOT put any logo or placeholder on:
 ${skipLogo.join('\n')}
 
-Preserve the existing manufacturer branding visible in each product reference.`;
+Preserve the existing manufacturer branding visible in each product reference.
+
+${brandingLegibilityRules(false)}`;
 
   // Catalogue box photos are studio shots (coloured backdrop, "YOUR LOGO HERE"
   // mock-ups) — without these rules the model recoloured the box to the
@@ -1075,9 +1128,13 @@ Preserve the existing manufacturer branding visible in each product reference.`;
         .join('\n')
     : 'No box reference supplied — use a premium rigid gift box with a separate lid.';
 
-  const boxColour = hasBoxImage
-    ? 'Exactly the colour and finish of the box itself in Image 1 — ignore the photo background. Never recolour the box to match the background.'
-    : 'White by default.';
+  const boxColourLine = hasBoxImage
+    ? boxColour
+      ? `${boxColour} — the client brand colour. Recolour the whole box (outside and inside) to this colour, keeping the material, finish, shape and construction of the box in Image 1. Ignore the photo background.`
+      : 'Exactly the colour and finish of the box itself in Image 1 — ignore the photo background. Never recolour the box to match the background.'
+    : boxColour
+      ? `${boxColour} — the client brand colour.`
+      : 'White by default.';
 
   return `${MASTER_PROMPT}
 
@@ -1092,7 +1149,7 @@ BOX:
 ${box}
 
 BOX COLOUR:
-${boxColour}
+${boxColourLine}
 
 ${branding}
 
@@ -1119,6 +1176,15 @@ Keep every product fully visible and uncropped; the box's lid, sleeve or flap ma
 PRODUCT ARRANGEMENT:
 Create the most premium and visually balanced arrangement possible
 while keeping every supplied product recognizable and physically realistic.
+Pack it the way a professional gift stylist would by hand: products sit snugly side by side on the filler, aligned to the box edges or fanned with clear intent, labels and logos facing the camera, tall items at the back and small or flat items in front. Nothing floats, tilts at random, sinks through the filler, overlaps so that another product is hidden, or pokes through the box walls. Every product rests with real weight and a soft contact shadow.
+
+FINAL LOOK — A REAL PHOTOGRAPH, NOT AN AI RENDER:
+Before finishing, plan the layout, then check the result against this list.
+• It must look like a photo taken by a human product photographer in a studio on a full-frame camera (about 50–85mm, f/8): one large softbox key light from the upper left, gentle fill, natural falloff, true-to-life colour.
+• Real material behaviour — paper fibre and board edges on the box, brushed or polished metal, fabric weave, matte versus gloss — with tiny natural imperfections. No plastic sheen, waxy smoothness, over-sharpening, HDR glow or airbrushed surfaces.
+• All printed text, logos and labels are crisp, correctly spelled and follow the surface they are printed on — never warped, smeared, duplicated or invented.
+• Straight, believable geometry: box walls are parallel, lids and corners are square, product proportions match their reference photos and their real sizes relative to each other.
+• Clean and tidy: no stray objects, no clutter, no repeated or merged products, no extra hands, props or decorations.
 
 NO ADDITIONAL PRODUCTS.
 NO UNREQUESTED BRANDING.

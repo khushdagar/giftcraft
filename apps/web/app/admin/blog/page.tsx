@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Edit2, Plus, Star, ExternalLink, EyeOff, MessageCircle, Users } from 'lucide-react';
 import { formatPostDate } from '@/lib/blog';
 import { DeletePostButton } from '@/components/admin/blog/delete-post-button';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,20 +17,28 @@ const STATUS_STYLES: Record<string, string> = {
   archived: 'bg-rose-100 text-rose-700',
 };
 
-export default async function AdminBlogPage() {
+export default async function AdminBlogPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const session = await auth();
   if (!session || session.user.role !== 'super_admin') redirect('/');
 
-  const [posts, pendingComments] = await Promise.all([
+  // Header counts come from the database, not from the visible page.
+  const { page, skip, take } = adminPaging(searchParams);
+  const [posts, pendingComments, total, published, drafts] = await Promise.all([
     prisma.blogPost.findMany({
       include: { category: { select: { name: true } } },
       orderBy: [{ createdAt: 'desc' }],
+      skip,
+      take,
     }),
     prisma.blogComment.count({ where: { status: 'pending' } }),
+    prisma.blogPost.count(),
+    prisma.blogPost.count({ where: { status: 'published' } }),
+    prisma.blogPost.count({ where: { status: 'draft' } }),
   ]);
-
-  const published = posts.filter((p) => p.status === 'published').length;
-  const drafts = posts.filter((p) => p.status === 'draft').length;
 
   return (
     <>
@@ -38,7 +47,7 @@ export default async function AdminBlogPage() {
           <div>
             <h1 className="text-3xl font-normal tracking-tight text-ink">Blog</h1>
             <p className="mt-1 text-sm text-ink-2">
-              {posts.length} post{posts.length !== 1 ? 's' : ''} · {published} published · {drafts} draft
+              {total} post{total !== 1 ? 's' : ''} · {published} published · {drafts} draft
               {drafts !== 1 ? 's' : ''}
             </p>
           </div>
@@ -159,6 +168,9 @@ export default async function AdminBlogPage() {
           </table>
         </div>
       )}
+      <div className="mt-4">
+        <AdminPagination basePath="/admin/blog" page={page} total={total} searchParams={searchParams} noun="posts" />
+      </div>
     </>
   );
 }

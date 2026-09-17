@@ -1,11 +1,12 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2, Mail, Phone, FileText, RefreshCw, Send, Download, ChevronDown, ChevronUp, Eye, EyeOff, Search, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ProposalBuilder } from '@/components/admin/proposals/proposal-builder';
 import { ProposalPdfPreview } from './proposal-pdf-preview';
+import { AdminPager, ADMIN_PAGE_SIZE } from '@/components/admin/admin-pagination';
 
 interface WebsiteEnquiry {
   id: string;
@@ -303,6 +304,14 @@ export function EnquiriesUnifiedTable({
   const [showHidden, setShowHidden] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
 
+  // Only one page of rows is rendered at a time (each row is heavy: status
+  // menus, proposal chips, expandable detail). Search, tabs and bulk-select
+  // still work across ALL rows; changing any filter returns to page 1.
+  const [pageNo, setPageNo] = useState(1);
+  useEffect(() => {
+    setPageNo(1);
+  }, [tab, search, showHidden]);
+
   const toggleSelect = (key: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -515,6 +524,15 @@ export function EnquiriesUnifiedTable({
   );
   const selectedDownloads = visibleDownloads.filter((d) => selected.has(`dl-${d.id}`));
 
+  // The slice actually rendered. A page emptied by deletes falls back to the last one.
+  const pageOf = <T,>(list: T[]): T[] => {
+    const pages = Math.max(1, Math.ceil(list.length / ADMIN_PAGE_SIZE));
+    const current = Math.min(pageNo, pages);
+    return list.slice((current - 1) * ADMIN_PAGE_SIZE, current * ADMIN_PAGE_SIZE);
+  };
+  const pageRows = pageOf(rows);
+  const pageDownloads = pageOf(visibleDownloads);
+
   const TABS: { id: Tab; label: string; count: number | null }[] = [
     { id: 'website', label: 'Enquiries', count: websiteRows.length },
     { id: 'ghl', label: 'GHL Entries', count: ghlLeads.length },
@@ -664,7 +682,7 @@ export function EnquiriesUnifiedTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
-                {visibleDownloads.map((d) => (
+                {pageDownloads.map((d) => (
                   <tr key={d.id} className="align-top hover:bg-gray-50">
                     <td className="px-3 py-3">
                       <input
@@ -721,6 +739,9 @@ export function EnquiriesUnifiedTable({
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="mt-3">
+            <AdminPager page={pageNo} total={visibleDownloads.length} onPageChange={setPageNo} noun="downloads" />
           </div>
           </>
         )
@@ -820,7 +841,7 @@ export function EnquiriesUnifiedTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {rows.map((row) => {
+              {pageRows.map((row) => {
                 const proposal = row.email ? proposals[row.email.toLowerCase()] : undefined;
                 return (
                   <Fragment key={row.key}>
@@ -1109,6 +1130,9 @@ export function EnquiriesUnifiedTable({
               })}
             </tbody>
           </table>
+        </div>
+        <div className="mt-3">
+          <AdminPager page={pageNo} total={rows.length} onPageChange={setPageNo} noun="enquiries" />
         </div>
         </>
       )}

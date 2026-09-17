@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { renderProposalDeck } from '@/lib/proposal-deck';
+import { ensureQuotePackImage } from '@/lib/pack-image-service';
 
 // Images are downloaded per request, so this route must never be statically
 // rendered or cached — each quote resolves to a different deck.
@@ -33,7 +34,17 @@ export async function GET(
       return new Response('Quote expired', { status: 410 });
     }
 
-    const buffer = await renderProposalDeck(quote.payload as any, {
+    // The UI prepares the AI pack image first (POST …/pack-image) so it can
+    // explain the wait. A direct hit — an emailed link, a bookmark — skips that
+    // step, so make sure here too. Instant when the image already exists, and
+    // never fatal: without it the deck just omits the pack photo.
+    const packImageUrl = await ensureQuotePackImage(quote.id).catch(() => null);
+    const payload = {
+      ...(quote.payload as any),
+      ...(packImageUrl ? { packImageUrl } : {}),
+    };
+
+    const buffer = await renderProposalDeck(payload, {
       reference: `#${quote.id.slice(0, 8).toUpperCase()}`,
       validUntil: quote.expiresAt,
       companyName: quote.company?.name || quote.createdBy?.company?.name || null,

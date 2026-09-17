@@ -10,6 +10,12 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { validateEmail, validateName, validatePhone } from '@/lib/validation';
+import {
+  preparePackImage,
+  useSlowNotice,
+  PACK_IMAGE_WORKING_MESSAGE,
+  PACK_IMAGE_SLOW_MESSAGE,
+} from '@/lib/proposal-progress';
 
 // Remembered guest details so a returning visitor isn't asked twice.
 const LEAD_STORAGE_KEY = 'givoo-proposal-lead';
@@ -70,6 +76,11 @@ export function ProposalDownloadButton({
   const [error, setError] = useState('');
   // 0 = idle, 1-100 = deck is being prepared/downloaded (drives the button fill).
   const [progress, setProgress] = useState(0);
+  // True while the AI pack image is being generated (first download only — it
+  // is kept on the quote/order afterwards). Mirrored in a ref for the rAF loop.
+  const [preparing, setPreparing] = useState(false);
+  const preparingRef = useRef(false);
+  const slow = useSlowNotice(preparing);
   const [form, setForm] = useState<LeadDetails>({
     name: '',
     email: '',
@@ -102,7 +113,11 @@ export function ProposalDownloadButton({
 
       // Below 100 the target drifts upward on its own, so the fill keeps
       // moving even while the server is still building the PDF.
-      if (target.current < 90) target.current += (90 - target.current) * 0.55 * dt;
+      // While the AI pack image generates (20–40s) it creeps slowly toward the
+      // halfway mark instead of racing to 90% and then sitting still.
+      const cap = preparingRef.current ? 55 : 90;
+      const pull = preparingRef.current ? 0.05 : 0.55;
+      if (target.current < cap) target.current += (cap - target.current) * pull * dt;
 
       const gap = target.current - shown.current;
       if (gap > 0.05) {
@@ -140,6 +155,18 @@ export function ProposalDownloadButton({
     setProgress(0.1);
     animate();
     try {
+      // Step 1 — the same AI pack visual an admin-built proposal carries.
+      // Instant when the quote/order already has one; never blocks the deck.
+      preparingRef.current = true;
+      setPreparing(true);
+      try {
+        await preparePackImage({ quoteToken, orderId });
+      } finally {
+        preparingRef.current = false;
+        setPreparing(false);
+      }
+
+      // Step 2 — the deck itself.
       const res = await fetch(deckUrl);
       if (!res.ok) throw new Error('deck request failed');
 
@@ -269,15 +296,22 @@ export function ProposalDownloadButton({
   };
 
   const downloading = progress > 0;
+  const workingLabel = preparing ? 'Creating pack visual…' : 'Preparing deck…';
+  // Explains the wait while the AI image generates; switches wording when slow.
+  const waitMessage = preparing
+    ? slow
+      ? PACK_IMAGE_SLOW_MESSAGE
+      : PACK_IMAGE_WORKING_MESSAGE
+    : '';
   const mainLabel = downloading
     ? progress >= 100
       ? 'Downloaded'
-      : 'Preparing deck…'
+      : workingLabel
     : label || 'Download Proposal Deck';
   const dialogLabel = downloading
     ? progress >= 100
       ? 'Downloaded'
-      : 'Preparing deck…'
+      : workingLabel
     : busy
       ? 'Starting download…'
       : 'Download Deck';
@@ -309,6 +343,11 @@ export function ProposalDownloadButton({
             </span>
           )}
         </button>
+        {waitMessage && !open && (
+          <p role="status" aria-live="polite" className="mt-2 max-w-xs text-xs leading-relaxed text-[#6B6B63]">
+            {waitMessage}
+          </p>
+        )}
         {error && !open && <p className="mt-2 text-xs text-red-600">{error}</p>}
       </div>
 
@@ -355,6 +394,11 @@ export function ProposalDownloadButton({
               className={inputClass}
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
+            {waitMessage && (
+              <p role="status" aria-live="polite" className="text-xs leading-relaxed text-[#6B6B63]">
+                {waitMessage}
+              </p>
+            )}
             <button
               type="submit"
               disabled={busy}
