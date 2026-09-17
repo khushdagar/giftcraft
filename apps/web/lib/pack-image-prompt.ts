@@ -858,13 +858,19 @@ ${
 }
 
 /** Sent right after the box photo (Image 1): turns the job into an edit of that box. */
-export function boxEditLead(productCount: number, hasLogo: boolean, construction: BoxConstruction): string {
+export function boxEditLead(
+  productCount: number,
+  hasLogo: boolean,
+  construction: BoxConstruction,
+  /** Brand colour to recolour the box to (mockup tool). Null keeps the photo colour. */
+  boxColour: string | null = null
+): string {
   // The box's catalogue name is deliberately NOT sent — the model kept printing
   // it ("TOP BOTTOM BOX") on the lid. Only its construction is described.
   return `Image 1 above is the photo of the gift box selected for this pack.
 
 YOUR TASK IS TO EDIT IMAGE 1 — NOT TO DESIGN A NEW BOX.
-Keep this exact box: the same shape, proportions, construction, colour, finish and material as in Image 1.
+Keep this exact box: the same shape, proportions, construction, ${boxColour ? "" : "colour, "}finish and material as in Image 1.${boxColour ? ` RECOLOUR the box to ${boxColour} — the client brand colour — on every outside and inside surface, keeping the same material and finish. This is the only change allowed to the box.` : ""}
 This box is ${construction.type}. Never turn it into a different box style.
 Pack EXACTLY ${productCount} product${productCount === 1 ? '' : 's'} — the ones shown in the following images, nothing else — inside THIS box, nested in white shredded paper filler.
 ${construction.open}
@@ -890,8 +896,11 @@ export function boxFinalCheck({
   brandedProducts = [],
   productLabels,
   construction,
+  boxColour = null,
 }: {
   hasLogo?: boolean;
+  /** Brand colour the box is recoloured to. Null keeps the photo colour. */
+  boxColour?: string | null;
   brandedProducts?: string[];
   /** How the selected box is built — its structure rules and logo face. */
   construction: BoxConstruction;
@@ -907,7 +916,7 @@ ${productLabels.map((label, i) => `   ${i + 1}. ${label} — 1 unit`).join('\n')
 • A product shown with its own gift box, sleeve or tin still counts as ONE item — its pieces stay together, never split into extra items.
 • Each item looks like ITS OWN reference photo — same shape, colour, material and details. No generic, restyled or look-alike substitutes.
 • Nothing else inside or around the box: no extra products, cups, loose lids, stationery or props that are not part of a listed product.
-• The ONLY box in the image is the box from Image 1 — same shape, proportions, construction and colour.
+• The ONLY box in the image is the box from Image 1 — same shape, proportions and construction${boxColour ? `, recoloured to ${boxColour}` : " and colour"}.
 • No other box, tray, hamper, basket, bag or packaging of any kind.
 ${construction.checks.map((c) => `• ${c}`).join('\n')}
 • Only ONE box appears in the whole image — even if Image 1 shows the box twice (open and closed).
@@ -949,7 +958,7 @@ export interface PromptProduct {
   /** Catalogue material (e.g. "Stainless Steel") — helps keep shape and finish true. */
   material?: string | null;
   /** Set only when the catalogue gives the product a branding method — it then gets the client logo. */
-  branding?: { technique: string; position?: string | null } | null;
+  branding?: { technique: string; position?: string | null; logoColour?: string | null } | null;
 }
 
 /** Product-type words used to spot two similar items that must not be merged or duplicated. */
@@ -999,12 +1008,15 @@ export function buildPackImagePrompt({
   boxDescription,
   hasBoxImage,
   hasLogo = false,
+  boxColour = null,
   products,
 }: {
   /** Used only to work out the box construction — never put in the prompt (the model printed it on the lid). */
   boxName?: string | null;
   boxDescription?: string | null;
   hasBoxImage: boolean;
+  /** Brand colour for the box (mockup tool). Null keeps the colour of the box photo. */
+  boxColour?: string | null;
   /** A client logo image is sent last — it goes on the box lid only. */
   hasLogo?: boolean;
   products: PromptProduct[];
@@ -1041,6 +1053,8 @@ export function buildPackImagePrompt({
       .map(
         (p) =>
           `• ${p.label} — ${p.branding!.technique}${
+            p.branding!.logoColour ? `, logo colour: ${p.branding!.logoColour} (use exactly this colour)` : ''
+          }${
             p.branding!.position ? `, position: ${p.branding!.position}` : ', in its most natural visible branding area'
           } (realistic ${p.branding!.technique.toLowerCase()} that follows the product surface, sized to read clearly at a glance)`
       ),
@@ -1058,6 +1072,8 @@ export function buildPackImagePrompt({
     .map(
       (p) =>
         `• ${p.label} — "YOUR LOGO HERE" as ${p.branding!.technique.toLowerCase()}${
+          p.branding!.logoColour ? `, in ${p.branding!.logoColour}` : ''
+        }${
           p.branding!.position ? `, position: ${p.branding!.position}` : ', in its most natural visible branding area'
         } (clean, crisp and clearly legible, following the product surface)`
     );
@@ -1065,7 +1081,7 @@ export function buildPackImagePrompt({
 
   const branding = logoImageNo
     ? `BRAND LOGO:
-Use the uploaded client logo (Image ${logoImageNo}) exactly — do not redraw, recolour, distort or approximate it.
+Use the uploaded client logo (Image ${logoImageNo}) exactly — do not redraw, distort or approximate it. ${products.some((p) => p.branding?.logoColour) ? 'Keep its original colours, EXCEPT on products where the BRANDING MAP names a logo colour — there render the very same logo shape in that single colour (as engraving, foil or one-colour print would).' : 'Do not recolour it.'}
 
 BRANDING MAP:
 
@@ -1112,9 +1128,13 @@ ${brandingLegibilityRules(false)}`;
         .join('\n')
     : 'No box reference supplied — use a premium rigid gift box with a separate lid.';
 
-  const boxColour = hasBoxImage
-    ? 'Exactly the colour and finish of the box itself in Image 1 — ignore the photo background. Never recolour the box to match the background.'
-    : 'White by default.';
+  const boxColourLine = hasBoxImage
+    ? boxColour
+      ? `${boxColour} — the client brand colour. Recolour the whole box (outside and inside) to this colour, keeping the material, finish, shape and construction of the box in Image 1. Ignore the photo background.`
+      : 'Exactly the colour and finish of the box itself in Image 1 — ignore the photo background. Never recolour the box to match the background.'
+    : boxColour
+      ? `${boxColour} — the client brand colour.`
+      : 'White by default.';
 
   return `${MASTER_PROMPT}
 
@@ -1129,7 +1149,7 @@ BOX:
 ${box}
 
 BOX COLOUR:
-${boxColour}
+${boxColourLine}
 
 ${branding}
 

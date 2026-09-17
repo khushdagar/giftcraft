@@ -24,8 +24,37 @@ const imageSelect = {
 /** The generator accepts at most this many products in one shot. */
 export const PACK_IMAGE_MAX_PRODUCTS = 20;
 
+/** One row of the mockup tool's manual BRANDING MAP. */
+export interface BrandingRule {
+  /** true = apply the logo, false = never apply it. No rule = follow the catalogue. */
+  apply: boolean;
+  /** Free text, e.g. "Laser engraving". Falls back to the catalogue method. */
+  technique?: string | null;
+  /** e.g. "white", "gold foil", "#1A3C6E". */
+  logoColour?: string | null;
+  /** e.g. "front centre", "cap". Falls back to the catalogue position. */
+  position?: string | null;
+}
+
+/** A product that is not in the catalogue — an uploaded reference photo plus a name. */
+export interface CustomPackItem {
+  /** Client-side key, used to address this item in the branding map. */
+  key: string;
+  name: string;
+  /** Must be on our own CDN (uploaded through /api/upload). */
+  imageUrl: string;
+}
+
+const BEST_FIT_TECHNIQUE = 'Best-fit branding method for its material';
+
 export interface CreatePackImageInput {
   productIds: string[];
+  /** Uploaded, non-catalogue products (mockup tool). Packed after the catalogue products. */
+  customItems?: CustomPackItem[];
+  /** Manual branding map keyed by product id or custom item key. Overrides the catalogue. */
+  brandingMap?: Record<string, BrandingRule>;
+  /** Brand colour for the box. Omit to keep the colour of the box photo. */
+  boxColour?: string | null;
   /** Packaging product id; a `<id>-<size>` builder snapshot id is accepted. */
   boxId?: string | null;
   /** Client logo — only URLs on our own CDN are used (it is fetched server-side). */
@@ -71,18 +100,39 @@ export async function createPackImage(input: CreatePackImageInput): Promise<stri
         })
       : null,
   ]);
-  if (products.length === 0) throw new PackImageError('No valid products selected');
+  // Reference photos are downloaded server-side, so only our own CDN is accepted.
+  const { cdnEndpoint } = getBucketAndCdn();
+  const onCdn = (url?: string | null) => !!url && url.startsWith(`${cdnEndpoint}/`);
+  const logoUrl = onCdn(input.logoUrl) ? input.logoUrl! : null;
 
   // Keep the pick order — the prompt lists items in this order.
   const byId = new Map(products.map((p) => [p.id, p]));
   const ordered = productIds.map((id) => byId.get(id)).filter((p) => !!p);
+  const customItems = (input.customItems ?? [])
+    .filter((c) => c.name.trim() && onCdn(c.imageUrl))
+    .slice(0, Math.max(0, PACK_IMAGE_MAX_PRODUCTS - ordered.length));
+  if (ordered.length + customItems.length === 0) throw new PackImageError('No valid products selected');
 
-  // The logo is downloaded server-side, so only our own CDN is accepted.
-  const { cdnEndpoint } = getBucketAndCdn();
-  const logoUrl = input.logoUrl?.startsWith(`${cdnEndpoint}/`) ? input.logoUrl : null;
+  // Manual branding map (mockup tool) wins over the catalogue branding method.
+  const clean = (v?: string | null) => v?.replace(/s+/g, ' ').trim().slice(0, 80) || null;
+  const resolveBranding = (
+    key: string,
+    catalogue: { technique: string; position?: string | null } | null
+  ) => {
+    const rule = input.brandingMap?.[key];
+    if (!rule) return catalogue;
+    if (!rule.apply) return null;
+    return {
+      technique: clean(rule.technique) ?? catalogue?.technique ?? BEST_FIT_TECHNIQUE,
+      position: clean(rule.position) ?? catalogue?.position ?? null,
+      logoColour: clean(rule.logoColour),
+    };
+  };
+  const boxColour = clean(input.boxColour);
 
   const raw = await generatePackImage({
     logoUrl,
+    boxColour,
     box: box
       ? {
           name: box.name,
@@ -90,7 +140,8 @@ export async function createPackImage(input: CreatePackImageInput): Promise<stri
           imageUrl: box.images[0]?.url,
         }
       : null,
-    products: ordered.map((p) => ({
+    products: [
+      ...ordered.map((p) => ({
       name: p.name,
       brand: p.brand,
       material: p.material,
@@ -98,15 +149,25 @@ export async function createPackImage(input: CreatePackImageInput): Promise<stri
       description: stripHtml(p.descriptionShort || '').replace(/\s+/g, ' ').trim().slice(0, 240) || null,
       size: formatSizeCm(p.dimensionL, p.dimensionW, p.dimensionH),
       imageUrl: p.images[0]?.url,
-      // Only products with a branding method get the client logo.
-      branding:
+      // Only products with a branding method get the client logo — unless the
+      // manual branding map says otherwise.
+      branding: resolveBranding(
+        p.id,
         p.printingTechnique && p.printingTechnique !== 'none'
           ? {
               technique: PRINTING_TECHNIQUE_LABELS[p.printingTechnique] ?? p.printingTechnique,
               position: p.printingPosition,
             }
-          : null,
-    })),
+          : null
+      ),
+      })),
+      // Uploaded products: no catalogue data, so branded only when the map says so.
+      ...customItems.map((c) => ({
+        name: c.name.trim().slice(0, 120),
+        imageUrl: c.imageUrl,
+        branding: resolveBranding(c.key, null),
+      })),
+    ],
   });
 
   // JPEG keeps the deck PDF light; 1600px is plenty for a half-page A4 hero.
@@ -125,7 +186,7 @@ export async function createPackImage(input: CreatePackImageInput): Promise<stri
         packLabel: input.packLabel?.trim() || null,
         companyName: input.companyName?.trim() || null,
         boxName: box?.name ?? null,
-        productNames: ordered.map((p) => p.name),
+        productNames: [...ordered.map((p) => p.name), ...customItems.map((c) => c.name.trim())],
         logoUrl,
         model: PACK_IMAGE_MODEL,
         createdById: input.createdById ?? null,

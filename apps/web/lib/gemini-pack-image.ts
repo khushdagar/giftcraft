@@ -44,7 +44,7 @@ export interface PackImageItem {
   /** Real size, e.g. "7 × 7 × 24 cm (L × W × H)" — pins shape and relative scale. */
   size?: string | null;
   /** Catalogue branding method — only products with one receive the client logo. */
-  branding?: { technique: string; position?: string | null } | null;
+  branding?: { technique: string; position?: string | null; logoColour?: string | null } | null;
 }
 
 export class PackImageError extends Error {}
@@ -96,11 +96,14 @@ export async function generatePackImage({
   box,
   products,
   logoUrl,
+  boxColour = null,
 }: {
   box: PackImageItem | null;
   products: PackImageItem[];
   /** Client logo — printed on the box lid. Omit to keep the box artwork as photographed. */
   logoUrl?: string | null;
+  /** Brand colour for the box (mockup tool). Omit to keep the colour of the box photo. */
+  boxColour?: string | null;
 }): Promise<Buffer> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new PackImageError('GEMINI_API_KEY is not configured');
@@ -125,6 +128,7 @@ export async function generatePackImage({
     boxDescription: box?.description ?? null,
     hasLogo,
     hasBoxImage: !!boxPart,
+    boxColour,
     products: products.map((p, i) => ({
       label: p.brand ? `${p.name} (${p.brand})` : p.name,
       hasImage: !!productParts[i],
@@ -144,7 +148,7 @@ export async function generatePackImage({
   const parts: ({ text: string } | InlinePart)[] = [];
   let imageNo = 0;
   if (boxPart) {
-    parts.push(boxPart, { text: boxEditLead(products.length, hasLogo, construction) });
+    parts.push(boxPart, { text: boxEditLead(products.length, hasLogo, construction, boxColour) });
     imageNo = 1;
   }
   productParts.forEach((part, i) => {
@@ -178,7 +182,7 @@ If the photo shows several units or colour variants, use only one of them. A lid
   }
   parts.push({ text: prompt });
   if (boxPart) {
-    parts.push({ text: boxFinalCheck({ hasLogo, brandedProducts: brandedNames, productLabels, construction }) });
+    parts.push({ text: boxFinalCheck({ hasLogo, brandedProducts: brandedNames, productLabels, construction, boxColour }) });
   }
 
   const controller = new AbortController();
