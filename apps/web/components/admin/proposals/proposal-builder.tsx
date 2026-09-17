@@ -58,6 +58,7 @@ interface AddonOption {
   id: string;
   name: string;
   price: number; // per pack
+  sizePrices: Record<string, number>; // optional per-size prices (fillers, linings)
   imageUrl: string | null;
 }
 
@@ -335,6 +336,7 @@ export function ProposalBuilder({
             id: a.id,
             name: a.name,
             price: Number(a.price) || 0,
+            sizePrices: a.sizePrices || {},
             imageUrl: a.imageUrl ?? null,
           }))
         )
@@ -521,7 +523,10 @@ export function ProposalBuilder({
         // like the builder's customize step (1–2 → Small, 3–4 → Medium, 5+ → Large).
         const autoSize = packagingSizeForCount(pack.items.length);
         const boxPrice = box ? priceForSize(box, autoSize) : 0;
-        const addons = addonOptions.filter((a) => pack.addonIds.includes(a.id));
+        // Size-priced add-ons follow the same auto size as the box.
+        const addons = addonOptions
+          .filter((a) => pack.addonIds.includes(a.id))
+          .map((a) => ({ ...a, price: priceForSize(a, autoSize) }));
         const addonsPerPack = addons.reduce((sum, a) => sum + a.price, 0);
         const productsPerPack = pack.items.reduce(
           (sum, it) => sum + tierPrice(it.priceTiers, pack.packQuantity),

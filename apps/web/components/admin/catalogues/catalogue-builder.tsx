@@ -9,6 +9,7 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
+  Eye,
   FileDown,
   ImageIcon,
   LibraryBig,
@@ -475,6 +476,22 @@ export function CatalogueBuilder({ initial }: { initial: EditorCatalogue | null 
     window.location.assign(`/api/admin/catalogues/${id}/pdf`);
   };
 
+  /**
+   * Preview = same as download, but the PDF opens inline in a new tab. The tab
+   * is opened synchronously (before the async save) so popup blockers allow it.
+   */
+  const openPdfPreview = async () => {
+    const tab = window.open('', '_blank');
+    const id = dirty || !savedId ? await save() : savedId;
+    if (!id) {
+      tab?.close();
+      return;
+    }
+    const url = `/api/admin/catalogues/${id}/pdf?inline=1`;
+    if (tab) tab.location.href = url;
+    else window.open(url, '_blank');
+  };
+
   const themeMeta = CATALOGUE_THEMES[form.theme];
 
   return (
@@ -506,6 +523,16 @@ export function CatalogueBuilder({ initial }: { initial: EditorCatalogue | null 
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             {savedId ? (dirty ? 'Save' : 'Saved') : 'Create'}
+          </button>
+          <button
+            type="button"
+            onClick={openPdfPreview}
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            title={dirty || !savedId ? 'Saves your changes, then opens the PDF in a new tab' : 'Opens the PDF in a new tab'}
+          >
+            <Eye className="h-4 w-4" />
+            Preview
           </button>
           <button
             type="button"

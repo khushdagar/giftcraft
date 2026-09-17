@@ -56,11 +56,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       const userId = token.id as string | undefined;
-      if (userId && session.user) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { id: true, role: true, companyId: true },
-        });
+      const email = (token.email ?? session.user?.email) as string | undefined;
+      if ((userId || email) && session.user) {
+        // Look up by the id stored in the JWT, then by email. A JWT issued
+        // before the User row was (re)created, or against another database,
+        // carries a stale id — without the fallback the role stays unset and a
+        // super_admin is treated as a plain customer until they re-login.
+        const select = { id: true, role: true, companyId: true } as const;
+        const dbUser =
+          (userId ? await prisma.user.findUnique({ where: { id: userId }, select }) : null) ??
+          (email ? await prisma.user.findUnique({ where: { email }, select }) : null);
         if (dbUser) {
           session.user.id = dbUser.id;
           session.user.role = dbUser.role;

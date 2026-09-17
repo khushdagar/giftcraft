@@ -9,7 +9,10 @@ export const dynamic = 'force-dynamic';
 const STATIC_PAGES: Array<{ path: string; changefreq: Changefreq; priority: number }> = [
   { path: '/', changefreq: 'daily', priority: 1 },
   { path: '/catalog', changefreq: 'daily', priority: 0.9 },
-  { path: '/builder', changefreq: 'weekly', priority: 0.9 },
+  // /box is the entry point of the gift-pack flow; /builder is step two and is
+  // deliberately NOT listed so /box stays the indexed landing page.
+  { path: '/box', changefreq: 'weekly', priority: 0.9 },
+  { path: '/planner', changefreq: 'monthly', priority: 0.6 },
   { path: '/contact', changefreq: 'monthly', priority: 0.5 },
   { path: '/sell-with-us', changefreq: 'monthly', priority: 0.4 },
   { path: '/faq', changefreq: 'monthly', priority: 0.4 },

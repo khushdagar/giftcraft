@@ -9,7 +9,9 @@ export const maxDuration = 60;
 /**
  * GET /api/admin/catalogues/[id]/pdf — download the catalogue (super_admin).
  */
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  // ?inline=1 opens the PDF in the browser tab (preview) instead of downloading.
+  const inline = new URL(req.url).searchParams.get('inline') === '1';
   try {
     const session = await auth();
     if (!session || session.user.role !== 'super_admin') {
@@ -19,13 +21,20 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     const catalogue = await loadCatalogue({ id: params.id });
     if (!catalogue) return new Response('Catalogue not found', { status: 404 });
 
+    // Timed so the platform logs show how close a large (category) catalogue
+    // gets to the request timeout / memory ceiling.
+    const started = Date.now();
     const buffer = await renderCataloguePdf(catalogue);
+    console.log(
+      `catalogue pdf "${catalogue.slug}": ${catalogue.sections.length} sections, ` +
+        `${(buffer.length / 1024 / 1024).toFixed(1)} MB in ${Date.now() - started}ms`
+    );
 
     return new Response(buffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="givoo-catalogue-${catalogue.slug}.pdf"`,
+        'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="givoo-catalogue-${catalogue.slug}.pdf"`,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });

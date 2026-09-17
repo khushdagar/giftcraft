@@ -440,11 +440,24 @@ async function renderResolved(settings: RenderSettings, resolved: ResolvedSectio
   return renderToBuffer(<CataloguePDF doc={doc} />);
 }
 
+/**
+ * Product image budget (px) for a catalogue of `count` products. Category
+ * sections can pull hundreds of products; every image is held in memory as a
+ * data URI and decoded again by pdfkit, so the budget shrinks as the catalogue
+ * grows to keep the render inside the 1 GB container and the request timeout.
+ */
+export function imageBudgetFor(count: number): number {
+  if (count <= 40) return 640;
+  if (count <= 120) return 480;
+  return 360;
+}
+
 /** A built catalogue (the admin's sections and settings). */
 export async function renderCataloguePdf(catalogue: LoadedCatalogue): Promise<Buffer> {
   const resolved = await resolveSections(toSectionSpecs(catalogue), {
     priceMode: catalogue.priceMode,
   });
+  const totalProducts = resolved.reduce((n, s) => n + s.products.length, 0);
   return renderResolved(
     {
       title: catalogue.title,
@@ -455,6 +468,7 @@ export async function renderCataloguePdf(catalogue: LoadedCatalogue): Promise<Bu
       priceMode: catalogue.priceMode,
       showSku: catalogue.showSku,
       showMoq: catalogue.showMoq,
+      imageMaxPx: imageBudgetFor(totalProducts),
     },
     resolved
   );

@@ -30,6 +30,8 @@ interface Addon {
   id: string;
   name: string;
   price: number;
+  /** Optional per-size prices (fillers, linings) — follow the auto box size. */
+  sizePrices?: Record<string, number> | null;
   description?: string | null;
   imageUrl?: string | null;
 }
@@ -62,6 +64,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
     addons,
     addAddon,
     removeAddon,
+    setAddonPrice,
     cardMessage,
     setCardMessage,
     brandingNotes,
@@ -157,7 +160,7 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
       addAddon({
         id: addon.id,
         name: addon.name,
-        price: addon.price,
+        price: priceForSize(addon, autoSize),
         imageUrl: addon.imageUrl ?? null,
       });
     }
@@ -197,6 +200,16 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSize, packaging?.id, packagingOptions]);
+
+  // Size-priced add-ons (crinkle fill, foam insert, satin lining…) follow the
+  // same auto size as the box: re-price the selected ones when the band changes.
+  useEffect(() => {
+    for (const selected of addons) {
+      const option = addonOptions.find((a) => a.id === selected.id);
+      if (option) setAddonPrice(selected.id, priceForSize(option, autoSize));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSize, addons.length, addonOptions]);
 
   return (
     <div className="space-y-6">
@@ -497,7 +510,8 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
           <div className="flex w-max gap-3">
             {addonOptions.map((addon) => {
               const isSelected = addons.some((a) => a.id === addon.id);
-              const isFree = addon.price === 0;
+              const addonPrice = priceForSize(addon, autoSize);
+              const isFree = addonPrice === 0;
 
               return (
                 <motion.button
@@ -553,10 +567,10 @@ export function Step2Customize({ packagingOptions, addonOptions }: StepProps) {
                     </div>
 
                     {/* Price */}
-                    {addon.price > 0 ? (
+                    {addonPrice > 0 ? (
                       <div>
                         {/* <p className="hidden lg:block text-xs text-ink-3">Add cost</p> */}
-                        <p className="text-sm font-black text-em">+{formatRupees(addon.price)}</p>
+                        <p className="text-sm font-black text-em">+{formatRupees(addonPrice)}</p>
                       </div>
                     ) : (
                       <p className="text-xs font-semibold text-emerald-600">Free</p>
