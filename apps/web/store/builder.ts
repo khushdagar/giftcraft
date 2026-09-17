@@ -147,6 +147,8 @@ export interface BuilderState {
 
   addAddon: (addon: { id: string; name: string; price: number; imageUrl?: string | null }) => void;
   removeAddon: (addonId: string) => void;
+  /** Re-price a selected add-on (size-priced add-ons follow the auto box size). */
+  setAddonPrice: (addonId: string, price: number) => void;
 
   setLogo: (logo: { url: string; name: string } | null) => void;
   setSleeve: (enabled: boolean) => void;
@@ -276,6 +278,12 @@ export const useBuilderStore = create<BuilderState>()(
       removeAddon: (addonId) => {
         const addons = get().addons.filter((a) => a.id !== addonId);
         set({ addons });
+      },
+
+      setAddonPrice: (addonId, price) => {
+        const addons = get().addons;
+        if (!addons.some((a) => a.id === addonId && a.price !== price)) return;
+        set({ addons: addons.map((a) => (a.id === addonId ? { ...a, price } : a)) });
       },
 
       setLogo: (logo) => set({ logo }),

@@ -31,6 +31,13 @@ export async function GET() {
         dimensionH: true,
         priceTiers: { orderBy: { tier: 'asc' }, take: 1, select: { sellPrice: true } },
         images: { where: { isPrimary: true }, take: 1, select: { url: true } },
+        // Optional per-size prices (fillers, linings): same convention as
+        // packaging — size variants carrying a price. The builder applies the
+        // price of the pack's auto-selected box size; `price` is the fallback.
+        variants: {
+          where: { kind: 'size', price: { not: null } },
+          select: { value: true, price: true },
+        },
       },
       orderBy: { sortOrder: 'asc' },
     });
@@ -41,6 +48,9 @@ export async function GET() {
         name: p.name,
         slug: p.slug,
         price: Number(p.priceTiers[0]?.sellPrice ?? 0),
+        sizePrices: Object.fromEntries(
+          p.variants.map((v) => [v.value.trim().toLowerCase(), Number(v.price)])
+        ),
         description: p.descriptionShort ?? '',
         imageUrl: p.images[0]?.url ?? null,
         lengthCm: p.dimensionL,

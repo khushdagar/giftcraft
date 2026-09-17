@@ -40,6 +40,7 @@ interface BuilderContentProps {
     id: string;
     name: string;
     price: number;
+    sizePrices?: Record<string, number> | null;
     description?: string | null;
     imageUrl?: string | null;
   }>;
