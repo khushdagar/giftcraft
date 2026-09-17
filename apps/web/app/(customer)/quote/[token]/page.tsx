@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { formatRupees } from '@/lib/utils';
 import { combinedGst, splitPaymentFee } from '@/lib/pricing-display';
 import { Button } from '@/components/ui/button';
+import { ProposalDownloadButton } from '@/components/checkout/proposal-download-button';
 import Link from 'next/link';
 
 export async function generateMetadata({ params }: { params: { token: string } }) {
@@ -211,16 +212,12 @@ export default async function QuotePage({ params }: { params: { token: string } 
                 </a>
               </Button>
               {/* Slide-style proposal deck, generated from the selected products. */}
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="w-full rounded-md"
-              >
-                <a href={`/api/quotes/${params.token}/deck`} download>
-                  Download Proposal Deck
-                </a>
-              </Button>
+              {/* Same button as checkout: prepares the AI pack visual first and
+                  explains the wait. Classes mirror the outline lg Button. */}
+              <ProposalDownloadButton
+                quoteToken={params.token}
+                className="relative inline-flex h-11 w-full items-center justify-center overflow-hidden rounded-md border border-input bg-background px-8 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground disabled:cursor-default"
+              />
               <Button
                 asChild
                 variant="outline"

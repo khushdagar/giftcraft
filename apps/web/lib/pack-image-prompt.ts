@@ -1119,6 +1119,15 @@ Keep every product fully visible and uncropped; the box's lid, sleeve or flap ma
 PRODUCT ARRANGEMENT:
 Create the most premium and visually balanced arrangement possible
 while keeping every supplied product recognizable and physically realistic.
+Pack it the way a professional gift stylist would by hand: products sit snugly side by side on the filler, aligned to the box edges or fanned with clear intent, labels and logos facing the camera, tall items at the back and small or flat items in front. Nothing floats, tilts at random, sinks through the filler, overlaps so that another product is hidden, or pokes through the box walls. Every product rests with real weight and a soft contact shadow.
+
+FINAL LOOK — A REAL PHOTOGRAPH, NOT AN AI RENDER:
+Before finishing, plan the layout, then check the result against this list.
+• It must look like a photo taken by a human product photographer in a studio on a full-frame camera (about 50–85mm, f/8): one large softbox key light from the upper left, gentle fill, natural falloff, true-to-life colour.
+• Real material behaviour — paper fibre and board edges on the box, brushed or polished metal, fabric weave, matte versus gloss — with tiny natural imperfections. No plastic sheen, waxy smoothness, over-sharpening, HDR glow or airbrushed surfaces.
+• All printed text, logos and labels are crisp, correctly spelled and follow the surface they are printed on — never warped, smeared, duplicated or invented.
+• Straight, believable geometry: box walls are parallel, lids and corners are square, product proportions match their reference photos and their real sizes relative to each other.
+• Clean and tidy: no stray objects, no clutter, no repeated or merged products, no extra hands, props or decorations.
 
 NO ADDITIONAL PRODUCTS.
 NO UNREQUESTED BRANDING.

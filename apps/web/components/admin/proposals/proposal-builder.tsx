@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
+import { useSlowNotice, PACK_IMAGE_SLOW_MESSAGE } from '@/lib/proposal-progress';
 import { FieldError } from '@/components/ui/field-error';
 import { validateEmail } from '@/lib/validation';
 import { downloadImagesStaggered, triggerDownload } from '@/lib/generated-image-download';
@@ -136,7 +137,8 @@ const emptyPack = (n: number): Pack => ({
 const packImageSignature = (p: Pack, logoUrl: string) =>
   // The leading version bumps whenever the prompt/framing changes, so images
   // made with an older prompt are treated as stale and regenerated.
-  ['v10', p.boxId, logoUrl, ...p.items.map((it) => it.id).sort()].join('|');
+  // v11 — Nano Banana 2 (gemini-3.1-flash-image) + hand-styled / real-photo rules.
+  ['v11', p.boxId, logoUrl, ...p.items.map((it) => it.id).sort()].join('|');
 
 const freshPackImage = (p: Pack, logoUrl: string) =>
   p.aiImage && p.aiImage.signature === packImageSignature(p, logoUrl) ? p.aiImage.url : null;
@@ -223,6 +225,8 @@ export function ProposalBuilder({
   const [activeKey, setActiveKey] = useState('pack-1');
   // Packs whose AI pack shot is being generated right now.
   const [generatingKeys, setGeneratingKeys] = useState<string[]>([]);
+  // Generation normally takes 20–40s — say so plainly when it runs longer.
+  const generationSlow = useSlowNotice(generatingKeys.length > 0, 45_000);
   // Autosave only starts once any saved draft has been restored, so the empty
   // first render can't overwrite the draft it is about to load.
   const draftReady = useRef(false);
@@ -1595,12 +1599,14 @@ export function ProposalBuilder({
                         <p className="text-sm font-medium text-gray-900">AI pack image</p>
                         <p className="text-xs text-gray-500">
                           {busy
-                            ? 'Packing the products into the box… this takes 20–40 seconds.'
+                            ? generationSlow
+                              ? PACK_IMAGE_SLOW_MESSAGE
+                              : 'Packing the products into the box… this takes 20–40 seconds.'
                             : fresh
                               ? "Used as the hero image on this pack's page in the PDF."
                               : img
                                 ? 'Box or products changed — it will be regenerated on preview/send.'
-                                : 'Generated automatically on preview/send — or create it now.'}
+                                : 'No image yet. Click "Generate image" to create one now, or it is generated automatically on preview/send.'}
                         </p>
 
                         {/* Client logo — shared by every pack in this proposal */}
@@ -1667,14 +1673,32 @@ export function ProposalBuilder({
                             Open
                           </a>
                         )}
+                        {/* Clear empties the slot so it is obvious the next
+                            click makes a brand-new image. The stored file stays
+                            in Generated Images; only this pack lets go of it. */}
+                        {img && !busy && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPacks((prev) =>
+                                prev.map((p) => (p.key === active.pack.key ? { ...p, aiImage: null } : p))
+                              )
+                            }
+                            title="Remove this image from the pack"
+                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Clear
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => generatePackShot(active.pack)}
                           disabled={busy || active.pack.items.length === 0}
+                          title={img ? 'Replace the current image with a newly generated one' : 'Generate the AI pack image'}
                           className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {img ? <RefreshCw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                          {img ? 'Regenerate' : 'Generate'}
+                          {busy ? 'Generating…' : img ? 'Generate new image' : 'Generate image'}
                         </button>
                       </div>
                     </div>
@@ -1866,7 +1890,9 @@ export function ProposalBuilder({
             <div className="flex items-center justify-center gap-2 py-24 text-sm text-gray-500">
               <Loader2 className="h-4 w-4 animate-spin" />
               {generatingKeys.length > 0
-                ? `Generating AI pack image${generatingKeys.length === 1 ? '' : 's'}… (20–40s each)`
+                ? generationSlow
+                  ? PACK_IMAGE_SLOW_MESSAGE
+                  : `Generating AI pack image${generatingKeys.length === 1 ? '' : 's'}… (20–40s each)`
                 : 'Building the deck…'}
             </div>
           ) : (

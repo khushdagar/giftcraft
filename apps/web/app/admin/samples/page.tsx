@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { SampleStatusUpdater } from './components/sample-status-updater';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 export const revalidate = 60;
 
@@ -12,20 +13,30 @@ const statusColors: Record<string, string> = {
   rejected: 'bg-recessed text-ink-2',
 };
 
-export default async function AdminSamplesPage() {
+export default async function AdminSamplesPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const session = await auth();
 
   if (!session || session.user.role !== 'super_admin') {
     redirect('/');
   }
 
-  const samples = await prisma.sampleOrder.findMany({
-    include: {
-      product: { select: { id: true, name: true, slug: true } },
-      user: { select: { id: true, name: true, email: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const { page, skip, take } = adminPaging(searchParams);
+  const [samples, total] = await Promise.all([
+    prisma.sampleOrder.findMany({
+      include: {
+        product: { select: { id: true, name: true, slug: true } },
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+    }),
+    prisma.sampleOrder.count(),
+  ]);
 
   return (
     <>
@@ -33,7 +44,7 @@ export default async function AdminSamplesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-normal tracking-tight text-ink">Samples</h1>
-            <p className="mt-1 text-sm text-ink-2">{samples.length} sample requests total</p>
+            <p className="mt-1 text-sm text-ink-2">{total} sample requests total</p>
           </div>
         </div>
       </div>
@@ -88,6 +99,9 @@ export default async function AdminSamplesPage() {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4">
+        <AdminPagination basePath="/admin/samples" page={page} total={total} searchParams={searchParams} noun="sample requests" />
       </div>
     </>
   );

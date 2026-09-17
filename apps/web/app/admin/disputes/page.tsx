@@ -3,17 +3,26 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { prisma } from '@/lib/prisma';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 export const revalidate = 60;
 
-export default async function AdminDisputesPage() {
+export default async function AdminDisputesPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const session = await auth();
 
   if (!session || session.user.role !== 'super_admin') {
     redirect('/');
   }
 
+  const { page, skip, take } = adminPaging(searchParams);
+  const total = await prisma.disputeTicket.count();
   const disputes = await prisma.disputeTicket.findMany({
+    skip,
+    take,
     select: {
       id: true,
       subject: true,
@@ -57,7 +66,7 @@ export default async function AdminDisputesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-normal tracking-tight text-ink">Disputes</h1>
-            <p className="mt-1 text-sm text-ink-2">{disputes.length} disputes total</p>
+            <p className="mt-1 text-sm text-ink-2">{total} disputes total</p>
           </div>
         </div>
       </div>
@@ -104,6 +113,9 @@ export default async function AdminDisputesPage() {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4">
+        <AdminPagination basePath="/admin/disputes" page={page} total={total} searchParams={searchParams} noun="disputes" />
       </div>
     </>
   );

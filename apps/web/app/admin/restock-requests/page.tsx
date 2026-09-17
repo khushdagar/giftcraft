@@ -2,25 +2,36 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { NotifiedToggle } from '@/components/admin/restock-requests/notified-toggle';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 export const revalidate = 0;
 
-export default async function AdminRestockRequestsPage() {
+export default async function AdminRestockRequestsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
   const session = await auth();
   if (!session || session.user.role !== 'super_admin') {
     redirect('/');
   }
 
-  const requests = await prisma.restockRequest.findMany({
-    orderBy: [{ notified: 'asc' }, { createdAt: 'desc' }],
-  });
+  const { page, skip, take } = adminPaging(searchParams);
+  const [requests, total] = await Promise.all([
+    prisma.restockRequest.findMany({
+      orderBy: [{ notified: 'asc' }, { createdAt: 'desc' }],
+      skip,
+      take,
+    }),
+    prisma.restockRequest.count(),
+  ]);
 
   return (
     <>
       <div className="mb-8 border-b border-bdr pb-8">
         <h1 className="text-3xl font-normal tracking-tight text-ink">Restock Requests</h1>
         <p className="mt-1 text-sm text-ink-2">
-          {requests.length} customers waiting to hear about an out-of-stock pack item
+          {total} customers waiting to hear about an out-of-stock pack item
         </p>
       </div>
 
@@ -66,6 +77,9 @@ export default async function AdminRestockRequestsPage() {
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4">
+        <AdminPagination basePath="/admin/restock-requests" page={page} total={total} searchParams={searchParams} noun="requests" />
       </div>
     </>
   );

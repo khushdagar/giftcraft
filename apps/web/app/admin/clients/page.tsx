@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Decimal } from '@prisma/client/runtime/library';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +64,7 @@ interface ClientRow {
 export default async function AdminClientsPage({
   searchParams,
 }: {
-  searchParams: { q?: string };
+  searchParams: { q?: string; page?: string };
 }) {
   const session = await auth();
 
@@ -205,13 +206,20 @@ export default async function AdminClientsPage({
     return a.companyName.localeCompare(b.companyName);
   });
 
+  // Client rows are assembled in memory (companies + unlinked buyers merged
+  // with order totals, then searched and sorted), so the page is cut from the
+  // finished list rather than in SQL.
+  const { page, skip, take } = adminPaging(searchParams);
+  const total = clients.length;
+  const pageClients = clients.slice(skip, skip + take);
+
   return (
     <>
       <div className="mb-8 border-b border-bdr pb-8">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-normal tracking-tight text-ink">Clients</h1>
-            <p className="mt-1 text-sm text-ink-2">{clients.length} clients total</p>
+            <p className="mt-1 text-sm text-ink-2">{total} clients total</p>
           </div>
           <div className="flex items-center gap-3">
             <form method="get" className="flex items-center gap-2">
@@ -264,7 +272,7 @@ export default async function AdminClientsPage({
                 </td>
               </tr>
             )}
-            {clients.map((client) => (
+            {pageClients.map((client) => (
               <tr key={client.key} className="hover:bg-canvas">
                 <td className="px-5 py-4">
                   <p className="text-sm font-medium text-ink">{client.companyName}</p>
@@ -309,6 +317,9 @@ export default async function AdminClientsPage({
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4">
+        <AdminPagination basePath="/admin/clients" page={page} total={total} searchParams={searchParams} noun="clients" />
       </div>
     </>
   );

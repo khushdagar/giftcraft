@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { Star } from 'lucide-react';
 import { ReviewActions } from './components/review-actions';
+import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ const statusColors: Record<string, string> = {
 export default async function AdminReviewsPage({
   searchParams,
 }: {
-  searchParams: { status?: string };
+  searchParams: { status?: string; page?: string };
 }) {
   const session = await auth();
 
@@ -29,15 +30,22 @@ export default async function AdminReviewsPage({
     ? statusFilter
     : undefined;
 
-  const [reviews, pendingCount] = await Promise.all([
+  // Paged within the active status filter; the filter links drop `page` so a
+  // new filter always starts on page 1.
+  const where = validFilter ? { status: validFilter as any } : undefined;
+  const { page, skip, take } = adminPaging(searchParams);
+  const [reviews, total, pendingCount] = await Promise.all([
     prisma.review.findMany({
-      where: validFilter ? { status: validFilter as any } : undefined,
+      where,
       include: {
         product: { select: { id: true, name: true, slug: true } },
         user: { select: { id: true, name: true, email: true } },
       },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take,
     }),
+    prisma.review.count({ where }),
     prisma.review.count({ where: { status: 'pending' } }),
   ]);
 
@@ -55,7 +63,7 @@ export default async function AdminReviewsPage({
           <div>
             <h1 className="text-3xl font-normal tracking-tight text-ink">Reviews</h1>
             <p className="mt-1 text-sm text-ink-2">
-              {reviews.length} review{reviews.length === 1 ? '' : 's'}
+              {total} review{total === 1 ? '' : 's'}
               {validFilter ? ` (${validFilter})` : ' total'}
               {pendingCount > 0 && !validFilter && ` — ${pendingCount} awaiting approval`}
             </p>
@@ -161,6 +169,9 @@ export default async function AdminReviewsPage({
             ))}
           </tbody>
         </table>
+      </div>
+      <div className="mt-4">
+        <AdminPagination basePath="/admin/reviews" page={page} total={total} searchParams={searchParams} noun="reviews" />
       </div>
     </>
   );

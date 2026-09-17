@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { renderProposalDeck } from '@/lib/proposal-deck';
 import { canAccessOrder } from '@/lib/order-access';
+import { ensureOrderPackImage } from '@/lib/pack-image-service';
 
 // Product imagery is downloaded per request — never cache this route.
 export const dynamic = 'force-dynamic';
@@ -49,6 +50,10 @@ export async function GET(
     const payload = {
       packQuantity,
       logoUrl: order.logoUrl,
+      // AI pack shot — normally prepared by POST /api/orders/[id]/pack-image so
+      // the UI can explain the wait; ensured here too for direct links. Instant
+      // once it exists, and null (no pack photo) if it cannot be produced.
+      packImageUrl: await ensureOrderPackImage(order.id, session.user.id).catch(() => null),
       address: { company: shipping.company || billing.company || null },
       products: order.items.map((item) => ({
         id: item.productId,
