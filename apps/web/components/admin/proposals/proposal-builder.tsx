@@ -22,6 +22,7 @@ import {
   Sparkles,
   RefreshCw,
   ImagePlus,
+  Pencil,
 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
@@ -32,6 +33,7 @@ import { downloadImagesStaggered, triggerDownload } from '@/lib/generated-image-
 import {
   Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
+import { ManualProductDialog } from './manual-product-dialog';
 
 interface PriceTier {
   minQty: number;
@@ -45,6 +47,8 @@ interface CatalogProduct {
   brand: string | null;
   imageUrl: string | null;
   priceTiers: PriceTier[];
+  /** Typed in by hand for proposals (not in the catalogue) — can be edited from its chip. */
+  proposalOnly?: boolean;
 }
 
 interface BoxOption {
@@ -107,6 +111,7 @@ function toCatalogProduct(p: any): CatalogProduct {
     name: p.name,
     brand: p.brand ?? null,
     imageUrl: p.images?.[0]?.url ?? null,
+    ...(p.proposalOnly ? { proposalOnly: true } : {}),
     priceTiers: (p.priceTiers ?? []).map((t: any) => ({
       minQty: t.minQty,
       maxQty: t.maxQty ?? null,
@@ -251,6 +256,31 @@ export function ProposalBuilder({
       if (draft.message) setMessage(draft.message);
       if (draft.logoUrl) setLogoUrl(draft.logoUrl);
       toast('Unsent draft restored', { description: 'Your pack options were still here.' });
+
+      // Drafts saved before manual products were editable don't carry the
+      // `proposalOnly` marker — ask the server which of these ids are manual.
+      const unmarked = [
+        ...new Set(
+          draft.packs.flatMap((p) => p.items.filter((it) => !it.proposalOnly).map((it) => it.id))
+        ),
+      ];
+      if (unmarked.length > 0) {
+        fetch(`/api/admin/proposals/manual-product?ids=${unmarked.join(',')}`, { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => {
+            const manual = new Set<string>(Array.isArray(d?.ids) ? d.ids : []);
+            if (manual.size === 0) return;
+            setPacks((prev) =>
+              prev.map((p) => ({
+                ...p,
+                items: p.items.map((it) =>
+                  manual.has(it.id) ? { ...it, proposalOnly: true } : it
+                ),
+              }))
+            );
+          })
+          .catch(() => {/* the chips just stay non-editable */});
+      }
     }
     draftReady.current = true;
     // Mount-only: prefill comes from the URL and never changes for a given page.
@@ -306,6 +336,9 @@ export function ProposalBuilder({
   const [curatedPacks, setCuratedPacks] = useState<CuratedPackOption[]>([]);
   // Grid mode: false = catalog products, true = curated packs.
   const [showPacks, setShowPacks] = useState(false);
+  // One-off product typed in by hand — for an item that is not in the catalogue.
+  const [manualProductOpen, setManualProductOpen] = useState(false);
+  const [manualEditId, setManualEditId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/categories')
@@ -1222,7 +1255,22 @@ export function ProposalBuilder({
                               />
                             )}
                           </span>
-                          <span className="truncate">{it.name}</span>
+                          {it.proposalOnly ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setManualEditId(it.id);
+                                setManualProductOpen(true);
+                              }}
+                              className="inline-flex min-w-0 items-center gap-1 underline decoration-dotted underline-offset-2 hover:text-indigo-600"
+                              title="Manual product — click to edit"
+                            >
+                              <span className="truncate">{it.name}</span>
+                              <Pencil className="h-3 w-3 shrink-0" />
+                            </button>
+                          ) : (
+                            <span className="truncate">{it.name}</span>
+                          )}
                           <span className="shrink-0 tabular-nums text-indigo-500">
                             {formatRupees(tierPrice(it.priceTiers, active.pack.packQuantity))}
                           </span>
@@ -1249,6 +1297,17 @@ export function ProposalBuilder({
                         className={`${inputCls} pl-8`}
                       />
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setManualEditId(null);
+                        setManualProductOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-indigo-300 px-2.5 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
+                      title="Add a product that is not in the catalogue — used for proposals only"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Manual product
+                    </button>
                   </div>
 
                   {(categories.length > 0 || curatedPacks.length > 0) && (
@@ -1844,6 +1903,29 @@ export function ProposalBuilder({
           </div>
         </div>
       </div>
+
+      <ManualProductDialog
+        open={manualProductOpen}
+        onOpenChange={setManualProductOpen}
+        editId={manualEditId}
+        onUpdated={(updated) => {
+          // The same product can sit in several options — refresh every copy.
+          const product = toCatalogProduct(updated);
+          setPacks((prev) =>
+            prev.map((p) => ({
+              ...p,
+              items: p.items.map((it) => (it.id === product.id ? product : it)),
+            }))
+          );
+        }}
+        onCreated={(created) => {
+          const product = toCatalogProduct(created);
+          const pack = packs.find((p) => p.key === activeKey);
+          if (pack && !pack.items.some((it) => it.id === product.id)) {
+            toggleProduct(pack.key, product);
+          }
+        }}
+      />
 
       {/* Preview — the deck PDF itself, rendered by the same builder and the
           same renderer the send attaches to the email. Nothing is saved. */}
