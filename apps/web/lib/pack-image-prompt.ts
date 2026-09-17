@@ -360,7 +360,7 @@ Do not place the logo over:
 
 Keep the logo appropriately sized.
 
-Avoid oversized or distracting branding.
+Avoid oversized or distracting branding — but never so small that it cannot be read clearly. Legibility comes first.
 
 The result should look like a real corporate merchandise production sample.
 
@@ -833,6 +833,30 @@ Each product image that follows is a photo of the REAL product the client select
 • Products of a similar type (for example a ceramic mug and a steel travel mug) are DIFFERENT items — show each once, each looking like its own photo.
 • Never add a product that is not in the list. Never show any product twice.`;
 
+/**
+ * Legibility rules for branding on products. With 4–5 products each item is
+ * small in the frame, and "small, neat" placeholders came out as garbled
+ * micro-text — so size, lettering, contrast and visibility are spelled out.
+ */
+function brandingLegibilityRules(hasLogo: boolean): string {
+  const mark = hasLogo ? 'client logo' : '"YOUR LOGO HERE" placeholder';
+  return `BRANDING LEGIBILITY — applies to every ${mark}, on the box and on each branded product, however many products are in the box:
+${
+  hasLogo
+    ? '• Reproduce the supplied logo exactly — same shapes, lettering, spelling and proportions. Never redraw, simplify, stretch or blur it, even when it is small.'
+    : '• Spelled exactly YOUR LOGO HERE — three words, eleven letters, all capitals, in a clean bold sans-serif. Every letter fully formed and evenly spaced: no missing, extra, merged, mirrored or garbled letters.'
+}
+• One solid colour that clearly contrasts with the surface — dark on light surfaces, white or metallic on dark ones.
+• Large enough to read at a glance: on a product it spans roughly one third to one half of the width of the visible face. Never tiny micro-text.${
+    hasLogo
+      ? ''
+      : ' On narrow items (pens, bottles, flasks) stack the three words on two or three short centred lines, or run them along the barrel, instead of shrinking them.'
+  }
+• Placed on a flat or gently curved area that faces the camera. Turn each branded product so that face is fully visible — never wrapped round an edge, cut off, or covered by filler, another product or the box wall.
+• Placed beside the product's own manufacturer branding, never on top of it.
+• Arrange the box so every branded product keeps its branded face unobstructed; give branded items front or clear positions before shrinking their branding.`;
+}
+
 /** Sent right after the box photo (Image 1): turns the job into an edit of that box. */
 export function boxEditLead(productCount: number, hasLogo: boolean, construction: BoxConstruction): string {
   // The box's catalogue name is deliberately NOT sent — the model kept printing
@@ -850,8 +874,10 @@ Apart from the "YOUR LOGO HERE" placeholder or the client logo, any words printe
 ${
     hasLogo
       ? `The client logo is supplied as the LAST image — print it on ${construction.logoFace} in place of any "YOUR LOGO HERE" placeholder from Image 1, and on the products marked for branding in the BRANDING MAP (only those).`
-      : `No client logo is supplied. Keep the box's non-text graphics (such as handling icons) as shown in Image 1, but the ONLY words on the box are ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace}. Also put a small, neat "YOUR LOGO HERE" placeholder on the products marked for branding in the BRANDING MAP (only those). Every placeholder reads exactly "YOUR LOGO HERE" — never add a second line, tagline or made-up words under it. Do not add any other logo or text.`
+      : `No client logo is supplied. Keep the box's non-text graphics (such as handling icons) as shown in Image 1, but the ONLY words on the box are ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace}. Also put a neat, clearly legible "YOUR LOGO HERE" placeholder on the products marked for branding in the BRANDING MAP (only those). Every placeholder reads exactly "YOUR LOGO HERE" — never add a tagline, extra words or made-up text under it. Do not add any other logo or text.`
   }
+
+${brandingLegibilityRules(hasLogo)}
 
 ${PRODUCT_FIDELITY_RULES}
 
@@ -895,11 +921,18 @@ ${
       }`
     : `• No client logo. The box keeps the non-text graphics of Image 1, and its ONLY words are ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace} — no other words from Image 1 and no extra lines of text.${
         brandedProducts.length > 0
-          ? ` A small "YOUR LOGO HERE" placeholder is ALSO shown on: ${brandedProducts.join(', ')} — each with its own branding method, once per product. No placeholder or logo on any other product.`
+          ? ` A clearly legible "YOUR LOGO HERE" placeholder is ALSO shown on: ${brandedProducts.join(', ')} — each with its own branding method, once per product. No placeholder or logo on any other product.`
           : ' No logo or placeholder on any product.'
       }`
 }
-• Every "YOUR LOGO HERE" placeholder reads exactly those three words — no second line, tagline, small print or made-up text under or around it.
+• Every "YOUR LOGO HERE" placeholder reads exactly those three words — no tagline, small print, extra words or made-up text under or around it.
+• READ EVERY ${hasLogo ? 'LOGO' : 'PLACEHOLDER'} BACK, one product at a time${
+    brandedProducts.length > 0 ? ` (${brandedProducts.join(', ')})` : ''
+  }: ${
+    hasLogo
+      ? 'it matches the supplied logo exactly'
+      : 'it spells Y-O-U-R L-O-G-O H-E-R-E with every letter crisp and correct'
+  }, it is big enough to read at a glance, it contrasts with the surface, it faces the camera and nothing covers it. If any one is tiny, blurred, misspelled, warped or partly hidden, enlarge it or turn/reposition that product and fix it before finishing.
 • Count the ${hasLogo ? 'client logos' : '"YOUR LOGO HERE" placeholders'}: exactly ${1 + brandedProducts.length} in the whole image — ONE on ${construction.logoFace}${
     brandedProducts.length > 0 ? ' and one on each branded product listed above' : ''
   }. None on inner walls, the inside of a lid, the front of a tray or any other surface of the box.
@@ -1009,7 +1042,7 @@ export function buildPackImagePrompt({
         (p) =>
           `• ${p.label} — ${p.branding!.technique}${
             p.branding!.position ? `, position: ${p.branding!.position}` : ', in its most natural visible branding area'
-          } (realistic ${p.branding!.technique.toLowerCase()} that follows the product surface, appropriately sized)`
+          } (realistic ${p.branding!.technique.toLowerCase()} that follows the product surface, sized to read clearly at a glance)`
       ),
   ];
   if (applyTo.length === 0) applyTo.push('• Nothing — no surface in this pack is marked for branding.');
@@ -1026,7 +1059,7 @@ export function buildPackImagePrompt({
       (p) =>
         `• ${p.label} — "YOUR LOGO HERE" as ${p.branding!.technique.toLowerCase()}${
           p.branding!.position ? `, position: ${p.branding!.position}` : ', in its most natural visible branding area'
-        } (small, clean, following the product surface)`
+        } (clean, crisp and clearly legible, following the product surface)`
     );
   if (placeholderOn.length === 0) placeholderOn.push('• Nothing — no product in this pack is marked for branding.');
 
@@ -1042,20 +1075,24 @@ ${applyTo.join('\n')}
 DO NOT apply the logo to:
 ${skipLogo.join('\n')}
 
-Angle the box so ${construction.logoFace} and the logo on it are clearly visible to the camera.`
+Angle the box so ${construction.logoFace} and the logo on it are clearly visible to the camera.
+
+${brandingLegibilityRules(true)}`
     : `BRAND LOGO:
 No client logo supplied — a "YOUR LOGO HERE" placeholder is used instead, showing where the client's logo will go.
 
 BRANDING MAP:
 The box shows ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace} and keeps the non-text graphics of the box reference. No other words from the box photo appear.
 
-Show a small, neat "YOUR LOGO HERE" placeholder on:
+Show a neat, clearly legible "YOUR LOGO HERE" placeholder on:
 ${placeholderOn.join('\n')}
 
 DO NOT put any logo or placeholder on:
 ${skipLogo.join('\n')}
 
-Preserve the existing manufacturer branding visible in each product reference.`;
+Preserve the existing manufacturer branding visible in each product reference.
+
+${brandingLegibilityRules(false)}`;
 
   // Catalogue box photos are studio shots (coloured backdrop, "YOUR LOGO HERE"
   // mock-ups) — without these rules the model recoloured the box to the
