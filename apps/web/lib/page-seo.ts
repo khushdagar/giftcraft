@@ -52,6 +52,28 @@ export function shareImageUrl(src: string): string {
   }
 }
 
+/**
+ * A curated pack has no photo of its own — its page tiles the member products'
+ * shots into a collage. /og/pack.jpg renders that same collage as one
+ * 1200×630 JPEG. Returns null when no member has an image.
+ */
+export function packShareImageUrl(memberImages: string[]): string | null {
+  const own = memberImages
+    .map((src) => {
+      try {
+        const url = new URL(src, SITE_URL);
+        const ok = url.hostname === 'cdn.givoo.in' || url.hostname.endsWith('.digitaloceanspaces.com');
+        return ok ? url.toString() : null;
+      } catch {
+        return null;
+      }
+    })
+    .filter((u): u is string => !!u)
+    .slice(0, 4);
+  if (own.length === 0) return null;
+  return `${SITE_URL}/og/pack.jpg?${own.map((u) => `src=${encodeURIComponent(u)}`).join('&')}`;
+}
+
 function rewriteOgImage(item: OGImage): OGImage {
   if (typeof item === 'string') return shareImageUrl(item);
   if (item instanceof URL) return shareImageUrl(item.toString());
