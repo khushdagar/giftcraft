@@ -8,6 +8,7 @@ type FooterLink = [href: string, label: string];
 // Static column — all company, help & legal links together. Every href points
 // at a page that actually exists.
 const COL_COMPANY: FooterLink[] = [
+  ["/about", "About Us"],
   ["/blog", "Blog"],
   ["/sell-with-us", "Sell With Us"],
   ["/contact", "Contact"],

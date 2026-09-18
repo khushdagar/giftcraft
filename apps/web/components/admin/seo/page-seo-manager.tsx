@@ -73,6 +73,7 @@ const KNOWN_PAGES: { group: string; pages: { path: string; label: string }[] }[]
   {
     group: 'Info pages',
     pages: [
+      { path: '/about', label: 'About Us' },
       { path: '/contact', label: 'Contact' },
       { path: '/faq', label: 'FAQ' },
       { path: '/gst', label: 'GST' },

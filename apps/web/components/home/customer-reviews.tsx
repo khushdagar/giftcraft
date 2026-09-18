@@ -53,9 +53,9 @@ const SEED_REVIEWS: ReviewCard[] = [
   {
     id: 'seed-4',
     rating: 5,
-    title: 'Client gifting sorted for the year',
+    title: 'Better than we expected, on the date they promised',
     comment:
-      'Curated packs with our logo, individual delivery to 80 client addresses, and a tracking sheet for each. Our account managers just share the unboxing photos now.',
+      'The print quality on the branding was the part that surprised us — clean on every product. Everything arrived on schedule, and the packs look premium enough that our account managers are sharing unboxing photos.',
     authorName: 'Vikram Nair',
     role: 'Founder, Pune',
     productSlug: null,

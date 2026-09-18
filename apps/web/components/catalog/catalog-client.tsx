@@ -794,11 +794,13 @@ export function CatalogClient({
             <>
               <p className="text-xs" style={{ color: '#8F8A82' }}><Link href="/" style={{ color: '#800020' }}>Home</Link> / <span>Products</span></p>
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">
-                The <span className="italic" style={{ color: '#800020' }}>Catalog.</span>
+                The <span className="italic" style={{ color: '#800020' }}>Corporate Gifting Catalogue.</span>
               </h1>
-              <p className="mt-2 text-base" style={{ color: '#5C5852' }}>
-                {products.length}+ products for every occasion.
-              </p>
+              <CollapsibleRichText
+                html={`<p>Welcome to GIVOO's corporate gifting catalogue — ${products.length}+ branded products you can order in bulk, with the per-unit price shown upfront and logo branding already included. From insulated steel bottles and leather diaries to tech gadgets, apparel and gourmet hampers, almost every item can carry your brand through laser engraving, UV print or screen printing. Use the filters to sort by category, occasion, recipient or budget and build a gift that actually fits your team and your clients. No sign-up needed to browse, and you pay ₹0 today — you approve a branded mockup first, then pay.</p>`}
+                className="blog-content mt-2 max-w-7xl"
+                style={{ color: '#5C5852' }}
+              />
 
               {/* Tabs — mirror the Curated Packs page toggle */}
               <div className="mt-6 inline-flex gap-1 rounded-full bg-[#EFEFE9] p-1">
