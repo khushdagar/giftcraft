@@ -40,7 +40,7 @@ interface Order {
   grandTotal: number;
   paidAt: string | null;
   razorpayPaymentId: string | null;
-  paymentType: 'advance' | 'full' | null;
+  paymentType: 'full' | null;
   amountPaid: number;
   items: OrderItem[];
   timeline: { status: string; note: string | null; createdAt: string }[];
@@ -114,14 +114,11 @@ function ConfirmationContent() {
     );
   }
 
-  // Paid orders (price-lock path) reflect the verified Razorpay payment; the
-  // mockup path takes no payment up front.
-  const isPaid = !!order.paidAt;
-  const selectedPath: 'mockup' | 'lock' = isPaid ? 'lock' : 'mockup';
+  // Paid orders reflect the verified Razorpay payment; the mockup path takes no
+  // payment up front.
+  const isPaid = !!order.paidAt && order.amountPaid > 0;
   const quantity = order.packQuantity;
   const grand = order.grandTotal;
-  const advance10 = isPaid && order.amountPaid > 0 ? order.amountPaid : Math.round(grand * 0.1);
-  const balance90 = grand - advance10;
 
   // Full price breakdown (mirrors the checkout Price Breakdown panel).
   const itemsSubtotal = order.subtotal + order.packagingAmount + order.addonsAmount;
@@ -160,16 +157,9 @@ function ConfirmationContent() {
   } as const;
 
   // Canonical milestones; `i` is the index used by the status mapping above.
-  // The 10%-advance row (lock path only) is inserted after Order Confirmed.
-  const paymentLabel =
-    selectedPath === 'lock'
-      ? `Balance Payment (${formatRupees(balance90)})`
-      : `Full Payment (${formatRupees(grand)})`;
+  const paymentLabel = `Full Payment (${formatRupees(grand)})`;
   const milestones = [
     { i: 0, label: 'Order Confirmed', state: stateFor(0) as 'done' | 'current' | 'pending' },
-    ...(selectedPath === 'lock'
-      ? [{ i: 0, label: '10% Advance Received', state: 'done' as const }]
-      : []),
     { i: 1, label: 'Mockup Creation', state: stateFor(1) },
     { i: 2, label: 'Your Design Approval', state: stateFor(2) },
     { i: 3, label: paymentLabel, state: stateFor(3) },
@@ -189,7 +179,7 @@ function ConfirmationContent() {
           </div>
 
           <h2 className="text-3xl md:text-4xl font-serif font-normal mb-2">
-            {selectedPath === 'lock' ? 'Payment Received!' : 'Order Confirmed!'}
+            {isPaid ? 'Payment Received!' : 'Order Confirmed!'}
           </h2>
 
           <p className="text-lg font-medium text-[#5C5852] mb-2">
@@ -197,9 +187,9 @@ function ConfirmationContent() {
           </p>
 
           <p className="text-base text-[#5C5852] mb-6">
-            {selectedPath === 'lock'
-              ? `Your 10% advance of ${formatRupees(advance10)} has been received. Prices are locked for 30 days.`
-              : `Your order for ${quantity} gift packs has been confirmed. No payment taken yet.`}
+            {isPaid
+              ? `Your payment of ${formatRupees(order.amountPaid)} has been received.`
+              :`Your order for ${quantity} gift packs has been confirmed. No payment taken yet.`}
           </p>
 
           {/* Next Steps Notice */}
@@ -303,15 +293,11 @@ function ConfirmationContent() {
               <span>{formatRupees(perPack)} per gift pack</span>
             </div>
 
-            {selectedPath === 'lock' && (
+            {isPaid && (
               <>
                 <div className="flex justify-between py-2 text-sm text-[#2D8B56] font-medium">
-                  <span>Advance Paid (10%)</span>
-                  <span className="tabular-nums">{formatRupees(advance10)}</span>
-                </div>
-                <div className="flex justify-between py-2 text-sm text-[#5C5852]">
-                  <span>Balance Due (after mockup approval)</span>
-                  <span className="font-semibold tabular-nums">{formatRupees(balance90)}</span>
+                  <span>Amount Paid</span>
+                  <span className="tabular-nums">{formatRupees(order.amountPaid)}</span>
                 </div>
                 {order.razorpayPaymentId && (
                   <div className="flex justify-between py-1 text-xs text-[#8F8A82]">

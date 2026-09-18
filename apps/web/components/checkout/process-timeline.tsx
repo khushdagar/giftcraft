@@ -3,13 +3,10 @@
 import { formatRupees } from '@/lib/utils';
 
 interface ProcessTimelineProps {
-  selectedPath: 'mockup' | 'lock';
-  advance10: number;
-  balance90: number;
   grand: number;
 }
 
-export function ProcessTimeline({ selectedPath, advance10, balance90, grand }: ProcessTimelineProps) {
+export function ProcessTimeline({ grand }: ProcessTimelineProps) {
   const steps = [
     {
       number: '1',
@@ -28,14 +25,8 @@ export function ProcessTimeline({ selectedPath, advance10, balance90, grand }: P
     },
     {
       number: '4',
-      title:
-        selectedPath === 'lock'
-          ? `Balance Payment (${formatRupees(balance90)})`
-          : `Full Payment (${formatRupees(grand)})`,
-      desc:
-        selectedPath === 'lock'
-          ? "After mockup approval, pay the remaining 90% to begin production. Your 10% advance has already locked your prices."
-          : "Once mockups are approved, complete the full payment to begin production.",
+      title: `Full Payment (${formatRupees(grand)})`,
+      desc: 'Once mockups are approved, complete the full payment to begin production.',
     },
     {
       number: '5',

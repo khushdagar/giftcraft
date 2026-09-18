@@ -568,9 +568,6 @@ export default async function AdminOrderDetailPage({
                     {formatRupees(
                       Number((order.billingJson as any)?.amountPaid ?? 0),
                     )}
-                    {(order.billingJson as any)?.paymentType === "full"
-                      ? " (full)"
-                      : " (10% advance)"}
                   </p>
                 </div>
                 <div>
@@ -715,14 +712,12 @@ export default async function AdminOrderDetailPage({
               </div>
             </div>
 
-            {/* Advance paid + pending balance (price-lock path) */}
+            {/* Amount paid + any pending balance */}
             {order.paidAt &&
               (() => {
                 const amountPaid = Number(
                   (order.billingJson as any)?.amountPaid ?? 0,
                 );
-                const isFull =
-                  (order.billingJson as any)?.paymentType === "full";
                 const balance = Math.max(
                   0,
                   Number(order.grandTotal) - amountPaid,
@@ -730,7 +725,7 @@ export default async function AdminOrderDetailPage({
                 return (
                   <div className="mt-3 space-y-1.5 border-t border-inv/20 pt-3 text-sm">
                     <div className="flex justify-between text-em-200">
-                      <span>Advance Paid ({isFull ? "full" : "10%"})</span>
+                      <span>Amount Paid</span>
                       <span className="tabnum">
                         −{formatRupees(amountPaid)}
                       </span>

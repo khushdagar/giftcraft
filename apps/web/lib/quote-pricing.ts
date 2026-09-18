@@ -5,7 +5,6 @@ import { computeOrderShipping } from '@/lib/shipping';
 import { resolveBuyerStateCode } from '@/lib/pincode-to-state';
 import { SELLER_STATE_CODE } from '@/lib/constants';
 
-const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Last-resort HSN when a product has no ProductHsn row: printed paper goods. */
 const DEFAULT_HSN_CODE = '4820';
@@ -129,9 +128,4 @@ export async function priceQuotePayload(
   });
 
   return { pricing, shippingFlat, buyerStateCode, isInterState, packQty, hsnByProductId };
-}
-
-/** The advance payment due for the price-lock path (10% of the grand total). */
-export function advanceAmount(grandTotal: number): number {
-  return round2(grandTotal * 0.1);
 }

@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/auth';
 import { NextRequest, NextResponse } from 'next/server';
 import { Decimal } from '@prisma/client/runtime/library';
-import { priceQuotePayload, advanceAmount } from '@/lib/quote-pricing';
+import { priceQuotePayload } from '@/lib/quote-pricing';
 import { verifyRazorpaySignature } from '@/lib/razorpay';
 import { sendPaymentSuccessEmail, sendOrderConfirmationEmail } from '@/lib/email';
 import { renderInvoiceBuffer } from '@/lib/invoice';
@@ -178,11 +178,11 @@ export async function POST(req: NextRequest) {
       deliveryMode,
       cardMessage,
       billingJson,
-      // Razorpay fields — present only when the customer paid (price-lock path).
+      // Razorpay fields — present only when the customer paid at checkout.
+      // Payments are always for the full amount (no part/advance payments).
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
-      paymentType, // 'advance' | 'full'
     } = body;
 
     if (!quoteId) {
@@ -232,7 +232,7 @@ export async function POST(req: NextRequest) {
     const sgstAmount = isInterState ? 0 : round2(totalGst - cgstAmount); // exact halves
     const igstAmount = isInterState ? round2(totalGst) : 0;
 
-    // ── Payment verification (price-lock path) ──────────────────────────────
+    // ── Payment verification ────────────────────────────────────────────────────────────────────────────
     // When Razorpay fields are present the customer just paid. Verify the
     // signature before trusting it — a forged/invalid signature is rejected so
     // an order can never be marked paid without a real, matching payment.
@@ -251,8 +251,7 @@ export async function POST(req: NextRequest) {
         );
       }
       paidAt = new Date();
-      amountPaid =
-        paymentType === 'full' ? pricing.grandTotal : advanceAmount(pricing.grandTotal);
+      amountPaid = pricing.grandTotal;
     }
 
     // Save the billing/company details to the buyer's company profile so they
@@ -322,15 +321,15 @@ export async function POST(req: NextRequest) {
         deliveryDate: payload.delivDate ? new Date(payload.delivDate) : null,
         cardMessage: cardMessage || payload.cardMessage || '',
         // Record how the order was paid alongside the billing details so the
-        // confirmation/admin views can show the advance amount.
+        // confirmation/admin views can show the amount paid.
         billingJson: {
           ...(billingJson || {}),
-          ...(paidAt ? { paymentType: paymentType || 'advance', amountPaid } : {}),
+          ...(paidAt ? { paymentType: 'full', amountPaid } : {}),
         },
         // Shipping address captured in the builder (Step 3)
         shippingJson: payload.address || undefined,
 
-        // Payment (price-lock path) — verified above. Null on the no-payment
+        // Payment — verified above. Null on the no-payment
         // mockup path, where the order is confirmed without a charge.
         razorpayOrderId: paidAt ? razorpayOrderId : null,
         razorpayPaymentId: paidAt ? razorpayPaymentId : null,
@@ -378,7 +377,7 @@ export async function POST(req: NextRequest) {
           create: {
             status: 'confirmed',
             note: paidAt
-              ? `Order placed — ${paymentType === 'full' ? 'full payment' : '10% advance'} of ₹${amountPaid.toFixed(2)} received (Razorpay ${razorpayPaymentId})`
+              ? `Order placed — full payment of ₹${amountPaid.toFixed(2)} received (Razorpay ${razorpayPaymentId})`
               : 'Order placed via mockup path',
             actorId: session.user.id,
           },
@@ -493,8 +492,8 @@ export async function POST(req: NextRequest) {
       });
 
       // Generate the invoice PDF as an attachment (best-effort). The filename
-      // must track the heading inside the PDF — a 10% advance still ships a
-      // proforma, so it can't be hardcoded either way.
+      // must track the heading inside the PDF — an unpaid (mockup-path) order
+      // ships a proforma, so it can't be hardcoded either way.
       let attachments: { filename: string; content: Buffer }[] | undefined;
       try {
         if (fullOrder) {
@@ -527,7 +526,6 @@ export async function POST(req: NextRequest) {
               orderId: order.id,
               amountPaid,
               paymentId: razorpayPaymentId,
-              isAdvance: paymentType !== 'full',
               grandTotal: Number(pricing.grandTotal || 0),
               amounts,
               attachments,

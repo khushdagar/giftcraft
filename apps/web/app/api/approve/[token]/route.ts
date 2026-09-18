@@ -150,7 +150,7 @@ export async function POST(
     }
 
     if (action === 'approve') {
-      // Work out the pending balance (grand total minus any advance paid).
+      // Work out the pending balance (grand total minus anything already paid).
       const billing = (approval.order.billingJson as any) || {};
       const grandTotal = Number(approval.order.grandTotal);
       const amountPaid = Number(billing.amountPaid ?? 0);

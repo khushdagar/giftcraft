@@ -147,7 +147,7 @@ export function HomeSeoContent({
               <Link
                 key={href}
                 href={href}
-                className="rounded-full bg-[#800020] px-5 py-2 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-[#66001A]"
+                className="rounded-full border-2 border-bdr bg-white px-5 py-2 text-sm font-medium text-ink transition hover:-translate-y-0.5 hover:border-[#800020] hover:text-[#800020]"
               >
                 {label}
               </Link>

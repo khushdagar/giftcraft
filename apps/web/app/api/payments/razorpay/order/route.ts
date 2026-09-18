@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { createRazorpayOrder, isRazorpayConfigured, RAZORPAY_KEY_ID } from '@/lib/razorpay';
-import { priceQuotePayload, advanceAmount } from '@/lib/quote-pricing';
+import { priceQuotePayload } from '@/lib/quote-pricing';
 
 /**
  * POST /api/payments/razorpay/order
@@ -11,9 +11,8 @@ import { priceQuotePayload, advanceAmount } from '@/lib/quote-pricing';
  * payment. The amount is ALWAYS computed server-side from the quote (never
  * trusted from the client) and matches the order grand total that will be saved.
  *
- * Body: { quoteId: string, paymentType?: 'advance' | 'full', billingState?: string }
- *   - 'advance' (default): 10% of grand total (price-lock path)
- *   - 'full': the full grand total
+ * Body: { quoteId: string, billingState?: string }
+ * The amount is always the full grand total — no part/advance payments.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -30,7 +29,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { quoteId, paymentType = 'advance', billingState } = body;
+    const { quoteId, billingState } = body;
+    const paymentType = 'full';
 
     if (!quoteId) {
       return NextResponse.json({ error: 'Quote ID is required' }, { status: 400 });
@@ -44,8 +44,7 @@ export async function POST(req: NextRequest) {
     const payload = quote.payload as any;
     const { pricing } = await priceQuotePayload(payload, billingState);
 
-    const amountRupees =
-      paymentType === 'full' ? pricing.grandTotal : advanceAmount(pricing.grandTotal);
+    const amountRupees = pricing.grandTotal;
 
     if (!(amountRupees > 0)) {
       return NextResponse.json({ error: 'Nothing to pay for this quote.' }, { status: 400 });

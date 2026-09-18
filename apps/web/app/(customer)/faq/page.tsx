@@ -83,10 +83,6 @@ const SECTIONS: Array<{ title: string; faqs: Faq[] }> = [
     title: 'Payment & delivery',
     faqs: [
       {
-        q: 'Can I lock prices before paying in full?',
-        a: 'Yes. Pay a 10% advance to lock your prices for 30 days. The balance is due after you approve the mockup.',
-      },
-      {
         q: 'How long does delivery take?',
         a: 'Your estimate combines the longest product lead time, assembly and quality checks, and the courier’s transit time to your pincode. The exact window is shown at the delivery step and again on your order. See shipping for details.',
         jsx: (

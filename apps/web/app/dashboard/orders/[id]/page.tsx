@@ -529,15 +529,14 @@ export default async function OrderDetailPage({
                 <span>{formatRupees(Number(order.grandTotal))}</span>
               </div>
 
-              {/* Advance paid + pending balance (price-lock path) */}
+              {/* Amount paid + any pending balance */}
               {order.paidAt && (() => {
                 const amountPaid = Number((order.billingJson as any)?.amountPaid ?? 0);
-                const isFull = (order.billingJson as any)?.paymentType === 'full';
                 const balance = Math.max(0, Number(order.grandTotal) - amountPaid);
                 return (
                   <div className="border-t border-gray-200 pt-2 space-y-1">
                     <div className="flex justify-between text-em-700">
-                      <span>Advance Paid ({isFull ? 'full' : '10%'})</span>
+                      <span>Amount Paid</span>
                       <span>−{formatRupees(amountPaid)}</span>
                     </div>
                     <div className="flex justify-between font-normal">
