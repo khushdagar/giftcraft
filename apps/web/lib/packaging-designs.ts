@@ -11,9 +11,13 @@
  * price shown is that design's price for the pack's current size.
  */
 
-export type BoxSize = 'Small' | 'Medium' | 'Large';
+export type BoxSize = 'Small' | 'Medium' | 'Large' | 'X-Large';
 
-export const BOX_SIZES: BoxSize[] = ['Small', 'Medium', 'Large'];
+/** Smallest to largest. X-Large is never picked by count — only when the products need it (see lib/box-fit). */
+export const BOX_SIZES: BoxSize[] = ['Small', 'Medium', 'Large', 'X-Large'];
+
+/** The `-<size>` tail of a packaging snapshot id. `x-large` first, or `-large` would match inside it. */
+export const PACKAGING_SIZE_SUFFIX = /-(x-large|small|medium|large)$/i;
 
 /**
  * Auto-pick the box size from the number of products in the pack:

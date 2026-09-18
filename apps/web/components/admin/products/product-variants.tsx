@@ -13,6 +13,10 @@ export interface Variant {
   hexColor?: string;
   imageUrl?: string;
   price?: number;
+  /** Inner dimensions in cm — packaging sizes use them to check what fits. */
+  dimensionL?: number;
+  dimensionW?: number;
+  dimensionH?: number;
   sortOrder: number;
 }
 
@@ -159,6 +163,7 @@ export function ProductVariants({
     <div className="space-y-3">
       {options.map((opt) => {
         const isColor = opt.name.toLowerCase() === 'color';
+        const isSize = opt.name.toLowerCase() === 'size';
         const entries = entriesFor(opt.name);
 
         // ── Collapsed summary ────────────────────────────────────────────
@@ -302,6 +307,33 @@ export function ProductVariants({
                             className="w-20 text-xs"
                             title={`Price for this ${opt.name || 'value'} (optional)`}
                           />
+                        </div>
+                      )}
+
+                      {/* Inner size in cm — for packaging sizes, so the AI pack
+                          image only packs products that fit this box. */}
+                      {isSize && (
+                        <div
+                          className="flex shrink-0 items-center gap-1"
+                          title="Inner size in cm (L × W × H). Packaging only — used to check which products fit this box."
+                        >
+                          {(['dimensionL', 'dimensionW', 'dimensionH'] as const).map((key, n) => (
+                            <Input
+                              key={key}
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              placeholder={['L', 'W', 'H'][n]}
+                              value={v[key] ?? ''}
+                              onChange={(e) =>
+                                updateVariant(i, {
+                                  [key]: e.target.value === '' ? undefined : Number(e.target.value),
+                                })
+                              }
+                              className="w-14 px-1.5 text-xs"
+                            />
+                          ))}
+                          <span className="text-xs text-gray-400">cm</span>
                         </div>
                       )}
 

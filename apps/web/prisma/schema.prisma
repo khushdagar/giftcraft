@@ -500,6 +500,11 @@ model ProductVariant {
   // Optional per-variant price. Used by packaging designs, where each size
   // (Small/Medium/Large) variant carries its own price for the gift builder.
   price     Decimal? @db.Decimal(10, 2)
+  // Optional inner dimensions in cm. Used by packaging size variants: the AI
+  // pack image only packs products that actually fit the chosen box size.
+  dimensionL Float?
+  dimensionW Float?
+  dimensionH Float?
   sortOrder Int      @default(0)
 
   @@index([productId])

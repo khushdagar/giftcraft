@@ -64,6 +64,9 @@ const ProductSchema = z.object({
       // loading an existing product never trips form validation.
       hexColor: z.string().nullable().optional(),
       price: z.number().nullable().optional(),
+      dimensionL: z.number().nullable().optional(),
+      dimensionW: z.number().nullable().optional(),
+      dimensionH: z.number().nullable().optional(),
       sortOrder: z.number().nullable().optional(),
     })
   ).nullable().optional(),
@@ -209,7 +212,7 @@ export function ProductForm({
   const [zoomIdx, setZoomIdx] = useState<number | null>(null);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; parentId?: string | null }>>([]);
   const [occasions, setOccasions] = useState<Array<{ id: string; name: string; icon?: string }>>([]);
-  const [variants, setVariants] = useState<Array<{ id?: string; kind: string; value: string; hexColor?: string; imageUrl?: string; price?: number; sortOrder: number }>>([]);
+  const [variants, setVariants] = useState<Array<{ id?: string; kind: string; value: string; hexColor?: string; imageUrl?: string; price?: number; dimensionL?: number; dimensionW?: number; dimensionH?: number; sortOrder: number }>>([]);
   const [vendorOptions, setVendorOptions] = useState<VendorOption[]>([]);
   const [vendorLinks, setVendorLinks] = useState<VendorLink[]>([]);
 
@@ -249,6 +252,9 @@ export function ProductForm({
           hexColor: v.hexColor || undefined,
           imageUrl: v.imageUrl || undefined,
           price: v.price != null ? Number(v.price) : undefined,
+          dimensionL: v.dimensionL != null ? Number(v.dimensionL) : undefined,
+          dimensionW: v.dimensionW != null ? Number(v.dimensionW) : undefined,
+          dimensionH: v.dimensionH != null ? Number(v.dimensionH) : undefined,
           sortOrder: typeof v.sortOrder === 'number' ? v.sortOrder : 0,
         }));
       console.log('✅ Loaded variants:', validVariants);
@@ -699,6 +705,11 @@ export function ProductForm({
             v.price != null && !Number.isNaN(Number(v.price)) && Number(v.price) >= 0
               ? Number(v.price)
               : null;
+          // Inner size in cm (packaging sizes) — decides what fits the box.
+          for (const key of ['dimensionL', 'dimensionW', 'dimensionH'] as const) {
+            const n = Number(v[key]);
+            variant[key] = v[key] != null && Number.isFinite(n) && n > 0 ? n : null;
+          }
           return variant;
         }) : [],
       };

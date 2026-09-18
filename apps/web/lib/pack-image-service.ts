@@ -6,6 +6,8 @@ import { generatePackImage, PackImageError, PACK_IMAGE_MODEL, formatSizeCm } fro
 import { PRINTING_TECHNIQUE_LABELS } from '@/lib/pack-image-prompt';
 import { uploadBuffer, getBucketAndCdn } from '@/lib/upload-to-digital-ocean';
 import { PACK_IMAGE_FOLDER } from '@/lib/proposal-pack';
+import { PACKAGING_SIZE_SUFFIX } from '@/lib/packaging-designs';
+import { resolveBoxFit } from '@/lib/box-fit';
 
 /**
  * The ONE place an AI pack shot (chosen box with the products packed inside,
@@ -70,10 +72,17 @@ export interface CreatePackImageInput {
  * Throws PackImageError for generator problems (missing key, model refusal…).
  */
 export async function createPackImage(input: CreatePackImageInput): Promise<string> {
+  return (await createPackImageDetailed(input)).url;
+}
+
+/** Same as createPackImage, plus the products kept out of the shot because they don't go in a box. */
+export async function createPackImageDetailed(
+  input: CreatePackImageInput
+): Promise<{ url: string; leftOut: string[] }> {
   const productIds = input.productIds.filter(Boolean).slice(0, PACK_IMAGE_MAX_PRODUCTS);
   const boxId =
     input.boxId && input.boxId !== 'no-box'
-      ? input.boxId.replace(/-(small|medium|large)$/i, '')
+      ? input.boxId.replace(PACKAGING_SIZE_SUFFIX, '')
       : null;
 
   const [products, box] = await Promise.all([
@@ -96,7 +105,11 @@ export async function createPackImage(input: CreatePackImageInput): Promise<stri
     boxId
       ? prisma.product.findUnique({
           where: { id: boxId },
-          select: { name: true, descriptionShort: true, images: imageSelect },
+          select: {
+            name: true,
+            descriptionShort: true,
+            images: imageSelect,
+          },
         })
       : null,
   ]);
@@ -107,11 +120,26 @@ export async function createPackImage(input: CreatePackImageInput): Promise<stri
 
   // Keep the pick order — the prompt lists items in this order.
   const byId = new Map(products.map((p) => [p.id, p]));
-  const ordered = productIds.map((id) => byId.get(id)).filter((p) => !!p);
+  const selected = productIds.map((id) => byId.get(id)).filter((p) => !!p);
+  // With a box chosen, products that do not fit it are not drawn — a trolley
+  // cannot be packed into it. Without a box (order decks) everything is shown.
+  const fit = await resolveBoxFit(
+    selected.map((p) => p.id),
+    box ? boxId : null,
+    input.customItems?.length ?? 0
+  );
+  const ordered = selected.filter((p) => fit.insideIds.includes(p.id));
+  const leftOut = fit.outside.map((p) => p.name);
   const customItems = (input.customItems ?? [])
     .filter((c) => c.name.trim() && onCdn(c.imageUrl))
     .slice(0, Math.max(0, PACK_IMAGE_MAX_PRODUCTS - ordered.length));
-  if (ordered.length + customItems.length === 0) throw new PackImageError('No valid products selected');
+  if (ordered.length + customItems.length === 0) {
+    throw new PackImageError(
+      leftOut.length > 0
+        ? 'Every selected product is too large for the selected box, so there is nothing to pack into it'
+        : 'No valid products selected'
+    );
+  }
 
   // Manual branding map (mockup tool) wins over the catalogue branding method.
   const clean = (v?: string | null) => v?.replace(/s+/g, ' ').trim().slice(0, 80) || null;
@@ -133,6 +161,7 @@ export async function createPackImage(input: CreatePackImageInput): Promise<stri
   const raw = await generatePackImage({
     logoUrl,
     boxColour,
+    boxInnerCm: fit.boxInner,
     box: box
       ? {
           name: box.name,
@@ -148,6 +177,10 @@ export async function createPackImage(input: CreatePackImageInput): Promise<stri
       // Catalogue copy often states shape/finish the photo leaves ambiguous.
       description: stripHtml(p.descriptionShort || '').replace(/\s+/g, ' ').trim().slice(0, 240) || null,
       size: formatSizeCm(p.dimensionL, p.dimensionW, p.dimensionH),
+      dims:
+        p.dimensionL && p.dimensionW && p.dimensionH
+          ? ([p.dimensionL, p.dimensionW, p.dimensionH] as [number, number, number])
+          : null,
       imageUrl: p.images[0]?.url,
       // Only products with a branding method get the client logo — unless the
       // manual branding map says otherwise.
@@ -196,7 +229,7 @@ export async function createPackImage(input: CreatePackImageInput): Promise<stri
     console.error('Failed to record generated pack image:', err);
   }
 
-  return url;
+  return { url, leftOut };
 }
 
 // ── Generate-once helpers for quotes and orders ────────────────────────────

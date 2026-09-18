@@ -83,6 +83,9 @@ const UpdateProductSchema = z.object({
       hexColor: z.string().nullable().optional(),
       imageUrl: z.string().nullable().optional(),
       price: z.number().nonnegative().nullable().optional(),
+      dimensionL: z.number().positive().nullable().optional(),
+      dimensionW: z.number().positive().nullable().optional(),
+      dimensionH: z.number().positive().nullable().optional(),
       sortOrder: z.number().int().optional(),
     })
   ).nullable().optional(),
@@ -394,6 +397,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
               hexColor: variant.hexColor || null,
               imageUrl: variant.imageUrl || null,
               price: variant.price ?? null,
+              dimensionL: variant.dimensionL ?? null,
+              dimensionW: variant.dimensionW ?? null,
+              dimensionH: variant.dimensionH ?? null,
               sortOrder: idx,
             })),
           });
