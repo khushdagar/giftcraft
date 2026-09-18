@@ -844,7 +844,8 @@ function brandingLegibilityRules(hasLogo: boolean): string {
 ${
   hasLogo
     ? '• Reproduce the supplied logo exactly — same shapes, lettering, spelling and proportions. Never redraw, simplify, stretch or blur it, even when it is small.'
-    : '• Spelled exactly YOUR LOGO HERE — three words, eleven letters, all capitals, in a clean bold sans-serif. Every letter fully formed and evenly spaced: no missing, extra, merged, mirrored or garbled letters.'
+    : `• Spelled exactly YOUR LOGO HERE — three words, eleven letters, all capitals, in a clean bold sans-serif. Every letter fully formed and evenly spaced: no missing, extra, merged, mirrored or garbled letters.
+• The placeholder is PLAIN TEXT ONLY. Never draw a logo for it: no icon, symbol, emblem, arrow, monogram, initial, crest, swoosh, badge or shape above, below, beside or behind the words. Nothing but the three words.`
 }
 • One solid colour that clearly contrasts with the surface — dark on light surfaces, white or metallic on dark ones.
 • Large enough to read at a glance: on a product it spans roughly one third to one half of the width of the visible face. Never tiny micro-text.${
@@ -880,7 +881,7 @@ Apart from the "YOUR LOGO HERE" placeholder or the client logo, any words printe
 ${
     hasLogo
       ? `The client logo is supplied as the LAST image — print it on ${construction.logoFace} in place of any "YOUR LOGO HERE" placeholder from Image 1, and on the products marked for branding in the BRANDING MAP (only those).`
-      : `No client logo is supplied. Keep the box's non-text graphics (such as handling icons) as shown in Image 1, but the ONLY words on the box are ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace}. Also put a neat, clearly legible "YOUR LOGO HERE" placeholder on the products marked for branding in the BRANDING MAP (only those). Every placeholder reads exactly "YOUR LOGO HERE" — never add a tagline, extra words or made-up text under it. Do not add any other logo or text.`
+      : `No client logo is supplied. Keep only the non-text graphics that Image 1 really shows (such as handling icons) — never add a graphic, symbol or logo mark that is not in Image 1. The ONLY words on the box are ONE "YOUR LOGO HERE" placeholder on ${construction.logoFace}. Also put a neat, clearly legible "YOUR LOGO HERE" placeholder on the products marked for branding in the BRANDING MAP (only those). Every placeholder reads exactly "YOUR LOGO HERE" — never add a tagline, extra words or made-up text under it. Do not add any other logo or text.`
   }
 
 ${brandingLegibilityRules(hasLogo)}
@@ -934,7 +935,11 @@ ${
           : ' No logo or placeholder on any product.'
       }`
 }
-• Every "YOUR LOGO HERE" placeholder reads exactly those three words — no tagline, small print, extra words or made-up text under or around it.
+• Every "YOUR LOGO HERE" placeholder reads exactly those three words — no tagline, small print, extra words or made-up text under or around it.${
+    hasLogo
+      ? ''
+      : '\n• The placeholders are TEXT ONLY — look at each one and remove any invented logo mark next to it (arrow, letter-shaped symbol, icon, emblem, crest). No graphic of any kind accompanies the words.'
+  }
 • READ EVERY ${hasLogo ? 'LOGO' : 'PLACEHOLDER'} BACK, one product at a time${
     brandedProducts.length > 0 ? ` (${brandedProducts.join(', ')})` : ''
   }: ${
@@ -957,6 +962,8 @@ export interface PromptProduct {
   hasImage: boolean;
   /** Catalogue material (e.g. "Stainless Steel") — helps keep shape and finish true. */
   material?: string | null;
+  /** Real size in cm (L, W, H) — feeds the measured packing plan. */
+  dims?: [number, number, number] | null;
   /** Set only when the catalogue gives the product a branding method — it then gets the client logo. */
   branding?: { technique: string; position?: string | null; logoColour?: string | null } | null;
 }
@@ -988,6 +995,53 @@ export function similarProductWarnings(products: { label: string }[]): string[] 
   return warnings;
 }
 
+/**
+ * A measured packing plan: the box's real inner size plus, per product, how it
+ * sits (standing or lying), where (back / middle / front) and how much of the
+ * box it spans. Without it the model guesses proportions — a pen as long as the
+ * box, a bottle standing far above the walls of a box that could never close.
+ * Returns '' when the box has no dimensions.
+ */
+export function packingPlan(
+  boxInnerCm: [number, number, number] | null | undefined,
+  products: { label: string; dims?: [number, number, number] | null }[]
+): string {
+  if (!boxInnerCm) return '';
+  const [boxL, boxW, boxH] = boxInnerCm;
+  const n = (v: number) => String(Math.round(v * 10) / 10);
+  const pct = (v: number) => `${Math.max(5, Math.round((v / boxL) * 20) * 5)}%`;
+
+  // Biggest first: they anchor the back, the smallest finish the front.
+  const measured = products
+    .map((p, i) => ({ ...p, no: i + 1 }))
+    .filter((p) => !!p.dims)
+    .sort((a, b) => b.dims![0] * b.dims![1] * b.dims![2] - a.dims![0] * a.dims![1] * a.dims![2]);
+  const lines = measured.map((p, rank) => {
+    const longest = Math.max(...p.dims!);
+    const zone =
+      measured.length < 3
+        ? rank === 0 ? 'centre-back' : 'front'
+        : rank < measured.length / 3 ? 'back row' : rank < (measured.length * 2) / 3 ? 'middle' : 'front row';
+    const pose =
+      longest > boxH
+        ? `LYING DOWN on the filler — or leaned back at a low angle against a box wall or a neighbour, for depth — with its front or label facing the camera; at ${n(longest)} cm it is longer than the box is deep (${n(boxH)} cm), so it never stands upright poking out above the walls`
+        : `standing upright or propped at a slight tilt — at ${n(longest)} cm it sits fully below the box walls`;
+    return `• #${p.no} ${p.label} — ${zone}; ${pose}. Its longest side spans about ${pct(longest)} of the box length.`;
+  });
+  const unmeasured = products.filter((p) => !p.dims).length;
+
+  return `PACKING PLAN — REAL MEASUREMENTS (follow this; it overrides guesses about size and pose):
+The box interior is ${n(boxL)} × ${n(boxW)} × ${n(boxH)} cm (length × width × depth). Draw the box with exactly these proportions: ${n(boxL / boxW)} times as long as it is wide, and shallow — only ${n(boxH)} cm deep. Every product must look the right size against it.
+${lines.join('\n')}${
+    unmeasured > 0
+      ? `\n• The other ${unmeasured} product${unmeasured === 1 ? '' : 's'} (no measurements): keep a true-to-life size next to the measured ones, and fill the remaining gaps — small or flat items at the front.`
+      : ''
+  }
+• The contents must look like they would stay in place with the box closed: nothing rises above the walls by more than a little, nothing hangs over the edge.
+• Fill the box evenly — no large bare patch of filler on one side and a pile-up on the other. Leave a finger-width of filler showing between neighbours so each item reads separately.
+• Line items up with the box edges or fan them with clear intent — never scattered at random angles.`;
+}
+
 /** Human-readable PrintingTechnique values, as named in the branding map. */
 export const PRINTING_TECHNIQUE_LABELS: Record<string, string> = {
   screen_print: 'Screen printing',
@@ -1009,8 +1063,11 @@ export function buildPackImagePrompt({
   hasBoxImage,
   hasLogo = false,
   boxColour = null,
+  boxInnerCm = null,
   products,
 }: {
+  /** Inner size of the chosen box size in cm (L, W, H). Null = no measured packing plan. */
+  boxInnerCm?: [number, number, number] | null;
   /** Used only to work out the box construction — never put in the prompt (the model printed it on the lid). */
   boxName?: string | null;
   boxDescription?: string | null;
@@ -1177,7 +1234,7 @@ PRODUCT ARRANGEMENT:
 Create the most premium and visually balanced arrangement possible
 while keeping every supplied product recognizable and physically realistic.
 Pack it the way a professional gift stylist would by hand: products sit snugly side by side on the filler, aligned to the box edges or fanned with clear intent, labels and logos facing the camera, tall items at the back and small or flat items in front. Nothing floats, tilts at random, sinks through the filler, overlaps so that another product is hidden, or pokes through the box walls. Every product rests with real weight and a soft contact shadow.
-
+${hasBoxImage && packingPlan(boxInnerCm, products) ? `\n${packingPlan(boxInnerCm, products)}\n` : ''}
 FINAL LOOK — A REAL PHOTOGRAPH, NOT AN AI RENDER:
 Before finishing, plan the layout, then check the result against this list.
 • It must look like a photo taken by a human product photographer in a studio on a full-frame camera (about 50–85mm, f/8): one large softbox key light from the upper left, gentle fill, natural falloff, true-to-life colour.

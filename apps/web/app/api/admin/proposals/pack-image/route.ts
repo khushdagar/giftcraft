@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/auth';
 import { PackImageError } from '@/lib/gemini-pack-image';
-import { createPackImage, PACK_IMAGE_MAX_PRODUCTS } from '@/lib/pack-image-service';
+import { createPackImageDetailed, PACK_IMAGE_MAX_PRODUCTS } from '@/lib/pack-image-service';
 
 export const dynamic = 'force-dynamic';
 // Image generation routinely takes 15–40s.
@@ -35,14 +35,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = bodySchema.parse(await req.json());
-    const url = await createPackImage({ ...body, createdById: session.user.id });
-    return NextResponse.json({ success: true, data: { url } });
+    // leftOut = products too large for a gift box, kept out of the shot.
+    const { url, leftOut } = await createPackImageDetailed({ ...body, createdById: session.user.id });
+    return NextResponse.json({ success: true, data: { url, leftOut } });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ success: false, error: error.errors[0]?.message || 'Invalid input' }, { status: 400 });
     }
     if (error instanceof PackImageError) {
-      const noProducts = error.message === 'No valid products selected';
+      const noProducts = /^(No valid products|Every selected product)/.test(error.message);
       return NextResponse.json({ success: false, error: error.message }, { status: noProducts ? 400 : 502 });
     }
     console.error('Pack image generation error:', error);

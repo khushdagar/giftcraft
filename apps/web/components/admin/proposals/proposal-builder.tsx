@@ -25,7 +25,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
-import { packagingSizeForCount, priceForSize } from '@/lib/packaging-designs';
+import { packagingSizeForCount, priceForSize, type BoxSize } from '@/lib/packaging-designs';
 import { useSlowNotice, PACK_IMAGE_SLOW_MESSAGE } from '@/lib/proposal-progress';
 import { FieldError } from '@/components/ui/field-error';
 import { validateEmail } from '@/lib/validation';
@@ -33,6 +33,9 @@ import { downloadImagesStaggered, triggerDownload } from '@/lib/generated-image-
 import {
   Dialog, DialogContent, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import { ManualProductDialog } from './manual-product-dialog';
 
 interface PriceTier {
@@ -95,7 +98,8 @@ interface Pack {
   manualIds: string[];
   // AI pack shot for the deck. `signature` records the box + products it was
   // generated from, so an edited pack is detected as stale and regenerated.
-  aiImage?: { url: string; signature: string } | null;
+  // `leftOut` = products too large for a gift box, kept out of the shot.
+  aiImage?: { url: string; signature: string; leftOut?: string[] } | null;
 }
 
 /** The tier price that applies at this pack quantity (tier 1 as fallback). */
@@ -142,8 +146,8 @@ const emptyPack = (n: number): Pack => ({
 const packImageSignature = (p: Pack, logoUrl: string) =>
   // The leading version bumps whenever the prompt/framing changes, so images
   // made with an older prompt are treated as stale and regenerated.
-  // v11 — Nano Banana 2 (gemini-3.1-flash-image) + hand-styled / real-photo rules.
-  ['v11', p.boxId, logoUrl, ...p.items.map((it) => it.id).sort()].join('|');
+  // v14 — placeholder is text only (the model was inventing a logo mark above it).
+  ['v14', p.boxId, logoUrl, ...p.items.map((it) => it.id).sort()].join('|');
 
 const freshPackImage = (p: Pack, logoUrl: string) =>
   p.aiImage && p.aiImage.signature === packImageSignature(p, logoUrl) ? p.aiImage.url : null;
@@ -173,6 +177,10 @@ function loadDraft(): Draft | null {
     // them as hand-picked so nothing gets silently removed later.
     d.packs = d.packs.map((p) => ({
       ...p,
+      // Pitch and discount are no longer editable — a value left in an old
+      // draft would otherwise be sent with no way to see or change it.
+      tagline: '',
+      discount: 0,
       items: p.items ?? [],
       addonIds: p.addonIds ?? [],
       appliedPackIds: p.appliedPackIds ?? [],
@@ -228,6 +236,12 @@ export function ProposalBuilder({
   const packSeq = useRef(1);
   const [packs, setPacks] = useState<Pack[]>([emptyPack(1)]);
   const [activeKey, setActiveKey] = useState('pack-1');
+  // Sidebar price cards start folded — one opens only when its header is
+  // clicked, and switching or adding options folds it again.
+  const [openBreakdownKey, setOpenBreakdownKey] = useState<string | null>(null);
+  useEffect(() => {
+    setOpenBreakdownKey((k) => (k === activeKey ? k : null));
+  }, [activeKey]);
   // Packs whose AI pack shot is being generated right now.
   const [generatingKeys, setGeneratingKeys] = useState<string[]>([]);
   // Generation normally takes 20–40s — say so plainly when it runs longer.
@@ -431,6 +445,46 @@ export function ProposalBuilder({
     };
   }, [search, categoryId]);
 
+  // Box size + products that cannot go in the box, per pack — worked out on the
+  // server from real dimensions (lib/box-fit), the same check the AI image uses.
+  // Keyed by the box + products it was computed for, so a stale answer is ignored.
+  const [boxFits, setBoxFits] = useState<
+    Record<string, { sig: string; size: BoxSize; outside: { id: string; name: string }[] }>
+  >({});
+  const boxFitSig = (p: Pack) => `${p.boxId}|${p.items.map((it) => it.id).join(',')}`;
+  useEffect(() => {
+    const stale = packs.filter(
+      (p) => p.boxId && p.items.length > 0 && boxFits[p.key]?.sig !== boxFitSig(p)
+    );
+    if (stale.length === 0) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      stale.forEach((p) => {
+        const sig = boxFitSig(p);
+        fetch('/api/admin/proposals/box-fit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productIds: p.items.map((it) => it.id), boxId: p.boxId }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => {
+            if (cancelled || !d?.success) return;
+            setBoxFits((prev) => ({
+              ...prev,
+              [p.key]: { sig, size: d.data.size, outside: d.data.outside ?? [] },
+            }));
+          })
+          .catch(() => {/* the count-based size stays in place */});
+      });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // boxFits is read only to skip packs already answered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packs]);
+
   const updatePack = (key: string, patch: Partial<Pack>) =>
     setPacks((prev) => prev.map((p) => (p.key === key ? { ...p, ...patch } : p)));
 
@@ -558,7 +612,10 @@ export function ProposalBuilder({
         const box = boxes.find((b) => b.id === pack.boxId) || null;
         // Size is never picked by hand — it follows the product count, exactly
         // like the builder's customize step (1–2 → Small, 3–4 → Medium, 5+ → Large).
-        const autoSize = packagingSizeForCount(pack.items.length);
+        // …and moves up a size when the products' real dimensions need it.
+        const fit = boxFits[pack.key]?.sig === boxFitSig(pack) ? boxFits[pack.key]! : null;
+        const autoSize = fit?.size ?? packagingSizeForCount(pack.items.length);
+        const outsideBox = box && fit ? fit.outside : [];
         const boxPrice = box ? priceForSize(box, autoSize) : 0;
         // Size-priced add-ons follow the same auto size as the box.
         const addons = addonOptions
@@ -571,9 +628,10 @@ export function ProposalBuilder({
         );
         const perPack = productsPerPack + boxPrice + addonsPerPack;
         const subtotal = Math.max(0, perPack * pack.packQuantity - pack.discount);
-        return { pack, box, autoSize, boxPrice, addons, addonsPerPack, productsPerPack, perPack, subtotal };
+        return { pack, box, autoSize, outsideBox, boxPrice, addons, addonsPerPack, productsPerPack, perPack, subtotal };
       }),
-    [packs, boxes, addonOptions]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [packs, boxes, addonOptions, boxFits]
   );
 
   // Pack grid honours the same search box — matches the pack's name or any
@@ -648,9 +706,16 @@ export function ProposalBuilder({
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.success) throw new Error(data?.error || 'Image generation failed');
       const url = String(data.data.url);
+      const leftOut: string[] = Array.isArray(data.data.leftOut) ? data.data.leftOut : [];
       setPacks((prev) =>
-        prev.map((p) => (p.key === pack.key ? { ...p, aiImage: { url, signature } } : p))
+        prev.map((p) => (p.key === pack.key ? { ...p, aiImage: { url, signature, leftOut } } : p))
       );
+      if (leftOut.length > 0) {
+        toast.info(
+          `${leftOut.length === 1 ? '1 product is' : `${leftOut.length} products are`} too large for the box`,
+          { description: `${leftOut.join(', ')} — not shown in the pack image. Still in the proposal and the price.` }
+        );
+      }
       return url;
     } catch (err) {
       toast.error(
@@ -1045,7 +1110,7 @@ export function ProposalBuilder({
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         {/* ------------------------------------------------ left: editor */}
         <div className="min-w-0 space-y-3">
           {/* Recipient — one compact row; the note only unfolds when wanted */}
@@ -1138,6 +1203,27 @@ export function ProposalBuilder({
             >
               <Plus className="h-4 w-4" /> Add pack
             </button>
+            {/* Actions on the active option */}
+            {active && (
+              <div className="ml-auto flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => duplicatePack(active.pack.key)}
+                  className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                >
+                  <Copy className="h-3.5 w-3.5" /> Duplicate
+                </button>
+                {packs.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removePack(active.pack.key)}
+                    className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Remove
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Active pack editor */}
@@ -1146,35 +1232,9 @@ export function ProposalBuilder({
               key={active.pack.key}
               className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
             >
-              {/* Pack header */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-4 py-2.5">
-                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                  <Layers className="h-4 w-4 text-indigo-600" />
-                  Option {activeIndex + 1} — {active.pack.label || `Pack ${activeIndex + 1}`}
-                </div>
-                <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => duplicatePack(active.pack.key)}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100"
-                  >
-                    <Copy className="h-3.5 w-3.5" /> Duplicate
-                  </button>
-                  {packs.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removePack(active.pack.key)}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-
               <div className="space-y-4 p-4">
                 {/* Naming + quantities — one row on desktop */}
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_110px_minmax(0,1.2fr)_minmax(0,1.2fr)]">
                   <div>
                     <label className={labelCls}>Pack name</label>
                     <input
@@ -1185,48 +1245,117 @@ export function ProposalBuilder({
                       className={inputCls}
                     />
                   </div>
-                  <div className="lg:col-span-2">
-                    <label className={labelCls}>One-line pitch (optional)</label>
+                  <div>
+                    <label className={labelCls}>Packs</label>
                     <input
-                      value={active.pack.tagline}
-                      onChange={(e) => updatePack(active.pack.key, { tagline: e.target.value })}
-                      maxLength={200}
-                      placeholder="Our best-selling mix for senior leadership"
+                      type="number"
+                      min={1}
+                      value={active.pack.packQuantity}
+                      onChange={(e) =>
+                        updatePack(active.pack.key, {
+                          packQuantity: Math.max(1, parseInt(e.target.value) || 1),
+                        })
+                      }
+                      title="Unit prices re-tier automatically at this quantity"
                       className={inputCls}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className={labelCls}>Packs</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={active.pack.packQuantity}
-                        onChange={(e) =>
-                          updatePack(active.pack.key, {
-                            packQuantity: Math.max(1, parseInt(e.target.value) || 1),
-                          })
-                        }
-                        title="Unit prices re-tier automatically at this quantity"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Discount ₹</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={active.pack.discount}
-                        onChange={(e) =>
-                          updatePack(active.pack.key, {
-                            discount: Math.max(0, parseFloat(e.target.value) || 0),
-                          })
-                        }
-                        className={inputCls}
-                      />
+                  <div>
+                    <label className={labelCls}>
+                      Gift box
+                      {active.box && (
+                        <span className="ml-1 normal-case tracking-normal text-gray-400">
+                          · size {active.autoSize}
+                        </span>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={active.pack.boxId}
+                        onChange={(e) => updatePack(active.pack.key, { boxId: e.target.value })}
+                        title="Size is set automatically from the number of products"
+                        className={`${inputCls} appearance-none pr-8`}
+                      >
+                        <option value="">No box</option>
+                        {boxes.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name} — {formatRupees(priceForSize(b, active.autoSize))}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     </div>
                   </div>
+                  <div>
+                    <label className={labelCls}>Add-ons</label>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={addonOptions.length === 0}
+                          className={`${inputCls} flex items-center justify-between gap-2 text-left disabled:cursor-not-allowed disabled:bg-gray-50`}
+                        >
+                          <span
+                            className={`truncate ${active.addons.length === 0 ? 'text-gray-400' : ''}`}
+                          >
+                            {addonOptions.length === 0
+                              ? 'No add-ons available'
+                              : active.addons.length === 0
+                                ? 'None'
+                                : active.addons.length === 1
+                                  ? active.addons[0]!.name
+                                  : `${active.addons.length} selected — ${formatRupees(active.addonsPerPack)}`}
+                          </span>
+                          <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="max-h-72 w-64 overflow-y-auto">
+                        {addonOptions.map((a) => {
+                          const on = active.pack.addonIds.includes(a.id);
+                          return (
+                            <DropdownMenuItem
+                              key={a.id}
+                              // Multi-select — keep the menu open between picks.
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                toggleAddon(active.pack.key, a.id);
+                              }}
+                              className="flex cursor-pointer items-center gap-2 text-sm"
+                            >
+                              <span
+                                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                                  on
+                                    ? 'border-indigo-600 bg-indigo-600 text-white'
+                                    : 'border-gray-300 bg-white'
+                                }`}
+                              >
+                                {on && <Check className="h-3 w-3" />}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate">{a.name}</span>
+                              <span className="shrink-0 tabular-nums text-gray-400">
+                                {formatRupees(priceForSize(a, active.autoSize))}
+                              </span>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
+
+                {/* Products whose real dimensions fit no size of this box. */}
+                {active.outsideBox.length > 0 && (
+                  <p className="rounded-md bg-amber-50 px-3 py-2 text-xs leading-snug text-amber-800">
+                    <strong>
+                      {active.outsideBox.length === 1
+                        ? '1 product does'
+                        : `${active.outsideBox.length} products do`}{' '}
+                      not fit the {active.box?.name ?? 'box'}:
+                    </strong>{' '}
+                    {active.outsideBox.map((o) => o.name).join(', ')}. Still in the proposal and
+                    the price, but shipped separately and left out of the AI pack image.
+                  </p>
+                )}
 
                 {/* Product picker */}
                 <div>
@@ -1284,6 +1413,22 @@ export function ProposalBuilder({
                           </button>
                         </span>
                       ))
+                    )}
+                    {active.pack.items.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updatePack(active.pack.key, {
+                            items: [],
+                            appliedPackIds: [],
+                            manualIds: [],
+                          })
+                        }
+                        title="Remove every product from this pack"
+                        className="ml-auto inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <X className="h-3 w-3" /> Clear all
+                      </button>
                     )}
                   </div>
 
@@ -1494,8 +1639,8 @@ export function ProposalBuilder({
                       </div>
                     )
                   ) : loadingProducts ? (
-                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
-                      {Array.from({ length: 20 }).map((_, i) => (
+                    <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-9">
+                      {Array.from({ length: 14 }).map((_, i) => (
                         <div
                           key={i}
                           className="aspect-[3/4] animate-pulse rounded-md border border-gray-200 bg-gray-100"
@@ -1507,10 +1652,9 @@ export function ProposalBuilder({
                       No products match this search.
                     </p>
                   ) : (
-                    <div className="max-h-[320px] overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-2">
-                      {/* Small tiles: the whole tile is the click target, so a
-                          pack is built in a few clicks without scrolling. */}
-                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+                    <div className="max-h-[440px] overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
+                      {/* The whole tile is the click target. */}
+                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-9">
                         {results.map((p) => {
                           const selected = active.pack.items.some((it) => it.id === p.id);
                           const unit = tierPrice(p.priceTiers, active.pack.packQuantity);
@@ -1534,7 +1678,7 @@ export function ProposalBuilder({
                                     alt={p.name}
                                     fill
                                     className="object-cover"
-                                    sizes="90px"
+                                    sizes="160px"
                                   />
                                 ) : (
                                   <Package className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-gray-300" />
@@ -1547,11 +1691,11 @@ export function ProposalBuilder({
                                   </span>
                                 )}
                               </div>
-                              <div className="px-1.5 py-1">
-                                <p className="truncate text-[11px] font-medium leading-tight text-gray-900">
+                              <div className="px-2 py-1.5">
+                                <p className="line-clamp-2 min-h-[2rem] text-xs font-medium leading-4 text-gray-900">
                                   {p.name}
                                 </p>
-                                <p className="truncate text-[11px] tabular-nums text-gray-500">
+                                <p className="mt-0.5 truncate text-xs font-semibold tabular-nums text-gray-700">
                                   {formatRupees(unit)}
                                 </p>
                               </div>
@@ -1562,345 +1706,234 @@ export function ProposalBuilder({
                     </div>
                   )}
                 </div>
-
-                {/* Box & add-ons */}
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,260px)_1fr]">
-                  <div>
-                    <label className={labelCls}>Gift box (per pack)</label>
-                    <div className="relative">
-                      <select
-                        value={active.pack.boxId}
-                        onChange={(e) => updatePack(active.pack.key, { boxId: e.target.value })}
-                        className={`${inputCls} appearance-none pr-8`}
-                      >
-                        <option value="">No box</option>
-                        {boxes.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name} — {formatRupees(priceForSize(b, active.autoSize))}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    </div>
-                    {active.box && (
-                      <p className="mt-1.5 rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
-                        Size <strong>{active.autoSize}</strong>, auto-set from{' '}
-                        {active.pack.items.length} product
-                        {active.pack.items.length === 1 ? '' : 's'}.
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className={labelCls}>Add-ons (per pack)</label>
-                    {addonOptions.length === 0 ? (
-                      <p className="rounded-md border border-dashed border-gray-200 px-3 py-2 text-center text-xs text-gray-400">
-                        No add-ons available.
-                      </p>
-                    ) : (
-                      // Toggle chips — the whole chip is clickable.
-                      <div className="flex flex-wrap gap-1.5">
-                        {addonOptions.map((a) => {
-                          const on = active.pack.addonIds.includes(a.id);
-                          return (
-                            <button
-                              key={a.id}
-                              type="button"
-                              onClick={() => toggleAddon(active.pack.key, a.id)}
-                              aria-pressed={on}
-                              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                                on
-                                  ? 'border-indigo-500 bg-indigo-50 text-indigo-800'
-                                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                              }`}
-                            >
-                              {on ? (
-                                <Check className="h-3 w-3" />
-                              ) : (
-                                <Plus className="h-3 w-3 text-gray-400" />
-                              )}
-                              {a.name}
-                              <span className="tabular-nums text-gray-400">
-                                {formatRupees(a.price)}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* AI pack shot — the hero image on this pack's page in the deck. */}
-                {(() => {
-                  const img = active.pack.aiImage;
-                  const fresh = !!freshPackImage(active.pack, logoUrl);
-                  const busy = generatingKeys.includes(active.pack.key);
-                  return (
-                    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-3">
-                      <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50 ring-1 ring-gray-200">
-                        {busy ? (
-                          <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
-                        ) : img ? (
-                          <Image
-                            src={img.url}
-                            alt={`${active.pack.label} pack image`}
-                            fill
-                            sizes="80px"
-                            unoptimized
-                            className={`object-cover ${fresh ? '' : 'opacity-40'}`}
-                          />
-                        ) : (
-                          <Sparkles className="h-5 w-5 text-gray-300" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900">AI pack image</p>
-                        <p className="text-xs text-gray-500">
-                          {busy
-                            ? generationSlow
-                              ? PACK_IMAGE_SLOW_MESSAGE
-                              : 'Packing the products into the box… this takes 20–40 seconds.'
-                            : fresh
-                              ? "Used as the hero image on this pack's page in the PDF."
-                              : img
-                                ? 'Box or products changed — it will be regenerated on preview/send.'
-                                : 'No image yet. Click "Generate image" to create one now, or it is generated automatically on preview/send.'}
-                        </p>
-
-                        {/* Client logo — shared by every pack in this proposal */}
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          {logoUrl ? (
-                            <>
-                              <span className="relative inline-block h-8 w-14 overflow-hidden rounded border border-gray-200 bg-gray-50">
-                                <Image
-                                  src={logoUrl}
-                                  alt="Client logo"
-                                  fill
-                                  sizes="56px"
-                                  unoptimized
-                                  className="object-contain p-0.5"
-                                />
-                              </span>
-                              <span className="text-xs text-gray-600">Client logo on the box lid</span>
-                              <button
-                                type="button"
-                                onClick={() => setLogoUrl('')}
-                                disabled={busy}
-                                className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
-                              >
-                                Remove
-                              </button>
-                            </>
-                          ) : (
-                            <span className="text-xs text-gray-400">
-                              No client logo — the box keeps its own artwork.
-                            </span>
-                          )}
-                          <label
-                            className={`inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-indigo-600 hover:underline ${
-                              logoUploading || busy ? 'pointer-events-none opacity-50' : ''
-                            }`}
-                          >
-                            {logoUploading ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <ImagePlus className="h-3.5 w-3.5" />
-                            )}
-                            {logoUrl ? 'Change logo' : 'Upload client logo'}
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                              className="sr-only"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleLogoUpload(file);
-                                e.target.value = '';
-                              }}
-                            />
-                          </label>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {img && !busy && (
-                          <a
-                            href={img.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs font-medium text-indigo-600 hover:underline"
-                          >
-                            Open
-                          </a>
-                        )}
-                        {/* Clear empties the slot so it is obvious the next
-                            click makes a brand-new image. The stored file stays
-                            in Generated Images; only this pack lets go of it. */}
-                        {img && !busy && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPacks((prev) =>
-                                prev.map((p) => (p.key === active.pack.key ? { ...p, aiImage: null } : p))
-                              )
-                            }
-                            title="Remove this image from the pack"
-                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" /> Clear
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => generatePackShot(active.pack)}
-                          disabled={busy || active.pack.items.length === 0}
-                          title={img ? 'Replace the current image with a newly generated one' : 'Generate the AI pack image'}
-                          className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {img ? <RefreshCw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                          {busy ? 'Generating…' : img ? 'Generate new image' : 'Generate image'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* This pack's own breakdown, right below its editor — one
-                    horizontal strip instead of a stacked list. */}
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm">
-                  <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
-                    Breakdown
-                  </span>
-                  <span className="text-gray-600">
-                    Products ({active.pack.items.length}){' '}
-                    <span className="tabular-nums text-gray-900">
-                      {formatRupees(active.productsPerPack)}
-                    </span>
-                  </span>
-                  {active.box && (
-                    <span className="text-gray-600">
-                      Box{' '}
-                      <span className="tabular-nums text-gray-900">
-                        {formatRupees(active.boxPrice)}
-                      </span>
-                    </span>
-                  )}
-                  {active.addons.length > 0 && (
-                    <span className="text-gray-600">
-                      Add-ons ({active.addons.length}){' '}
-                      <span className="tabular-nums text-gray-900">
-                        {formatRupees(active.addonsPerPack)}
-                      </span>
-                    </span>
-                  )}
-                  <span className="text-gray-600">
-                    Per pack{' '}
-                    <span className="font-medium tabular-nums text-gray-900">
-                      {formatRupees(active.perPack)}
-                    </span>
-                  </span>
-                  {active.pack.discount > 0 && (
-                    <span className="text-emerald-700">
-                      −{formatRupees(active.pack.discount)} discount
-                    </span>
-                  )}
-                  <span className="ml-auto font-semibold text-gray-900">
-                    × {active.pack.packQuantity} ={' '}
-                    <span className="tabular-nums">{formatRupees(active.subtotal)}</span>
-                  </span>
-                  <span className="w-full text-[11px] text-gray-400">
-                    Shipping at checkout · GST and the 2% payment fee are added server-side
-                    when you send.
-                  </span>
-                </div>
               </div>
             </section>
           )}
         </div>
 
         {/* ------------------------------------------------ right: all packs */}
-        <div className="xl:sticky xl:top-32 xl:self-start">
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Proposal summary
-            </h2>
-
-            <div className="mt-2 divide-y divide-gray-100">
-              {priced.map(({ pack, perPack, subtotal }, i) => (
+        <div className="space-y-3 xl:sticky xl:top-32 xl:max-h-[calc(100vh-9rem)] xl:self-start xl:overflow-y-auto">
+          {/* One collapsible price card per option. Only the option being
+              edited is open, so adding a pack folds the previous one away. */}
+          {priced.map((p, i) => {
+            const isActive = p.pack.key === activeKey;
+            const open = openBreakdownKey === p.pack.key;
+            return (
+              <div
+                key={p.pack.key}
+                className={`rounded-lg border bg-white shadow-sm ${
+                  isActive ? 'border-indigo-200' : 'border-gray-200'
+                }`}
+              >
                 <button
-                  key={pack.key}
                   type="button"
-                  onClick={() => setActiveKey(pack.key)}
-                  className={`-mx-2 block w-[calc(100%+1rem)] rounded px-2 py-2 text-left transition-colors ${
-                    pack.key === activeKey ? 'bg-indigo-50' : 'hover:bg-gray-50'
-                  }`}
+                  onClick={() => {
+                    setActiveKey(p.pack.key);
+                    setOpenBreakdownKey((k) => (k === p.pack.key ? null : p.pack.key));
+                  }}
+                  aria-expanded={open}
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left"
                 >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-sm font-medium text-gray-900">
-                      {i + 1}. {pack.label || `Pack ${i + 1}`}
-                    </span>
-                    <span className="shrink-0 text-sm font-semibold tabular-nums text-gray-900">
-                      {formatRupees(subtotal)}
-                    </span>
-                  </div>
-                  <p className="text-[11px] tabular-nums text-gray-500">
-                    {pack.items.length === 0 ? (
-                      <span className="font-medium text-red-600">Needs products</span>
+                  <span
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded text-[11px] font-bold ${
+                      isActive ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
+                    {p.pack.label || `Pack ${i + 1}`}
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums text-gray-900">
+                    {p.pack.items.length === 0 ? (
+                      <span className="text-xs font-medium text-amber-700">Needs products</span>
                     ) : (
-                      `${pack.items.length} items · ${formatRupees(perPack)} × ${pack.packQuantity}`
+                      formatRupees(p.subtotal)
                     )}
-                  </p>
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
+                      open ? 'rotate-180' : ''
+                    }`}
+                  />
                 </button>
-              ))}
-            </div>
 
-            <button
-              type="button"
-              onClick={addPack}
-              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 py-1.5 text-xs font-medium text-gray-500 hover:border-indigo-300 hover:text-indigo-600"
-            >
-              <Plus className="h-3.5 w-3.5" /> Add another option
-            </button>
+                {open && (
+                  <div className="border-t border-gray-100 px-4 pb-4 pt-3">
+                    <dl className="space-y-1.5 text-sm">
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-gray-600">Products ({p.pack.items.length})</dt>
+                        <dd className="tabular-nums text-gray-900">{formatRupees(p.productsPerPack)}</dd>
+                      </div>
+                      {p.box && (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-600">Box</dt>
+                          <dd className="tabular-nums text-gray-900">{formatRupees(p.boxPrice)}</dd>
+                        </div>
+                      )}
+                      {p.addons.length > 0 && (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-600">Add-ons ({p.addons.length})</dt>
+                          <dd className="tabular-nums text-gray-900">{formatRupees(p.addonsPerPack)}</dd>
+                        </div>
+                      )}
+                      <div className="flex justify-between gap-2 border-t border-gray-100 pt-1.5">
+                        <dt className="text-gray-600">Per pack</dt>
+                        <dd className="font-medium tabular-nums text-gray-900">{formatRupees(p.perPack)}</dd>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-2 border-t border-gray-100 pt-2">
+                        <dt className="text-gray-600">× {p.pack.packQuantity} packs</dt>
+                        <dd className="text-lg font-semibold tabular-nums text-gray-900">
+                          {formatRupees(p.subtotal)}
+                        </dd>
+                      </div>
+                    </dl>
+                    <p className="mt-1 text-[11px] leading-snug text-gray-400">
+                      Before shipping, GST and the 2% payment fee.
+                    </p>
+                    {p.pack.items.length === 0 && (
+                      <p className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-800">
+                        No products yet — add at least one, or remove this option.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
-            <button
-              type="button"
-              onClick={handlePreview}
-              disabled={previewLoading}
-              title={
-                previewLoading
-                  ? 'Building the deck…'
-                  : previewBlockReason ?? 'Render the deck exactly as the client will get it'
-              }
-              className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
-            >
-              {previewLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-              Preview proposal
-            </button>
-            {/* Say which option is holding it up — a silent dead button was
-                read as the preview being broken. */}
-            {previewBlockReason && (
-              <p className="mt-1.5 text-[11px] leading-snug text-amber-700">
-                {previewBlockReason}
-              </p>
-            )}
+          {/* AI pack shot — the hero image on this pack's page in the deck. */}
+          {active &&
+            (() => {
+              const img = active.pack.aiImage;
+              const fresh = !!freshPackImage(active.pack, logoUrl);
+              const busy = generatingKeys.includes(active.pack.key);
+              return (
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    AI pack image
+                  </h2>
+                  <div className="relative mt-2 flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-md bg-gray-50 ring-1 ring-gray-200">
+                    {busy ? (
+                      <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                    ) : img ? (
+                      <a href={img.url} target="_blank" rel="noreferrer" title="Open full size">
+                        <Image
+                          src={img.url}
+                          alt={`${active.pack.label} pack image`}
+                          fill
+                          sizes="320px"
+                          unoptimized
+                          className={`object-cover ${fresh ? '' : 'opacity-40'}`}
+                        />
+                      </a>
+                    ) : (
+                      <Sparkles className="h-6 w-6 text-gray-300" />
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs leading-snug text-gray-500">
+                    {busy
+                      ? generationSlow
+                        ? PACK_IMAGE_SLOW_MESSAGE
+                        : 'Packing the products into the box… this takes 20–40 seconds.'
+                      : fresh
+                        ? "Hero image on this pack's page in the PDF."
+                        : img
+                          ? 'Box or products changed — it will be regenerated on preview/send.'
+                          : 'No image yet — generate one now, or it is made automatically on preview/send.'}
+                  </p>
 
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={sending || !canSend}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-            >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {sending ? 'Sending…' : `Send ${packs.length} option${packs.length === 1 ? '' : 's'}`}
-            </button>
-            <p className="mt-1.5 text-center text-[11px] leading-snug text-gray-400">
-              One email with every option, a compare page and a combined deck PDF. Valid 30
-              days.
-            </p>
-          </div>
+                  {fresh && !busy && (img?.leftOut?.length ?? 0) > 0 && (
+                    <p className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-800">
+                      Too large for the box, so not in this image:{' '}
+                      <strong>{img!.leftOut!.join(', ')}</strong>. Still in the proposal and the
+                      price — it ships separately.
+                    </p>
+                  )}
+
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => generatePackShot(active.pack)}
+                      disabled={busy || active.pack.items.length === 0}
+                      title={img ? 'Replace the current image with a newly generated one' : 'Generate the AI pack image'}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {img ? <RefreshCw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+                      {busy ? 'Generating…' : img ? 'Generate new' : 'Generate image'}
+                    </button>
+                    {/* Clear empties the slot so it is obvious the next click
+                        makes a brand-new image. The stored file stays in
+                        Generated Images; only this pack lets go of it. */}
+                    {img && !busy && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPacks((prev) =>
+                            prev.map((p) => (p.key === active.pack.key ? { ...p, aiImage: null } : p))
+                          )
+                        }
+                        title="Remove this image from the pack"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Clear
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Client logo — shared by every pack in this proposal */}
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+                    {logoUrl ? (
+                      <>
+                        <span className="relative inline-block h-8 w-14 overflow-hidden rounded border border-gray-200 bg-gray-50">
+                          <Image
+                            src={logoUrl}
+                            alt="Client logo"
+                            fill
+                            sizes="56px"
+                            unoptimized
+                            className="object-contain p-0.5"
+                          />
+                        </span>
+                        <span className="text-xs text-gray-600">Client logo on the box</span>
+                        <button
+                          type="button"
+                          onClick={() => setLogoUrl('')}
+                          disabled={busy}
+                          className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-400">No client logo.</span>
+                    )}
+                    <label
+                      className={`inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-indigo-600 hover:underline ${
+                        logoUploading || busy ? 'pointer-events-none opacity-50' : ''
+                      }`}
+                    >
+                      {logoUploading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ImagePlus className="h-3.5 w-3.5" />
+                      )}
+                      {logoUrl ? 'Change logo' : 'Upload client logo'}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleLogoUpload(file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              );
+            })()}
         </div>
       </div>
 

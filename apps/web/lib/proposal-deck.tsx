@@ -1,6 +1,7 @@
 import { renderToBuffer } from '@react-pdf/renderer';
 import { prisma } from '@/lib/prisma';
 import { stripHtml } from '@/lib/strip-html';
+import { PACKAGING_SIZE_SUFFIX } from '@/lib/packaging-designs';
 import { resolveProductHsn, type ResolvedHsn } from '@/lib/quote-pricing';
 import {
   ProposalDeckPDF,
@@ -442,7 +443,7 @@ async function buildDeckProps(
   // size suffix is stripped before hitting the Product table.
   const payloadAddons: any[] = Array.isArray(payload?.addons) ? payload.addons : [];
   const packagingProductId = payload?.packaging?.id
-    ? String(payload.packaging.id).replace(/-(small|medium|large)$/i, '')
+    ? String(payload.packaging.id).replace(PACKAGING_SIZE_SUFFIX, '')
     : null;
   const extraIds = [
     ...(packagingProductId ? [packagingProductId] : []),

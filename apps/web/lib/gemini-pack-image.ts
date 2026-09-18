@@ -43,6 +43,8 @@ export interface PackImageItem {
   material?: string | null;
   /** Real size, e.g. "7 × 7 × 24 cm (L × W × H)" — pins shape and relative scale. */
   size?: string | null;
+  /** The same size as numbers, cm (L, W, H) — feeds the measured packing plan. */
+  dims?: [number, number, number] | null;
   /** Catalogue branding method — only products with one receive the client logo. */
   branding?: { technique: string; position?: string | null; logoColour?: string | null } | null;
 }
@@ -97,7 +99,10 @@ export async function generatePackImage({
   products,
   logoUrl,
   boxColour = null,
+  boxInnerCm = null,
 }: {
+  /** Inner size of the chosen box size, cm (L, W, H) — turns on the measured packing plan. */
+  boxInnerCm?: [number, number, number] | null;
   box: PackImageItem | null;
   products: PackImageItem[];
   /** Client logo — printed on the box lid. Omit to keep the box artwork as photographed. */
@@ -129,10 +134,12 @@ export async function generatePackImage({
     hasLogo,
     hasBoxImage: !!boxPart,
     boxColour,
+    boxInnerCm,
     products: products.map((p, i) => ({
       label: p.brand ? `${p.name} (${p.brand})` : p.name,
       hasImage: !!productParts[i],
       material: p.material ?? null,
+      dims: p.dims ?? null,
       branding: p.branding ?? null,
     })),
   });
