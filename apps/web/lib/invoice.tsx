@@ -59,8 +59,7 @@ export function buildInvoiceData(order: InvoiceOrder): InvoiceData {
     .filter(Boolean)
     .join(', ');
 
-  // A 10% advance does NOT make this a full Tax Invoice — it stays a Proforma
-  // (showing advance paid + balance pending) until the order is fully paid.
+  // The invoice stays a Proforma until the order is fully paid.
   const grandTotal = Number(order.grandTotal);
   const amountPaid = Number(billing.amountPaid ?? 0);
   const isFullyPaid = isOrderFullyPaid(amountPaid, grandTotal);

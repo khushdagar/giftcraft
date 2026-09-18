@@ -33,10 +33,6 @@ export default function TermsPage() {
           not a reservation — prices may change until an order is confirmed.
         </p>
         <p>
-          Paying a 10% advance locks the quoted prices for 30 days from the date of that payment. If
-          the balance is not paid within that window, prices may be re-quoted.
-        </p>
-        <p>
           Standard branding is included in product prices. GST and the payment gateway fee are shown
           as separate lines and are payable in addition to the item subtotal.
         </p>

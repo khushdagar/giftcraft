@@ -102,10 +102,6 @@ function CheckoutContent() {
   // re-type the address they logged in with.
   const { data: session } = useSession();
 
-  // The 10% price-lock path is DISABLED for now (no advance payments taken) —
-  // mockup-first is the only offered path. Restore the 'lock' default and the
-  // commented card in path-selection.tsx to bring it back.
-  const [selectedPath, setSelectedPath] = useState<'mockup' | 'lock'>('mockup');
   const [showSignIn, setShowSignIn] = useState(false);
 
   const [billingData, setBillingData] = useState<BillingFormData>({
@@ -137,9 +133,6 @@ function CheckoutContent() {
       const saved = JSON.parse(raw);
       if (saved.billingData) setBillingData(saved.billingData);
       if (saved.contactData) setContactData(saved.contactData);
-      // Only the mockup path is offered while price-lock is disabled — a saved
-      // 'lock' selection from an older session must not resurrect it.
-      if (saved.selectedPath === 'mockup') setSelectedPath(saved.selectedPath);
       sessionStorage.removeItem(`checkout-form-${quoteId}`);
     } catch {
       /* corrupted/unavailable storage — start with empty forms */
@@ -332,29 +325,7 @@ function CheckoutContent() {
     });
   }, [payload, billingData.state]);
 
-  const advance10 = pricing ? Math.round(pricing.grandTotal * 0.1) : 0;
-  const balance90 = pricing ? pricing.grandTotal - advance10 : 0;
-
   const [submitting, setSubmitting] = useState(false);
-  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
-
-  // Load the Razorpay checkout script once (needed only for the price-lock path).
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.Razorpay) {
-      setRazorpayLoaded(true);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    script.onload = () => setRazorpayLoaded(true);
-    script.onerror = () => console.error('Failed to load Razorpay checkout script');
-    document.body.appendChild(script);
-    return () => {
-      script.onload = null;
-      script.onerror = null;
-    };
-  }, []);
 
   const validateForms = () => {
     if (!billingData.companyName.trim()) return alert('Please enter company name'), false;
@@ -364,7 +335,7 @@ function CheckoutContent() {
     return true;
   };
 
-  // Billing payload shared by both checkout paths.
+  // Billing payload saved with the order.
   const buildBillingJson = () => ({
     companyName: billingData.companyName,
     gstin: billingData.gstin,
@@ -381,16 +352,9 @@ function CheckoutContent() {
     phone: contactData.phone,
   });
 
-  // Single entrypoint from the pricing panel; branches on the selected path.
-  // `pathOverride` lets a caller pick the path and place the order in one tap —
-  // the mobile sticky bar offers both paths as buttons. Anything that isn't one
-  // of the two path strings (e.g. a click event from a plain onClick={...}) is
-  // ignored, so the stored selection still wins.
-  const handleContinue = async (pathOverride?: 'mockup' | 'lock') => {
-    const path =
-      pathOverride === 'mockup' || pathOverride === 'lock' ? pathOverride : selectedPath;
+  // Single entrypoint from the pricing panel and the path card.
+  const handleContinue = async () => {
     if (submitting) return;
-    if (path !== selectedPath) setSelectedPath(path);
     // Guests sign in at the payment step (orders are always tied to an
     // account). Save what they've typed so it's restored when Google brings
     // them back to this exact page.
@@ -398,7 +362,7 @@ function CheckoutContent() {
       try {
         sessionStorage.setItem(
           `checkout-form-${quoteId}`,
-          JSON.stringify({ billingData, contactData, selectedPath: path })
+          JSON.stringify({ billingData, contactData })
         );
       } catch {
         /* storage unavailable — they'll just re-type after signing in */
@@ -407,7 +371,6 @@ function CheckoutContent() {
       return;
     }
     if (!validateForms()) return;
-    if (path === 'lock') return handlePayAndLock();
     return handleMockupConfirm();
   };
 
@@ -432,89 +395,6 @@ function CheckoutContent() {
       router.push(`/checkout/confirmation?orderId=${order.id}`);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to confirm order. Please try again.');
-      setSubmitting(false);
-    }
-  };
-
-  // Price-lock path: collect a 10% advance via Razorpay, then create the order
-  // with the verified payment so it's saved as paid.
-  const handlePayAndLock = async () => {
-    if (!razorpayLoaded || !window.Razorpay) {
-      alert('Payment gateway is still loading. Please try again in a moment.');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      // 1. Create a Razorpay order server-side (amount computed from the quote).
-      const orderRes = await fetch('/api/payments/razorpay/order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quoteId, paymentType: 'advance', billingState: billingData.state }),
-      });
-      if (!orderRes.ok) {
-        const body = await orderRes.json().catch(() => ({}));
-        throw new Error(body.error || 'Could not start payment');
-      }
-      const rzp = await orderRes.json();
-
-      // 2. Open the Razorpay checkout popup.
-      const options = {
-        key: rzp.keyId,
-        amount: rzp.amount,
-        currency: rzp.currency,
-        order_id: rzp.razorpayOrderId,
-        name: 'GIVOO',
-        description: `10% advance — ${billingData.companyName}`,
-        prefill: {
-          name: contactData.name,
-          email: contactData.email,
-          contact: contactData.phone,
-        },
-        theme: { color: '#800020' },
-        handler: async (response: any) => {
-          // 3. Payment succeeded — create the order with the verified payment.
-          try {
-            const res = await fetch('/api/orders', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                quoteId,
-                deliveryMode: payload?.deliveryMode,
-                billingJson: buildBillingJson(),
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-                paymentType: 'advance',
-              }),
-            });
-            if (!res.ok) {
-              const body = await res.json().catch(() => ({}));
-              throw new Error(body.error || 'Order creation failed after payment');
-            }
-            const order = await res.json();
-            router.push(`/checkout/confirmation?orderId=${order.id}`);
-          } catch (err) {
-            alert(
-              err instanceof Error
-                ? err.message
-                : 'Payment succeeded but saving the order failed. Please contact support with your payment ID.'
-            );
-            setSubmitting(false);
-          }
-        },
-        modal: {
-          ondismiss: () => setSubmitting(false),
-        },
-      };
-
-      const instance = new window.Razorpay(options);
-      instance.on('payment.failed', (resp: any) => {
-        alert(`Payment failed: ${resp?.error?.description || 'Please try again.'}`);
-        setSubmitting(false);
-      });
-      instance.open();
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to start payment. Please try again.');
       setSubmitting(false);
     }
   };
@@ -655,21 +535,9 @@ function CheckoutContent() {
 
                 <ContactForm data={contactData} onChange={setContactData} />
 
-                <PathSelection
-                  selectedPath={selectedPath}
-                  onSelectPath={setSelectedPath}
-                  advance10={advance10}
-                  balance90={balance90}
-                  onContinue={handleContinue}
-                  submitting={submitting}
-                />
+                <PathSelection onContinue={handleContinue} submitting={submitting} />
 
-                <ProcessTimeline
-                  selectedPath={selectedPath}
-                  advance10={advance10}
-                  balance90={balance90}
-                  grand={pricing.grandTotal}
-                />
+                <ProcessTimeline grand={pricing.grandTotal} />
                 </div>
               </div>
 
@@ -680,9 +548,6 @@ function CheckoutContent() {
                   packagingName={payload.packaging?.name}
                   addons={addonLines}
                   pricing={pricing}
-                  advance10={advance10}
-                  balance90={balance90}
-                  selectedPath={selectedPath}
                   onContinue={handleContinue}
                   submitting={submitting}
                 />

@@ -8,6 +8,7 @@ import { TrendingPacks } from '@/components/home/trending-packs';
 import { HowItWorks } from '@/components/home/how-it-works';
 import { CustomerReviews } from '@/components/home/customer-reviews';
 import { CuratedCollections } from '@/components/home/curated-collections';
+import { HomeSeoContent } from '@/components/home/home-seo-content';
 import { CTASection } from '@/components/home/cta-section';
 import { withPageSeo } from '@/lib/page-seo';
 import {
@@ -22,10 +23,15 @@ import {
 // client components hydrate React Query from this data with zero refetch flash.
 export const revalidate = 3600;
 
-// Title/description come from the root layout unless the SEO team has saved
-// an override for "/" in /admin/seo — an empty override inherits the layout.
+// Homepage defaults — an override saved for "/" in /admin/seo still wins.
 export function generateMetadata() {
-  return withPageSeo('/');
+  return withPageSeo('/', {
+    // Title is used as-is (no brand suffix is appended)
+    title: "GIVOO — India's First Self-Serve Bulk Corporate Gifting Platform",
+    description:
+      'Browse & Build branded gift packs for employees & clients, get instant bulk pricing with GST, and pay ₹0 until you approve your mockup. Delivered in 10–15 days.',
+    alternates: { canonical: '/' },
+  });
 }
 
 export default async function HomePage() {
@@ -48,6 +54,7 @@ export default async function HomePage() {
         <HowItWorks />
         <CuratedCollections />
         <CustomerReviews initialData={reviews} />
+        <HomeSeoContent categories={categories} />
         <CTASection />
       </div>
     </HomePageWrapper>

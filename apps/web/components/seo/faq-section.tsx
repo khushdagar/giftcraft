@@ -25,7 +25,8 @@ export function FaqSection({ heading, faqs }: FaqSectionProps) {
           <h2 className="text-xl font-black tracking-tight text-ink">Frequently asked questions</h2>
           <div className="mt-4 divide-y divide-bdr">
             {faqs.map((faq, i) => (
-              <details key={i} className="group py-4">
+              // Shared `name` = exclusive accordion: opening one closes the others.
+              <details key={i} name="page-faq" className="group py-4">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-ink">
                   {faq.question}
                   <span className="shrink-0 text-ink-3 transition group-open:rotate-45">+</span>

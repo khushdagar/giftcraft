@@ -79,7 +79,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           orderId: order.id,
           amountPaid: grandTotal,
           paymentId: 'OFFLINE',
-          isAdvance: false,
           grandTotal,
         });
       } catch (e) {

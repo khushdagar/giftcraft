@@ -13,6 +13,7 @@ const STATIC_PAGES: Array<{ path: string; changefreq: Changefreq; priority: numb
   // deliberately NOT listed so /box stays the indexed landing page.
   { path: '/box', changefreq: 'weekly', priority: 0.9 },
   { path: '/planner', changefreq: 'monthly', priority: 0.6 },
+  { path: '/about', changefreq: 'monthly', priority: 0.6 },
   { path: '/contact', changefreq: 'monthly', priority: 0.5 },
   { path: '/sell-with-us', changefreq: 'monthly', priority: 0.4 },
   { path: '/faq', changefreq: 'monthly', priority: 0.4 },

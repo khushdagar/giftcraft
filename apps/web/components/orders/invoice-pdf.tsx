@@ -208,7 +208,7 @@ export interface InvoiceData {
   };
   payment?: {
     amountPaid: number;
-    paymentType: 'advance' | 'full' | null;
+    paymentType: 'full' | null;
     paidAt: string | null;
   };
 }
@@ -353,10 +353,9 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
   };
   const totalTax = round2(totals.cgst + totals.sgst + totals.igst);
 
-  // Payment (10% advance / full). A partly-paid order keeps a pending balance.
+  // Payment received so far. Anything short of the total keeps a pending balance.
   const amountPaid = data.payment?.amountPaid ?? 0;
   const balanceDue = round2(Math.max(0, amounts.grandTotal - amountPaid));
-  const isAdvance = data.payment?.paymentType !== 'full';
   const logo = givooLogo();
 
   return (
@@ -486,13 +485,11 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
               <Text style={[styles.tAmount, styles.grandText]}>{inr(amounts.grandTotal)}</Text>
             </View>
 
-            {/* Advance paid + pending balance (price-lock path) */}
+            {/* Amount paid + any pending balance */}
             {amountPaid > 0 && (
               <>
                 <View style={styles.row}>
-                  <Text style={styles.tLabel}>
-                    {isAdvance ? 'Advance Paid (10%)' : 'Amount Paid'}
-                  </Text>
+                  <Text style={styles.tLabel}>Amount Paid</Text>
                   <Text style={styles.tAmount}>- {inr(amountPaid)}</Text>
                 </View>
                 <View style={[styles.row, styles.grandRow]}>
@@ -506,9 +503,7 @@ export function InvoicePDF({ data }: { data: InvoiceData }) {
 
         {/* {!data.isPaid && (
           <Text style={styles.note}>
-            {amountPaid > 0
-              ? `This is a Proforma Invoice. A 10% advance of ${inr(amountPaid)} has been received; the balance of ${inr(balanceDue)} is due after mockup approval. A GST Tax Invoice will be issued once the order is fully paid.`
-              : 'This is a Proforma Invoice for your reference and is not a valid tax invoice. A GST Tax Invoice will be issued upon receipt of payment.'}
+            This is a Proforma Invoice for your reference and is not a valid tax invoice. A GST Tax Invoice will be issued upon receipt of payment.
           </Text>
         )} */}
       </Page>

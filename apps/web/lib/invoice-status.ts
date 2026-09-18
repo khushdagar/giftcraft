@@ -8,9 +8,8 @@
 /**
  * An order becomes a GST Tax Invoice only once it is FULLY paid.
  *
- * `Order.paidAt` must never be used to decide this: the price-lock path sets
- * paidAt as soon as a 10% advance is captured, so paidAt is true while ~90% of
- * the balance is still pending. Compare against the grand total instead.
+ * `Order.paidAt` must never be used to decide this: it only records that SOME
+ * payment was captured. Compare the amount paid against the grand total instead.
  *
  * The 1-paisa epsilon absorbs rounding between the Decimal grand total and the
  * amount Razorpay actually captured.

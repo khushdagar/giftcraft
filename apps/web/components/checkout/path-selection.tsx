@@ -1,114 +1,31 @@
 'use client';
 
-import { formatRupees } from '@/lib/utils';
 import { FillProgressButton } from '@/components/ui/fill-progress-button';
 
 interface PathSelectionProps {
-  selectedPath: 'mockup' | 'lock';
-  onSelectPath: (path: 'mockup' | 'lock') => void;
-  advance10: number;
-  balance90: number;
   onContinue: () => void;
   /** True while the order is being placed — fills the CTA. */
   submitting?: boolean;
 }
 
-export function PathSelection({
-  selectedPath,
-  onSelectPath,
-  advance10,
-  balance90,
-  onContinue,
-  submitting,
-}: PathSelectionProps) {
+// Mockup-first is the only way to order: confirm now, pay after approval.
+export function PathSelection({ onContinue, submitting }: PathSelectionProps) {
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 md:p-7 mb-4">
       <h3 className="text-base font-medium mb-4 flex items-center gap-2">
-        How would you like to proceed?
+        How it works
       </h3>
 
       <p className="text-sm text-[#5C5852] mb-4">
         At GIVOO, we create <strong>custom mockups</strong> of your branded products before
-        production. Choose how you'd like to move forward:
+        production — you pay only after you approve them.
       </p>
 
-      {/* Was md:grid-cols-2 while the 10% price-lock card was offered. */}
       <div className="grid grid-cols-1 gap-3 mb-6">
-        {/* Lock Path (10% advance) — DISABLED for now: we're not taking any
-            advance payment. Restore this block (and the 'lock' default in the
-            checkout page) to bring it back.
-        <button
-          onClick={() => onSelectPath('lock')}
-          className={`text-left border-2 rounded-2xl p-4 md:p-6 cursor-pointer transition-all relative ${
-            selectedPath === 'lock'
-              ? 'border-[#3A3A3A] bg-[#F5F1EB]'
-              : 'border-[#E5DFD4] hover:border-[#D3CBBC] hover:shadow-sm'
-          }`}
-        >
-          <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-[#FBF4F5] text-[#560015] mb-3">
-            Recommended
-          </span>
-
-          {selectedPath === 'lock' && (
-            <div className="absolute top-3 right-3 w-6 h-6 bg-[#3A3A3A] text-white rounded-full flex items-center justify-center text-xs font-bold">
-              ✓
-            </div>
-          )}
-
-          <h4 className="text-sm font-semibold mb-2">Lock Prices with 10% Advance</h4>
-          <p className="text-xs text-[#5C5852] mb-3 leading-relaxed">
-            Secure today's pricing with a <strong>10% advance payment</strong>. Especially useful
-            during peak seasons when prices may increase.
-          </p>
-          <p className="text-lg font-semibold text-[#3A3A3A] mb-3">{formatRupees(advance10)} now</p>
-
-          <div className="space-y-2 text-xs text-[#5C5852] border-t border-[#D3CBBC] pt-3">
-            <div className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-[#3A3A3A] text-white rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
-                1
-              </span>
-              <span>Pay 10% advance ({formatRupees(advance10)})</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-[#3A3A3A] text-white rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
-                2
-              </span>
-              <span>We create mockups (1–2 business days)</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-[#3A3A3A] text-white rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
-                3
-              </span>
-              <span>You approve or request changes</span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-5 h-5 bg-[#3A3A3A] text-white rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold">
-                4
-              </span>
-              <span>Pay remaining {formatRupees(balance90)} & production begins</span>
-            </div>
-          </div>
-        </button>
-        */}
-
-        {/* Mockup Path */}
-        <button
-          onClick={() => onSelectPath('mockup')}
-          className={`text-left border-2 rounded-2xl p-4 md:p-6 cursor-pointer transition-all relative ${
-            selectedPath === 'mockup'
-              ? 'border-[#800020] bg-[#FBF4F5]'
-              : 'border-[#E5DFD4] hover:border-[#D3CBBC] hover:shadow-sm'
-          }`}
-        >
+        <div className="text-left border-2 rounded-2xl p-4 md:p-6 relative border-[#800020] bg-[#FBF4F5]">
           <span className="inline-block px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-[#F5F1EB] text-[#222222] mb-3">
             Mockup First
           </span>
-
-          {selectedPath === 'mockup' && (
-            <div className="absolute top-3 right-3 w-6 h-6 bg-[#800020] text-white rounded-full flex items-center justify-center text-xs font-bold">
-              ✓
-            </div>
-          )}
 
           <h4 className="text-sm font-semibold mb-2">Confirm Order & Get Mockups</h4>
           <p className="text-xs text-[#5C5852] mb-3 leading-relaxed">
@@ -143,31 +60,21 @@ export function PathSelection({
               <span>Pay full amount & we begin production</span>
             </div>
           </div>
-        </button>
+        </div>
       </div>
 
-      {/* Primary CTA mirrored from the pricing panel, so buyers can act right
-          after choosing a path without scrolling to the panel on the right. The
-          button label + legal note match the panel exactly. */}
+      {/* Primary CTA mirrored from the pricing panel, so buyers can act without
+          scrolling to the panel on the right. The button label + legal note
+          match the panel exactly. */}
       <FillProgressButton
         onClick={onContinue}
         active={!!submitting}
-        className={`w-full h-[38px] rounded-full font-semibold flex items-center justify-center gap-2 transition-all disabled:cursor-default ${
-          selectedPath === 'mockup'
-            ? 'bg-[#800020] text-white hover:bg-[#6B001B]'
-            : 'bg-[#3A3A3A] text-white hover:bg-[#222222]'
-        }`}
+        className="w-full h-[38px] rounded-full font-semibold flex items-center justify-center gap-2 transition-all disabled:cursor-default bg-[#800020] text-white hover:bg-[#6B001B]"
         // A lighter wash of the button's own colour, so the fill reads as
         // progress without the label losing contrast.
         fillClassName="bg-white/25 text-white"
-        label={
-          selectedPath === 'mockup'
-            ? '✓ Confirm Order & Get Mockups'
-            : `🔒 Pay ${formatRupees(advance10)} & Lock Prices`
-        }
-        activeLabel={
-          selectedPath === 'mockup' ? 'Placing your order…' : 'Opening payment…'
-        }
+        label="✓ Confirm Order & Get Mockups"
+        activeLabel="Placing your order…"
       />
       <p className="text-[11px] text-[#8F8A82] text-center mt-3 leading-relaxed">
         By confirming, you agree to our Terms of Service, Privacy Policy, and Refund Policy.

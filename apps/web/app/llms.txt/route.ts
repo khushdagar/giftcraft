@@ -93,6 +93,7 @@ export async function GET() {
     section('Products by Occasion', occasionLines) +
     section('Product Categories & Sub-collections', categoryLines) +
     section('Corporate Gifting', [
+      { name: 'About GIVOO', path: '/about', note: 'Who GIVOO is, who it serves, the Build Your Pack model, pricing and mockup-approval policy, delivery coverage, and company details.' },
       { name: 'Contact', path: '/contact', note: 'Get in touch for corporate gifting orders, bulk quotes, and support.' },
       { name: 'FAQ', path: '/faq', note: 'Answers to common questions about ordering, pricing, and delivery.' },
       { name: 'Sell With Us', path: '/sell-with-us', note: 'Vendor onboarding information.' },

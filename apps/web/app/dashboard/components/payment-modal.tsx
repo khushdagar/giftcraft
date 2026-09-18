@@ -169,7 +169,7 @@ export function DashboardPaymentModal() {
                 </div>
                 {order.amountPaid > 0 && (
                   <Row
-                    label="Advance paid"
+                    label="Amount paid"
                     value={`−${formatRupees(order.amountPaid)}`}
                     accent="text-em-700"
                   />

@@ -175,11 +175,11 @@ export interface PriceBreakdown {
  * Render the price summary with the same line items the customer saw at
  * checkout: products, packaging, add-ons, shipping, GST, the gateway fee
  * (GST-inclusive, per RULE 2 always its own line), and the grand total —
- * plus, when an advance has been taken, what has been paid against it.
+ * plus, once a payment has been taken, what has been paid against it.
  */
 function priceBreakdownCard(
   amounts: PriceBreakdown,
-  opts?: { advancePaid?: number; balanceDue?: number; paymentId?: string }
+  opts?: { amountPaid?: number; paymentId?: string }
 ): string {
   // The gateway fee is stored GST-INCLUSIVE and its tax is not part of
   // cgst/sgst/igst, so the GST row here covers products only — mirroring the
@@ -198,11 +198,9 @@ function priceBreakdownCard(
   rows += `<tr><td colspan="2" style="padding:0;"><div style="border-top:2px solid ${COLORS.border};margin:8px 0 2px;"></div></td></tr>`;
   rows += row('Grand Total', `<span style="font-size:16px;">${inr(amounts.grandTotal)}</span>`, true);
 
-  if (opts?.advancePaid != null && opts.advancePaid > 0) {
+  if (opts?.amountPaid != null && opts.amountPaid > 0) {
     rows += `<tr><td colspan="2" style="padding:0;"><div style="border-top:1px solid ${COLORS.border};margin:8px 0 2px;"></div></td></tr>`;
-    rows += `<tr><td style="padding:7px 0;font-size:14px;color:${COLORS.brand};font-weight:600;">Advance Paid (10%)</td><td style="padding:7px 0;font-size:14px;text-align:right;color:${COLORS.brand};font-weight:700;">${inr(opts.advancePaid)}</td></tr>`;
-    if (opts.balanceDue != null && opts.balanceDue > 0)
-      rows += row('Balance Due (after mockup approval)', inr(opts.balanceDue), true);
+    rows += `<tr><td style="padding:7px 0;font-size:14px;color:${COLORS.brand};font-weight:600;">Amount Paid</td><td style="padding:7px 0;font-size:14px;text-align:right;color:${COLORS.brand};font-weight:700;">${inr(opts.amountPaid)}</td></tr>`;
   }
   if (opts?.paymentId)
     rows += row('Payment ID', `<span style="font-family:monospace;font-size:12px;">${esc(opts.paymentId)}</span>`);
@@ -414,13 +412,11 @@ export async function sendPaymentSuccessEmail(options: {
   orderId: string;
   amountPaid: number;
   paymentId: string;
-  isAdvance: boolean;
   grandTotal: number;
   // Optional: price summary + invoice attachment (passed at order placement).
   amounts?: PriceBreakdown;
   attachments?: EmailAttachment[];
 }) {
-  const balance = Math.max(0, options.grandTotal - options.amountPaid);
   const orderUrl = `${APP_URL}/dashboard/orders/${options.orderId}`;
 
   // Prefer the priced summary; fall back to a short payment summary when the
@@ -428,20 +424,18 @@ export async function sendPaymentSuccessEmail(options: {
   const summary =
     options.amounts
       ? priceBreakdownCard(options.amounts, {
-          advancePaid: options.amountPaid,
-          balanceDue: options.isAdvance ? balance : 0,
+          amountPaid: options.amountPaid,
           paymentId: options.paymentId,
         })
       : card(
           row('Amount paid', inr(options.amountPaid), true) +
-            (options.isAdvance ? row('Balance due (after mockup approval)', inr(balance)) : '') +
             row('Order total', inr(options.grandTotal)) +
             row('Payment ID', `<span style="font-family:monospace;font-size:13px;">${esc(options.paymentId)}</span>`)
         );
 
   const content =
     p(`Hi ${esc(options.customerName)},`) +
-    p(`We've successfully received your ${options.isAdvance ? '10% advance' : 'full'} payment for order <strong>${esc(options.orderNumber)}</strong>.`) +
+    p(`We've successfully received your full payment for order <strong>${esc(options.orderNumber)}</strong>.`) +
     summary +
     p('Our design team will now prepare your branded mockups for approval.') +
     (options.attachments?.length
