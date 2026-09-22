@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit2, Plus, Star, ExternalLink, EyeOff, MessageCircle, Users } from 'lucide-react';
+import { Edit2, Plus, Star, ExternalLink, Eye, EyeOff, MessageCircle, Users } from 'lucide-react';
 import { formatPostDate } from '@/lib/blog';
 import { DeletePostButton } from '@/components/admin/blog/delete-post-button';
 import { AdminPagination, adminPaging } from '@/components/admin/admin-pagination';
@@ -141,7 +141,7 @@ export default async function AdminBlogPage({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        {post.status === 'published' && !scheduled && (
+                        {post.status === 'published' && !scheduled ? (
                           <Link
                             href={`/blog/${post.slug}`}
                             target="_blank"
@@ -149,6 +149,15 @@ export default async function AdminBlogPage({
                             title="View live"
                           >
                             <ExternalLink className="h-4 w-4" />
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/blog/preview/${post.id}`}
+                            target="_blank"
+                            className="rounded p-2 text-ink-3 transition hover:bg-gray-100 hover:text-ink"
+                            title="Preview"
+                          >
+                            <Eye className="h-4 w-4" />
                           </Link>
                         )}
                         <Link

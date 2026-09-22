@@ -5,7 +5,7 @@ import { compressAndUpload } from '@/hooks/use-compressed-upload';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Upload, X, Trash2, Plus, LibraryBig, Check, AlertCircle, History } from 'lucide-react';
+import { Loader2, Upload, X, Trash2, Plus, LibraryBig, Check, AlertCircle, History, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -107,6 +107,7 @@ export function BlogForm({
   const router = useRouter();
   const [form, setForm] = useState<BlogPostFormData>(post ?? EMPTY);
   const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -275,6 +276,29 @@ export function BlogForm({
     window.addEventListener('beforeunload', onUnload);
     return () => window.removeEventListener('beforeunload', onUnload);
   }, [dirty]);
+
+  /**
+   * Opens the admin preview in a new tab. A stored draft is saved first so the
+   * preview shows the current edits; for a live post the preview shows the last
+   * saved version — unsaved edits are never pushed onto a published post here.
+   */
+  const handlePreview = async () => {
+    const id = postIdRef.current;
+    if (!id && !form.title.trim()) return toast.error('Give the post a title to preview it');
+    setPreviewing(true);
+    try {
+      await inflight.current;
+      const canSaveDraft = storedStatus === 'draft' && (!!postIdRef.current || !!stripHtml(form.content));
+      if (canSaveDraft && dirty) await persist(form, 'draft');
+      const target = postIdRef.current;
+      if (!target) return toast.error('Add some content before previewing');
+      window.open(`/blog/preview/${target}`, '_blank', 'noopener');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not open preview');
+    } finally {
+      setPreviewing(false);
+    }
+  };
 
   // Accepts both the form's submit event and the "Save & publish" click.
   const handleSubmit = async (
@@ -539,6 +563,16 @@ export function BlogForm({
                 Save &amp; publish
               </Button>
             )}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving || previewing}
+              onClick={handlePreview}
+              title={storedStatus === 'draft' ? 'Saves the draft and opens it as readers will see it' : 'Opens the last saved version as readers will see it'}
+            >
+              {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+              Preview
+            </Button>
             {postId && (
               <Button type="button" variant="outline" disabled={deleting} onClick={handleDelete}
                 className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700">
