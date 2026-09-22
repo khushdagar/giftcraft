@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ImageIcon, Plus } from 'lucide-react';
+import { FileText, ImageIcon, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface BandRow {
@@ -30,11 +30,19 @@ export function BudgetBandList({ bands, gaps }: { bands: BandRow[]; gaps: string
             {bands.length} band{bands.length === 1 ? '' : 's'} · packs join by price, automatically
           </p>
         </div>
-        <Button asChild variant="em">
-          <Link href="/admin/budget-bands/new">
-            <Plus className="mr-1.5 h-4 w-4" /> New Band
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Copy for /curated-packs/budget itself — the page that lists these bands. */}
+          <Button asChild variant="outline">
+            <Link href="/admin/budget-bands/page-content">
+              <FileText className="mr-1.5 h-4 w-4" /> Page content
+            </Link>
+          </Button>
+          <Button asChild variant="em">
+            <Link href="/admin/budget-bands/new">
+              <Plus className="mr-1.5 h-4 w-4" /> New Band
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* A price with no band is a pack nobody can reach by budget — worth

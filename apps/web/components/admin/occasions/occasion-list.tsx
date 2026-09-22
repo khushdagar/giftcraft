@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Search, ImageIcon, Trash2, Plus, Loader2 } from 'lucide-react';
+import { Search, ImageIcon, Trash2, Plus, Loader2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
@@ -80,11 +80,19 @@ export function OccasionList({ occasions }: { occasions: OccasionRow[] }) {
           <h1 className="text-2xl font-semibold tracking-tight text-ink">Occasions</h1>
           <p className="mt-1 text-sm text-ink-2">{occasions.length} occasion{occasions.length === 1 ? '' : 's'}</p>
         </div>
-        <Button asChild variant="em">
-          <Link href="/admin/occasions/new">
-            <Plus className="mr-1.5 h-4 w-4" /> New Occasion
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Copy for /curated-packs/occasions itself — the page that lists these occasions. */}
+          <Button asChild variant="outline">
+            <Link href="/admin/occasions/page-content">
+              <FileText className="mr-1.5 h-4 w-4" /> Page content
+            </Link>
+          </Button>
+          <Button asChild variant="em">
+            <Link href="/admin/occasions/new">
+              <Plus className="mr-1.5 h-4 w-4" /> New Occasion
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Card */}
