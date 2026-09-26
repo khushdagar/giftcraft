@@ -30,6 +30,7 @@ export default function robots(): MetadataRoute.Robots {
         '/register',
         '/unauthorized',
         '/vendor',
+        '/builder?',
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
