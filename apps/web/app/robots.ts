@@ -31,6 +31,7 @@ export default function robots(): MetadataRoute.Robots {
         '/unauthorized',
         '/vendor',
         '/builder?',
+        '/blog?tag',
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
