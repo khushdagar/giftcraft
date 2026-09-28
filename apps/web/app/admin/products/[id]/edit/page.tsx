@@ -26,6 +26,7 @@ export default async function EditProductPage({ params }: { params: { id: string
       occasions: { include: { occasion: true } },
       variants: { orderBy: { sortOrder: 'asc' } },
       vendors: { include: { vendor: true } },
+      canonicalProduct: { select: { slug: true } },
       // Pack member products (only present when this product is a pack).
       packItems: {
         orderBy: { sortOrder: 'asc' },
@@ -63,6 +64,7 @@ export default async function EditProductPage({ params }: { params: { id: string
   const initialData = {
     ...serialized,
     isPack: product.isPack,
+    canonicalSlug: product.canonicalProduct?.slug ?? '',
     packItems: product.packItems.map((it) => ({
       productId: it.product.id,
       name: it.product.name,

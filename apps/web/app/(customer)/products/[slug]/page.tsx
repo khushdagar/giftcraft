@@ -49,6 +49,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       metaTitle: true,
       metaDescription: true,
       isPack: true,
+      // Admin-marked primary product (Products → Search engine listing). Only
+      // honoured while the primary is live — canonicalising to a dead page is
+      // worse than none.
+      canonicalProduct: { select: { slug: true, status: true } },
       // Primary image first, else the first by sort order.
       images: { orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }], take: 1, select: { url: true } },
       // A pack's preview is a collage of its members' first shots — the same
@@ -70,6 +74,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     product.descriptionShort ||
     `Order ${product.name} in bulk with your branding. Transparent per-unit pricing on GIVOO.`;
   const url = `/products/${params.slug}`;
+  const canonicalUrl =
+    product.canonicalProduct?.status === "active" && product.canonicalProduct.slug !== params.slug
+      ? `/products/${product.canonicalProduct.slug}`
+      : url;
   // Every product must have SOME preview image — fall back to the branded
   // site card so link previews never render blank.
   const packCollage = product.isPack
@@ -87,7 +95,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     // admin-authored page title is used verbatim (matches the admin SEO preview).
     title: metaTitle ? { absolute: metaTitle } : product.name,
     description,
-    alternates: { canonical: url },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       // Next validates og:type at runtime and rejects OG's "product" vertical —
       // "website" is the closest allowed value; product data ships via JSON-LD.

@@ -394,6 +394,14 @@ model Product {
   viewCount         Int               @default(0)
   metaTitle         String?
   metaDescription   String?
+  // SEO: when this product is a near-duplicate variant of another (same copy
+  // and images, different pack size/count), point at the primary product. The
+  // page stays live and shoppable, but its <link rel="canonical"> targets the
+  // primary and it drops out of sitemap-products.xml — so Google consolidates
+  // instead of flagging "Google chose different canonical than user".
+  canonicalProductId String?
+  canonicalProduct   Product?  @relation("ProductCanonical", fields: [canonicalProductId], references: [id], onDelete: SetNull)
+  canonicalVariants  Product[] @relation("ProductCanonical")
 
   priceTiers     PriceTier[]
   images         ProductImage[]
@@ -431,6 +439,7 @@ model Product {
   @@index([isPack])
   @@index([packCollectionId])
   @@index([viewCount])
+  @@index([canonicalProductId])
 }
 
 // Every slug a product has ever had. Written whenever an admin changes a
