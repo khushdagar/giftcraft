@@ -66,6 +66,9 @@ export function Navbar() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
   const path = pathname ?? "";
+  // The nav sign-in link always goes to the plain /login URL — no `from`
+  // param, so it never shows /login?from=... in the address bar.
+  const loginHref = "/login";
 
   // Top-level tab: brand-coloured label plus an underline, so the section you
   // are in is readable at a glance.
@@ -612,7 +615,7 @@ export function Navbar() {
             // callback URL) rather than firing signIn() straight from the nav —
             // that skipped the page and lost the "return here afterwards" target.
             <Link
-              href={`/login?from=${encodeURIComponent(pathname || "/")}`}
+              href={loginHref}
               className="order-3 flex border border-[#800020] h-9 w-9 items-center justify-center rounded-full text-ink-2 transition hover:bg-elevated hover:text-ink lg:order-1"
               aria-label="Sign in"
             >
@@ -931,7 +934,7 @@ export function Navbar() {
               </button>
             ) : (
               <Link
-                href={`/login?from=${encodeURIComponent(pathname || "/")}`}
+                href={loginHref}
                 onClick={() => setMobileOpen(false)}
                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-md-p border-2 border-bdr py-4 text-base font-semibold text-ink hover:border-em hover:text-em"
               >
