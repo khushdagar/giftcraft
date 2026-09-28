@@ -16,6 +16,9 @@ export async function GET() {
       where: {
         status: 'active',
         isPack: false,
+        // Variants that canonicalise to a primary product are deliberately not
+        // listed — the sitemap should only carry URLs we want indexed.
+        canonicalProductId: null,
         ...(hiddenCategoryIds.length > 0
           ? { categories: { none: { categoryId: { in: hiddenCategoryIds } } } }
           : {}),

@@ -81,6 +81,7 @@ const ProductSchema = z.object({
   ).nullable().optional(),
   metaTitle: z.string().nullable().optional(),
   metaDescription: z.string().nullable().optional(),
+  canonicalSlug: z.string().nullable().optional(),
 });
 
 type ProductFormData = z.infer<typeof ProductSchema>;
@@ -1466,6 +1467,21 @@ export function ProductForm({
                 className="w-full border border-gray-300 rounded-lg p-2 text-sm"
               />
             </div>
+
+            {mode === 'edit' && (
+              <div>
+                <label className="block text-sm font-normal text-gray-900 mb-1">Canonical product (variant of)</label>
+                <Input
+                  {...form.register('canonicalSlug')}
+                  placeholder="primary-product-handle"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  If this is a size/count variant of another product with the same copy and images, enter that
+                  product&apos;s URL handle. This page stays live, but search engines are told to rank the primary
+                  instead. Leave blank for standalone products.
+                </p>
+              </div>
+            )}
           </section>
 
           <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">

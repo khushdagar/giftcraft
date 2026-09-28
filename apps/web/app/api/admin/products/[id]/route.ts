@@ -44,6 +44,8 @@ const UpdateProductSchema = z.object({
   isFeatured: z.boolean().nullable().optional(),
   metaTitle: z.string().nullable().optional(),
   metaDescription: z.string().nullable().optional(),
+  // URL handle of the primary product this one canonicalises to ("" clears it).
+  canonicalSlug: z.string().nullable().optional(),
   priceTiers: z
     .array(
       z.object({
@@ -177,6 +179,26 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
+    // Resolve the canonical handle to a product id. undefined = field untouched,
+    // null = cleared. Rejects unknown handles and self-references so a typo
+    // can't silently point the page's canonical at nothing.
+    let canonicalProductId: string | null | undefined = undefined;
+    if (data.canonicalSlug !== undefined) {
+      const handle = data.canonicalSlug?.trim().replace(/^\/?products\//, '') || '';
+      if (!handle) {
+        canonicalProductId = null;
+      } else {
+        const primary = await prisma.product.findUnique({ where: { slug: handle }, select: { id: true } });
+        if (!primary) {
+          return NextResponse.json({ error: `Canonical product "${handle}" not found` }, { status: 400 });
+        }
+        if (primary.id === params.id) {
+          return NextResponse.json({ error: 'A product cannot be its own canonical' }, { status: 400 });
+        }
+        canonicalProductId = primary.id;
+      }
+    }
+
     // Check for SKU uniqueness if being updated
     if (data.sku && data.sku !== existing.sku) {
       const skuExists = await prisma.product.findUnique({ where: { sku: data.sku } });
@@ -245,6 +267,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           ...(data.isFeatured != null && { isFeatured: data.isFeatured }),
           ...(data.metaTitle !== undefined && { metaTitle: data.metaTitle }),
           ...(data.metaDescription !== undefined && { metaDescription: data.metaDescription }),
+          ...(canonicalProductId !== undefined && { canonicalProductId }),
           ...(data.isPack != null && { isPack: data.isPack }),
         },
         include: {
