@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { renderCompleteCataloguePdf } from '@/lib/catalogue-render';
+import { isProgressToken, progressReporter } from '@/lib/catalogue-progress';
 
 // Every category is queried live per request — never statically rendered.
 export const dynamic = 'force-dynamic';
@@ -10,20 +11,25 @@ export const maxDuration = 120;
  * (super_admin): every category with three or more active products, each as
  * its own section, in the same design as a built catalogue.
  */
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await auth();
     if (!session || session.user.role !== 'super_admin') {
       return new Response('Unauthorized', { status: 403 });
     }
 
-    const buffer = await renderCompleteCataloguePdf();
+    // ?progress=<token> lets the admin's download bar poll how far we are.
+    const token = new URL(req.url).searchParams.get('progress');
+    const buffer = await renderCompleteCataloguePdf(
+      isProgressToken(token) ? progressReporter(token) : undefined
+    );
 
     const stamp = new Date().toISOString().slice(0, 10);
     return new Response(buffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
+        'Content-Length': String(buffer.length),
         'Content-Disposition': `attachment; filename="givoo-complete-catalogue-${stamp}.pdf"`,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
