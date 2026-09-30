@@ -10,6 +10,7 @@ import {
   type CatalogueDocSection,
 } from '@/components/catalogue/catalogue-pdf';
 import { displayPrice, formatCataloguePrice, paginate, type PriceModeKey } from '@/lib/catalogue';
+import type { ProgressReporter } from '@/lib/catalogue-progress';
 
 /**
  * Catalogue resolver + PDF renderer (server only).
@@ -368,8 +369,30 @@ export interface RenderSettings {
   imageMaxPx?: number;
 }
 
+/**
+ * One render at a time per process. A 160-product catalogue peaks ~350 MB
+ * above the server's baseline, so two overlapping renders (Preview + Download,
+ * or an impatient retry) OOM-kill the 1 GB container. Later requests wait.
+ */
+let renderQueue: Promise<unknown> = Promise.resolve();
+
+function renderResolved(
+  settings: RenderSettings,
+  resolved: ResolvedSection[],
+  onProgress?: ProgressReporter
+): Promise<Buffer> {
+  onProgress?.('queued', 2);
+  const run = renderQueue.then(() => renderResolvedNow(settings, resolved, onProgress));
+  renderQueue = run.catch(() => {});
+  return run;
+}
+
 /** Turns resolved sections into the finished PDF (shared by both catalogue kinds). */
-async function renderResolved(settings: RenderSettings, resolved: ResolvedSection[]): Promise<Buffer> {
+async function renderResolvedNow(
+  settings: RenderSettings,
+  resolved: ResolvedSection[],
+  onProgress?: ProgressReporter
+): Promise<Buffer> {
   const sections = resolved.filter((s) => s.products.length > 0);
   const totalProducts = sections.reduce((n, s) => n + s.products.length, 0);
   if (totalProducts === 0) throw new Error('NO_PRODUCTS');
@@ -394,14 +417,19 @@ async function renderResolved(settings: RenderSettings, resolved: ResolvedSectio
     )?.imageUrl ||
     null;
 
+  // Progress: images are 5→60%, the (blocking) layout pass 60→90%.
+  let loaded = 0;
+  onProgress?.('images', 5);
   const [data, coverImage, closingImage] = await Promise.all([
-    mapLimit(list, 4, (u) =>
-      toCatalogueImage(u, {
+    mapLimit(list, 4, async (u) => {
+      const image = await toCatalogueImage(u, {
         maxPx: settings.imageMaxPx ?? 640,
         timeoutMs: 8000,
         photo: false,
-      })
-    ),
+      });
+      onProgress?.('images', 5 + (++loaded / list.length) * 55);
+      return image;
+    }),
     settings.coverImageUrl ? toCatalogueImage(settings.coverImageUrl, photo) : Promise.resolve(null),
     closingImageUrl ? toCatalogueImage(closingImageUrl, photo) : Promise.resolve(null),
   ]);
@@ -437,7 +465,15 @@ async function renderResolved(settings: RenderSettings, resolved: ResolvedSectio
     sections: docSections,
   };
 
-  return renderToBuffer(<CataloguePDF doc={doc} />);
+  if (onProgress) {
+    onProgress('layout', 60);
+    // Let a progress poll be answered before the layout pass blocks the event
+    // loop — the browser then knows to ease the bar forward on its own.
+    await new Promise((resolve) => setTimeout(resolve, 900));
+  }
+  const buffer = await renderToBuffer(<CataloguePDF doc={doc} />);
+  onProgress?.('done', 90);
+  return buffer;
 }
 
 /**
@@ -453,7 +489,10 @@ export function imageBudgetFor(count: number): number {
 }
 
 /** A built catalogue (the admin's sections and settings). */
-export async function renderCataloguePdf(catalogue: LoadedCatalogue): Promise<Buffer> {
+export async function renderCataloguePdf(
+  catalogue: LoadedCatalogue,
+  onProgress?: ProgressReporter
+): Promise<Buffer> {
   const resolved = await resolveSections(toSectionSpecs(catalogue), {
     priceMode: catalogue.priceMode,
   });
@@ -470,7 +509,8 @@ export async function renderCataloguePdf(catalogue: LoadedCatalogue): Promise<Bu
       showMoq: catalogue.showMoq,
       imageMaxPx: imageBudgetFor(totalProducts),
     },
-    resolved
+    resolved,
+    onProgress
   );
 }
 
@@ -483,7 +523,8 @@ export const COMPLETE_MIN_PRODUCTS = 3;
  * order. Packaging / add-on categories back the builder, not the catalogue,
  * so they are skipped. Nothing is stored — it is always live.
  */
-export async function renderCompleteCataloguePdf(): Promise<Buffer> {
+export async function renderCompleteCataloguePdf(onProgress?: ProgressReporter): Promise<Buffer> {
+  onProgress?.('queued', 1);
   const categories = await prisma.category.findMany({
     where: { parentId: null },
     orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
@@ -517,6 +558,7 @@ export async function renderCompleteCataloguePdf(): Promise<Buffer> {
       // render comfortably inside the 1 GB container.
       imageMaxPx: 480,
     },
-    sections
+    sections,
+    onProgress
   );
 }

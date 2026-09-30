@@ -80,18 +80,24 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     // Sections are replaced wholesale — their ids are never referenced
     // outside the catalogue, and this keeps ordering/removal trivially right.
-    const catalogue = await prisma.$transaction(async (tx) => {
-      await tx.catalogueSection.deleteMany({ where: { catalogueId: existing.id } });
-      return tx.catalogue.update({
-        where: { id: existing.id },
-        data: {
-          ...catalogueScalarData(input),
-          slug,
-          sections: { create: sectionsCreateInput(input.sections) },
-        },
-        select: { id: true, slug: true },
-      });
-    });
+    // The default 5s interactive-transaction timeout is too tight here: a PDF
+    // render in progress blocks the event loop for seconds at a time, and the
+    // save then failed with "Transaction already closed".
+    const catalogue = await prisma.$transaction(
+      async (tx) => {
+        await tx.catalogueSection.deleteMany({ where: { catalogueId: existing.id } });
+        return tx.catalogue.update({
+          where: { id: existing.id },
+          data: {
+            ...catalogueScalarData(input),
+            slug,
+            sections: { create: sectionsCreateInput(input.sections) },
+          },
+          select: { id: true, slug: true },
+        });
+      },
+      { maxWait: 10_000, timeout: 30_000 }
+    );
 
     return NextResponse.json({ catalogue });
   } catch (error) {

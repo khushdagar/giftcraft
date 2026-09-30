@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Plus, FileDown, Trash2, Loader2, BookOpen } from 'lucide-react';
 import { CATALOGUE_THEMES, type CatalogueThemeKey } from '@/lib/catalogue';
+import { useCatalogueDownload } from '@/hooks/use-catalogue-download';
+import { PdfProgressBar } from '@/components/admin/catalogues/pdf-progress-bar';
 
 export interface CatalogueRow {
   id: string;
@@ -20,6 +22,7 @@ export interface CatalogueRow {
 export function CatalogueList({ rows }: { rows: CatalogueRow[] }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { progress, start } = useCatalogueDownload();
 
   const remove = async (row: CatalogueRow) => {
     if (!window.confirm(`Delete "${row.title}"?`)) return;
@@ -47,13 +50,26 @@ export function CatalogueList({ rows }: { rows: CatalogueRow[] }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href="/api/admin/catalogues/complete/pdf"
-            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          <button
+            type="button"
+            onClick={() =>
+              void start('complete', 'Complete Catalogue', '/api/admin/catalogues/complete/pdf')
+            }
+            disabled={!!progress}
+            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
             title="One PDF of every category that has three or more active products"
           >
-            <FileDown className="h-4 w-4" /> Download Complete Catalogue
-          </a>
+            {progress?.key === 'complete' ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="tabular-nums">Preparing… {progress.pct}%</span>
+              </>
+            ) : (
+              <>
+                <FileDown className="h-4 w-4" /> Download Complete Catalogue
+              </>
+            )}
+          </button>
           <Link
             href="/admin/catalogues/new"
             className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
@@ -62,6 +78,8 @@ export function CatalogueList({ rows }: { rows: CatalogueRow[] }) {
           </Link>
         </div>
       </div>
+
+      <PdfProgressBar progress={progress} />
 
       {rows.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 bg-white px-6 py-16 text-center">
@@ -109,13 +127,26 @@ export function CatalogueList({ rows }: { rows: CatalogueRow[] }) {
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <a
-                    href={`/api/admin/catalogues/${row.id}/pdf`}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void start(row.id, row.title, `/api/admin/catalogues/${row.id}/pdf`)
+                    }
+                    disabled={!!progress}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-60"
                     title="Download the PDF"
                   >
-                    <FileDown className="h-3.5 w-3.5" /> Download PDF
-                  </a>
+                    {progress?.key === row.id ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span className="tabular-nums">{progress.pct}%</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileDown className="h-3.5 w-3.5" /> Download PDF
+                      </>
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={() => remove(row)}

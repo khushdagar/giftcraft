@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { MediaLibraryModal } from '@/components/admin/media-library-modal';
 import { compressAndUpload } from '@/hooks/use-compressed-upload';
+import { useCatalogueDownload } from '@/hooks/use-catalogue-download';
+import { PdfProgressBar } from '@/components/admin/catalogues/pdf-progress-bar';
 import { formatRupees } from '@/lib/utils';
 import {
   CATALOGUE_THEMES,
@@ -293,6 +295,7 @@ export function CatalogueBuilder({ initial }: { initial: EditorCatalogue | null 
   );
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [saving, setSaving] = useState(false);
+  const { progress: pdfProgress, start: startDownload } = useCatalogueDownload();
   const [libraryFor, setLibraryFor] = useState<ImageTarget | null>(null);
   const [uploadingFor, setUploadingFor] = useState<ImageTarget | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
@@ -471,9 +474,10 @@ export function CatalogueBuilder({ initial }: { initial: EditorCatalogue | null 
    * give the old version.
    */
   const download = async () => {
+    if (pdfProgress) return;
     const id = dirty || !savedId ? await save() : savedId;
     if (!id) return;
-    window.location.assign(`/api/admin/catalogues/${id}/pdf`);
+    await startDownload(id, form.title || 'Catalogue', `/api/admin/catalogues/${id}/pdf`);
   };
 
   /**
@@ -537,15 +541,21 @@ export function CatalogueBuilder({ initial }: { initial: EditorCatalogue | null 
           <button
             type="button"
             onClick={download}
-            disabled={saving}
+            disabled={saving || !!pdfProgress}
             className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             title={dirty || !savedId ? 'Saves your changes, then downloads the PDF' : 'Downloads the PDF'}
           >
-            <FileDown className="h-4 w-4" />
-            {dirty || !savedId ? 'Save & download PDF' : 'Download PDF'}
+            {pdfProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+            {pdfProgress
+              ? `Preparing PDF… ${pdfProgress.pct}%`
+              : dirty || !savedId
+                ? 'Save & download PDF'
+                : 'Download PDF'}
           </button>
         </div>
       </div>
+
+      <PdfProgressBar progress={pdfProgress} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* ── Main column ── */}
