@@ -20,6 +20,7 @@ export default function robots(): MetadataRoute.Robots {
         '/vendor',
         '/builder?',
         '/blog?tag',
+        '/thank-you',
       ],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
