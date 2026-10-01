@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Mail, Phone, MapPin, MessageCircle, Clock, Users, Zap } from 'lucide-react';
@@ -17,6 +18,7 @@ import {
 const DEFAULT_CONTACT = CONTACT_FALLBACK;
 
 export default function ContactPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -95,8 +97,10 @@ export default function ContactPage() {
       setSuccess(true);
       setFormData({ name: '', email: '', phone: '', company: '', message: '' });
       setFieldErrors({});
-      // The confirmation stays put — it is the only record the visitor has that
-      // the message went through, and it clears on the next submission anyway.
+      // Confirmation lives on its own page. The banner above still flashes for
+      // the moment it takes the navigation to happen.
+      router.push('/thank-you');
+      return;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send your message. Please try again.');
     } finally {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   collectErrors,
   validateEmail,
@@ -24,6 +25,7 @@ const EMPTY_FORM = {
 };
 
 export function LaunchOfferPopup() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<
@@ -123,7 +125,11 @@ export function LaunchOfferPopup() {
       } catch {
         /* ignore */
       }
-      setTimeout(() => setOpen(false), 2500);
+      // Show the in-popup thanks for a beat, then land on the thank-you page.
+      setTimeout(() => {
+        setOpen(false);
+        router.push("/thank-you");
+      }, 1200);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit enquiry");
     } finally {
