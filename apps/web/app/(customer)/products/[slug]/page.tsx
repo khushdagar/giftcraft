@@ -25,10 +25,12 @@ import { productSchema, breadcrumbSchema } from "@/lib/schema";
 import { withPageSeo, packShareImageUrl } from '@/lib/page-seo';
 
 /**
- * og:type for curated packs. Next's metadata API throws on any og:type outside
- * its fixed list, so packs omit `openGraph.type` and the page renders this tag
- * itself — React hoists a <meta> rendered in a Server Component into <head>.
+ * og:type for products and curated packs. Next's metadata API throws on any
+ * og:type outside its fixed list (which excludes "product"), so the metadata
+ * omits `openGraph.type` and the page renders this tag itself — React hoists a
+ * <meta> rendered in a Server Component into <head>.
  */
+const PRODUCT_OG_TYPE = 'product';
 const PACK_OG_TYPE = 'curated products';
 
 // ISR: rendered on demand, then served from cache for an hour.
@@ -97,10 +99,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     description,
     alternates: { canonical: canonicalUrl },
     openGraph: {
-      // Next validates og:type at runtime and rejects OG's "product" vertical —
-      // "website" is the closest allowed value; product data ships via JSON-LD.
-      // Packs omit it here and render PACK_OG_TYPE from the page instead.
-      ...(product.isPack ? {} : { type: "website" as const }),
+      // No `type` here — Next rejects "product"; the page renders og:type
+      // itself (PRODUCT_OG_TYPE / PACK_OG_TYPE).
       url,
       title: metaTitle || product.name,
       description,
@@ -393,8 +393,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   return (
     <div className="pdp-gutters bg-canvas pb-24 lg:pb-0">
-      {/* Hoisted into <head> by React — see PACK_OG_TYPE. */}
-      {isPack && <meta property="og:type" content={PACK_OG_TYPE} />}
+      {/* Hoisted into <head> by React — see PRODUCT_OG_TYPE. */}
+      <meta property="og:type" content={isPack ? PACK_OG_TYPE : PRODUCT_OG_TYPE} />
       <JsonLd data={productJsonLd} />
       <JsonLd data={breadcrumbJsonLd} />
       {/* Breadcrumb */}
