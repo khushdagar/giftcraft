@@ -85,6 +85,9 @@ interface Pack {
   tagline: string;
   packQuantity: number;
   discount: number;
+  // Optional delivery pincode. When set, real shipping (Shiprocket, zone
+  // fallback) is priced for it; blank = "calculated at checkout".
+  shippingPincode: string;
   items: CatalogProduct[];
   boxId: string;
   addonIds: string[];
@@ -135,6 +138,7 @@ const emptyPack = (n: number): Pack => ({
   tagline: '',
   packQuantity: 25,
   discount: 0,
+  shippingPincode: '',
   items: [],
   boxId: '',
   addonIds: [],
@@ -181,6 +185,7 @@ function loadDraft(): Draft | null {
       // draft would otherwise be sent with no way to see or change it.
       tagline: '',
       discount: 0,
+      shippingPincode: p.shippingPincode ?? '',
       items: p.items ?? [],
       addonIds: p.addonIds ?? [],
       appliedPackIds: p.appliedPackIds ?? [],
@@ -485,6 +490,60 @@ export function ProposalBuilder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packs]);
 
+  // Real shipping per pack for its pincode — priced on the server with the same
+  // estimate the customer builder uses. Keyed like boxFits so a change to the
+  // pincode, products or quantity re-prices and a stale answer is ignored.
+  const [shippingQuotes, setShippingQuotes] = useState<
+    Record<string, { sig: string; cost: number | null; courier: string | null; error: string | null }>
+  >({});
+  const shippingSig = (p: Pack) =>
+    `${p.shippingPincode}|${p.items.map((it) => it.id).join(',')}|${p.packQuantity}`;
+  const wantsShipping = (p: Pack) => /^\d{6}$/.test(p.shippingPincode) && p.items.length > 0;
+  useEffect(() => {
+    const stale = packs.filter(
+      (p) => wantsShipping(p) && shippingQuotes[p.key]?.sig !== shippingSig(p)
+    );
+    if (stale.length === 0) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      stale.forEach((p) => {
+        const sig = shippingSig(p);
+        fetch('/api/admin/proposals/shipping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pincode: p.shippingPincode,
+            productIds: p.items.map((it) => it.id),
+            packQuantity: p.packQuantity,
+          }),
+        })
+          .then((r) => r.json())
+          .then((d) => {
+            if (cancelled) return;
+            setShippingQuotes((prev) => ({
+              ...prev,
+              [p.key]: d?.success
+                ? { sig, cost: d.data.shippingCost, courier: d.data.courierName, error: null }
+                : { sig, cost: null, courier: null, error: d?.error || 'Unable to price shipping' },
+            }));
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setShippingQuotes((prev) => ({
+              ...prev,
+              [p.key]: { sig, cost: null, courier: null, error: 'Unable to price shipping' },
+            }));
+          });
+      });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // shippingQuotes is read only to skip packs already answered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packs]);
+
   const updatePack = (key: string, patch: Partial<Pack>) =>
     setPacks((prev) => prev.map((p) => (p.key === key ? { ...p, ...patch } : p)));
 
@@ -628,10 +687,20 @@ export function ProposalBuilder({
         );
         const perPack = productsPerPack + boxPrice + addonsPerPack;
         const subtotal = Math.max(0, perPack * pack.packQuantity - pack.discount);
-        return { pack, box, autoSize, outsideBox, boxPrice, addons, addonsPerPack, productsPerPack, perPack, subtotal };
+        // Only a quote priced for the pack as it is now counts.
+        const quote = shippingQuotes[pack.key];
+        const shippingWanted = wantsShipping(pack);
+        const shippingCurrent = shippingWanted && quote?.sig === shippingSig(pack) ? quote : null;
+        const shipping = {
+          fee: shippingCurrent?.cost ?? 0,
+          courier: shippingCurrent?.courier ?? null,
+          error: shippingCurrent?.error ?? null,
+          loading: shippingWanted && !shippingCurrent,
+        };
+        return { pack, box, autoSize, outsideBox, boxPrice, addons, addonsPerPack, productsPerPack, perPack, subtotal, shipping };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [packs, boxes, addonOptions, boxFits]
+    [packs, boxes, addonOptions, boxFits, shippingQuotes]
   );
 
   // Pack grid honours the same search box — matches the pack's name or any
@@ -753,12 +822,14 @@ export function ProposalBuilder({
   // Same pack payload the send posts — one shape, so a preview can never
   // describe something different from what goes out.
   const packsPayload = (images: Record<string, string> = {}) =>
-    priced.map(({ pack, box, boxPrice, autoSize, addons }) => ({
+    priced.map(({ pack, box, boxPrice, autoSize, addons, shipping }) => ({
       label: pack.label.trim() || undefined,
       tagline: pack.tagline.trim() || undefined,
       productIds: pack.items.map((it) => it.id),
       packQuantity: pack.packQuantity,
       discount: pack.discount || undefined,
+      shippingFee: shipping.fee || undefined,
+      shippingPincode: shipping.fee ? pack.shippingPincode : undefined,
       packaging: box
         ? { id: box.id, name: box.name, price: boxPrice, size: autoSize.toLowerCase() }
         : null,
@@ -1234,7 +1305,7 @@ export function ProposalBuilder({
             >
               <div className="space-y-4 p-4">
                 {/* Naming + quantities — one row on desktop */}
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_110px_minmax(0,1.2fr)_minmax(0,1.2fr)]">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_110px_minmax(0,1.2fr)_minmax(0,1.2fr)_130px]">
                   <div>
                     <label className={labelCls}>Pack name</label>
                     <input
@@ -1285,6 +1356,40 @@ export function ProposalBuilder({
                       </select>
                       <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     </div>
+                  </div>
+                  <div className="lg:order-last">
+                    <label className={labelCls}>
+                      Ship to{' '}
+                      <span className="normal-case tracking-normal text-gray-400">· optional</span>
+                    </label>
+                    <input
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={active.pack.shippingPincode}
+                      onChange={(e) =>
+                        updatePack(active.pack.key, {
+                          shippingPincode: e.target.value.replace(/\D/g, '').slice(0, 6),
+                        })
+                      }
+                      placeholder="Pincode"
+                      title="Delivery pincode — real shipping is priced for it. Leave blank to have it calculated at checkout."
+                      className={inputCls}
+                    />
+                    {active.pack.shippingPincode.length === 6 && (
+                      <p
+                        className={`mt-1 text-[11px] leading-snug ${
+                          active.shipping.error ? 'text-red-600' : 'text-gray-500'
+                        }`}
+                      >
+                        {active.pack.items.length === 0
+                          ? 'Add products to price shipping'
+                          : active.shipping.loading
+                            ? 'Calculating…'
+                            : active.shipping.error
+                              ? active.shipping.error
+                              : `Shipping ${formatRupees(active.shipping.fee)}`}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className={labelCls}>Add-ons</label>
@@ -1787,9 +1892,17 @@ export function ProposalBuilder({
                           {formatRupees(p.subtotal)}
                         </dd>
                       </div>
+                      {p.shipping.fee > 0 && (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-600">+ Shipping to {p.pack.shippingPincode}</dt>
+                          <dd className="tabular-nums text-gray-900">{formatRupees(p.shipping.fee)}</dd>
+                        </div>
+                      )}
                     </dl>
                     <p className="mt-1 text-[11px] leading-snug text-gray-400">
-                      Before shipping, GST and the 2% payment fee.
+                      {p.shipping.fee > 0
+                        ? 'Before GST and the 2% payment fee.'
+                        : 'Before shipping, GST and the 2% payment fee.'}
                     </p>
                     {p.pack.items.length === 0 && (
                       <p className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-[11px] leading-snug text-amber-800">

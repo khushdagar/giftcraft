@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { FieldError } from "@/components/ui/field-error";
 import { validateEmail, validateRequired } from "@/lib/validation";
 
@@ -85,9 +86,8 @@ export function CredentialsLoginForm({ callbackUrl }: { callbackUrl: string }) {
             Forgot password?
           </Link>
         </div>
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="current-password"
           value={password}
           onChange={(e) => {

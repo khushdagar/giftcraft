@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { FieldError } from "@/components/ui/field-error";
 import {
   collectErrors,
@@ -147,9 +148,8 @@ export function RegisterForm({ callbackUrl }: { callbackUrl: string }) {
         <label htmlFor="password" className="mb-1.5 block text-sm font-normal text-ink">
           Password
         </label>
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="new-password"
           value={form.password}
           onChange={update("password")}

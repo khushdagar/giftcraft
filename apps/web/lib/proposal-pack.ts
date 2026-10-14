@@ -33,6 +33,8 @@ export const packSchema = z.object({
     .optional(),
   // Flat shipping for the whole order, quoted manually by the admin.
   shippingFee: z.number().min(0).max(1000000).optional(),
+  // Delivery pincode the shipping was priced for — also sets the GST split.
+  shippingPincode: z.string().regex(/^\d{6}$/).optional(),
   // AI pack shot from /api/admin/proposals/pack-image — the hero on the pack's
   // page in the deck.
   packImageUrl: z.string().url().max(1000).nullable().optional(),
@@ -103,7 +105,7 @@ export async function buildPackPayload(pack: PackInput) {
     cardMessage: '',
     address: null,
     delivDate: null,
-    pincode: null,
+    pincode: pack.shippingPincode ?? null,
     csvRecipientCount: 0,
     // Shown on the quote page and deck so the client knows which option they
     // are looking at.

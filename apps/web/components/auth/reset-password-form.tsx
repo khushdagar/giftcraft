@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { FieldError } from "@/components/ui/field-error";
 
 // Mirrors the register/reset API rules so users aren't rejected server-side.
@@ -73,9 +73,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
         <label htmlFor="password" className="mb-1.5 block text-sm font-normal text-ink">
           New password
         </label>
-        <Input
+        <PasswordInput
           id="password"
-          type="password"
           autoComplete="new-password"
           value={password}
           onChange={(e) => {
@@ -94,9 +93,8 @@ export function ResetPasswordForm({ token }: { token: string }) {
         <label htmlFor="confirm" className="mb-1.5 block text-sm font-normal text-ink">
           Confirm new password
         </label>
-        <Input
+        <PasswordInput
           id="confirm"
-          type="password"
           autoComplete="new-password"
           value={confirm}
           onChange={(e) => {
