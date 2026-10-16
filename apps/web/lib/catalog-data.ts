@@ -21,7 +21,9 @@ export async function getCatalogProducts(
   occasion?: { id: string; tags: string[] }
 ) {
   try {
-    const hiddenCategoryIds = await getHiddenCategoryIds();
+    // A hidden (packaging/add-on) category's own page still lists its products —
+    // only the OTHER hidden categories stay excluded.
+    const hiddenCategoryIds = (await getHiddenCategoryIds()).filter((id) => id !== categoryId);
 
     const products = await prisma.product.findMany({
       where: {
