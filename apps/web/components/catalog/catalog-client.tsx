@@ -391,7 +391,12 @@ export function CatalogClient({
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled) return;
-        setCatalogAll(data.products || []);
+        // Keep the server-sent slice too: a hidden (packaging/add-on) category's
+        // products are excluded from /api/products, and dropping them would
+        // empty that category's own page.
+        const all: Product[] = data.products || [];
+        const ids = new Set(all.map((p) => p.id));
+        setCatalogAll([...all, ...initialProducts.filter((p) => !ids.has(p.id))]);
         setHasFullCatalog(true);
       } catch (error) {
         console.error('Failed to load full catalog for sidebar filters:', error);

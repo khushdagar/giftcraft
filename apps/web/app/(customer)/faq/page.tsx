@@ -52,15 +52,11 @@ const SECTIONS: Array<{ title: string; faqs: Faq[] }> = [
       },
       {
         q: 'Do prices drop for larger orders?',
-        a: 'Yes. Every product has quantity tiers, and your pack is priced at the tier matching your unit count. See the pricing page for the full breakdown.',
+        a: 'Yes. Every product has quantity tiers, and your pack is priced at the tier matching your unit count.',
         jsx: (
           <p>
             Yes. Every product has quantity tiers, and your pack is priced at the tier matching your
-            unit count. See the{' '}
-            <Link href="/pricing" className="font-semibold text-em underline">
-              pricing page
-            </Link>{' '}
-            for the full breakdown.
+            unit count.
           </p>
         ),
       },

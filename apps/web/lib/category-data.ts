@@ -181,10 +181,12 @@ export async function getCategorySlugs(): Promise<string[]> {
 }
 
 /**
- * A single category with its live products. Returns null when the slug does
- * not exist or names a hidden (packaging/add-on) category — the page 404s on
- * null. A real category with zero live products still resolves, so the page
- * can render an honest empty state instead of a soft 404.
+ * A single category with its live products. Returns null only when the slug
+ * does not exist — the page 404s on null. Hidden (packaging/add-on) categories
+ * still resolve: they're kept out of navs, lists and sitemaps, but product
+ * breadcrumbs link to them, so a direct visit must be a 200, not a 404.
+ * A real category with zero live products still resolves, so the page can
+ * render an honest empty state instead of a soft 404.
  */
 export interface CategoryFaq {
   question: string;
@@ -204,7 +206,7 @@ export async function getCategoryBySlug(slug: string): Promise<{
 } | null> {
   try {
     const category = await prisma.category.findUnique({ where: { slug } });
-    if (!category || isHiddenCategory(category)) return null;
+    if (!category) return null;
 
     const products = await prisma.product.findMany({
       where: {
