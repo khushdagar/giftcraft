@@ -1,6 +1,6 @@
+import { CdnImg } from '@/components/ui/cdn-img';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { formatPostDate, publishedPostWhere, POSTS_PER_PAGE, BLOG_AUTHOR } from '@/lib/blog';
@@ -191,13 +191,13 @@ export default async function BlogPage({ searchParams }: PageProps) {
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-gray-50 md:aspect-auto md:h-full">
                   {lead.coverImageUrl ? (
-                    <Image
+                    <CdnImg
                       src={lead.coverImageUrl}
                       alt={lead.coverImageAlt || lead.title}
-                      fill
                       sizes="(max-width: 768px) 100vw, 50vw"
-                      className="object-cover transition duration-500 group-hover:scale-105"
-                      priority
+                      className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      loading="eager"
+                      fetchPriority="high"
                     />
                   ) : (
                     <div className="flex h-full min-h-[240px] items-center justify-center bg-gradient-to-br from-em-50 to-sky-50 text-5xl">
@@ -228,12 +228,11 @@ export default async function BlogPage({ searchParams }: PageProps) {
                 >
                   <div className="relative aspect-[16/10] overflow-hidden bg-gray-50">
                     {post.coverImageUrl ? (
-                      <Image
+                      <CdnImg
                         src={post.coverImageUrl}
                         alt={post.coverImageAlt || post.title}
-                        fill
                         sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover transition duration-500 group-hover:scale-105"
+                        className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center bg-gradient-to-br from-em-50 to-sky-50 text-4xl">

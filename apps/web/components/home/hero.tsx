@@ -97,7 +97,7 @@ export function HomeHero() {
           <Link href="/box" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-[#800020] bg-[#800020] text-white rounded-full font-semibold hover:bg-transparent hover:border-white hover:text-white transition">
             Build Your Pack
           </Link>
-          <Link href="/catalog" className="w-full sm:w-auto text-center px-8 py-4 border-2 border-white bg-white text-[#222222] rounded-full font-semibold hover:bg-transparent hover:border-white hover:text-white transition">
+          <Link href="/catalog" prefetch={false} className="w-full sm:w-auto text-center px-8 py-4 border-2 border-white bg-white text-[#222222] rounded-full font-semibold hover:bg-transparent hover:border-white hover:text-white transition">
             Browse Catalog
           </Link>
         </div>

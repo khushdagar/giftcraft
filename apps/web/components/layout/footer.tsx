@@ -152,7 +152,7 @@ export async function Footer() {
       <div className="container-gc-w">
         <div className="mb-10 grid grid-cols-2 gap-8 lg:grid-cols-[1.8fr_repeat(5,1fr)]">
           <div className="col-span-2 lg:col-span-1">
-            <Image src="/footer_logo.png" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />
+            <Image src="/footer_logo.webp" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />
             <p className="max-w-[260px] text-[13px] leading-relaxed text-white">
               India&apos;s first self-serve bulk gifting platform. Browse, build,
               and order branded corporate gifts with transparent pricing.

@@ -28,7 +28,7 @@ export function HomeNav() {
       {/* Desktop Links */}
       <div className="hidden lg:flex gap-7 items-center text-sm">
         <Link href="/" className="text-[#222222] font-medium hover:text-[#800020]">Home</Link>
-        <Link href="/catalog" className="text-[#5C5852] font-medium hover:text-[#222222]">Products</Link>
+        <Link href="/catalog" prefetch={false} className="text-[#5C5852] font-medium hover:text-[#222222]">Products</Link>
         <Link href="#" className="text-[#5C5852] font-medium hover:text-[#222222]">Packs</Link>
 
         {/* Occasions Dropdown */}
@@ -77,7 +77,7 @@ export function HomeNav() {
       {mobileOpen && (
         <div className="absolute top-14 left-0 right-0 bg-white border-b border-[#E5DFD4] p-4 flex flex-col gap-3 lg:hidden">
           <Link href="/" className="px-3 py-2 hover:bg-[#FAFAFA] rounded">Home</Link>
-          <Link href="/catalog" className="px-3 py-2 hover:bg-[#FAFAFA] rounded">Products</Link>
+          <Link href="/catalog" prefetch={false} className="px-3 py-2 hover:bg-[#FAFAFA] rounded">Products</Link>
           <Link href="/builder" className="px-3 py-2 bg-[#800020] text-white rounded-full font-semibold">Get a Quote</Link>
         </div>
       )}

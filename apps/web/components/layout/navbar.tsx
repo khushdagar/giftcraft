@@ -371,7 +371,7 @@ export function Navbar() {
           scrolled && "shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.04)]"
         )}
       >
-        <Link href="/" className="flex items-center">
+        <Link href="/" prefetch={false} className="flex items-center">
           <BrandLogo className="h-9 w-auto" />
         </Link>
 
@@ -467,7 +467,7 @@ export function Navbar() {
             className="group relative py-4"
             onMouseLeave={() => setHoveredProductEntry(null)}
           >
-            <Link href="/catalog" className={topLinkClass(inProducts || inOccasions)}>Products ▾</Link>
+            <Link href="/catalog" prefetch={false} className={topLinkClass(inProducts || inOccasions)}>Products ▾</Link>
             {activeBar(inProducts || inOccasions)}
             {productEntries.length > 0 && (
               <div className="invisible absolute left-0 top-full flex rounded-md-s border border-bdr bg-white p-2 opacity-0 shadow-float transition-all group-hover:visible group-hover:opacity-100">

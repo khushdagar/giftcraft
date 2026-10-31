@@ -1,9 +1,9 @@
 'use client';
 
+import { CdnImg } from '@/components/ui/cdn-img';
 import { useRef, useEffect, useCallback } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
-import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
 import { useBuilderStore } from '@/store/builder';
@@ -143,14 +143,13 @@ export function RelatedProducts({
                       {product.collageImages && product.collageImages.length > 0 ? (
                         <PackCollage tiles={product.collageImages} />
                       ) : product.images?.[0]?.url ? (
-                        <Image
+                        <CdnImg
                           src={product.images[0].url}
                           alt={product.name}
-                          fill
                           sizes="(min-width: 640px) 256px, 176px"
                           // Fills the portrait tile edge to edge — no gutters
                           // around the product shot's own backdrop.
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
                         <div className="flex items-center justify-center h-full text-5xl opacity-60">📦</div>

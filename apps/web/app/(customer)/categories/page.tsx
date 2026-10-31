@@ -1,3 +1,4 @@
+import { CdnImg } from '@/components/ui/cdn-img';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getCategorySummaries, type CategorySummary } from '@/lib/category-data';
@@ -53,11 +54,10 @@ function CategoryTile({ category, label }: { category: CategorySummary; label?: 
     >
       <div className="relative aspect-[3/2] overflow-hidden bg-elevated">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <CdnImg
           src={cover}
           alt=""
-          loading="lazy"
-          decoding="async"
+          sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw"
           className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
@@ -97,7 +97,7 @@ export default async function CategoriesPage() {
 
       <div className="container-gc-w py-12 md:py-16">
         <nav aria-label="Breadcrumb" className="text-xs text-ink-3">
-          <Link href="/" className="text-em hover:underline">
+          <Link href="/" prefetch={false} className="text-em hover:underline">
             Home
           </Link>{' '}
           / <span>Categories</span>
@@ -119,7 +119,7 @@ export default async function CategoriesPage() {
         {categories.length === 0 ? (
           <div className="mt-12 rounded-md border-2 border-dashed border-bdr bg-white py-20 text-center">
             <p className="text-lg text-ink">Categories are being updated</p>
-            <Link href="/catalog" className="mt-2 inline-block text-sm font-medium text-em">
+            <Link href="/catalog" prefetch={false} className="mt-2 inline-block text-sm font-medium text-em">
               Browse all products →
             </Link>
           </div>

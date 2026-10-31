@@ -149,7 +149,7 @@ export function FeaturedProductsSection({
               >
                 Most Loved Products
               </motion.h2>
-              <Link href="/catalog">
+              <Link href="/catalog" prefetch={false}>
                 <motion.button
                   initial={{ opacity: 0, x: 20 }}
                   whileInView={{ opacity: 1, x: 0 }}

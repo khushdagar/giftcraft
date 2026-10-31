@@ -163,7 +163,7 @@ export function CompareContent() {
         <p className="text-xs text-ink-3">
           <Link href="/" className="hover:text-ink">Home</Link>
           {' / '}
-          <Link href="/catalog" className="hover:text-ink">Catalog</Link>
+          <Link href="/catalog" prefetch={false} className="hover:text-ink">Catalog</Link>
           {' / '}
           <span className="text-ink">Compare</span>
         </p>

@@ -25,7 +25,7 @@ export function InfoPage({
     <div className="min-h-screen bg-canvas">
       <div className="container-gc-w py-12 md:py-16">
         <p className="text-xs" style={{ color: '#8F8A82' }}>
-          <Link href="/" style={{ color: '#800020' }}>
+          <Link href="/" prefetch={false} style={{ color: '#800020' }}>
             Home
           </Link>{' '}
           / <span>{title}</span>

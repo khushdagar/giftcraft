@@ -4,11 +4,11 @@ import Image from "next/image";
 
 export function HowItWorks() {
   const steps = [
-    { icon: '/icons/browse.png', title: 'Browse', desc: 'Explore 500+ curated products' },
-    { icon: '/icons/build.png', title: 'Build', desc: 'Add & customize your gift pack' },
-    { icon: '/icons/brand.png', title: 'Brand', desc: 'Upload your logo' },
-    { icon: '/icons/quote.png', title: 'Quote', desc: 'Get instant transparent pricing' },
-    { icon: '/icons/order.png', title: 'Order', desc: 'Pay & track delivery' },
+    { icon: '/icons/browse.webp', title: 'Browse', desc: 'Explore 500+ curated products' },
+    { icon: '/icons/build.webp', title: 'Build', desc: 'Add & customize your gift pack' },
+    { icon: '/icons/brand.webp', title: 'Brand', desc: 'Upload your logo' },
+    { icon: '/icons/quote.webp', title: 'Quote', desc: 'Get instant transparent pricing' },
+    { icon: '/icons/order.webp', title: 'Order', desc: 'Pay & track delivery' },
   ];
 
   return (

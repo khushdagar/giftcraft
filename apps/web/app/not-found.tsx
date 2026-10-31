@@ -25,7 +25,7 @@ export default function NotFound() {
             <Link href="/builder">Start Building</Link>
           </Button>
           <Button asChild variant="ghost" size="lg" className="w-full rounded-md">
-            <Link href="/catalog">Browse Products</Link>
+            <Link href="/catalog" prefetch={false}>Browse Products</Link>
           </Button>
         </div>
 

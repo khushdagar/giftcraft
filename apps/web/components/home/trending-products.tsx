@@ -1,9 +1,9 @@
 'use client';
 
+import { CdnImg } from '@/components/ui/cdn-img';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useBuilderStore } from '@/store/builder';
 import { resolveSwatchHex } from '@/lib/color-name';
 import { CarouselRow } from '@/components/home/carousel-row';
@@ -64,7 +64,7 @@ export function TrendingProducts({ initialData }: { initialData?: { products: an
             Trending <span className="italic text-[#800020]">Products</span>
           </h2>
           {/* On mobile the link lives under the row instead — see below. */}
-          <Link href="/catalog" className="hidden sm:block text-sm font-semibold text-[#800020] hover:opacity-70">
+          <Link href="/catalog" prefetch={false} className="hidden sm:block text-sm font-semibold text-[#800020] hover:opacity-70">
             See All →
           </Link>
         </div>
@@ -110,11 +110,11 @@ export function TrendingProducts({ initialData }: { initialData?: { products: an
                     <Link href={`/products/${p.slug}`} className="block group">
                       <div className="aspect-square bg-[#FAFAFA] flex items-center justify-center relative overflow-hidden">
                         {displayUrl ? (
-                          <Image
+                          <CdnImg
                             src={displayUrl}
                             alt={p.name}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                            sizes="(max-width: 767px) 70vw, 25vw"
+                            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                         ) : (
                           <span className="text-6xl">📦</span>

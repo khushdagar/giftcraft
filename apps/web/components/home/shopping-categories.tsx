@@ -93,7 +93,7 @@ export function ShoppingCategories({ categories }: ShoppingCategoriesProps) {
           transition={{ delay: 0.5 }}
           className="text-center mt-12"
         >
-          <Link href="/catalog">
+          <Link href="/catalog" prefetch={false}>
             <p className="text-em font-normal text-lg hover:underline inline-block">
               View All Categories →
             </p>

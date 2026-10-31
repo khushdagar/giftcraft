@@ -1,5 +1,6 @@
 'use client';
 
+import { CdnImg } from '@/components/ui/cdn-img';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import Image from 'next/image';
@@ -134,11 +135,10 @@ export function ImageGallery({
               }`}
             >
               {img.url ? (
-                <Image
+                <CdnImg
                   src={img.url}
                   alt={`${productName} view ${i + 1}`}
-                  fill
-                  className="object-cover rounded-md"
+                  className="absolute inset-0 h-full w-full object-cover rounded-md"
                   sizes="64px"
                 />
               ) : (
@@ -172,12 +172,12 @@ export function ImageGallery({
             onMouseMove={handleMouseMove}
           >
             <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-md bg-elevated cursor-crosshair">
-              <Image
+              <CdnImg
                 src={activeImage.url}
                 alt={productName}
-                fill
-                className="object-cover"
-                priority
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="eager"
+                fetchPriority="high"
                 sizes="(max-width: 768px) 100vw, 50vw"
               />
               {/* Lens highlighting the magnified region */}
@@ -245,12 +245,12 @@ export function ImageGallery({
                   transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 320, damping: 34, mass: 0.8 }}
                   className="absolute inset-0"
                 >
-                  <Image
+                  <CdnImg
                     src={activeImage.url}
                     alt={productName}
-                    fill
-                    className="object-cover"
-                    priority
+                    className="absolute inset-0 h-full w-full object-cover"
+                    loading="eager"
+                    fetchPriority="high"
                     sizes="(max-width: 768px) 100vw, 50vw"
                   />
                 </motion.div>

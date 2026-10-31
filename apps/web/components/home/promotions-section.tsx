@@ -90,7 +90,7 @@ export function PromotionsSection() {
             transition={{ delay: 0.5 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-10"
           >
-            <Link href="/catalog">
+            <Link href="/catalog" prefetch={false}>
               <motion.button
                 whileHover={{ scale: 1.08, y: -4 }}
                 className="flex items-center gap-3 bg-white text-em font-normal py-5 px-10 rounded-2xl text-lg transition-all shadow-2xl hover:shadow-2xl group"

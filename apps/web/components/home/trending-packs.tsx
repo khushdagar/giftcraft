@@ -1,3 +1,4 @@
+import { CdnImg } from '@/components/ui/cdn-img';
 import Link from 'next/link';
 import { Package } from 'lucide-react';
 import { getPacks } from '@/lib/pack-data';
@@ -30,7 +31,7 @@ function Collage({ tiles }: { tiles: (string | null)[] }) {
         >
           {src ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <CdnImg src={src} alt="" sizes="25vw" className="absolute inset-0 h-full w-full object-cover" />
           ) : (
             <Package className="w-6 h-6 text-[#8F8A82]" />
           )}
@@ -73,9 +74,10 @@ export async function TrendingPacks() {
                   <div className="relative aspect-square overflow-hidden">
                     {pack.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <CdnImg
                         src={pack.image}
                         alt={pack.name}
+                        sizes="(max-width: 767px) 70vw, 25vw"
                         className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (

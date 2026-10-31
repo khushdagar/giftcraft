@@ -278,7 +278,7 @@ export function ProductInfoSection({
           className="flex-1 whitespace-nowrap rounded-full border border-bdr bg-white px-3 py-3 text-sm font-semibold"
           size="lg"
         >
-          <Link href="/catalog">Get Quick Quote</Link>
+          <Link href="/catalog" prefetch={false}>Get Quick Quote</Link>
         </Button>
       </div>
     </div>
