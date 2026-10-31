@@ -14,7 +14,9 @@ const VARIANT_WIDTHS = [320, 640, 1024, 1600];
 export function cdnSrcSet(url: string | null | undefined): string | undefined {
   if (!url) return undefined;
   // Only our processed uploads on Spaces have variants.
-  if (!/\.webp$/i.test(url) || !/digitaloceanspaces\.com/i.test(url)) return undefined;
+  if (!/\.webp$/i.test(url) || !/(digitaloceanspaces\.com|cdn\.givoo\.in)/i.test(url)) return undefined;
+  // Some stored URLs already point at a variant, which has no variants of its own.
+  if (/-\d+w\.webp$/i.test(url)) return undefined;
   const base = url.slice(0, -'.webp'.length);
   return [
     ...VARIANT_WIDTHS.map((w) => `${base}-${w}w.webp ${w}w`),

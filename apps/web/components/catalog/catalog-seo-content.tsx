@@ -1,3 +1,4 @@
+import { CdnImg } from '@/components/ui/cdn-img';
 import Link from 'next/link';
 import { JsonLd } from '@/components/seo/json-ld';
 import { FaqSection } from '@/components/seo/faq-section';
@@ -131,10 +132,10 @@ export async function CatalogSeoContent() {
                           className="block h-12 w-12 overflow-hidden rounded-full border-2 border-white bg-gray-50 transition hover:z-10 hover:scale-110"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                          <CdnImg
                             src={c.imageUrl || c.previewImages[0] || PLACEHOLDER_IMAGE}
                             alt={c.name}
-                            loading="lazy"
+                            sizes="33vw"
                             className="h-full w-full object-cover"
                           />
                         </Link>

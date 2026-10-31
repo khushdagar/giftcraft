@@ -1,5 +1,5 @@
+import { CdnImg } from '@/components/ui/cdn-img';
 import Link from 'next/link';
-import Image from 'next/image';
 import { ChevronLeft, Clock } from 'lucide-react';
 import type { BlogPost } from '@prisma/client';
 import { formatPostDate, autoExcerpt } from '@/lib/blog';
@@ -73,13 +73,13 @@ export function PostArticle({ post, related, authorName, authorPath, preview = f
 
         {post.coverImageUrl && (
           <div className="relative mt-8 aspect-[16/9] overflow-hidden rounded-md border-2 border-bdr bg-gray-50">
-            <Image
+            <CdnImg
               src={post.coverImageUrl}
               alt={post.coverImageAlt || post.title}
-              fill
               sizes="(max-width: 768px) 100vw, 768px"
-              className="object-cover"
-              priority
+              className="absolute inset-0 h-full w-full object-cover"
+              loading="eager"
+              fetchPriority="high"
             />
           </div>
         )}
@@ -121,12 +121,11 @@ export function PostArticle({ post, related, authorName, authorPath, preview = f
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-gray-50">
                   {r.coverImageUrl ? (
-                    <Image
+                    <CdnImg
                       src={r.coverImageUrl}
                       alt={r.coverImageAlt || r.title}
-                      fill
                       sizes="(max-width: 768px) 100vw, 33vw"
-                      className="object-cover transition duration-500 group-hover:scale-105"
+                      className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center bg-gradient-to-br from-em-50 to-sky-50 text-3xl">

@@ -25,7 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Dark sidebar */}
       <aside className="sticky top-0 hidden h-screen flex-col overflow-y-auto border-r border-ink/10 bg-dark text-inv md:flex">
         <Link href="/" className="flex items-center gap-2 px-5 py-4">
-          <Image src="/footer_logo.png" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />
+          <Image src="/footer_logo.webp" alt="GIVOO Logo" width={160} height={40} className="mb-2.5 h-10 w-auto" />
           <span className="text-xs font-normal text-inv/40">admin</span>
         </Link>
 

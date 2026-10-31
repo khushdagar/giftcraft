@@ -1,5 +1,6 @@
 'use client';
 
+import { CdnImg } from '@/components/ui/cdn-img';
 import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
@@ -374,9 +375,10 @@ function ProductCard({ product }: { product: Product }) {
           {/* Image */}
           <div className="relative m-2.5 overflow-hidden rounded-md bg-elevated aspect-[4/3]">
             {product.images?.[0]?.url ? (
-              <img
+              <CdnImg
                 src={product.images[0].url}
                 alt={product.name}
+                sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
             ) : (

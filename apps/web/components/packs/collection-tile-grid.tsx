@@ -1,3 +1,4 @@
+import { CdnImg } from '@/components/ui/cdn-img';
 import Link from 'next/link';
 
 // Used for a tile when no cover image is set in the admin.
@@ -39,9 +40,12 @@ export function CollectionTileGrid({ tiles }: { tiles: CollectionTile[] }) {
         >
           {c.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <CdnImg
               src={c.image}
               alt={c.name}
+              sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw"
+              // The first row is above the fold, often the page's LCP.
+              loading={idx < 3 ? "eager" : "lazy"}
               className="absolute inset-0 h-full w-full object-cover transition transform group-hover:scale-105"
             />
           ) : (

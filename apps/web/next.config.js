@@ -61,7 +61,7 @@ const nextConfig = {
       ...noindexRoutes.map((source) => ({ source, headers: [noindex] })),
       {
         // Static marketing images/fonts in /public — cache for a week.
-        source: "/:dir(category|home-banners|hero-banners|fonts)/:path*",
+        source: "/:dir(category|home-banners|hero-banners|icons|fonts)/:path*",
         headers: [
           { key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" },
         ],

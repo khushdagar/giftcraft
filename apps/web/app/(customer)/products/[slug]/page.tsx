@@ -400,11 +400,11 @@ export default async function ProductPage({ params }: { params: { slug: string }
       {/* Breadcrumb */}
       <div className="container-gc-w pt-6">
         <p className="text-xs text-ink-3">
-          <Link href="/" className="hover:text-ink">
+          <Link href="/" prefetch={false} className="hover:text-ink">
             Home
           </Link>
           {" / "}
-          <Link href="/catalog" className="hover:text-ink">
+          <Link href="/catalog" prefetch={false} className="hover:text-ink">
             Catalog
           </Link>
           {" / "}

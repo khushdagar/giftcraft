@@ -1,8 +1,8 @@
 'use client';
 
+import { CdnImg } from '@/components/ui/cdn-img';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatRupees } from '@/lib/utils';
@@ -101,12 +101,11 @@ export function RecentlyViewed({ excludeId }: { excludeId?: string }) {
                     {item.collageImages && item.collageImages.length > 0 ? (
                       <PackCollage tiles={item.collageImages} />
                     ) : item.image ? (
-                      <Image
+                      <CdnImg
                         src={item.image}
                         alt={item.name}
-                        fill
                         sizes="(min-width: 640px) 256px, 176px"
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
                       <div className="flex items-center justify-center h-full text-5xl opacity-60">📦</div>

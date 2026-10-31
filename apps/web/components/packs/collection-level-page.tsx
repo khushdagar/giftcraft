@@ -27,7 +27,7 @@ export function CollectionLevelPage({
       <div className="py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-4 md:px-10">
           <p className="text-xs" style={{ color: '#8F8A82' }}>
-            <Link href="/" style={{ color: '#800020' }}>
+            <Link href="/" prefetch={false} style={{ color: '#800020' }}>
               Home
             </Link>{' '}
             {breadcrumb.map((b) => (

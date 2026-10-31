@@ -1,5 +1,6 @@
 'use client';
 
+import { CdnImg } from '@/components/ui/cdn-img';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -85,7 +86,7 @@ function Collage({ tiles }: { tiles: (string | null)[] }) {
         >
           {src ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <CdnImg src={src} alt="" sizes="25vw" className="absolute inset-0 h-full w-full object-cover" />
           ) : (
             <Package className="w-6 h-6 text-ink-3" />
           )}
@@ -280,7 +281,7 @@ export function PacksBrowser({
       <div className="py-8 md:py-12">
         <div className="max-w-7xl mx-auto px-4 md:px-10">
           <p className="text-xs" style={{ color: '#8F8A82' }}>
-            <Link href="/" style={{ color: '#800020' }}>
+            <Link href="/" prefetch={false} style={{ color: '#800020' }}>
               Home
             </Link>{' '}
             /{' '}
@@ -730,9 +731,10 @@ export function PacksBrowser({
                           <div className="relative aspect-square">
                             {pack.image ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img
+                              <CdnImg
                                 src={pack.image}
                                 alt={pack.name}
+                                sizes="(max-width: 1023px) 50vw, 25vw"
                                 className="absolute inset-0 h-full w-full object-cover"
                               />
                             ) : (

@@ -1,5 +1,6 @@
 'use client';
 
+import { CdnImg } from '@/components/ui/cdn-img';
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, Package, Minus, Plus } from 'lucide-react';
@@ -78,7 +79,7 @@ export function PackBundle({ pack }: PackBundleProps) {
               <div className="relative aspect-[4/3] bg-gray-50">
                 {it.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={it.image} alt={it.name} className="absolute inset-0 h-full w-full object-cover" />
+                  <CdnImg src={it.image} alt={it.name} sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 33vw" className="absolute inset-0 h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-ink-3">
                     <Package className="w-8 h-8" />

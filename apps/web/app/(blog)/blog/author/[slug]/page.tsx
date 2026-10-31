@@ -1,6 +1,6 @@
+import { CdnImg } from '@/components/ui/cdn-img';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ChevronLeft, Clock, BadgeCheck } from 'lucide-react';
 import { prisma } from '@/lib/prisma';
@@ -135,12 +135,11 @@ export default async function AuthorPage({ params }: { params: { slug: string } 
                   >
                     <div className="relative aspect-[16/10] overflow-hidden bg-gray-50">
                       {post.coverImageUrl ? (
-                        <Image
+                        <CdnImg
                           src={post.coverImageUrl}
                           alt={post.coverImageAlt || post.title}
-                          fill
                           sizes="(max-width: 768px) 100vw, 33vw"
-                          className="object-cover transition duration-500 group-hover:scale-105"
+                          className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center bg-gradient-to-br from-em-50 to-sky-50 text-4xl">

@@ -1,5 +1,6 @@
 'use client';
 
+import { CdnImg } from '@/components/ui/cdn-img';
 import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -726,7 +727,7 @@ export function CatalogClient({
           {pack ? (
             <>
               <p className="text-xs" style={{ color: '#8F8A82' }}>
-                <Link href="/" style={{ color: '#800020' }}>Home</Link> /{' '}
+                <Link href="/" prefetch={false} style={{ color: '#800020' }}>Home</Link> /{' '}
                 <Link href="/curated-packs" style={{ color: '#800020' }}>Curated Packs</Link> /{' '}
                 <span>{pack.name}</span>
               </p>
@@ -755,7 +756,7 @@ export function CatalogClient({
           ) : category ? (
             <>
               <p className="text-xs" style={{ color: '#8F8A82' }}>
-                <Link href="/" style={{ color: '#800020' }}>Home</Link> /{' '}
+                <Link href="/" prefetch={false} style={{ color: '#800020' }}>Home</Link> /{' '}
                 <Link href="/categories" style={{ color: '#800020' }}>Categories</Link> /{' '}
                 <span>{category.name}</span>
               </p>
@@ -774,7 +775,7 @@ export function CatalogClient({
           ) : occasion ? (
             <>
               <p className="text-xs" style={{ color: '#8F8A82' }}>
-                <Link href="/" style={{ color: '#800020' }}>Home</Link> /{' '}
+                <Link href="/" prefetch={false} style={{ color: '#800020' }}>Home</Link> /{' '}
                 <Link href="/occasions" style={{ color: '#800020' }}>Occasions</Link> /{' '}
                 <span>{occasion.name}</span>
               </p>
@@ -797,7 +798,7 @@ export function CatalogClient({
             </>
           ) : (
             <>
-              <p className="text-xs" style={{ color: '#8F8A82' }}><Link href="/" style={{ color: '#800020' }}>Home</Link> / <span>Products</span></p>
+              <p className="text-xs" style={{ color: '#8F8A82' }}><Link href="/" prefetch={false} style={{ color: '#800020' }}>Home</Link> / <span>Products</span></p>
               <h1 className="text-4xl md:text-5xl font-serif font-light mt-2">
                 The <span className="italic" style={{ color: '#800020' }}>Corporate Gifting Catalogue.</span>
               </h1>
@@ -1204,9 +1205,10 @@ export function CatalogClient({
                       <Link href={`/products/${p.slug}`} className="block cursor-pointer flex-1">
                         <div className="relative aspect-square m-2.5 rounded-2xl flex items-center justify-center overflow-hidden" style={{ background: '#FAFAFA' }}>
                           {displayUrl ? (
-                            <img
+                            <CdnImg
                               src={displayUrl}
                               alt={p.name}
+                              sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
                               className="w-full h-full object-cover group-hover:scale-105 transition"
                             />
                           ) : (

@@ -54,7 +54,7 @@ export function DashboardMobileNav({ userName, userRole, userImage }: Props) {
     <header className="sticky top-0 z-[60] flex h-14 items-center justify-between border-b border-bdr bg-dark px-4 text-inv lg:hidden">
       <Link href="/" className="flex items-center">
         {/* White-on-dark mark — the default BrandLogo is dark and disappears here. */}
-        <Image src="/footer_logo.png" alt="GIVOO" width={80} height={40} className="h-8 w-auto" />
+        <Image src="/footer_logo.webp" alt="GIVOO" width={80} height={40} className="h-8 w-auto" />
       </Link>
       <button
         type="button"
@@ -76,7 +76,7 @@ export function DashboardMobileNav({ userName, userRole, userImage }: Props) {
           <aside className="absolute right-0 top-0 flex h-full w-[280px] max-w-[85vw] flex-col bg-dark text-inv shadow-float">
             <div className="flex items-center justify-between px-5 pt-5 pb-4">
               <div>
-                <Image src="/footer_logo.png" alt="GIVOO" width={80} height={40} className="h-8 w-auto" />
+                <Image src="/footer_logo.webp" alt="GIVOO" width={80} height={40} className="h-8 w-auto" />
                 <p className="mt-1 text-[10px] uppercase tracking-wider text-white">Customer Portal</p>
               </div>
               <button

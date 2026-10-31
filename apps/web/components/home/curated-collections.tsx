@@ -1,3 +1,4 @@
+import { CdnImg } from '@/components/ui/cdn-img';
 import Link from 'next/link';
 import { getCuratedPackEntries } from '@/lib/curated-pack-entries';
 
@@ -28,9 +29,10 @@ export async function CuratedCollections() {
               {entry.image && (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <CdnImg
                     src={entry.image}
                     alt={entry.name}
+                    sizes="(max-width: 767px) 100vw, 50vw"
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                   {/* Scrim so the white copy stays readable over any photo. */}
