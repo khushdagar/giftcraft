@@ -35,6 +35,10 @@ const FEATURED_OCCASION_SLUGS = [
   "executive-gifting",
 ];
 
+// Seasonal picks shown above the shortlist, in this order. Matched by name
+// (case-insensitive) so they don't depend on whatever slug admin gave them.
+const PINNED_OCCASION_NAMES = ["Christmas", "Winter Gifting", "New Year", "Farewell"];
+
 // Same idea for the Categories column: the SEO team's shortlist, in this
 // order. Still intersected with the live product-bearing categories below so
 // an emptied or hidden category never leaves a dead link behind.
@@ -74,7 +78,15 @@ async function getFooterData() {
         orderBy: { sortOrder: "asc" },
       }),
       prisma.occasionConfig.findMany({
-        where: { isActive: true, slug: { in: FEATURED_OCCASION_SLUGS } },
+        where: {
+          isActive: true,
+          OR: [
+            { slug: { in: FEATURED_OCCASION_SLUGS } },
+            ...PINNED_OCCASION_NAMES.map((name) => ({
+              name: { equals: name, mode: "insensitive" as const },
+            })),
+          ],
+        },
         select: { slug: true, name: true },
       }),
       // Bands are admin-managed (/admin/budget-bands), so renames and re-ordering
@@ -93,11 +105,20 @@ async function getFooterData() {
           FEATURED_CATEGORY_SLUGS.indexOf(a.slug) - FEATURED_CATEGORY_SLUGS.indexOf(b.slug)
       );
 
-    const bySlug = new Map(occasionRows.map((o) => [o.slug, o]));
-    const occasions = FEATURED_OCCASION_SLUGS.flatMap((slug) => {
-      const row = bySlug.get(slug);
+    const byName = new Map(occasionRows.map((o) => [o.name.trim().toLowerCase(), o]));
+    const pinned = PINNED_OCCASION_NAMES.flatMap((name) => {
+      const row = byName.get(name.toLowerCase());
       return row ? [row] : [];
     });
+    const pinnedSlugs = new Set(pinned.map((o) => o.slug));
+    const bySlug = new Map(occasionRows.map((o) => [o.slug, o]));
+    const occasions = [
+      ...pinned,
+      ...FEATURED_OCCASION_SLUGS.flatMap((slug) => {
+        const row = bySlug.get(slug);
+        return row && !pinnedSlugs.has(slug) ? [row] : [];
+      }),
+    ];
 
     return { categories, occasions, budgetBands };
   } catch (error) {

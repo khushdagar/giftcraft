@@ -33,10 +33,10 @@ interface SuggestCategory { id: string; name: string; slug: string }
 // Shown until the live occasions load (and if the fetch fails), so the menu
 // is never empty.
 const FALLBACK_OCCASIONS: NavLink[] = [
-  { name: "Diwali", slug: "diwali" },
-  { name: "Holi", slug: "holi" },
   { name: "Christmas", slug: "christmas" },
   { name: "New Year", slug: "new-year" },
+  { name: "Diwali", slug: "diwali" },
+  { name: "Holi", slug: "holi" },
   { name: "Women's Day", slug: "womens-day" },
   { name: "Onboarding", slug: "onboarding" },
   { name: "Client Gifting", slug: "client-gifting" },
@@ -49,12 +49,22 @@ const FALLBACK_OCCASIONS: NavLink[] = [
 const FESTIVAL_RE =
   /diwali|holi|christmas|new year|festive|eid|rakhi|raksha|navratri|pongal|onam|ganesh|dussehra|dasara|lohri|baisakhi|valentine|easter|halloween|ugadi|sankranti|janmashtami|thanksgiving|independence|republic/i;
 
-// Festivals first, everything else after — the cascade then splits the list
-// down the middle into two even columns.
+// Seasonal picks pinned to the very top, in this order. Matched by name so a
+// slug rename in admin doesn't silently drop them back into the pack.
+const PINNED_OCCASIONS = ["christmas", "winter gifting", "new year", "farewell"];
+const pinRank = (name: string) => PINNED_OCCASIONS.indexOf(name.trim().toLowerCase());
+
+// Pinned first, then festivals, everything else after — the cascade then
+// splits the list down the middle into two even columns.
 function orderOccasionRungs<T extends NavLink>(items: T[]): T[] {
+  const pinned = items
+    .filter((i) => pinRank(i.name) >= 0)
+    .sort((a, b) => pinRank(a.name) - pinRank(b.name));
+  const rest = items.filter((i) => pinRank(i.name) < 0);
   return [
-    ...items.filter((i) => FESTIVAL_RE.test(i.name)),
-    ...items.filter((i) => !FESTIVAL_RE.test(i.name)),
+    ...pinned,
+    ...rest.filter((i) => FESTIVAL_RE.test(i.name)),
+    ...rest.filter((i) => !FESTIVAL_RE.test(i.name)),
   ];
 }
 
