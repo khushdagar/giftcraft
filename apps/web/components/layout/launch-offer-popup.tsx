@@ -3,9 +3,14 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 
-// The form only downloads for visitors who are actually about to see it.
+// The form only downloads for visitors who are actually about to see it. If the
+// chunk can't load (a tab left open across a deploy), skip the popup: an uncaught
+// failure here would replace the page the visitor is reading with the error screen.
 const LaunchOfferDialog = dynamic(
-  () => import("./launch-offer-dialog").then((m) => m.LaunchOfferDialog),
+  () =>
+    import("./launch-offer-dialog")
+      .then((m) => m.LaunchOfferDialog)
+      .catch(() => () => null),
   { ssr: false }
 );
 
