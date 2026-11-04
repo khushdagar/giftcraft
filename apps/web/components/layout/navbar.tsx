@@ -54,12 +54,18 @@ const FESTIVAL_RE =
 const PINNED_OCCASIONS = ["christmas", "winter gifting", "new year", "farewell"];
 const pinRank = (name: string) => PINNED_OCCASIONS.indexOf(name.trim().toLowerCase());
 
-// Pinned first, then festivals, everything else after — the cascade then
-// splits the list down the middle into two even columns.
-function orderOccasionRungs<T extends NavLink>(items: T[]): T[] {
+// Pinned occasions first (in PINNED_OCCASIONS order), the rest untouched.
+function pinOccasions<T extends NavLink>(items: T[]): T[] {
   const pinned = items
     .filter((i) => pinRank(i.name) >= 0)
     .sort((a, b) => pinRank(a.name) - pinRank(b.name));
+  return [...pinned, ...items.filter((i) => pinRank(i.name) < 0)];
+}
+
+// Pinned first, then festivals, everything else after — the cascade then
+// splits the list down the middle into two even columns.
+function orderOccasionRungs<T extends NavLink>(items: T[]): T[] {
+  const pinned = pinOccasions(items).filter((i) => pinRank(i.name) >= 0);
   const rest = items.filter((i) => pinRank(i.name) < 0);
   return [
     ...pinned,
@@ -430,8 +436,12 @@ export function Navbar() {
                 {activeCollection && activeCollection.children.length > 0 && (() => {
                   // Server order is deliberate (price bands ascending, the
                   // curated occasion shortlist in its own order), so it is kept
-                  // as-is; a long list still splits across two columns.
-                  const rungs = activeCollection.children;
+                  // as-is — except the pinned seasonal occasions, which lead.
+                  // A long list still splits across two columns.
+                  const rungs =
+                    activeCollection.slug === "occasions"
+                      ? pinOccasions(activeCollection.children)
+                      : activeCollection.children;
                   const twoCol = rungs.length > 10;
                   const half = Math.ceil(rungs.length / 2);
                   const columns = twoCol ? [rungs.slice(0, half), rungs.slice(half)] : [rungs];

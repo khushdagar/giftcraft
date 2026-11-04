@@ -43,7 +43,13 @@ export function organizationSchema() {
       addressRegion: 'DL',
       addressCountry: 'IN',
     },
-    // sameAs: add real social profile URLs when they exist — never placeholders.
+    // Real profiles only — keep in step with the footer's social icons.
+    sameAs: [
+      'https://www.instagram.com/givoogifting/',
+      'https://www.facebook.com/givoogifting/',
+      'https://www.linkedin.com/company/givoo-corporate-gifting/',
+      'https://www.youtube.com/@givoogifting',
+    ],
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'sales',
