@@ -30,7 +30,9 @@ succeed, so a failed GHL sync is shown to the person submitting the form rather 
 leaving the enquiry out of GHL. The tag is refreshed on repeat submissions so the notification
 workflow can run for each enquiry.
 
-Configure `GHL_API_KEY` with contact write access and `GHL_LOCATION_ID`. In GHL, create a
+Configure `GHL_API_KEY` with `contacts.write` and `locations/customFields.readonly` access and
+`GHL_LOCATION_ID`. Website enquiry text is mapped to the GHL contact custom field named
+`Message` and also saved in the note. In GHL, create a
 Workflow triggered when the `givoo-website-enquiry` tag is added, then add an internal email
 notification addressed to the GHL account admin. This keeps the recipient managed by GHL and
 not hard-coded in the website.

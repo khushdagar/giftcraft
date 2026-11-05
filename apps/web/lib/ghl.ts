@@ -64,6 +64,59 @@ export interface GhlWebsiteEnquiry {
 }
 
 const WEBSITE_ENQUIRY_TAG = 'givoo-website-enquiry';
+const GHL_MESSAGE_FIELD_CACHE_MS = 5 * 60 * 1000;
+let ghlMessageFieldCache: { locationId: string; fieldId: string; cachedAt: number } | null = null;
+
+async function getGhlMessageFieldId(
+  locationId: string,
+  headers: HeadersInit
+): Promise<string> {
+  if (
+    ghlMessageFieldCache?.locationId === locationId &&
+    Date.now() - ghlMessageFieldCache.cachedAt < GHL_MESSAGE_FIELD_CACHE_MS
+  ) {
+    return ghlMessageFieldCache.fieldId;
+  }
+
+  const endpoint = `locations/${encodeURIComponent(locationId)}/customFields?model=contact`;
+  const response = await fetch(`${GHL_BASE}/${endpoint}`, {
+    headers,
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new GhlApiError(response.status, endpoint);
+  }
+
+  const payload: unknown = await response.json();
+  const fields =
+    typeof payload === 'object' &&
+    payload !== null &&
+    'customFields' in payload &&
+    Array.isArray(payload.customFields)
+      ? payload.customFields
+      : [];
+  const messageField = fields.find(
+    (field): field is { id: string; name: string } =>
+      typeof field === 'object' &&
+      field !== null &&
+      'id' in field &&
+      typeof field.id === 'string' &&
+      'name' in field &&
+      typeof field.name === 'string' &&
+      field.name.trim().toLowerCase() === 'message'
+  );
+
+  if (!messageField) {
+    throw new Error('GoHighLevel contact custom field "Message" was not found');
+  }
+
+  ghlMessageFieldCache = {
+    locationId,
+    fieldId: messageField.id,
+    cachedAt: Date.now(),
+  };
+  return messageField.id;
+}
 
 /**
  * Create or update the GHL contact for a website enquiry, attach its details,
@@ -82,6 +135,9 @@ export async function syncWebsiteEnquiryToGhl(enquiry: GhlWebsiteEnquiry): Promi
     Accept: 'application/json',
     'Content-Type': 'application/json',
   };
+  const messageFieldId = enquiry.message
+    ? await getGhlMessageFieldId(locationId, headers)
+    : null;
 
   const request = async (
     method: 'POST' | 'DELETE',
@@ -109,6 +165,9 @@ export async function syncWebsiteEnquiryToGhl(enquiry: GhlWebsiteEnquiry): Promi
     phone: enquiry.phone,
     companyName: enquiry.companyName,
     source: 'GIVOO Website Enquiry',
+    ...(messageFieldId && enquiry.message
+      ? { customFields: [{ id: messageFieldId, field_value: enquiry.message }] }
+      : {}),
   });
   const payload: unknown = await contactResponse.json();
   const contact =
