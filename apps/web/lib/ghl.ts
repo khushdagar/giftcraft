@@ -15,6 +15,16 @@
 
 const GHL_BASE = 'https://services.leadconnectorhq.com';
 
+export class GhlApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly endpoint: string
+  ) {
+    super(`GoHighLevel ${endpoint} failed (${status})`);
+    this.name = 'GhlApiError';
+  }
+}
+
 export interface GhlDetailField {
   label: string;
   value: string;
@@ -42,6 +52,111 @@ export type GhlResult =
   | { status: 'not_configured' }
   | { status: 'ok'; leads: GhlLead[]; missingScopes: string[] }
   | { status: 'error'; error: string; httpStatus?: number };
+
+export interface GhlWebsiteEnquiry {
+  companyName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  quantity?: number;
+  message?: string;
+  productName?: string;
+}
+
+const WEBSITE_ENQUIRY_TAG = 'givoo-website-enquiry';
+
+/**
+ * Create or update the GHL contact for a website enquiry, attach its details,
+ * and add the tag used by the GHL admin-notification workflow.
+ */
+export async function syncWebsiteEnquiryToGhl(enquiry: GhlWebsiteEnquiry): Promise<void> {
+  const apiKey = process.env.GHL_API_KEY;
+  const locationId = process.env.GHL_LOCATION_ID;
+  if (!apiKey || !locationId) {
+    throw new Error('GoHighLevel is not configured');
+  }
+
+  const headers = {
+    Authorization: `Bearer ${apiKey}`,
+    Version: 'v3',
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+
+  const request = async (
+    method: 'POST' | 'DELETE',
+    path: string,
+    body: Record<string, unknown>
+  ) => {
+    const response = await fetch(`${GHL_BASE}/${path}`, {
+      method,
+      headers,
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      throw new GhlApiError(response.status, path);
+    }
+    return response;
+  };
+
+  const nameParts = enquiry.contactName.trim().split(/\s+/);
+  const contactResponse = await request('POST', 'contacts/upsert', {
+    locationId,
+    firstName: nameParts[0],
+    lastName: nameParts.slice(1).join(' ') || undefined,
+    email: enquiry.email,
+    phone: enquiry.phone,
+    companyName: enquiry.companyName,
+    source: 'GIVOO Website Enquiry',
+  });
+  const payload: unknown = await contactResponse.json();
+  const contact =
+    typeof payload === 'object' && payload !== null && 'contact' in payload
+      ? payload.contact
+      : payload;
+  const hasEnquiryTag =
+    typeof contact === 'object' &&
+    contact !== null &&
+    'tags' in contact &&
+    Array.isArray(contact.tags) &&
+    contact.tags.includes(WEBSITE_ENQUIRY_TAG);
+  const contactId =
+    typeof contact === 'object' &&
+    contact !== null &&
+    'id' in contact &&
+    typeof contact.id === 'string'
+      ? contact.id
+      : null;
+
+  if (!contactId) {
+    throw new Error('GoHighLevel did not return a contact ID');
+  }
+
+  const note = [
+    'Website enquiry',
+    `Company: ${enquiry.companyName}`,
+    `Contact: ${enquiry.contactName}`,
+    `Email: ${enquiry.email}`,
+    `Phone: ${enquiry.phone}`,
+    enquiry.productName ? `Product: ${enquiry.productName}` : null,
+    enquiry.quantity ? `Quantity: ${enquiry.quantity}` : null,
+    enquiry.message ? `Message: ${enquiry.message}` : null,
+  ]
+    .filter((line): line is string => line !== null)
+    .join('\n');
+
+  const encodedContactId = encodeURIComponent(contactId);
+  await request('POST', `contacts/${encodedContactId}/notes`, { body: note });
+  if (hasEnquiryTag) {
+    await request('DELETE', `contacts/${encodedContactId}/tags`, {
+      tags: [WEBSITE_ENQUIRY_TAG],
+    });
+  }
+  await request('POST', `contacts/${encodedContactId}/tags`, {
+    tags: [WEBSITE_ENQUIRY_TAG],
+  });
+}
 
 // Plumbing on a submission payload — not worth showing to an admin.
 const SUBMISSION_SKIP_KEYS = new Set([

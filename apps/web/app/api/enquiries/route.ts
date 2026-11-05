@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { zEmail, zPersonName, zPhone } from '@/lib/zod-fields';
 import { sendPushToAdmins } from '@/lib/push';
+import { GhlApiError, syncWebsiteEnquiryToGhl } from '@/lib/ghl';
 
 const EnquirySchema = z.object({
   companyName: zPersonName('Company name').max(200),
@@ -19,6 +20,30 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const data = EnquirySchema.parse(body);
+
+    try {
+      await syncWebsiteEnquiryToGhl({
+        companyName: data.companyName,
+        contactName: data.contactName,
+        email: data.email,
+        phone: data.phone,
+        quantity: data.quantity,
+        message: data.message,
+        productName: data.productName,
+      });
+    } catch (error) {
+      console.error('GoHighLevel website enquiry sync failed:', error);
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            error instanceof GhlApiError && (error.status === 401 || error.status === 403)
+              ? 'The GHL connection needs contacts.write permission. Please contact the site administrator.'
+              : 'Could not submit your enquiry. Please try again.',
+        },
+        { status: 502 }
+      );
+    }
 
     const enquiry = await prisma.enquiry.create({
       data: {
