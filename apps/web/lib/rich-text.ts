@@ -37,8 +37,8 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
     details: ['data-faq-item', 'open'],
     '*': ['class'],
   },
-  // Only http(s), mailto and protocol-relative links — blocks javascript: URIs.
-  allowedSchemes: ['http', 'https', 'mailto'],
+  // Only http(s), mailto, tel and protocol-relative links — blocks javascript: URIs.
+  allowedSchemes: ['http', 'https', 'mailto', 'tel'],
   allowedSchemesByTag: { img: ['http', 'https', 'data'] },
   // Keep inline color/weight from the editor but nothing that can execute.
   allowedStyles: {
