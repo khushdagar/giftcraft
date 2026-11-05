@@ -21,6 +21,20 @@ Route groups:
 
 Auth flow: `middleware.ts` guards `/admin/*` and `/dashboard/*` only; everything else is public. On first sign-in by the email set in `SEED_ADMIN_EMAIL`, `events.createUser` in `auth.ts` auto-promotes that user to `super_admin`. After that, `/admin/settings/users` lets you manage every other user's role.
 
+## Website enquiries in GoHighLevel
+
+The public contact and product-enquiry forms submit through `/api/enquiries`. The API upserts
+the contact in the configured GHL location, adds the enquiry details as a contact note, and
+adds the `givoo-website-enquiry` tag. The submission is only accepted after these GHL writes
+succeed, so a failed GHL sync is shown to the person submitting the form rather than silently
+leaving the enquiry out of GHL. The tag is refreshed on repeat submissions so the notification
+workflow can run for each enquiry.
+
+Configure `GHL_API_KEY` with contact write access and `GHL_LOCATION_ID`. In GHL, create a
+Workflow triggered when the `givoo-website-enquiry` tag is added, then add an internal email
+notification addressed to the GHL account admin. This keeps the recipient managed by GHL and
+not hard-coded in the website.
+
 ## Image upload & compression
 
 Every uploaded image is compressed and converted to WebP **before it hits storage** — no
