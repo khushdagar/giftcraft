@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { zEmail, zPersonName, zPhone } from '@/lib/zod-fields';
 import { sendPushToAdmins } from '@/lib/push';
 import { GhlApiError, syncWebsiteEnquiryToGhl } from '@/lib/ghl';
+import { renderEmail, sendCustomEmail } from '@/lib/email';
+import { esc } from '@/lib/email-theme';
 
 const EnquirySchema = z.object({
   companyName: zPersonName('Company name').max(200),
@@ -58,6 +60,53 @@ export async function POST(request: NextRequest) {
       },
       select: { id: true },
     });
+
+    const adminEmail = process.env.ENQUIRY_ADMIN_EMAIL || 'hello@givoo.in';
+    const adminEmailResult = await sendCustomEmail({
+      to: adminEmail,
+      subject: `New website enquiry from ${data.companyName}`,
+      html: renderEmail({
+        heading: 'New website enquiry',
+        preheader: `New enquiry from ${data.contactName} at ${data.companyName}`,
+        contentHtml: [
+          `<p><strong>Company:</strong> ${esc(data.companyName)}</p>`,
+          `<p><strong>Contact:</strong> ${esc(data.contactName)}</p>`,
+          `<p><strong>Email:</strong> ${esc(data.email)}</p>`,
+          `<p><strong>Phone:</strong> ${esc(data.phone)}</p>`,
+          data.productName ? `<p><strong>Product:</strong> ${esc(data.productName)}</p>` : '',
+          data.quantity ? `<p><strong>Quantity:</strong> ${data.quantity}</p>` : '',
+          data.message
+            ? `<p><strong>Message:</strong><br />${esc(data.message).replace(/\r?\n/g, '<br />')}</p>`
+            : '',
+        ].join(''),
+        footerNote: 'This enquiry was submitted through the GIVOO website.',
+      }),
+    });
+    if (!adminEmailResult.success) {
+      console.error('Website enquiry admin email failed:', adminEmailResult.error || 'Email skipped');
+    }
+
+    const customerEmailResult = await sendCustomEmail({
+      to: data.email,
+      subject: 'We received your enquiry | GIVOO',
+      html: renderEmail({
+        heading: 'Thanks for contacting GIVOO',
+        preheader: 'We received your gifting enquiry.',
+        contentHtml: [
+          `<p>Hi ${esc(data.contactName)},</p>`,
+          '<p>Thank you for contacting GIVOO. We have received your enquiry and our gifting team will get in touch with you shortly.</p>',
+          data.productName ? `<p><strong>Product:</strong> ${esc(data.productName)}</p>` : '',
+          data.quantity ? `<p><strong>Quantity:</strong> ${data.quantity}</p>` : '',
+          data.message
+            ? `<p><strong>Your message:</strong><br />${esc(data.message).replace(/\r?\n/g, '<br />')}</p>`
+            : '',
+        ].join(''),
+        footerNote: 'This is a confirmation that we received your enquiry; it is not an order confirmation.',
+      }),
+    });
+    if (!customerEmailResult.success) {
+      console.error('Website enquiry confirmation email failed:', customerEmailResult.error || 'Email skipped');
+    }
 
     // Leads go cold fast — alert admins immediately. Tag matches the bell's
     // enquiry-<id> key so the two don't stack up.

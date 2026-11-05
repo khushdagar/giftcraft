@@ -37,6 +37,11 @@ Workflow triggered when the `givoo-website-enquiry` tag is added, then add an in
 notification addressed to the GHL account admin. This keeps the recipient managed by GHL and
 not hard-coded in the website.
 
+The website enquiry API also sends an admin email to `ENQUIRY_ADMIN_EMAIL` (defaults to
+`hello@givoo.in`) and a submission confirmation to the customer using the configured Resend
+sender. These emails are best-effort and do not block saving a valid enquiry. The GHL workflow's
+internal notification recipient is configured separately inside GHL.
+
 ## Image upload & compression
 
 Every uploaded image is compressed and converted to WebP **before it hits storage** — no
